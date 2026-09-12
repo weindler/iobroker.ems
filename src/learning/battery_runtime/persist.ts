@@ -4,6 +4,9 @@ import { atomicWriteFile } from "../../persistence/atomic_write";
 import { MODULE_TAG } from "./constants";
 import type { BatteryRuntimeComputeResult, BatteryRuntimePersist } from "./types";
 
+/** Detaildiagnose bleibt bewusst begrenzt; Langzeitwerte sind die Aggregate darüber. */
+export const BATTERY_NIGHT_DIAGNOSTIC_RETENTION = 120;
+
 export async function writeBatteryRuntimePersist(
 	baseDir: string,
 	result: BatteryRuntimeComputeResult,
@@ -16,6 +19,8 @@ export async function writeBatteryRuntimePersist(
 		sample_days: result.sampleDays,
 		avg_night_discharge_pct: result.avgNightDischargePct,
 		avg_night_discharge_kwh: result.avgNightDischargeKwh,
+		median_night_discharge_kwh: result.medianNightDischargeKwh,
+		night_estimator: result.nightEstimator,
 		predicted_night_consumption_kwh: result.predictedNightConsumptionKwh,
 		night_consumption_valid_nights: result.nightConsumptionValidNights,
 		predicted_night_grid_import_kwh: result.predictedNightGridImportKwh,
@@ -27,6 +32,7 @@ export async function writeBatteryRuntimePersist(
 		avg_night_bridge_hours: result.avgNightBridgeHours,
 		grid_balance_attributed_nights: result.gridBalanceAttributedNights,
 		grid_balance_excluded_nights: result.gridBalanceExcludedNights,
+		night_samples: result.nightSamples.slice(-BATTERY_NIGHT_DIAGNOSTIC_RETENTION),
 		avg_charge_rate_pct_h: result.avgChargeRatePctH,
 		avg_discharge_rate_pct_h: result.avgDischargeRatePctH,
 		avg_charge_power_w: result.avgChargePowerW,

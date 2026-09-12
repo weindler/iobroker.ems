@@ -24,5 +24,8 @@ if (files.length === 0) {
 const result = spawnSync(process.execPath, ["--test", ...files], {
 	cwd: root,
 	stdio: "inherit",
+	// Mehrere Vertragsfälle prüfen lokale Kalendertage/DST für die Produkt-Default-Zone.
+	// CI-Hosts laufen häufig in UTC; ohne festen Default wären dieselben Tests hostabhängig.
+	env: { ...process.env, TZ: process.env.EMS_TEST_TZ || "Europe/Berlin" },
 });
 process.exit(result.status ?? 1);

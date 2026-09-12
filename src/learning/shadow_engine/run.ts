@@ -16,6 +16,7 @@ import { statisticsConfigFromAdapter } from "../../statistics/config";
 import { asNum } from "../../ems_light/state_util";
 import {
 	SHADOW_ENGINE_MODULE,
+	SHADOW_ENGINE_MODEL_VERSION,
 	SHADOW_ENGINE_RESULTS_CATEGORY,
 	SHADOW_ENGINE_SCHEMA_VERSION,
 	SHADOW_ENGINE_STATE_CATEGORY,
@@ -76,15 +77,37 @@ export function buildShadowDayRecord(
 	aiOverrideActiveForDay: boolean,
 	generatedAtIso: string,
 	economicsLearning?: { usable: boolean; alpha: number | null; beta: number | null } | null,
+	referenceNoEmsPrevious?: {
+		dateKey: string;
+		socEndPct: number | null;
+		modelVersion: string;
+	} | null,
 ): ShadowDayRecord {
 	const real = computeRealDayResult(day, feedInCtPerKwh);
-	const startSocPct =
-		lastNonNull(previousDay?.buckets.batterySocEndPct ?? []) ?? real.socStartPct ?? null;
+	const previousKey = addDaysToDateKey(dateKey, -1);
+	const continuousShadowSoc =
+		referenceNoEmsPrevious?.dateKey === previousKey &&
+		referenceNoEmsPrevious.modelVersion === SHADOW_ENGINE_MODEL_VERSION &&
+		referenceNoEmsPrevious.socEndPct !== null
+			? referenceNoEmsPrevious.socEndPct
+			: null;
+	const previousRealSoc = lastNonNull(previousDay?.buckets.batterySocEndPct ?? []);
+	const startSocPct = continuousShadowSoc ?? previousRealSoc ?? real.socStartPct ?? null;
+	const socStartSource =
+		continuousShadowSoc !== null
+			? "previous_shadow"
+			: previousRealSoc !== null
+				? "previous_real"
+				: real.socStartPct !== null
+					? "current_real"
+					: "missing";
 	const referenceNoEms = simulateReferenceNoEms(
 		day,
 		{ ...batteryParams, startSocPct },
 		feedInCtPerKwh,
 	);
+	referenceNoEms.socStartSource = socStartSource;
+	referenceNoEms.socContinuousFromPreviousDay = socStartSource === "previous_shadow";
 	const referenceSonnenNative = simulateReferenceSonnenNative(
 		real,
 		day,
@@ -165,7 +188,13 @@ export async function runShadowEngineBatch(
 		let lastEvaluated: string | null = null;
 		for (const dateKey of allKeys.sort()) {
 			if (dateKey >= todayKey) continue;
-			if (processedKeys.has(dateKey)) {
+			const existingRecord = processedKeys.has(dateKey)
+				? await readShadowDayRecord(resultsDir, dateKey)
+				: null;
+			if (
+				existingRecord?.strategies.reference_no_ems?.modelVersion ===
+				SHADOW_ENGINE_MODEL_VERSION
+			) {
 				result.skippedAlreadyProcessed.push(dateKey);
 				continue;
 			}
@@ -181,6 +210,14 @@ export async function runShadowEngineBatch(
 				}
 				const prevKey = addDaysToDateKey(dateKey, -1);
 				const previousDay = await readDayTelemetryDay(telemetryDir, prevKey);
+				const previousShadow = await readShadowDayRecord(resultsDir, prevKey);
+				const referenceNoEmsPrevious = previousShadow?.strategies.reference_no_ems
+					? {
+							dateKey: previousShadow.dateKey,
+							socEndPct: previousShadow.strategies.reference_no_ems.socEndPct,
+							modelVersion: previousShadow.strategies.reference_no_ems.modelVersion,
+						}
+					: null;
 				const aiOverrideActive = await wasAiOverrideActiveOnDate(host, dateKey);
 
 				const record = buildShadowDayRecord(
@@ -192,6 +229,7 @@ export async function runShadowEngineBatch(
 					aiOverrideActive,
 					now.toISOString(),
 					economicsLearning,
+					referenceNoEmsPrevious,
 				);
 				await writeShadowDayRecord(resultsDir, record);
 				result.processedDateKeys.push(dateKey);

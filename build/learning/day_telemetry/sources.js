@@ -15,6 +15,7 @@ const constants_1 = require("../../addons/air_conditioning/constants");
 const config_1 = require("../../addons/air_conditioning/config");
 const config_2 = require("../weather/config");
 const ensure_states_3 = require("../../addons/wallbox/ev_foundation/ensure_states");
+const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
 const state_ids_1 = require("../../addons/measured_consumers/runtime/state_ids");
 const state_util_1 = require("../../ems_light/state_util");
 const mapping_1 = require("../house_load/mapping");
@@ -191,12 +192,16 @@ async function readLiveTelemetrySample(host, nowMs = Date.now()) {
     const sharedUsed = await readBool(host, ensure_states_2.AC_RUNTIME_SUMMARY_STATES.systemSharedPowerUsed);
     const systemPower = await readNum(host, ensure_states_2.AC_RUNTIME_SUMMARY_STATES.systemPowerW);
     const pvLive = (await readNum(host, LIVE_PV_POWER_W)) ?? (await readNum(host, LIVE_PV_POWER_W_MIRROR));
+    const evChargePowerW = (await readNum(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW)) ??
+        (await readNum(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.chargePowerW));
+    const evMode = (await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode)) ??
+        (await readStr(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.evccMode));
     return {
         tsMs: nowMs,
         pvPowerW: pvLive,
         houseTotalPowerW: houseSrc.stateId ? await readNum(host, houseSrc.stateId) : null,
         immersionPowerW: await readNum(host, types_1.IMMERSION_RUNTIME_STATES.measuredPowerW),
-        wallboxChargePowerW: await readNum(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.chargePowerW),
+        wallboxChargePowerW: evChargePowerW,
         batteryChargePowerW: chargeW,
         batteryDischargePowerW: dischargeW,
         gridBalanceDischargePowerW: await readNum(host, ensure_states_1.BAT.gridBalance.effectivePowerW),
@@ -219,7 +224,8 @@ async function readLiveTelemetrySample(host, nowMs = Date.now()) {
             : null,
         priceCtPerKwh: await resolveTelemetryPriceCtPerKwh(host, nowMs),
         batterySocPct: await readNum(host, ensure_states_1.BAT.telemetry.socPct),
-        evChargePowerW: await readNum(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.chargePowerW),
+        evChargePowerW,
+        evMode,
         evSocPct: await readNum(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.vehicleSocPct),
         evConnected: await readBool(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.vehicleConnected),
         immersionRuntimeOn: null,

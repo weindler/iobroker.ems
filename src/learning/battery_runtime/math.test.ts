@@ -118,6 +118,39 @@ describe("battery runtime night discharge", () => {
 		assert.equal(r.validNights, 1);
 		assert.equal(r.avgPct, 35);
 		assert.equal(r.avgKwh, 3.5);
+		assert.equal(r.medianKwh, 3.5);
+		assert.equal(r.nightSamples.length, 1);
+		assert.deepEqual(
+			{
+				start: r.nightSamples[0]!.startSocPct,
+				low: r.nightSamples[0]!.lowestSocPct,
+				gross: r.nightSamples[0]!.grossDischargeKwh,
+				net: r.nightSamples[0]!.netDischargeKwh,
+				accepted: r.nightSamples[0]!.accepted,
+				reason: r.nightSamples[0]!.exclusionReason,
+			},
+			{ start: 100, low: 65, gross: 3.5, net: 3.5, accepted: true, reason: null },
+		);
+	});
+
+	it("publishes median beside the recency-weighted reserve estimator", () => {
+		const points: SocPoint[] = [
+			socAt("2026-01-05", 22, 90),
+			socAt("2026-01-06", 6, 80),
+			socAt("2026-01-06", 22, 90),
+			socAt("2026-01-07", 6, 70),
+			socAt("2026-01-07", 22, 90),
+			socAt("2026-01-08", 6, 60),
+		];
+		const r = computeNightDischarges({
+			socPoints: points,
+			nightStart: "22:00",
+			nightEnd: "06:00",
+			capacityKwh: 10,
+			nowMs: Date.parse("2026-01-09T12:00:00"),
+		});
+		assert.equal(r.medianKwh, 2);
+		assert.ok((r.avgKwh ?? 0) > 2, `weighted average=${r.avgKwh}`);
 	});
 
 	it("does not treat missing kwh as zero without capacity", () => {
@@ -573,6 +606,10 @@ describe("battery runtime night consumption + dynamic reserve (konsolidiert, SOC
 			discharge.avgKwh !== null && discharge.avgKwh > 4.5 && discharge.avgKwh < 5.5,
 			`avgKwh=${discharge.avgKwh} (Zwischenladungsnacht darf nicht mit 90−55=35 % einfließen)`,
 		);
+		assert.equal(
+			discharge.nightSamples.filter((n) => n.exclusionReason === "interim_recharge").length,
+			1,
+		);
 	});
 
 	it("Sondernacht mit Netzladung (SOC steigt) fließt nicht in die Reserve-Basis", () => {
@@ -800,6 +837,10 @@ describe("battery runtime night consumption + dynamic reserve (konsolidiert, SOC
 			`withGb=${withGb.validNights} baseline=${baseline.validNights}`,
 		);
 		assert.ok(withGb.gridBalanceExcludedNights >= 1, `excluded=${withGb.gridBalanceExcludedNights}`);
+		assert.ok(
+			withGb.nightSamples.some((n) => n.exclusionReason === "grid_balance_coverage"),
+			"Einzelbefund muss die lückenhafte GB-Coverage erklären",
+		);
 	});
 
 	it("PFLICHT-FIX 1: GB nur für jüngste Nächte (Telemetrie) lässt ältere SOC-Nächte unverändert", () => {
@@ -1020,5 +1061,7 @@ describe("battery runtime persist", () => {
 		const read = await readBatteryRuntimePersist(dir);
 		assert.ok(read);
 		assert.equal(read?.module, "battery_runtime_learning_v1");
+		assert.equal(read?.median_night_discharge_kwh, 1);
+		assert.equal(read?.night_estimator, "recency_weighted_average");
 	});
 });

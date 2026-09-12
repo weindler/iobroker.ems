@@ -731,8 +731,9 @@ async function controlTickInner(host) {
         excludedConsumers: [
             {
                 id: "immersion_heater",
-                // Unbekannt (State noch nicht geschrieben) → nicht einschränken (fail-open).
-                allowedOnBattery: ihBatteryAllowedSt?.val !== false,
+                // Unbekannt bleibt unbekannt und wird in der Lastkorrektur sicher geschlossen.
+                // Nur die ausdrückliche Planner-Freigabe `true` darf Batterieeinsatz zulassen.
+                allowedOnBattery: (0, grid_balance_policy_1.parseExplicitBatteryPermission)(ihBatteryAllowedSt?.val),
                 commandedPowerW: (0, state_util_1.asNum)(ihCommandedPowerSt?.val),
             },
         ],

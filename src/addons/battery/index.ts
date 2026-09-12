@@ -37,7 +37,10 @@ import {
 	type GridBalanceLiveTestState,
 	type GridBalanceTickDecision,
 } from "./grid_balance_power";
-import { resolveGridBalancePolicyLoadAdjustment } from "./grid_balance_policy";
+import {
+	parseExplicitBatteryPermission,
+	resolveGridBalancePolicyLoadAdjustment,
+} from "./grid_balance_policy";
 import { BATTERY_CONSUMER_CONSTRAINT_STATES } from "../../policy/battery_consumers";
 import { IMMERSION_RUNTIME_STATES } from "../immersion_heater/runtime/types";
 import { asNum } from "../../ems_light/state_util";
@@ -909,8 +912,9 @@ async function controlTickInner(host: Host): Promise<void> {
 		excludedConsumers: [
 			{
 				id: "immersion_heater",
-				// Unbekannt (State noch nicht geschrieben) → nicht einschränken (fail-open).
-				allowedOnBattery: ihBatteryAllowedSt?.val !== false,
+				// Unbekannt bleibt unbekannt und wird in der Lastkorrektur sicher geschlossen.
+				// Nur die ausdrückliche Planner-Freigabe `true` darf Batterieeinsatz zulassen.
+				allowedOnBattery: parseExplicitBatteryPermission(ihBatteryAllowedSt?.val),
 				commandedPowerW: asNum(ihCommandedPowerSt?.val),
 			},
 		],
@@ -1376,4 +1380,3 @@ export async function batteryUnloadRestore(host: Host): Promise<void> {
 		host.log.warn(`battery unload restore best-effort failed: ${String(e)}`);
 	}
 }
-

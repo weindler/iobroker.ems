@@ -130,19 +130,6 @@ function biasPctFromRawCorrected(raw: number | null, corrected: number | null): 
 	return Math.round(((corrected - raw) / raw) * 1000) / 10;
 }
 
-function sanitizeDisallowedSlotIsos(raw: string[] | null | undefined): string[] | undefined {
-	if (!Array.isArray(raw) || raw.length === 0) return undefined;
-	const out: string[] = [];
-	const seen = new Set<string>();
-	for (const iso of raw) {
-		if (typeof iso !== "string" || !iso) continue;
-		if (seen.has(iso)) continue;
-		seen.add(iso);
-		out.push(iso);
-	}
-	return out.length > 0 ? out : undefined;
-}
-
 export type UnifiedForecastContext = {
 	now: Date;
 	timezone: string;
@@ -194,11 +181,6 @@ export type UnifiedForecastContext = {
 	preferImmersionLiveSurplusNow?: boolean | null;
 	/** Soft-IH im angebrochenen Slot fortsetzen (Anti-Relais-Takten). */
 	continueImmersionSoftCurrentSlot?: boolean | null;
-	/**
-	 * Compare-akzeptierte Soft-IH-Sperr-ISOs (retained Prefs, Gewicht 0).
-	 * Leer/fehlt = kein Einfluss.
-	 */
-	immersionSoftDisallowedSlotIsos?: string[] | null;
 	/**
 	 * Boiler-emptyAt aus Learning-State — falls Contribution den Wert noch nicht hat
 	 * (Race: Plan vor Contribution-Refresh).
@@ -638,6 +620,8 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 						hygieneMandatoryKwh: num(ihD, "hygieneMandatoryKwh"),
 						hygieneDue: bool(ihD, "hygieneDue") === true,
 						nightBridgeActive: bool(ihD, "nightBridgeActive") === true,
+						mayUseBatteryForImmersion:
+							bool(ihD, "mayUseBatteryForImmersion") === true,
 						coolingRateCPerH: emptyUsable ? coolingRateCPerH : null,
 						minimumRuntimeSec: num(ihD, "minimumRuntimeSec"),
 						hysteresisK: num(ihD, "reheatHysteresisK") ?? num(ihD, "temperatureHysteresisK"),
@@ -654,7 +638,6 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		globalMode: ctx.globalMode,
 		preferImmersionLiveSurplusNow: ctx.preferImmersionLiveSurplusNow === true,
 		continueImmersionSoftCurrentSlot: ctx.continueImmersionSoftCurrentSlot === true,
-		immersionSoftDisallowedSlotIsos: sanitizeDisallowedSlotIsos(ctx.immersionSoftDisallowedSlotIsos),
 	};
 }
 

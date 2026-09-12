@@ -315,6 +315,11 @@ export type DayTelemetryBuckets = {
 	 */
 	batteryChargeSource: Array<string | null>;
 	evChargedKwh: Array<number | null>;
+	/**
+	 * Reale EV-Energie ausschließlich während EVCC `now`/Schnellmodus.
+	 * Additiv/optional, damit ältere Tagesdateien ohne Modusspur lesbar bleiben.
+	 */
+	evFastChargedKwh?: Array<number | null>;
 	evSocEndPct: Array<number | null>;
 	immersionKwh: Array<number | null>;
 	immersionRuntimeSec: Array<number | null>;
@@ -408,6 +413,7 @@ export function emptyBuckets(slotCount: number): DayTelemetryBuckets {
 		gridBalanceDischargeKwh: n(),
 		batteryChargeSource: nStr(),
 		evChargedKwh: n(),
+		evFastChargedKwh: n(),
 		evSocEndPct: n(),
 		immersionKwh: n(),
 		immersionRuntimeSec: n(),

@@ -20,10 +20,19 @@
  * `requiredSocAtPvEndPct`, dynamischer Nachtverbrauch, `estimatedBatteryEmptyAtIso`.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveGridBalancePolicyLoadAdjustment = void 0;
+exports.resolveGridBalancePolicyLoadAdjustment = exports.parseExplicitBatteryPermission = void 0;
 function roundW(n) {
     return Math.max(0, Math.round(n));
 }
+/** Behält die Planner-Freigabe dreiwertig; nur echtes Boolean wird akzeptiert. */
+function parseExplicitBatteryPermission(raw) {
+    if (raw === true)
+        return true;
+    if (raw === false)
+        return false;
+    return null;
+}
+exports.parseExplicitBatteryPermission = parseExplicitBatteryPermission;
 /**
  * Rechnet die Leistung policy-ausgeschlossener Verbraucher aus der Netzausgleichs-Restlast
  * heraus. Kein Preis-, kein SOC-, kein Hardware-Gate — das bleibt in `grid_balance_contract.ts`
@@ -32,7 +41,7 @@ function roundW(n) {
  */
 function resolveGridBalancePolicyLoadAdjustment(input) {
     const raw = Number.isFinite(input.rawConsumptionW) ? Math.max(0, input.rawConsumptionW) : 0;
-    const excluded = input.excludedConsumers.filter((c) => c.allowedOnBattery === false && c.commandedPowerW !== null && c.commandedPowerW > 0);
+    const excluded = input.excludedConsumers.filter((c) => c.allowedOnBattery !== true && c.commandedPowerW !== null && c.commandedPowerW > 0);
     const excludedLoadW = roundW(excluded.reduce((sum, c) => sum + Math.max(0, c.commandedPowerW ?? 0), 0));
     const policyAdjustedConsumptionW = Math.max(0, raw - excludedLoadW);
     const excludedConsumerIds = excluded.map((c) => c.id);
@@ -40,7 +49,9 @@ function resolveGridBalancePolicyLoadAdjustment(input) {
         ? ""
         : `Netzausgleich ohne ${excluded
             .map((c) => `${c.id} (${roundW(c.commandedPowerW ?? 0)} W)`)
-            .join(", ")} — Policy: Batterie für diesen Verbraucher nicht erlaubt.`;
+            .join(", ")} — ${excluded.some((c) => c.allowedOnBattery === null)
+            ? "Policy-Freigabe fehlt; Batterie bleibt für diesen Verbraucher gesperrt."
+            : "Policy: Batterie für diesen Verbraucher nicht erlaubt."}`;
     return { policyAdjustedConsumptionW, excludedLoadW, excludedConsumerIds, reasonDe };
 }
 exports.resolveGridBalancePolicyLoadAdjustment = resolveGridBalancePolicyLoadAdjustment;

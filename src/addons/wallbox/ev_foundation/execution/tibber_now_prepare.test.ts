@@ -18,7 +18,6 @@ function evalAt(
 		nowMs: NOW,
 		delayMs: DELAY,
 		blocked: false,
-		plannerWantsChargeOrStop: false,
 		alreadyNow: false,
 		prev: over.prev ?? emptyTibberNowPrepareState(),
 		...over,
@@ -46,8 +45,11 @@ describe("evaluateTibberNowPrepare", () => {
 		assert.equal(tooSoon.action, "wait");
 		const ready = evalAt({ connected: true, prev: wait.next, nowMs: NOW + DELAY });
 		assert.equal(ready.action, "set_now");
-		const once = evalAt({ connected: true, prev: ready.next, nowMs: NOW + DELAY + 1000 });
+		const pending = evalAt({ connected: true, prev: ready.next, nowMs: NOW + DELAY + 1000 });
+		assert.equal(pending.action, "set_now");
+		const once = evalAt({ connected: true, prev: pending.next, nowMs: NOW + DELAY + 2000, alreadyNow: true });
 		assert.equal(once.action, "idle");
+		assert.equal(once.next.lastResult, "confirmed");
 	});
 
 	it("Abstecken während Wartezeit bricht ab", () => {
@@ -58,7 +60,7 @@ describe("evaluateTibberNowPrepare", () => {
 		assert.equal(cancel.next.connectedSinceMs, null);
 	});
 
-	it("Planner-Ladung/Stop oder Sperre verhindert NOW", () => {
+	it("Safety-Sperre verzögert NOW, ohne den Plug-Edge zu verbrauchen", () => {
 		const disc = evalAt({ connected: false });
 		const wait = evalAt({ connected: true, prev: disc.next });
 		const blocked = evalAt({
@@ -68,12 +70,26 @@ describe("evaluateTibberNowPrepare", () => {
 			blocked: true,
 		});
 		assert.equal(blocked.action, "wait");
-		const planner = evalAt({
+		const released = evalAt({
+			connected: true,
+			prev: blocked.next,
+			nowMs: NOW + DELAY + 1000,
+			blocked: false,
+		});
+		assert.equal(released.action, "set_now");
+	});
+
+	it("Feedback-Fehler beendet die Übergabe bis zum nächsten Anstecken", () => {
+		const disc = evalAt({ connected: false });
+		const wait = evalAt({ connected: true, prev: disc.next });
+		const failed = evalAt({
 			connected: true,
 			prev: wait.next,
 			nowMs: NOW + DELAY,
-			plannerWantsChargeOrStop: true,
+			feedbackFailed: true,
 		});
-		assert.equal(planner.action, "wait");
+		assert.equal(failed.action, "cancel");
+		assert.equal(failed.reason, "feedback_failed");
+		assert.equal(failed.next.prepareIssued, true);
 	});
 });

@@ -69,6 +69,11 @@ export interface BuildWallboxDispatchIntentInput {
 	decision: WallboxPlanDecision;
 	governanceEnabled: boolean;
 	addonEnabled: boolean;
+	/**
+	 * Grid Rewards steuert Fahrzeug/Wallbox extern. EMS hält seinen normalen
+	 * PV-/min+PV-Dispatch zurück; die eng begrenzte Plug-Edge-Übergabe setzt später `now`.
+	 */
+	tibberNowHandoffEnabled?: boolean;
 	phases: number | null;
 	now: Date;
 }
@@ -86,6 +91,13 @@ export function buildWallboxDispatchIntent(input: BuildWallboxDispatchIntentInpu
 	if (!decision.connected) {
 		return noneIntent(
 			"Fahrzeug ist nicht verbunden; es wird kein Lade-Dispatch erzeugt.",
+			now,
+			revision,
+		);
+	}
+	if (input.tibberNowHandoffEnabled) {
+		return noneIntent(
+			"Tibber Grid Rewards ist eingerichtet — EMS übergibt die Ladestrategie nach der Ansteck-Wartezeit an Fahrzeug/Wallbox.",
 			now,
 			revision,
 		);

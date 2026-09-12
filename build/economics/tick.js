@@ -50,14 +50,20 @@ async function tickEconomics(host, now = new Date()) {
     for (const dateKey of Object.keys(statsPersist.days).sort()) {
         if (dateKey >= todayKey)
             continue;
-        if (econPersist.days[dateKey]?.final)
-            continue;
         const statsDay = statsPersist.days[dateKey];
         if (!statsDay)
             continue;
         const shadow = await (0, persist_2.readShadowDayRecord)(shadowDir, dateKey);
         if (!shadow)
             continue; // Shadow-Engine hat diesen Tag noch nicht simuliert — nächster Lauf holt nach.
+        const shadowModelVersion = shadow.strategies.reference_sonnen_native?.modelVersion ??
+            shadow.strategies.reference_no_ems?.modelVersion ??
+            shadow.strategies.ems_without_ai?.modelVersion ??
+            null;
+        if (econPersist.days[dateKey]?.final &&
+            econPersist.days[dateKey]?.shadowModelVersion === shadowModelVersion) {
+            continue;
+        }
         const rec = (0, compute_1.buildEconomicsDayRecord)({
             dateKey,
             final: true,
@@ -71,7 +77,7 @@ async function tickEconomics(host, now = new Date()) {
         dirty = true;
     }
     if (dirty) {
-        await (0, persist_3.writeEconomicsPersist)(econDir, econPersist);
+        await (0, persist_3.writeEconomicsPersist)(econDir, econPersist, todayKey);
         econPersist = await (0, persist_3.readEconomicsPersist)(econDir);
     }
     // --- "heute" nur live, nie persistiert (Tag ist noch nicht abgeschlossen) ---

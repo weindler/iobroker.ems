@@ -56,6 +56,7 @@ function buildEconomicsDayRecord(input) {
         referenceNoEmsNetCostEur: noEms?.netCostEur ?? null,
         referenceSonnenNativeNetCostEur: sonnenNative?.netCostEur ?? null,
         emsWithoutAiNetCostEur: withoutAi?.netCostEur ?? null,
+        shadowModelVersion: sonnenNative?.modelVersion ?? noEms?.modelVersion ?? withoutAi?.modelVersion ?? null,
         emsVorteilEvaluable,
         kiMehrwertEvaluable,
         notesDe,

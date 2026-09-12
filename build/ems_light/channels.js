@@ -5,6 +5,7 @@ const state_util_1 = require("./state_util");
 /** EMS-Light Kanäle (Phase 1) — ergänzt bestehenden Baum, löscht nichts. */
 exports.EMS_LIGHT_CHANNEL_IDS = [
     { id: "profiles", nameDe: "EMS-Light Profile" },
+    { id: "app", nameDe: "EMS-Light lokale App-Schnittstelle" },
     { id: "live", nameDe: "EMS-Light Live-Cache" },
     { id: "learning", nameDe: "EMS-Light Learning" },
     { id: "planner", nameDe: "EMS-Light Planner" },

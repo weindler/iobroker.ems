@@ -57,7 +57,7 @@ import {
 	type SharedGroupMap,
 } from "./planned_freeze";
 import {
-	loadOrEmptyDayTelemetryStore,
+	loadDayTelemetryStoreForDateKeys,
 	pruneDayTelemetryFiles,
 	pruneDayTelemetryStore,
 	writeDayTelemetryDay,
@@ -144,6 +144,11 @@ export function __resetDayTelemetryRuntimeForTest(): void {
 	storeDir = null;
 }
 
+/** Nur Tests: belegt, dass die Produktions-Cache-Hydration begrenzt bleibt. */
+export function __dayTelemetryCachedDateKeysForTest(): string[] {
+	return Object.keys(storeCache?.days ?? {}).sort();
+}
+
 async function publishStatus(
 	host: DayTelemetryHost,
 	id: string,
@@ -163,11 +168,14 @@ function baseDir(host: DayTelemetryHost): string | null {
 	return host.getAbsolutePath(DAY_TELEMETRY_CATEGORY);
 }
 
-async function loadStore(host: DayTelemetryHost): Promise<DayTelemetryStore> {
+async function loadStore(host: DayTelemetryHost, dateKey: string): Promise<DayTelemetryStore> {
 	const dir = baseDir(host);
 	if (storeCache && storeDir === dir) return storeCache;
 	storeDir = dir;
-	storeCache = await loadOrEmptyDayTelemetryStore(dir);
+	storeCache = await loadDayTelemetryStoreForDateKeys(dir, [
+		dateKey,
+		addDaysToDateKey(dateKey, -1),
+	]);
 	return storeCache;
 }
 
@@ -180,7 +188,8 @@ async function persistDayAndMaybeYesterday(
 ): Promise<void> {
 	const dir = baseDir(host);
 	if (!dir) return;
-	const pruned = pruneDayTelemetryStore(store, DAY_TELEMETRY_RETENTION_DAYS, dateKey);
+	/* Platte: 90 Tage. RAM: nur aktiver Tag + Vortag. */
+	const pruned = pruneDayTelemetryStore(store, 2, dateKey);
 	pruned.updatedAtIso = new Date().toISOString();
 	const day = pruned.days[dateKey];
 	if (day) {
@@ -337,7 +346,7 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 	const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
 	const nowMs = now.getTime();
 	const dateKey = localDateKeyInTimezone(now, timezone);
-	let store = await loadStore(host);
+	let store = await loadStore(host, dateKey);
 
 	/* Gestern als complete markieren wenn über Mitternacht (Kalender, nicht Coverage) */
 	const yesterday = addDaysToDateKey(dateKey, -1);
@@ -507,6 +516,22 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 			day.buckets.evChargedKwh,
 			TELEMETRY_DOMAIN.EV,
 		);
+		const evMode = (sample.evMode ?? "").trim().toLowerCase();
+		const evModeKnown = evMode.length > 0;
+		const evFastPowerW = evModeKnown
+			? evMode === "now" || evMode === "immediate"
+				? sample.evChargePowerW
+				: 0
+			: null;
+		integratePowerDomain(
+			day,
+			layout,
+			fromMs,
+			toMs,
+			evFastPowerW,
+			day.buckets.evFastChargedKwh!,
+			TELEMETRY_DOMAIN.EV,
+		);
 		integratePowerDomain(
 			day,
 			layout,
@@ -633,6 +658,17 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 			for (const s of splitAmountAcrossSlots(layout, fromMs, toMs, imp.deltaKwh)) {
 				markDomain(day, s.slotIndex, TELEMETRY_DOMAIN.GRID, DOMAIN_QUALITY.ok);
 			}
+		} else if (imp.deltaKwh === 0 && !imp.reset && sample.gridImportEnergyKwh != null) {
+			/* Unveränderter gültiger Zähler ist eine gemessene Null, keine Datenlücke. */
+			integratePowerDomain(
+				day,
+				layout,
+				fromMs,
+				toMs,
+				0,
+				day.buckets.gridImportKwh,
+				TELEMETRY_DOMAIN.GRID,
+			);
 		} else if (sample.gridImportEnergyKwh == null && sample.gridImportPowerW != null) {
 			integratePowerDomain(
 				day,
@@ -652,6 +688,16 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 			for (const s of splitAmountAcrossSlots(layout, fromMs, toMs, exp.deltaKwh)) {
 				markDomain(day, s.slotIndex, TELEMETRY_DOMAIN.GRID, DOMAIN_QUALITY.ok);
 			}
+		} else if (exp.deltaKwh === 0 && !exp.reset && sample.gridExportEnergyKwh != null) {
+			integratePowerDomain(
+				day,
+				layout,
+				fromMs,
+				toMs,
+				0,
+				day.buckets.gridExportKwh,
+				TELEMETRY_DOMAIN.GRID,
+			);
 		}
 
 		const fromSample = resolveActiveSharedPowerGroupId(
@@ -755,6 +801,7 @@ function roundDayBuckets(day: DayTelemetryDayRecord): void {
 		"batteryDischargedKwh",
 		"gridBalanceDischargeKwh",
 		"evChargedKwh",
+		"evFastChargedKwh",
 		"immersionKwh",
 		"climateKwh",
 		"climateElecSharedKwh",
@@ -806,7 +853,7 @@ async function notePlanInner(input: {
 }): Promise<void> {
 	const { host, now, timezone, plan, plannerInput, replanReasons, batteryDecision } = input;
 	const dateKey = localDateKeyInTimezone(now, timezone);
-	let store = await loadStore(host);
+	let store = await loadStore(host, dateKey);
 	const ensured = ensureDay(store, dateKey, timezone);
 	store = ensured.store;
 	const day = ensured.day;

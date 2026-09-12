@@ -31,6 +31,9 @@ const FULL_SONNEN = {
         strict_1.default.equal(caps.set_operating_mode.available, false);
         strict_1.default.equal(caps.live_control.available, false);
         strict_1.default.equal(profile.supportsLive, false);
+        strict_1.default.equal(profile.catalog.genericFallback, true);
+        strict_1.default.equal(profile.catalog.manualMappingAvailable, true);
+        strict_1.default.equal(profile.plannerCapabilities.chargeDispatch, false);
     });
     (0, node_test_1.it)("never live-ready", () => {
         const r = profile.computeReadiness(input);
@@ -47,6 +50,14 @@ const FULL_SONNEN = {
         strict_1.default.equal(profile.normalizeOperatingMode(1, input), "manual");
         strict_1.default.equal(profile.normalizeOperatingMode(2, input), "self_consumption");
         strict_1.default.equal(profile.normalizeOperatingMode(7, input), "unknown");
+    });
+    (0, node_test_1.it)("publishes manufacturer metadata and normalized planner capabilities", () => {
+        strict_1.default.equal(profile.catalog.manufacturerId, "sonnen");
+        strict_1.default.equal(profile.catalog.manufacturerNameDe, "Sonnen");
+        strict_1.default.equal(profile.plannerCapabilities.chargeDispatch, true);
+        strict_1.default.equal(profile.plannerCapabilities.activeDischargeDispatch, false);
+        strict_1.default.equal(profile.plannerCapabilities.passiveSelfConsumption, true);
+        strict_1.default.equal(profile.plannerCapabilities.gridBalanceControl, true);
     });
     (0, node_test_1.it)("capability matrix correct for full config", () => {
         const caps = profile.buildCapabilities(input);

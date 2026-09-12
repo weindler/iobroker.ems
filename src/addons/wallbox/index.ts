@@ -168,10 +168,15 @@ async function refreshWallboxDailyPlanRuntime(
 
 	const telemetry = telemetryInputFromSnapshot(snap, cfg);
 	const phases = telemetry.activePhases ?? telemetry.configuredPhases;
+	const foundationCfg = evFoundationConfigFromAdapter(host.config);
+	const tibberNowHandoffEnabled =
+		foundationCfg.evccIntegrationEnabled &&
+		(foundationCfg.tibberGridRewardsViaVehicleEnabled || foundationCfg.tibberGridRewardsViaWallboxEnabled);
 	const intent = buildWallboxDispatchIntent({
 		decision,
 		governanceEnabled,
 		addonEnabled: addonEnabledVal,
+		tibberNowHandoffEnabled,
 		phases,
 		now,
 	});

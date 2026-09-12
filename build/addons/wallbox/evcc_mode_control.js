@@ -2,7 +2,8 @@
 /**
  * EVCC mode-control variants (v0.1.275).
  * buttons = current recommended ioBroker/EVCC interface; pv_control and string_mode remain legacy.
- * Diagnosis only — no live writes in this phase.
+ * Der allgemeine Planner-Live-Dispatch bleibt gesperrt. Ein separater, eng begrenzter
+ * Grid-Rewards-Plug-Edge-Pfad darf ausschließlich den validierten `control.now`-Button nutzen.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.collectEvccButtonWriteStateIds = exports.controlContractModelFromVariant = exports.resolveEvccModeControlContract = exports.stringModeContractComplete = exports.pickEvccButtonStateId = exports.resolveEvccModeFeedbackStateId = exports.isEvccModeButtonStateId = exports.isEvccModeFeedbackStateId = exports.parseEvccModeControlRequested = exports.EVCC_FEEDBACK_MODE_VALUES = exports.EVCC_MODE_CONTROL_REQUESTED = exports.EVCC_MODE_FEEDBACK_SUFFIX = exports.WB_EVCC_MODE_CONTROL = exports.WB_EVCC_CONTROL_PV = exports.WB_EVCC_CONTROL_OFF = exports.WB_EVCC_CONTROL_NOW = exports.WB_EVCC_CONTROL_MIN = exports.EVCC_BUTTON_SUFFIXES = void 0;

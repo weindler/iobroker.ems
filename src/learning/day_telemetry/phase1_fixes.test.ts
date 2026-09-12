@@ -9,6 +9,7 @@ import * as path from "node:path";
 import { DIAGNOSTIC_FILE_MODE } from "../../persistence/atomic_write.js";
 import {
 	__resetDayTelemetryRuntimeForTest,
+	__dayTelemetryCachedDateKeysForTest,
 	tickDayTelemetry,
 	noteDayTelemetryPlanPublished,
 	type DayTelemetryHost,
@@ -25,6 +26,7 @@ import { emptyDayRecord, emptyDayTelemetryStore, refreshDayCoverage } from "./ty
 import { buildDaySlotLayout } from "./slots.js";
 import { DAY_TELEMETRY_LEGACY_MONOLITH_FILE, DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT } from "./constants.js";
 import type { UnifiedDayPlan, UnifiedDayPlannerInput } from "../../operator/daily_plan/unified/types.js";
+import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states.js";
 
 class FakeTelHost implements DayTelemetryHost {
 	states = new Map<string, ioBroker.StateValue>();
@@ -147,6 +149,29 @@ describe("day_telemetry phase1 fixes", () => {
 		}
 	});
 
+	it("integriert EV-Energie separat nur während EVCC Schnell/now", async () => {
+		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "dt-ev-fast-"));
+		try {
+			const host = new FakeTelHost(dir);
+			host.set(WALLBOX_EVCC_STATES.chargePowerW, 7200);
+			host.set(WALLBOX_EVCC_STATES.loadpointMode, "now");
+			await tickDayTelemetry(host, new Date("2026-08-30T10:00:00+02:00"));
+			await tickDayTelemetry(host, new Date("2026-08-30T10:01:00+02:00"));
+
+			host.set(WALLBOX_EVCC_STATES.loadpointMode, "pv");
+			await tickDayTelemetry(host, new Date("2026-08-30T10:02:00+02:00"));
+
+			const day = await readDayTelemetryDay(path.join(dir, "learning/day_telemetry"), "2026-08-30");
+			assert.ok(day);
+			const charged = day!.buckets.evChargedKwh.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+			const fast = day!.buckets.evFastChargedKwh!.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+			assert.equal(charged, 0.24);
+			assert.equal(fast, 0.12);
+		} finally {
+			await fs.rm(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("unobserved Slot: qualityMask null, nicht ok", () => {
 		const layout = buildDaySlotLayout("2026-08-29", "Europe/Berlin");
 		const day = emptyDayRecord("2026-08-29", "Europe/Berlin", layout.startMs, layout.endMs, layout.slotCount);
@@ -255,6 +280,40 @@ describe("day_telemetry phase1 fixes", () => {
 			assert.ok(removed.length >= 5);
 			const dayPath = dayTelemetryDayPath(dir, start);
 			await assert.rejects(fs.access(dayPath));
+		} finally {
+			await fs.rm(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("Produktions-Cache lädt bei 90 Tagesdateien nur heute und gestern", async () => {
+		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "dt-cache-"));
+		try {
+			const telemetryDir = path.join(dir, "learning/day_telemetry");
+			const store = emptyDayTelemetryStore();
+			const { addDaysToDateKey } = await import("../../operator/time.js");
+			const start = "2026-06-01";
+			for (let i = 0; i < 90; i++) {
+				const dk = addDaysToDateKey(start, i);
+				const layout = buildDaySlotLayout(dk, "Europe/Berlin");
+				store.days[dk] = emptyDayRecord(
+					dk,
+					"Europe/Berlin",
+					layout.startMs,
+					layout.endMs,
+					layout.slotCount,
+				);
+			}
+			await writeDayTelemetryPersist(telemetryDir, store);
+			__resetDayTelemetryRuntimeForTest();
+
+			const today = addDaysToDateKey(start, 89);
+			const yesterday = addDaysToDateKey(today, -1);
+			const host = new FakeTelHost(dir);
+			host.set("live.battery.pv_ac_power_w", 0);
+			await tickDayTelemetry(host, new Date(`${today}T12:00:00+02:00`));
+
+			assert.deepEqual(__dayTelemetryCachedDateKeysForTest(), [yesterday, today]);
+			assert.equal((await fs.readdir(telemetryDir)).filter((n) => /^\d{4}-\d{2}-\d{2}\.json$/.test(n)).length, 90);
 		} finally {
 			await fs.rm(dir, { recursive: true, force: true });
 		}

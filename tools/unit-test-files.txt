@@ -68,6 +68,7 @@ build/addons/wallbox/ev_foundation/button_contract.test.js
 build/addons/wallbox/ev_foundation/admin_cleanup.test.js
 build/addons/wallbox/ev_foundation/decision/decide.test.js
 build/addons/wallbox/ev_foundation/execution/execution.test.js
+build/addons/wallbox/ev_foundation/execution/tibber_now_prepare.test.js
 build/addons/wallbox/vehicle_map/vehicle_map.test.js
 build/addons/wallbox/charge_hold.test.js
 build/addons/immersion_heater/device_config.test.js
@@ -173,6 +174,7 @@ build/operator/daily_plan/daily_plan.test.js
 build/operator/decision_chain.integration.test.js
 build/operator/daily_plan/briefing.test.js
 build/operator/assessment/build.test.js
+build/operator/outlook_72h.test.js
 build/operator/daily_plan/constraint_publish.test.js
 build/operator/daily_plan/battery_discharge_authority.test.js
 build/operator/daily_plan/battery_reserve_learning.test.js
@@ -187,6 +189,7 @@ build/operator/daily_plan/unified/learning_gate.test.js
 build/operator/daily_plan/unified/thermal_opportunity_gate.test.js
 build/operator/daily_plan/unified/thermal_opportunity_planner.test.js
 build/operator/daily_plan/unified/ai_defer_soft_slot_allowed.test.js
+build/operator/daily_plan/unified/thermal_soft_battery_policy.test.js
 build/operator/daily_plan/battery_opportunity_cost.test.js
 build/operator/daily_plan/battery_replace_cost.test.js
 build/operator/daily_plan/unified/battery_reserve_floor.test.js
@@ -199,6 +202,8 @@ build/operator/daily_plan/unified/climate_slot_consistency.test.js
 build/operator/contributions/flexible/thermal_cooling_rate.test.js
 build/ems_light/economics_feed_in.test.js
 build/ems_light/live_cache.test.js
+build/app/core_snapshot.test.js
+build/profiles/catalog.test.js
 build/operator/daily_plan/unified/passive_battery_energy.test.js
 build/operator/daily_plan/invalidate_addon_off.test.js
 build/operator/daily_plan/unified/joint_optimize.test.js
@@ -238,6 +243,7 @@ build/learning/day_telemetry/price_source.test.js
 build/learning/day_telemetry/shared_group.test.js
 build/learning/day_telemetry/phase1_fixes.test.js
 build/learning/day_telemetry/additive_block_a.test.js
+build/learning/shadow_engine/run.test.js
 build/learning/day_telemetry/climate_foundation.test.js
 build/learning/consumer_stats/zero_runtime.test.js
 build/operator/contributions/weather_hourly.test.js
@@ -298,7 +304,10 @@ build/ai/daily_analyst/config.test.js
 build/ai/override/validate.test.js
 build/ai/override/ingest.test.js
 build/economics/compute.test.js
+build/economics/persist.test.js
 build/statistics/statistics.test.js
+build/statistics/energy.test.js
+build/statistics/persist.test.js
 build/learning/shadow_engine/simulate.test.js
 build/learning/shadow_engine/battery_model.test.js
 build/learning/shadow_engine/exogenous_load.test.js

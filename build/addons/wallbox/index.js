@@ -86,10 +86,14 @@ async function refreshWallboxDailyPlanRuntime(host, snap) {
     await (0, runtime_1.publishWallboxRuntimeStates)(host, decision, governanceEnabled);
     const telemetry = (0, runtime_1.telemetryInputFromSnapshot)(snap, cfg);
     const phases = telemetry.activePhases ?? telemetry.configuredPhases;
+    const foundationCfg = (0, ev_foundation_1.evFoundationConfigFromAdapter)(host.config);
+    const tibberNowHandoffEnabled = foundationCfg.evccIntegrationEnabled &&
+        (foundationCfg.tibberGridRewardsViaVehicleEnabled || foundationCfg.tibberGridRewardsViaWallboxEnabled);
     const intent = (0, runtime_1.buildWallboxDispatchIntent)({
         decision,
         governanceEnabled,
         addonEnabled: addonEnabledVal,
+        tibberNowHandoffEnabled,
         phases,
         now,
     });

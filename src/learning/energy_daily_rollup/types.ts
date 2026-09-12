@@ -1,6 +1,7 @@
 export const ENERGY_DAILY_FILENAME = "energy_daily_v1.json";
 export const ENERGY_DAILY_MODULE = "energy_daily_rollup_v1";
-export const DEFAULT_RETENTION_DAYS = 120;
+/** Tageswerte länger als hochauflösende Stunden-/Day-Telemetrie halten. */
+export const DEFAULT_RETENTION_DAYS = 730;
 
 export type DailyEnergyRecord = {
 	dateKey: string;

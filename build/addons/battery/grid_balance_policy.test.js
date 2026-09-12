@@ -7,6 +7,13 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const grid_balance_policy_js_1 = require("./grid_balance_policy.js");
 (0, node_test_1.describe)("grid balance policy load adjustment (Phase 1)", () => {
+    (0, node_test_1.it)("preserves an explicit planner permission and keeps every missing/invalid value null", () => {
+        strict_1.default.equal((0, grid_balance_policy_js_1.parseExplicitBatteryPermission)(true), true);
+        strict_1.default.equal((0, grid_balance_policy_js_1.parseExplicitBatteryPermission)(false), false);
+        for (const raw of [null, undefined, 0, 1, "true", "false", ""]) {
+            strict_1.default.equal((0, grid_balance_policy_js_1.parseExplicitBatteryPermission)(raw), null);
+        }
+    });
     (0, node_test_1.it)("leaves load unchanged when no consumer is excluded", () => {
         const r = (0, grid_balance_policy_js_1.resolveGridBalancePolicyLoadAdjustment)({
             rawConsumptionW: 2000,
@@ -27,6 +34,17 @@ const grid_balance_policy_js_1 = require("./grid_balance_policy.js");
         strict_1.default.deepEqual(r.excludedConsumerIds, ["immersion_heater"]);
         strict_1.default.match(r.reasonDe, /immersion_heater \(1700 W\)/);
         strict_1.default.match(r.reasonDe, /Policy: Batterie für diesen Verbraucher nicht erlaubt/);
+    });
+    (0, node_test_1.it)("missing battery permission stays unknown and fails closed", () => {
+        const r = (0, grid_balance_policy_js_1.resolveGridBalancePolicyLoadAdjustment)({
+            rawConsumptionW: 2000,
+            excludedConsumers: [{ id: "immersion_heater", allowedOnBattery: null, commandedPowerW: 1700 }],
+        });
+        strict_1.default.equal(r.policyAdjustedConsumptionW, 300);
+        strict_1.default.equal(r.excludedLoadW, 1700);
+        strict_1.default.deepEqual(r.excludedConsumerIds, ["immersion_heater"]);
+        strict_1.default.match(r.reasonDe, /Policy-Freigabe fehlt/);
+        strict_1.default.match(r.reasonDe, /Batterie bleibt .* gesperrt/);
     });
     (0, node_test_1.it)("clamps to zero instead of going negative", () => {
         const r = (0, grid_balance_policy_js_1.resolveGridBalancePolicyLoadAdjustment)({

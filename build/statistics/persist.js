@@ -1,12 +1,42 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeStatisticsPersist = exports.readStatisticsPersist = exports.emptyDayRecord = exports.emptyPersist = exports.emptyRuntime = exports.STATISTICS_PERSIST_CATEGORY = exports.STATISTICS_PERSIST_FILE = void 0;
+exports.writeStatisticsPersist = exports.readStatisticsPersist = exports.emptyDayRecord = exports.emptyPersist = exports.emptyRuntime = exports.pruneStatisticsPersist = exports.STATISTICS_DAILY_RETENTION_DAYS = exports.STATISTICS_PERSIST_CATEGORY = exports.STATISTICS_PERSIST_FILE = void 0;
 const promises_1 = require("node:fs/promises");
 const node_path_1 = require("node:path");
 const types_1 = require("./types");
 const compute_1 = require("./compute");
 exports.STATISTICS_PERSIST_FILE = "statistics_v1.json";
 exports.STATISTICS_PERSIST_CATEGORY = "statistics";
+/** Buchhaltungs-Tageswerte: zehn Jahre, im Gegensatz zu 90/120 Tagen Detailtelemetrie. */
+exports.STATISTICS_DAILY_RETENTION_DAYS = 3_660;
+function validDateKey(value) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+/**
+ * Harte Obergrenze für den RAM-/SSD-Ledger. Noch nicht abgerechnete öffentliche
+ * Ladesitzungen bleiben aus Datenintegritätsgründen auch jenseits des Cutoffs erhalten.
+ */
+function pruneStatisticsPersist(data, anchorDateKey, retainDays = exports.STATISTICS_DAILY_RETENTION_DAYS) {
+    if (!validDateKey(anchorDateKey) || !(retainDays > 0))
+        return data;
+    const anchor = new Date(`${anchorDateKey}T12:00:00.000Z`);
+    anchor.setUTCDate(anchor.getUTCDate() - (Math.floor(retainDays) - 1));
+    const cutoff = anchor.toISOString().slice(0, 10);
+    const days = {};
+    for (const [dateKey, day] of Object.entries(data.days)) {
+        const pendingInvoice = day.publicSessions?.some((session) => session.status === "pending_invoice") === true;
+        if (!validDateKey(dateKey) || dateKey >= cutoff || pendingInvoice)
+            days[dateKey] = day;
+    }
+    const monthRewardsBilling = {};
+    for (const [monthKey, billing] of Object.entries(data.monthRewardsBilling ?? {})) {
+        if (!/^\d{4}-\d{2}$/.test(monthKey) || monthKey >= cutoff.slice(0, 7)) {
+            monthRewardsBilling[monthKey] = billing;
+        }
+    }
+    return { ...data, days, monthRewardsBilling };
+}
+exports.pruneStatisticsPersist = pruneStatisticsPersist;
 function emptyRuntime(dateKey) {
     return {
         dateKey,
@@ -67,6 +97,11 @@ async function readStatisticsPersist(dir) {
 exports.readStatisticsPersist = readStatisticsPersist;
 async function writeStatisticsPersist(dir, data) {
     await (0, promises_1.mkdir)(dir, { recursive: true });
+    const anchor = validDateKey(data.runtime.dateKey) ? data.runtime.dateKey : (0, compute_1.localDateKey)(new Date());
+    const compacted = pruneStatisticsPersist(data, anchor);
+    /* Tick-Cache ebenfalls begrenzen; nicht erst nach Adapter-Neustart. */
+    data.days = compacted.days;
+    data.monthRewardsBilling = compacted.monthRewardsBilling;
     data.generatedAt = new Date().toISOString();
     await (0, promises_1.writeFile)((0, node_path_1.join)(dir, exports.STATISTICS_PERSIST_FILE), JSON.stringify(data, null, 2), "utf8");
 }

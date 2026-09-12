@@ -6,6 +6,38 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ---
 
+## [Unreleased]
+
+## [0.2.27] – 2026-09-12
+
+### Added
+
+- Nachtreserve-Einzelbefunde mit Start-/Tief-SOC, Brutto-/Netto-kWh, Grid-Balance-Abzug, Recency-Gewicht und Ausschlussgrund; separater Median und expliziter `recency_weighted_average`-Schätzer.
+- Maschinenlesbarer rollierender `operator.outlook_72h.json` samt deutscher Kurzsicht für Betrieb-VIS und spätere lokale App-Clients.
+- Hersteller-/Geräteprofil-Katalog aus den tatsächlich kompilierten Batterie-, Klima-, EVCC- und Heizstab-Templates.
+- Energetische Tages-, Monats- und Zeitraumstatistik mit Eigenverbrauch, Autarkie, Netzbezug/-einspeisung, Batterieflüssen und gemessenen PV-Anteilen von Heizstab, Wallbox und Klima; EVCC-Schnell/`now` weist Sonnen-Batterie, Netz und PV/lokal separat aus; nicht messbarer Nutzen bleibt unmonetarisiert.
+- Read-only App-Core-Vertrag und lokaler `app.core_snapshot_json` für Planner, Profile, Geräte, Learning, Statistik, Datenqualität und Safety-Diagnose.
+- Eng gegatete passive Batteriebrücke für Soft-Heizstab bei expliziter Policy, thermischer Lücke, geschützter Reserve und günstiger PV-Recovery.
+
+### Changed
+
+- Day-Telemetry hält nur heute und gestern im Runtime-RAM, weiterhin 90 Tage als atomare Tagesdateien auf SSD.
+- Konkrete Retention: Wetter/PV-Bias 120 Tage, Energy Daily 730 Tage, Statistik/Economics 3.660 Tage; offene Ladebelege bleiben erhalten.
+- Shadow Engine `shadow_v4` führt den kontrafaktischen Batterie-SOC über Mitternacht fort; Economics bucht bei Modellwechsel reproduzierbar neu.
+- KI-`defer_tomorrow` bleibt im Compare beratend und besitzt keinen versteckten Rückkanal mehr in den produktiven Unified Plan.
+- VIS in sieben klare Bereiche gegliedert: Betrieb, Statistik, Batterie, Heizstab/Wärme, Klima, Auto/Wallbox und Grid Balance; jede Geräteseite zeigt Ist-Zustand, Learning, nächste Aktion und Begründung.
+- Ist Grid Rewards über Fahrzeug oder Wallbox eingerichtet, setzt EMS nach einer echten Ansteckkante und der konfigurierten Wartezeit EVCC einmalig auf Schnell/`now`; das aktuelle Rewards-Aktivsignal ist dafür keine Voraussetzung. Normaler EMS-PV-/min+PV-Dispatch bleibt während dieser Übergabe zurückgenommen.
+- Teststarter verwendet standardmäßig `Europe/Berlin`, damit lokale Kalender-/DST-Verträge auf UTC-CI-Hosts reproduzierbar bleiben.
+
+### Fixed
+
+- Die konfigurierte Tibber-Wartezeit konnte bislang nie zu Schnell/`now` führen, sobald der Planner PV/min+PV anforderte; zusätzlich blockierte das allgemeine EVCC-Feature-Gate den vorbereiteten Write. Die eng begrenzte Plug-in-Übergabe besitzt nun einen eigenen `now`-only Vertrag mit Feedback, Retry, Absteck-Abbruch und Fail-safe.
+
+### Safety
+
+- Keine direkte Wallbox-/go-e-Schreibstrecke und keine allgemeine LIVE-Batterieentladung. Die neue automatische Freigabe ist ausschließlich der einmalige EVCC-Button `control.now` nach expliziter Grid-Rewards-Konfiguration; Fault, Restore, Governance, Add-on-Freigabe, EVCC-Readiness und Feedback bleiben maßgeblich.
+- Planner-Budget und Economics können Batterie-Netzladen, EVCC-`now`/Schnellladen, Hold, Fault oder Restore nicht öffnen; eine fehlende Verbraucher-Batteriefreigabe bleibt `null` und wird sicher geschlossen behandelt.
+
 ## [0.2.10] – 2026-08-30
 
 ### Fixed

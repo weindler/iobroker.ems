@@ -239,6 +239,54 @@ function tickHost(opts) {
         strict_1.default.equal(r.reason, "feature_gate");
         strict_1.default.equal(writes.length, 0);
     });
+    (0, node_test_1.it)("T3a: Tibber permit releases only the EVCC-now handoff", async () => {
+        const writes = [];
+        const host = {
+            async getForeignStateAsync() {
+                return { val: false };
+            },
+            async setForeignStateAsync(id) {
+                writes.push(id);
+            },
+        };
+        const contract = (0, evcc_mode_control_1.resolveEvccModeControlContract)(BUTTON_CFG);
+        const nowResult = await (0, index_1.executeEvccButtonWrite)(host, {
+            contract,
+            mode: "now",
+            writeAllowed: true,
+            tibberNowHandoffPermit: true,
+        });
+        strict_1.default.equal(nowResult.written, true);
+        strict_1.default.deepEqual(writes, [`${LP}.control.now`]);
+        const pvResult = await (0, index_1.executeEvccButtonWrite)(host, {
+            contract,
+            mode: "pv",
+            writeAllowed: true,
+            tibberNowHandoffPermit: true,
+        });
+        strict_1.default.equal(pvResult.written, false);
+        strict_1.default.equal(pvResult.reason, "feature_gate");
+        strict_1.default.equal(writes.length, 1);
+    });
+    (0, node_test_1.it)("T3b: Tibber handoff may press now while external authority is active", () => {
+        const permitted = greenGates({
+            featureEnabled: false,
+            authority: "external",
+            authorityFailsafeReason: "external_unavailable",
+            tibberNowHandoffPermit: true,
+        });
+        strict_1.default.equal(permitted.writeAllowed, true);
+        strict_1.default.equal(permitted.blockReason, "");
+        strict_1.default.equal(permitted.failsafeReason, "");
+        const wrongMode = greenGates({
+            featureEnabled: false,
+            desiredMode: "pv",
+            authority: "external",
+            tibberNowHandoffPermit: true,
+        });
+        strict_1.default.equal(wrongMode.writeAllowed, false);
+        strict_1.default.equal(wrongMode.blockReason, "external_authority");
+    });
     (0, node_test_1.it)("T1: global dryrun → no write", async () => {
         const { host, foreignWrites } = tickHost({ global: "dryrun", addon: "live" });
         const snap = (0, evcc_telemetry_1.emptyEvccTelemetrySnapshot)("2026-08-15T08:00:00.000Z");
@@ -1625,6 +1673,81 @@ async function bootThenArm(host, setLocal, input) {
     await (0, index_1.tickEvExecution)(host, input);
     setLocal(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestArmed, true, false);
 }
+(0, node_test_1.describe)("Tibber Grid-Rewards plug-edge handoff", () => {
+    (0, node_test_1.it)("switches EVCC to now after the configured delay even when the planner wanted PV", async () => {
+        const { host, foreignWrites, foreign } = tickHost({
+            global: "live",
+            addon: "live",
+            foreign: { [`${LP}.status.mode`]: { val: "pv", ts: NOW } },
+        });
+        host.config = {
+            ...BUTTON_CFG,
+            wb_evcc_integration_enabled: true,
+            wb_tibber_grid_rewards_vehicle_enabled: true,
+            wb_tibber_now_stabilize_seconds: 30,
+        };
+        const externalModel = model({
+            externalControlConfigured: true,
+            externalControlType: "vehicle",
+            externalControlActive: true,
+            externalAuthorityState: "active",
+        });
+        const disconnected = {
+            ...pvChargeInput(NOW, "pv"),
+            model: { ...externalModel, vehicleConnected: false },
+            planDecision: decision({ connected: false, decisionSource: "vehicle_disconnected" }),
+        };
+        disconnected.snap.connected = { value: false, status: "valid", raw: false };
+        await (0, index_1.tickEvExecution)(host, disconnected);
+        const connected = {
+            ...pvChargeInput(NOW + 1_000, "pv"),
+            model: externalModel,
+        };
+        connected.snap.connected = { value: true, status: "valid", raw: true };
+        await (0, index_1.tickEvExecution)(host, connected);
+        strict_1.default.equal(foreignWrites.length, 0);
+        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.tibberNowHandoffDueAt))?.val, new Date(NOW + 31_000).toISOString());
+        const due = {
+            ...connected,
+            nowMs: NOW + 31_000,
+        };
+        const sent = await (0, index_1.tickEvExecution)(host, due);
+        strict_1.default.deepEqual(foreignWrites, [{ id: `${LP}.control.now`, val: true }]);
+        strict_1.default.equal(sent.desiredReason, "tibber_now_after_stabilize");
+        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.tibberNowHandoffStatus))?.val, "tibber_now_after_stabilize");
+        foreign[`${LP}.status.mode`] = { val: "now", ts: NOW + 40_000 };
+        const confirmedInput = { ...connected, nowMs: NOW + 40_000, snap: liveSnap("now") };
+        confirmedInput.snap.connected = { value: true, status: "valid", raw: true };
+        const confirmed = await (0, index_1.tickEvExecution)(host, confirmedInput);
+        strict_1.default.equal(foreignWrites.length, 1);
+        strict_1.default.equal(confirmed.lastResult, "confirmed");
+        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.tibberNowHandoffStatus))?.val, "already_now");
+        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.tibberNowHandoffDueAt))?.val, "");
+    });
+    (0, node_test_1.it)("does not consume the plug-edge while global execution is dryrun", async () => {
+        const { host, foreignWrites } = tickHost({ global: "dryrun", addon: "live" });
+        host.config = {
+            ...BUTTON_CFG,
+            wb_evcc_integration_enabled: true,
+            wb_tibber_grid_rewards_vehicle_enabled: true,
+            wb_tibber_now_stabilize_seconds: 30,
+        };
+        const disconnected = {
+            ...noopInput(NOW, "pv"),
+            planDecision: decision({ connected: false, decisionSource: "vehicle_disconnected" }),
+        };
+        disconnected.snap.connected = { value: false, status: "valid", raw: false };
+        await (0, index_1.tickEvExecution)(host, disconnected);
+        const connected = noopInput(NOW + 1_000, "pv");
+        connected.snap.connected = { value: true, status: "valid", raw: true };
+        await (0, index_1.tickEvExecution)(host, connected);
+        const due = { ...connected, nowMs: NOW + 31_000 };
+        const blocked = await (0, index_1.tickEvExecution)(host, due);
+        strict_1.default.equal(foreignWrites.length, 0);
+        strict_1.default.equal(blocked.blockReason, "global_dryrun");
+        strict_1.default.equal((await host.getStateAsync(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.tibberNowHandoffStatus))?.val, "tibber_now_after_stabilize");
+    });
+});
 (0, node_test_1.describe)("Phase 5B controlled live test", () => {
     (0, node_test_1.it)("L0: Dauerbetrieb gate stays false; one-shot permit is extra", () => {
         strict_1.default.equal(write_allowlist_1.EV_EXECUTION_PHASE5_ENABLED, false);

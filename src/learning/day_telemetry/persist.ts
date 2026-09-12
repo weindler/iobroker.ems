@@ -99,6 +99,9 @@ export function normalizeDayRecord(raw: unknown, fallbackDateKey?: string): DayT
 	if (!Array.isArray(day.buckets.gridBalanceDischargeKwh) || day.buckets.gridBalanceDischargeKwh.length !== slotCount) {
 		day.buckets.gridBalanceDischargeKwh = Array.from({ length: slotCount }, () => null);
 	}
+	if (!Array.isArray(day.buckets.evFastChargedKwh) || day.buckets.evFastChargedKwh.length !== slotCount) {
+		day.buckets.evFastChargedKwh = Array.from({ length: slotCount }, () => null);
+	}
 	if (!Array.isArray(day.forecastSnapshots)) day.forecastSnapshots = [];
 	if (!Array.isArray(day.forecastRevisions)) day.forecastRevisions = [];
 	rehydrateForecastRevisions(day);
@@ -281,6 +284,30 @@ export async function loadOrEmptyDayTelemetryStore(
 	for (const dk of keys) {
 		const day = await readDayTelemetryDay(baseDir, dk);
 		if (day) store.days[dk] = day;
+	}
+	store.updatedAtIso = new Date().toISOString();
+	return store;
+}
+
+/**
+ * Lädt nur explizit benötigte Tagesdateien in den Arbeitsspeicher.
+ *
+ * Produktion hält damit den aktiven Tag und dessen Vortag im RAM; die vollständige
+ * 90-Tage-Historie bleibt weiterhin als Tagesdateien auf Platte und wird von Evaluator-
+ * und Learning-Modulen bei Bedarf einzeln gelesen. Das vermeidet insbesondere die
+ * Rehydration sämtlicher kompakter Forecast-Revisionsketten beim Adapterstart.
+ */
+export async function loadDayTelemetryStoreForDateKeys(
+	baseDir: string | null | undefined,
+	dateKeys: string[],
+): Promise<DayTelemetryStore> {
+	if (!baseDir) return emptyDayTelemetryStore();
+	await migrateMonolithToDayFiles(baseDir);
+	const store = emptyDayTelemetryStore();
+	const uniqueKeys = [...new Set(dateKeys.filter((k) => DATE_KEY_RE.test(k)))];
+	for (const dateKey of uniqueKeys) {
+		const day = await readDayTelemetryDay(baseDir, dateKey);
+		if (day) store.days[dateKey] = day;
 	}
 	store.updatedAtIso = new Date().toISOString();
 	return store;

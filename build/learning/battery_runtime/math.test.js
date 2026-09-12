@@ -125,6 +125,35 @@ function socAt(dateKey, hour, socPct) {
         strict_1.default.equal(r.validNights, 1);
         strict_1.default.equal(r.avgPct, 35);
         strict_1.default.equal(r.avgKwh, 3.5);
+        strict_1.default.equal(r.medianKwh, 3.5);
+        strict_1.default.equal(r.nightSamples.length, 1);
+        strict_1.default.deepEqual({
+            start: r.nightSamples[0].startSocPct,
+            low: r.nightSamples[0].lowestSocPct,
+            gross: r.nightSamples[0].grossDischargeKwh,
+            net: r.nightSamples[0].netDischargeKwh,
+            accepted: r.nightSamples[0].accepted,
+            reason: r.nightSamples[0].exclusionReason,
+        }, { start: 100, low: 65, gross: 3.5, net: 3.5, accepted: true, reason: null });
+    });
+    (0, node_test_1.it)("publishes median beside the recency-weighted reserve estimator", () => {
+        const points = [
+            socAt("2026-01-05", 22, 90),
+            socAt("2026-01-06", 6, 80),
+            socAt("2026-01-06", 22, 90),
+            socAt("2026-01-07", 6, 70),
+            socAt("2026-01-07", 22, 90),
+            socAt("2026-01-08", 6, 60),
+        ];
+        const r = (0, math_1.computeNightDischarges)({
+            socPoints: points,
+            nightStart: "22:00",
+            nightEnd: "06:00",
+            capacityKwh: 10,
+            nowMs: Date.parse("2026-01-09T12:00:00"),
+        });
+        strict_1.default.equal(r.medianKwh, 2);
+        strict_1.default.ok((r.avgKwh ?? 0) > 2, `weighted average=${r.avgKwh}`);
     });
     (0, node_test_1.it)("does not treat missing kwh as zero without capacity", () => {
         const r = (0, math_1.computeNightDischarges)({
@@ -524,6 +553,7 @@ function socAt(dateKey, hour, socPct) {
         // (d=5) fällt heraus, sonst keine.
         strict_1.default.equal(discharge.validNights, discharge.windows.length - 1, `validNights=${discharge.validNights} windows=${discharge.windows.length}`);
         strict_1.default.ok(discharge.avgKwh !== null && discharge.avgKwh > 4.5 && discharge.avgKwh < 5.5, `avgKwh=${discharge.avgKwh} (Zwischenladungsnacht darf nicht mit 90−55=35 % einfließen)`);
+        strict_1.default.equal(discharge.nightSamples.filter((n) => n.exclusionReason === "interim_recharge").length, 1);
     });
     (0, node_test_1.it)("Sondernacht mit Netzladung (SOC steigt) fließt nicht in die Reserve-Basis", () => {
         const MS = 3_600_000;
@@ -728,6 +758,7 @@ function socAt(dateKey, hour, socPct) {
         });
         strict_1.default.equal(withGb.validNights, baseline.validNights - 1, `withGb=${withGb.validNights} baseline=${baseline.validNights}`);
         strict_1.default.ok(withGb.gridBalanceExcludedNights >= 1, `excluded=${withGb.gridBalanceExcludedNights}`);
+        strict_1.default.ok(withGb.nightSamples.some((n) => n.exclusionReason === "grid_balance_coverage"), "Einzelbefund muss die lückenhafte GB-Coverage erklären");
     });
     (0, node_test_1.it)("PFLICHT-FIX 1: GB nur für jüngste Nächte (Telemetrie) lässt ältere SOC-Nächte unverändert", () => {
         const { socPoints, battery, house, pv, day0 } = buildTenNightPvHouseScenario();
@@ -926,5 +957,7 @@ function socAt(dateKey, hour, socPct) {
         const read = await (0, persist_1.readBatteryRuntimePersist)(dir);
         strict_1.default.ok(read);
         strict_1.default.equal(read?.module, "battery_runtime_learning_v1");
+        strict_1.default.equal(read?.median_night_discharge_kwh, 1);
+        strict_1.default.equal(read?.night_estimator, "recency_weighted_average");
     });
 });

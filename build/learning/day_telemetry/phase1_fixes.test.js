@@ -41,6 +41,7 @@ const quality_mask_js_1 = require("./quality_mask.js");
 const types_js_1 = require("./types.js");
 const slots_js_1 = require("./slots.js");
 const constants_js_1 = require("./constants.js");
+const ensure_evcc_states_js_1 = require("../../addons/wallbox/ensure_evcc_states.js");
 class FakeTelHost {
     states = new Map();
     dir;
@@ -149,6 +150,27 @@ function minimalInput() {
             await fs.rm(dir, { recursive: true, force: true });
         }
     });
+    (0, node_test_1.it)("integriert EV-Energie separat nur während EVCC Schnell/now", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "dt-ev-fast-"));
+        try {
+            const host = new FakeTelHost(dir);
+            host.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.chargePowerW, 7200);
+            host.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.loadpointMode, "now");
+            await (0, record_js_1.tickDayTelemetry)(host, new Date("2026-08-30T10:00:00+02:00"));
+            await (0, record_js_1.tickDayTelemetry)(host, new Date("2026-08-30T10:01:00+02:00"));
+            host.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.loadpointMode, "pv");
+            await (0, record_js_1.tickDayTelemetry)(host, new Date("2026-08-30T10:02:00+02:00"));
+            const day = await (0, persist_js_1.readDayTelemetryDay)(path.join(dir, "learning/day_telemetry"), "2026-08-30");
+            strict_1.default.ok(day);
+            const charged = day.buckets.evChargedKwh.reduce((sum, value) => sum + (value ?? 0), 0);
+            const fast = day.buckets.evFastChargedKwh.reduce((sum, value) => sum + (value ?? 0), 0);
+            strict_1.default.equal(charged, 0.24);
+            strict_1.default.equal(fast, 0.12);
+        }
+        finally {
+            await fs.rm(dir, { recursive: true, force: true });
+        }
+    });
     (0, node_test_1.it)("unobserved Slot: qualityMask null, nicht ok", () => {
         const layout = (0, slots_js_1.buildDaySlotLayout)("2026-08-29", "Europe/Berlin");
         const day = (0, types_js_1.emptyDayRecord)("2026-08-29", "Europe/Berlin", layout.startMs, layout.endMs, layout.slotCount);
@@ -246,6 +268,32 @@ function minimalInput() {
             strict_1.default.ok(removed.length >= 5);
             const dayPath = (0, persist_js_1.dayTelemetryDayPath)(dir, start);
             await strict_1.default.rejects(fs.access(dayPath));
+        }
+        finally {
+            await fs.rm(dir, { recursive: true, force: true });
+        }
+    });
+    (0, node_test_1.it)("Produktions-Cache lädt bei 90 Tagesdateien nur heute und gestern", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "dt-cache-"));
+        try {
+            const telemetryDir = path.join(dir, "learning/day_telemetry");
+            const store = (0, types_js_1.emptyDayTelemetryStore)();
+            const { addDaysToDateKey } = await import("../../operator/time.js");
+            const start = "2026-06-01";
+            for (let i = 0; i < 90; i++) {
+                const dk = addDaysToDateKey(start, i);
+                const layout = (0, slots_js_1.buildDaySlotLayout)(dk, "Europe/Berlin");
+                store.days[dk] = (0, types_js_1.emptyDayRecord)(dk, "Europe/Berlin", layout.startMs, layout.endMs, layout.slotCount);
+            }
+            await (0, persist_js_1.writeDayTelemetryPersist)(telemetryDir, store);
+            (0, record_js_1.__resetDayTelemetryRuntimeForTest)();
+            const today = addDaysToDateKey(start, 89);
+            const yesterday = addDaysToDateKey(today, -1);
+            const host = new FakeTelHost(dir);
+            host.set("live.battery.pv_ac_power_w", 0);
+            await (0, record_js_1.tickDayTelemetry)(host, new Date(`${today}T12:00:00+02:00`));
+            strict_1.default.deepEqual((0, record_js_1.__dayTelemetryCachedDateKeysForTest)(), [yesterday, today]);
+            strict_1.default.equal((await fs.readdir(telemetryDir)).filter((n) => /^\d{4}-\d{2}-\d{2}\.json$/.test(n)).length, 90);
         }
         finally {
             await fs.rm(dir, { recursive: true, force: true });

@@ -4,6 +4,7 @@ exports.collectFlexibleContributions = void 0;
 const state_util_1 = require("../../../ems_light/state_util");
 const config_1 = require("../../../addons/battery/config");
 const limits_1 = require("../../../addons/battery/core/limits");
+const registry_1 = require("../../../addons/battery/profiles/registry");
 const ensure_states_1 = require("../../../addons/battery/ensure_states");
 const intent_read_1 = require("../../../addons/battery/runtime/intent_read");
 const ensure_evcc_states_1 = require("../../../addons/wallbox/ensure_evcc_states");
@@ -336,8 +337,12 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         : null;
     const minSoc = batteryCfg.limits.minSocPct;
     const maxSoc = batteryCfg.limits.maxSocPct;
-    const chargeCapable = batteryCfg.profile !== "generic_readonly";
-    const dischargeCapable = (0, limits_1.hasDischargeCapability)(batteryCfg.limits);
+    const batteryProfile = (0, registry_1.getBatteryProfile)(batteryCfg.profile);
+    const chargeCapable = batteryProfile.plannerCapabilities.chargeDispatch;
+    const dischargeCapable = batteryProfile.plannerCapabilities.activeDischargeDispatch &&
+        (0, limits_1.hasDischargeCapability)(batteryCfg.limits);
+    const passiveSelfConsumptionOnly = batteryProfile.plannerCapabilities.passiveSelfConsumption &&
+        !batteryProfile.plannerCapabilities.activeDischargeDispatch;
     const mapEntry = (0, vehicle_map_1.lookupVehicleMapEntry)((0, vehicle_map_1.wallboxVehicleMapFromAdapter)(config).entries, evccVehicleName, evccVehicleTitle);
     const vehicleCapacityKwh = mapEntry?.batteryCapacityNetKwh !== null &&
         mapEntry?.batteryCapacityNetKwh !== undefined &&
@@ -469,6 +474,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             maxChargeW: hwMaxChargeW,
             chargeCapable: chargeCapable === true,
             dischargeCapable: dischargeCapable === true,
+            passiveSelfConsumptionOnly,
             fault: batteryFault === true,
             lockout: batteryLockout === true,
             telemetryValid: telemetryValid !== false,

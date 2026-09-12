@@ -34,10 +34,11 @@ export function endOfLocalDayIso(dateKey: string, timezone: string): string {
 }
 
 /**
- * Rolling Daily-Plan-Horizont (Roadmap Block 5): mindestens 48 h ab aktuellem 15-Min-Floor.
- * Alle flexiblen Add-ons lesen denselben Plan — kein addon-spezifischer Horizont.
+ * Rolling Daily-Plan-Horizont (Wochenend-Arbeitsplan Punkt 5): 72 h ab aktuellem
+ * 15-Min-Floor. Alle flexiblen Add-ons lesen denselben Plan — kein add-on-spezifischer
+ * Horizont. Der Unified Planner darf zusätzlich längeren Forecast-Kontext nutzen.
  */
-export const DAILY_PLAN_HORIZON_HOURS = 48 as const;
+export const DAILY_PLAN_HORIZON_HOURS = 72 as const;
 
 export function buildDailyHorizonSlots(
 	now: Date,

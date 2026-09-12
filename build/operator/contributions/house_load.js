@@ -106,7 +106,7 @@ function buildHouseLoadContribution(input) {
     if (input.forecastTomorrow) {
         slots.push(...segmentSlotsFromForecast(input.forecastTomorrow, input.timezone, confidence));
     }
-    // Roadmap Block 5: Segment-Slots auch für Tag 3+ (Daily-Plan-Horizont ≥48 h) —
+    // Arbeitsplan Punkt 5: Segment-Slots auch für Tag 3+ (Daily-Plan-Horizont 72 h) —
     // gleiche Musterprognose wie morgen, keine erfundenen Werte.
     for (const forecast of input.forecastHorizon ?? []) {
         if (!forecast?.date)

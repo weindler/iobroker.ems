@@ -57,9 +57,12 @@ export async function executeEvccButtonWrite(
 		mode: EvExecutionMode;
 		writeAllowed: boolean;
 		liveTestPermit?: boolean;
+		/** Scoped release for the configured plug-edge → EVCC now handoff. */
+		tibberNowHandoffPermit?: boolean;
 	},
 ): Promise<EvExecutionWriteResult> {
-	const released = EV_EXECUTION_PHASE5_ENABLED || input.liveTestPermit === true;
+	const tibberHandoffReleased = input.tibberNowHandoffPermit === true && input.mode === "now";
+	const released = EV_EXECUTION_PHASE5_ENABLED || input.liveTestPermit === true || tibberHandoffReleased;
 	if (!released || !input.writeAllowed) {
 		return {
 			attempted: false,
@@ -95,7 +98,7 @@ export async function executeEvccButtonWrite(
 	const r = await writeForeignIfChanged(host, {
 		stateId: targetStateId,
 		value: true,
-		reason: `ev_execution button ${button}`,
+		reason: tibberHandoffReleased ? "tibber grid rewards handoff button now" : `ev_execution button ${button}`,
 		force: true,
 	});
 	return {

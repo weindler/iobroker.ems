@@ -70,11 +70,21 @@ export async function tickEconomics(host: EconomicsHost, now: Date = new Date())
 	// --- abgeschlossene Tage EINMAL verbuchen (idempotent) ---
 	for (const dateKey of Object.keys(statsPersist.days).sort()) {
 		if (dateKey >= todayKey) continue;
-		if (econPersist.days[dateKey]?.final) continue;
 		const statsDay = statsPersist.days[dateKey];
 		if (!statsDay) continue;
 		const shadow = await readShadowDayRecord(shadowDir, dateKey);
 		if (!shadow) continue; // Shadow-Engine hat diesen Tag noch nicht simuliert — nächster Lauf holt nach.
+		const shadowModelVersion =
+			shadow.strategies.reference_sonnen_native?.modelVersion ??
+			shadow.strategies.reference_no_ems?.modelVersion ??
+			shadow.strategies.ems_without_ai?.modelVersion ??
+			null;
+		if (
+			econPersist.days[dateKey]?.final &&
+			econPersist.days[dateKey]?.shadowModelVersion === shadowModelVersion
+		) {
+			continue;
+		}
 		const rec = buildEconomicsDayRecord({
 			dateKey,
 			final: true,
@@ -88,7 +98,7 @@ export async function tickEconomics(host: EconomicsHost, now: Date = new Date())
 		dirty = true;
 	}
 	if (dirty) {
-		await writeEconomicsPersist(econDir, econPersist);
+		await writeEconomicsPersist(econDir, econPersist, todayKey);
 		econPersist = await readEconomicsPersist(econDir);
 	}
 

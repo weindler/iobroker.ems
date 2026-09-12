@@ -99,6 +99,7 @@ describe("buildEconomicsDayRecord", () => {
 		assert.equal(rec.tarifvorteilEur, 0.5);
 		assert.equal(rec.emsVorteilEvaluable, true);
 		assert.equal(rec.kiMehrwertEvaluable, true);
+		assert.equal(rec.shadowModelVersion, "shadow_v3");
 	});
 
 	it("negativer KI-Mehrwert ist darstellbar (kein Schönrechnen)", () => {

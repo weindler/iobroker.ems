@@ -2,6 +2,7 @@ import { asNum } from "../../../ems_light/state_util";
 import type { StateHost } from "../../../ems_light/state_util";
 import { batteryConfigFromAdapter, batteryProfileIdFromConfig } from "../../../addons/battery/config";
 import { hasDischargeCapability } from "../../../addons/battery/core/limits";
+import { getBatteryProfile } from "../../../addons/battery/profiles/registry";
 import { BAT } from "../../../addons/battery/ensure_states";
 import { parseResolvedBatteryIntentJson } from "../../../addons/battery/runtime/intent_read";
 import { WALLBOX_EVCC_STATES } from "../../../addons/wallbox/ensure_evcc_states";
@@ -477,8 +478,14 @@ export async function collectFlexibleContributions(
 			: null;
 	const minSoc = batteryCfg.limits.minSocPct;
 	const maxSoc = batteryCfg.limits.maxSocPct;
-	const chargeCapable = batteryCfg.profile !== "generic_readonly";
-	const dischargeCapable = hasDischargeCapability(batteryCfg.limits);
+	const batteryProfile = getBatteryProfile(batteryCfg.profile);
+	const chargeCapable = batteryProfile.plannerCapabilities.chargeDispatch;
+	const dischargeCapable =
+		batteryProfile.plannerCapabilities.activeDischargeDispatch &&
+		hasDischargeCapability(batteryCfg.limits);
+	const passiveSelfConsumptionOnly =
+		batteryProfile.plannerCapabilities.passiveSelfConsumption &&
+		!batteryProfile.plannerCapabilities.activeDischargeDispatch;
 
 	const mapEntry = lookupVehicleMapEntry(
 		wallboxVehicleMapFromAdapter(config).entries,
@@ -634,6 +641,7 @@ export async function collectFlexibleContributions(
 			maxChargeW: hwMaxChargeW,
 			chargeCapable: chargeCapable === true,
 			dischargeCapable: dischargeCapable === true,
+			passiveSelfConsumptionOnly,
 			fault: batteryFault === true,
 			lockout: batteryLockout === true,
 			telemetryValid: telemetryValid !== false,

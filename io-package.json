@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.26",
+		"version": "0.2.27",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.27": {
+				"en": "Weekend implementation bundle: bounded telemetry retention, 72-hour outlook, energetic statistics, profile catalog, read-only app snapshot and stricter safety contracts. Tibber Grid Rewards configured via vehicle/wallbox now hands EVCC over to fast/now once after plug-in delay; VIS shows fast charging split into Sonnen battery, grid and PV/local. Start in dryrun, verify mappings, then enable live deliberately.",
+				"de": "Wochenend-Umsetzungspaket: begrenzte Telemetrie-Retention, 72-Stunden-Ausblick, energetische Statistik, Profilkatalog, read-only App-Snapshot und strengere Safety-Verträge. Bei über Fahrzeug/Wallbox eingerichteten Tibber Grid Rewards übergibt EMS EVCC nach dem Anstecken und der Wartezeit einmalig auf Schnell/now; die VIS trennt Schnellladung in Sonnen-Batterie, Netz und PV/lokal. Zuerst Dryrun und Mappings prüfen, danach Live bewusst freigeben."
+			},
 			"0.2.26": {
 				"en": "BETRIEB now shows a deterministic EMS assessment (what is sensible today, why, what next) from the real plan and live states — no AI text. Daily Analyst retrospectives stay on Statistik. Check operator.assessment_de and the EMS-Einschätzung block on Betrieb.",
 				"de": "BETRIEB zeigt eine deterministische EMS-Einschätzung (was heute sinnvoll ist, warum, was als Nächstes) aus echtem Plan und Live-Zustand — kein KI-Text. Daily-Analyst-Rückblick bleibt auf Statistik. Prüfen: operator.assessment_de und Block EMS-Einschätzung auf Betrieb."

@@ -23,11 +23,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readBatteryRuntimePersist = exports.writeBatteryRuntimePersist = void 0;
+exports.readBatteryRuntimePersist = exports.writeBatteryRuntimePersist = exports.BATTERY_NIGHT_DIAGNOSTIC_RETENTION = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
 const constants_1 = require("./constants");
+/** Detaildiagnose bleibt bewusst begrenzt; Langzeitwerte sind die Aggregate darüber. */
+exports.BATTERY_NIGHT_DIAGNOSTIC_RETENTION = 120;
 async function writeBatteryRuntimePersist(baseDir, result, lastRun) {
     await fs.mkdir(baseDir, { recursive: true });
     const payload = {
@@ -36,6 +38,8 @@ async function writeBatteryRuntimePersist(baseDir, result, lastRun) {
         sample_days: result.sampleDays,
         avg_night_discharge_pct: result.avgNightDischargePct,
         avg_night_discharge_kwh: result.avgNightDischargeKwh,
+        median_night_discharge_kwh: result.medianNightDischargeKwh,
+        night_estimator: result.nightEstimator,
         predicted_night_consumption_kwh: result.predictedNightConsumptionKwh,
         night_consumption_valid_nights: result.nightConsumptionValidNights,
         predicted_night_grid_import_kwh: result.predictedNightGridImportKwh,
@@ -47,6 +51,7 @@ async function writeBatteryRuntimePersist(baseDir, result, lastRun) {
         avg_night_bridge_hours: result.avgNightBridgeHours,
         grid_balance_attributed_nights: result.gridBalanceAttributedNights,
         grid_balance_excluded_nights: result.gridBalanceExcludedNights,
+        night_samples: result.nightSamples.slice(-exports.BATTERY_NIGHT_DIAGNOSTIC_RETENTION),
         avg_charge_rate_pct_h: result.avgChargeRatePctH,
         avg_discharge_rate_pct_h: result.avgDischargeRatePctH,
         avg_charge_power_w: result.avgChargePowerW,

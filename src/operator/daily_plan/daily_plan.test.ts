@@ -281,8 +281,8 @@ describe("daily plan end-to-end: PV shape + house-load segments reach Daily Plan
 		assert.notEqual(firstSlot.fixedBalancePowerW, null);
 		assert.notEqual(firstSlot.availablePvSurplusPowerW, null);
 		assert.equal(plan.slots.length, DAILY_PLAN_HORIZON_HOURS * 4);
-		assert.equal(plan.validUntil, "2026-07-13T10:00:00.000Z");
-		// Segmente gelten für den konfigurierten Tag (heute); rollierender 48h-Horizont
+		assert.equal(plan.validUntil, "2026-07-14T10:00:00.000Z");
+		// Segmente gelten für den konfigurierten Tag (heute); rollierender 72-h-Horizont
 		// enthält Folgetage ohne Hauslast-Segmente in diesem Fixture → nur Tag 0 prüfen.
 		for (const s of plan.slots.filter((x) => x.slot.startIso.startsWith("2026-07-11"))) {
 			const hourUtc = new Date(s.slot.startIso).getUTCHours();
@@ -379,11 +379,11 @@ describe("daily plan slots", () => {
 		assert.equal(slotStartIsoFloored(NOW, TZ), "2026-07-11T10:00:00.000Z");
 	});
 
-	it("builds rolling horizon of at least 48 hours (Block 5)", () => {
+	it("builds the rolling 72-hour horizon (Punkt 5)", () => {
 		const slots = buildDailyHorizonSlots(NOW, TZ, 15);
 		assert.ok(slots.length > 0);
 		assert.equal(slots[0].startIso, "2026-07-11T10:00:00.000Z");
-		assert.equal(slots[slots.length - 1].endIso, "2026-07-13T10:00:00.000Z");
+		assert.equal(slots[slots.length - 1].endIso, "2026-07-14T10:00:00.000Z");
 		assert.equal(slots.length, DAILY_PLAN_HORIZON_HOURS * 4);
 	});
 });

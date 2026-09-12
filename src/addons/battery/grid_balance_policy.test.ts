@@ -1,8 +1,19 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { resolveGridBalancePolicyLoadAdjustment } from "./grid_balance_policy.js";
+import {
+	parseExplicitBatteryPermission,
+	resolveGridBalancePolicyLoadAdjustment,
+} from "./grid_balance_policy.js";
 
 describe("grid balance policy load adjustment (Phase 1)", () => {
+	it("preserves an explicit planner permission and keeps every missing/invalid value null", () => {
+		assert.equal(parseExplicitBatteryPermission(true), true);
+		assert.equal(parseExplicitBatteryPermission(false), false);
+		for (const raw of [null, undefined, 0, 1, "true", "false", ""]) {
+			assert.equal(parseExplicitBatteryPermission(raw), null);
+		}
+	});
+
 	it("leaves load unchanged when no consumer is excluded", () => {
 		const r = resolveGridBalancePolicyLoadAdjustment({
 			rawConsumptionW: 2000,
@@ -24,6 +35,18 @@ describe("grid balance policy load adjustment (Phase 1)", () => {
 		assert.deepEqual(r.excludedConsumerIds, ["immersion_heater"]);
 		assert.match(r.reasonDe, /immersion_heater \(1700 W\)/);
 		assert.match(r.reasonDe, /Policy: Batterie für diesen Verbraucher nicht erlaubt/);
+	});
+
+	it("missing battery permission stays unknown and fails closed", () => {
+		const r = resolveGridBalancePolicyLoadAdjustment({
+			rawConsumptionW: 2000,
+			excludedConsumers: [{ id: "immersion_heater", allowedOnBattery: null, commandedPowerW: 1700 }],
+		});
+		assert.equal(r.policyAdjustedConsumptionW, 300);
+		assert.equal(r.excludedLoadW, 1700);
+		assert.deepEqual(r.excludedConsumerIds, ["immersion_heater"]);
+		assert.match(r.reasonDe, /Policy-Freigabe fehlt/);
+		assert.match(r.reasonDe, /Batterie bleibt .* gesperrt/);
 	});
 
 	it("clamps to zero instead of going negative", () => {

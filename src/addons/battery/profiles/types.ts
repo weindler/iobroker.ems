@@ -6,6 +6,10 @@ import type {
 	BatteryProfileId,
 	CapabilityMatrix,
 } from "../core/types";
+import type {
+	BatteryPlannerCapabilities,
+	DeviceProfileCatalogMetadata,
+} from "../../../profiles/types";
 
 export interface ProfileBuildInput {
 	config: BatteryConfig;
@@ -26,6 +30,8 @@ export interface BatteryProfile {
 	id: BatteryProfileId;
 	displayNameDe: string;
 	displayNameEn: string;
+	catalog: DeviceProfileCatalogMetadata;
+	plannerCapabilities: BatteryPlannerCapabilities;
 	supportsRead: boolean;
 	supportsDryrun: boolean;
 	supportsLive: boolean;

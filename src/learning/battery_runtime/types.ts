@@ -40,6 +40,34 @@ export type PowerPoint = {
 	powerW: number;
 };
 
+export type BatteryNightSampleExclusionReason =
+	| "missing_soc"
+	| "no_discharge"
+	| "implausible_discharge"
+	| "interim_recharge"
+	| "grid_balance_coverage"
+	| "high_outlier";
+
+/** Nachvollziehbarer Einzelbefund der tatsächlich gewählten Nachtbrücken-Methode. */
+export type BatteryNightSampleDiagnostic = {
+	eveningDateKey: string;
+	method: "pv_house" | "battery_discharge" | "astro" | "fixed_clock";
+	bridgeStartIso: string;
+	bridgeEndIso: string;
+	observationStartIso: string;
+	observationEndIso: string;
+	startSocPct: number | null;
+	lowestSocPct: number | null;
+	grossDischargePct: number | null;
+	grossDischargeKwh: number | null;
+	gridBalanceKwh: number | null;
+	netDischargePct: number | null;
+	netDischargeKwh: number | null;
+	recencyWeight: number | null;
+	accepted: boolean;
+	exclusionReason: BatteryNightSampleExclusionReason | null;
+};
+
 export type BatteryRuntimeComputeResult = {
 	status:
 		| "ready"
@@ -56,6 +84,10 @@ export type BatteryRuntimeComputeResult = {
 	 * `computeNightDischarges`). Einzige Quelle für die Planner-Reserve.
 	 */
 	avgNightDischargeKwh: number | null;
+	/** Diagnose: Median derselben akzeptierten Nacht-Samples (kein Planner-Eingang). */
+	medianNightDischargeKwh: number | null;
+	/** Transparenz über die tatsächlich verwendete Aggregation der Reserve-Basis. */
+	nightEstimator: "recency_weighted_average";
 	/**
 	 * Identisch zu `avgNightDischargeKwh` — kein zweiter Rechenweg. Bleibt als eigener
 	 * State-/Feldname nur aus Planner-Kompatibilität bestehen (battery_reserve_target.ts,
@@ -130,6 +162,8 @@ export type BatteryRuntimeComputeResult = {
 	 * war (keine Schätzung statt Messung).
 	 */
 	gridBalanceExcludedNights: number;
+	/** Einzelne Nächte hinter dem Lernwert — für Diagnose, nicht als zweite Reservequelle. */
+	nightSamples: BatteryNightSampleDiagnostic[];
 };
 
 export type BatteryRuntimePersist = {
@@ -138,6 +172,8 @@ export type BatteryRuntimePersist = {
 	sample_days: number;
 	avg_night_discharge_pct: number | null;
 	avg_night_discharge_kwh: number | null;
+	median_night_discharge_kwh?: number | null;
+	night_estimator?: "recency_weighted_average";
 	predicted_night_consumption_kwh?: number | null;
 	night_consumption_valid_nights?: number;
 	predicted_night_grid_import_kwh?: number | null;
@@ -149,6 +185,7 @@ export type BatteryRuntimePersist = {
 	avg_night_bridge_hours?: number | null;
 	grid_balance_attributed_nights?: number;
 	grid_balance_excluded_nights?: number;
+	night_samples?: BatteryNightSampleDiagnostic[];
 	avg_charge_rate_pct_h: number | null;
 	avg_discharge_rate_pct_h: number | null;
 	avg_charge_power_w: number | null;

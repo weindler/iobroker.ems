@@ -29,6 +29,11 @@ export interface EvExecutionGateInput {
 	/** Phase 5B one-shot permit. Never a substitute for governance. */
 	liveTestPermit?: boolean;
 	liveTestBlockReason?: string;
+	/**
+	 * Eng begrenzte Tibber-Übergabe nach neuem Plug-Edge. Erlaubt ausschließlich
+	 * `desiredMode=now`; der allgemeine Phase-5-Planner bleibt geschlossen.
+	 */
+	tibberNowHandoffPermit?: boolean;
 }
 
 export interface EvExecutionGateResult {
@@ -45,15 +50,16 @@ function desiredWantsWrite(desired: EvExecutionDesired | null): desired is EvExe
 
 export function evaluateEvExecutionGates(input: EvExecutionGateInput): EvExecutionGateResult {
 	const featureEnabled = input.featureEnabled && EV_EXECUTION_PHASE5_ENABLED;
-	const executionReleased = featureEnabled || input.liveTestPermit === true;
+	const tibberHandoff = input.tibberNowHandoffPermit === true && input.desiredMode === "now";
+	const executionReleased = featureEnabled || input.liveTestPermit === true || tibberHandoff;
 	let failsafeReason = "";
 	let blockReason = "";
 	const wantsWrite = desiredWantsWrite(input.desiredMode);
 
 	if (input.desiredMode !== "noop") {
-		if (input.authorityFailsafeReason) {
+		if (input.authorityFailsafeReason && !tibberHandoff) {
 			failsafeReason = input.authorityFailsafeReason;
-		} else if (input.authority === "none") {
+		} else if (input.authority === "none" && !tibberHandoff) {
 			failsafeReason = "authority_unknown";
 		} else if (input.sourceOffline) {
 			failsafeReason = "evcc_source_offline";
@@ -73,7 +79,7 @@ export function evaluateEvExecutionGates(input: EvExecutionGateInput): EvExecuti
 	if (input.restoreInProgress) blockReason = "restore_in_progress";
 	else if (!input.addonEnabled) blockReason = "addon_disabled";
 	else if (!input.governanceEnabled) blockReason = "governance";
-	else if (input.authority === "external") blockReason = "external_authority";
+	else if (input.authority === "external" && !tibberHandoff) blockReason = "external_authority";
 	else if (!input.globalLive) blockReason = "global_dryrun";
 	else if (!input.addonLive) blockReason = "addon_dryrun";
 	else if (!executionReleased) {
@@ -85,7 +91,7 @@ export function evaluateEvExecutionGates(input: EvExecutionGateInput): EvExecuti
 	const ready =
 		input.addonEnabled &&
 		input.governanceEnabled &&
-		input.authority === "ems" &&
+		(input.authority === "ems" || tibberHandoff) &&
 		input.buttonsReady &&
 		input.resolvedVariant === "buttons" &&
 		!failsafeReason &&

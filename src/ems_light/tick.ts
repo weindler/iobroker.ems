@@ -1,6 +1,7 @@
 import { touchEmsActivity } from "../ems_activity";
 import { GLOBAL } from "../tree_paths";
 import { deriveHealth, formatLiveCacheSummary, refreshLiveCache, type LiveCacheHost } from "./live_cache";
+import { publishAppCoreSnapshot } from "../app/core_snapshot";
 /** Type-only — must not pull `planner/run` onto the production tick path (Block 4). */
 import type { PlannerHost } from "../planner/inputs";
 
@@ -177,5 +178,16 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 		});
 	} catch {
 		// kein Throw — Phase 1 soll robust bleiben
+	}
+
+	try {
+		await publishAppCoreSnapshot(host, {
+			generatedAtIso: ts,
+			health,
+			executionMode,
+			tickHints: hints,
+		});
+	} catch {
+		// Reporting-Projektion darf den lokalen Steuerpfad niemals beeinflussen.
 	}
 }

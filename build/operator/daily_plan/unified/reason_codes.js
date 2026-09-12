@@ -11,6 +11,8 @@ exports.REASON = {
     THERMAL_FLEX_AVAILABLE: "thermal_flex_available",
     THERMAL_DEADLINE_PV_WINDOW: "thermal_deadline_pv_window",
     THERMAL_EMPTY_AT_ESTIMATED: "thermal_empty_at_estimated",
+    /** Soft-Wärme nutzt erlaubte passive Batterieenergie nur für eine Lücke bis PV-Recovery. */
+    THERMAL_BATTERY_BRIDGE: "thermal_battery_bridge",
     BATTERY_SOC_TARGET: "battery_soc_target",
     BATTERY_RESERVE_PROTECTED: "battery_reserve_protected",
     BATTERY_NIGHT_RESERVE: "battery_night_reserve",

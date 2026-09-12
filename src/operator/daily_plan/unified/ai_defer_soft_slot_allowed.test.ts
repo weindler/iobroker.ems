@@ -1,5 +1,6 @@
 /**
- * v0.2.23 — akzeptiertes Compare-`defer_tomorrow` sperrt nur Soft-IH über slotAllowed.
+ * Authority-Grenze: Compare-`defer_tomorrow` bleibt advisory und darf den echten
+ * Unified-Input bzw. dessen Allokationen nicht verändern.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -198,8 +199,20 @@ function retainedDeferPrefs(ctx: UnifiedForecastContext) {
 	];
 }
 
-describe("v0.2.23 accepted defer_tomorrow → Unified Soft slotAllowed", () => {
-	it("akzeptiertes defer sperrt heutige Soft-IH-Slots, Live-Surplus umgeht das nicht", () => {
+/** Simuliert einen alten Aufrufer; zusätzliche KI-Felder müssen an der Bridge versanden. */
+function withLegacyAiTunnel(
+	ctx: UnifiedForecastContext,
+	disallowed: string[],
+): UnifiedForecastContext {
+	const legacy = {
+		...ctx,
+		immersionSoftDisallowedSlotIsos: disallowed,
+	};
+	return legacy;
+}
+
+describe("AI defer_tomorrow bleibt außerhalb der Unified-Live-Authority", () => {
+	it("akzeptiertes Compare-B beeinflusst heutige Soft-IH-Allokationen nicht", () => {
 		const ctx = buildContext();
 		const baseline = allocateUnifiedDayPlan(buildUnifiedInputFromForecastContext(ctx), { generation: 1 });
 		assert.ok(
@@ -213,17 +226,20 @@ describe("v0.2.23 accepted defer_tomorrow → Unified Soft slotAllowed", () => {
 		});
 		assert.ok(disallowed.length > 0);
 		const locked = allocateUnifiedDayPlan(
-			buildUnifiedInputFromForecastContext({ ...ctx, immersionSoftDisallowedSlotIsos: disallowed }),
+			buildUnifiedInputFromForecastContext(withLegacyAiTunnel(ctx, disallowed)),
 			{ generation: 1 },
 		);
 		assert.equal(
 			energyOnLocalDay(locked, IMMERSION_SOFT_CONSUMER_ID, "2026-06-15"),
-			0,
-			"heute keine Soft-IH-Allokation",
+			energyOnLocalDay(baseline, IMMERSION_SOFT_CONSUMER_ID, "2026-06-15"),
+			"Compare-Präferenzen dürfen den Live-Plan nicht verändern",
 		);
-		assert.ok(
-			energyOnLocalDay(locked, IMMERSION_SOFT_CONSUMER_ID, "2026-06-16") > 0.2,
-			"morgen Soft-IH wieder planbar",
+		assert.equal(
+			Object.prototype.hasOwnProperty.call(
+				buildUnifiedInputFromForecastContext(withLegacyAiTunnel(ctx, disallowed)),
+				"immersionSoftDisallowedSlotIsos",
+			),
+			false,
 		);
 		assert.equal(energyByConsumer(locked, IMMERSION_HARD_CONSUMER_ID), 0);
 	});
@@ -239,7 +255,7 @@ describe("v0.2.23 accepted defer_tomorrow → Unified Soft slotAllowed", () => {
 			[],
 		);
 		const plan = allocateUnifiedDayPlan(
-			buildUnifiedInputFromForecastContext({ ...ctx, immersionSoftDisallowedSlotIsos: rejected }),
+			buildUnifiedInputFromForecastContext(withLegacyAiTunnel(ctx, rejected)),
 			{ generation: 1 },
 		);
 		assert.ok(energyOnLocalDay(plan, IMMERSION_SOFT_CONSUMER_ID, "2026-06-15") > 0.2);
@@ -256,7 +272,7 @@ describe("v0.2.23 accepted defer_tomorrow → Unified Soft slotAllowed", () => {
 		});
 		assert.equal(stale.length, 2);
 		const plan = allocateUnifiedDayPlan(
-			buildUnifiedInputFromForecastContext({ ...ctx, immersionSoftDisallowedSlotIsos: stale }),
+			buildUnifiedInputFromForecastContext(withLegacyAiTunnel(ctx, stale)),
 			{ generation: 1 },
 		);
 		assert.ok(energyOnLocalDay(plan, IMMERSION_SOFT_CONSUMER_ID, "2026-06-15") > 0.2);
@@ -275,13 +291,13 @@ describe("v0.2.23 accepted defer_tomorrow → Unified Soft slotAllowed", () => {
 			prefs: retainedDeferPrefs(ctx),
 		});
 		const plan = allocateUnifiedDayPlan(
-			buildUnifiedInputFromForecastContext({ ...ctx, immersionSoftDisallowedSlotIsos: disallowed }),
+			buildUnifiedInputFromForecastContext(withLegacyAiTunnel(ctx, disallowed)),
 			{ generation: 1 },
 		);
 		assert.ok(
 			energyOnLocalDay(plan, IMMERSION_HARD_CONSUMER_ID, "2026-06-15") >= 0.4,
 			"Boiler-Min/Hard darf heute laufen",
 		);
-		assert.equal(energyOnLocalDay(plan, IMMERSION_SOFT_CONSUMER_ID, "2026-06-15"), 0);
+		assert.ok(energyOnLocalDay(plan, IMMERSION_SOFT_CONSUMER_ID, "2026-06-15") > 0.2);
 	});
 });

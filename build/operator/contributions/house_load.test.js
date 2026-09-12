@@ -90,7 +90,7 @@ function segmentForecast() {
         strict_1.default.equal(horizonDays[1].dayIndex, 3);
         strict_1.default.equal(horizonDays[1].dateKey, "2026-07-14");
     });
-    (0, node_test_1.it)("emits segment slots for forecastHorizon days (Block 5 ≥48h Daily Plan coverage)", () => {
+    (0, node_test_1.it)("emits segment slots for forecastHorizon days (Punkt 5: 72-h Daily Plan coverage)", () => {
         const day3 = { ...segmentForecast(), date: "2026-07-13" };
         const c = (0, house_load_1.buildHouseLoadContribution)({
             now,

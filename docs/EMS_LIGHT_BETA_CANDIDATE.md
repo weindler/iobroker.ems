@@ -1,6 +1,7 @@
 # EMS-Light Beta Candidate
 
-**Vorgeschlagene Version:** `0.1.249`  
+**Quellstand:** `0.2.26`
+
 **Kennzeichnung:** Beta Candidate (kein stable/`latest`)  
 **Basis:** Unified Day Planner als alleinige Allocation-Authority
 
@@ -10,27 +11,33 @@
 - PV-/Preis-/Hauslast-Forecast inkl. Learning-Inputs
 - Material Replanning, Presence Learning, Day Evaluation
 - Deterministische Produkt-Zusammenfassung + Notification Candidates (ohne Push)
+- Strukturierter, rollierender 72-h-Ausblick aus dem Unified Plan
+- Energetische Bilanz mit Autarkie, Eigenverbrauch und Geräte-PV-Anteilen
+- Katalog tatsächlich implementierter Geräteprofile und lokaler read-only App-Core-Snapshot
 - AI Advisory / Explanation (keine Plan-Authority)
 - Vehicle Economics inkl. `earliest_feasible` wo vollständig bewertbar
 - Dryrun als Default bei Neuinstallation und Restore
 
 ## Bewusste Grenzen
 
-- Battery Discharge LIVE unsupported
+- Allgemeiner aktiver Battery-Discharge-Dispatch LIVE unsupported; Sonnen Grid Balance bleibt der vorhandene eng gegatete Entladepfad
 - Future Presence anfangs geringe Learning-Confidence
 - Export-Economics nur bei bekanntem Tarif vollständig
 - AI mutiert keine Allocations (`AI_ALLOCATION_LIVE_MUTATION_ENABLED = false`)
-- Kein vollständiger Multi-Day-Optimizer (Deadline darf über Mitternacht reichen)
+- Kein mathematisch global-optimaler Multi-Day-Solver; der Unified Planner nutzt den mehrtägigen Horizont und veröffentlicht eine rollierende 72-h-Sicht
 - Keine neuen Push-Provider / GPS / neue Kalenderplattform
 
 ## Produktoberfläche (normal)
 
 | Bereich | Fokus |
 |--------|--------|
-| Global | Strategie, Dryrun/Live, Status, Summary, Warnung |
-| Batterie / IH / Klima / Wallbox | Aktiv, Telemetrie, Aktion, Ziel, Fehler |
-| Advanced | Learning, KI, Compare, Policy |
-| Deprecated/Internal | Shadow, Takeover, Lease, Gate-Internals — nicht Alltag |
+| Betrieb | aktuelle Lage, 72-h-Entscheidungen und Verschiebungen |
+| Statistik | Energie, Kosten, Shadow-/EMS-Mehrwert und Mobilität |
+| Batterie | Ist, Nacht-Learning, nächste Aktion und Begründung |
+| Heizstab / Wärme | Boiler/Puffer, Hygiene, thermische Reichweite und Planung |
+| Klima | je Gerät Ist, Shared-Power/Learning, nächste Aktion und Begründung |
+| Auto / Wallbox | Verbindung, SOC/Laden, Planung und Begründung |
+| Grid Balance | AUS/BLOCKIERT/BEREIT/AKTIV, Learning, Schutzgrund und Sollwert |
 
 ## Ausführungsregel
 

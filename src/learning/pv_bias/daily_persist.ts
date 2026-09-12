@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { atomicWriteFile } from "../../persistence/atomic_write";
 
 export const PV_BIAS_DAILY_FILENAME = "pv_bias_daily_v1.json";
+export const PV_BIAS_DAILY_RETENTION_DAYS = 120;
 
 export interface PvBiasDailyRecord {
 	date: string;
@@ -23,6 +24,20 @@ export function emptyDailyPersist(): PvBiasDailyPersist {
 	return { version: 1, days: {} };
 }
 
+export function pruneDailyPersist(
+	persist: PvBiasDailyPersist,
+	retainDays: number = PV_BIAS_DAILY_RETENTION_DAYS,
+): PvBiasDailyPersist {
+	if (!(retainDays > 0)) return persist;
+	const keys = Object.keys(persist.days).sort();
+	const keep = new Set(keys.slice(-Math.floor(retainDays)));
+	const days: PvBiasDailyPersist["days"] = {};
+	for (const key of keys) {
+		if (keep.has(key)) days[key] = persist.days[key];
+	}
+	return { ...persist, days };
+}
+
 export async function readDailyPersist(baseDir: string): Promise<PvBiasDailyPersist> {
 	try {
 		const raw = await fs.readFile(path.join(baseDir, PV_BIAS_DAILY_FILENAME), "utf8");
@@ -38,9 +53,10 @@ export async function readDailyPersist(baseDir: string): Promise<PvBiasDailyPers
 
 export async function writeDailyPersist(baseDir: string, persist: PvBiasDailyPersist): Promise<void> {
 	await fs.mkdir(baseDir, { recursive: true });
+	const compacted = pruneDailyPersist(persist);
 	await atomicWriteFile(
 		path.join(baseDir, PV_BIAS_DAILY_FILENAME),
-		`${JSON.stringify(persist, null, 2)}\n`,
+		`${JSON.stringify(compacted, null, 2)}\n`,
 	);
 }
 

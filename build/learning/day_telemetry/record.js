@@ -4,7 +4,7 @@
  * Beeinflusst Steuerung nicht; Fehler werden isoliert.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DAY_TELEMETRY_PERSIST_CATEGORY = exports.noteDayTelemetryPlanPublished = exports.tickDayTelemetry = exports.__resetDayTelemetryRuntimeForTest = void 0;
+exports.DAY_TELEMETRY_PERSIST_CATEGORY = exports.noteDayTelemetryPlanPublished = exports.tickDayTelemetry = exports.__dayTelemetryCachedDateKeysForTest = exports.__resetDayTelemetryRuntimeForTest = void 0;
 const state_util_1 = require("../../ems_light/state_util");
 const config_1 = require("../../intent/config");
 const time_1 = require("../../operator/time");
@@ -52,6 +52,11 @@ function __resetDayTelemetryRuntimeForTest() {
     storeDir = null;
 }
 exports.__resetDayTelemetryRuntimeForTest = __resetDayTelemetryRuntimeForTest;
+/** Nur Tests: belegt, dass die Produktions-Cache-Hydration begrenzt bleibt. */
+function __dayTelemetryCachedDateKeysForTest() {
+    return Object.keys(storeCache?.days ?? {}).sort();
+}
+exports.__dayTelemetryCachedDateKeysForTest = __dayTelemetryCachedDateKeysForTest;
 async function publishStatus(host, id, val) {
     try {
         const cur = await host.getStateAsync(id);
@@ -68,19 +73,23 @@ function baseDir(host) {
         return null;
     return host.getAbsolutePath(constants_1.DAY_TELEMETRY_CATEGORY);
 }
-async function loadStore(host) {
+async function loadStore(host, dateKey) {
     const dir = baseDir(host);
     if (storeCache && storeDir === dir)
         return storeCache;
     storeDir = dir;
-    storeCache = await (0, persist_1.loadOrEmptyDayTelemetryStore)(dir);
+    storeCache = await (0, persist_1.loadDayTelemetryStoreForDateKeys)(dir, [
+        dateKey,
+        (0, time_1.addDaysToDateKey)(dateKey, -1),
+    ]);
     return storeCache;
 }
 async function persistDayAndMaybeYesterday(host, store, dateKey, yesterdayKey, yesterdayJustCompleted) {
     const dir = baseDir(host);
     if (!dir)
         return;
-    const pruned = (0, persist_1.pruneDayTelemetryStore)(store, constants_1.DAY_TELEMETRY_RETENTION_DAYS, dateKey);
+    /* Platte: 90 Tage. RAM: nur aktiver Tag + Vortag. */
+    const pruned = (0, persist_1.pruneDayTelemetryStore)(store, 2, dateKey);
     pruned.updatedAtIso = new Date().toISOString();
     const day = pruned.days[dateKey];
     if (day) {
@@ -211,7 +220,7 @@ async function tickDayTelemetryInner(host, now) {
     const timezone = (0, config_1.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
     const nowMs = now.getTime();
     const dateKey = (0, time_1.localDateKeyInTimezone)(now, timezone);
-    let store = await loadStore(host);
+    let store = await loadStore(host, dateKey);
     /* Gestern als complete markieren wenn über Mitternacht (Kalender, nicht Coverage) */
     const yesterday = (0, time_1.addDaysToDateKey)(dateKey, -1);
     let yesterdayJustCompleted = false;
@@ -324,6 +333,14 @@ async function tickDayTelemetryInner(host, now) {
             integratePowerDomain(day, layout, fromMs, toMs, gbW, day.buckets.gridBalanceDischargeKwh, quality_mask_1.TELEMETRY_DOMAIN.BATTERY);
         }
         integratePowerDomain(day, layout, fromMs, toMs, sample.evChargePowerW, day.buckets.evChargedKwh, quality_mask_1.TELEMETRY_DOMAIN.EV);
+        const evMode = (sample.evMode ?? "").trim().toLowerCase();
+        const evModeKnown = evMode.length > 0;
+        const evFastPowerW = evModeKnown
+            ? evMode === "now" || evMode === "immediate"
+                ? sample.evChargePowerW
+                : 0
+            : null;
+        integratePowerDomain(day, layout, fromMs, toMs, evFastPowerW, day.buckets.evFastChargedKwh, quality_mask_1.TELEMETRY_DOMAIN.EV);
         integratePowerDomain(day, layout, fromMs, toMs, sample.immersionPowerW, day.buckets.immersionKwh, quality_mask_1.TELEMETRY_DOMAIN.THERMAL);
         if (sample.immersionRuntimeOn === true) {
             for (const i of overlappingSlotIndicesSafe(layout, fromMs, toMs)) {
@@ -397,6 +414,10 @@ async function tickDayTelemetryInner(host, now) {
                 markDomain(day, s.slotIndex, quality_mask_1.TELEMETRY_DOMAIN.GRID, quality_mask_1.DOMAIN_QUALITY.ok);
             }
         }
+        else if (imp.deltaKwh === 0 && !imp.reset && sample.gridImportEnergyKwh != null) {
+            /* Unveränderter gültiger Zähler ist eine gemessene Null, keine Datenlücke. */
+            integratePowerDomain(day, layout, fromMs, toMs, 0, day.buckets.gridImportKwh, quality_mask_1.TELEMETRY_DOMAIN.GRID);
+        }
         else if (sample.gridImportEnergyKwh == null && sample.gridImportPowerW != null) {
             integratePowerDomain(day, layout, fromMs, toMs, sample.gridImportPowerW, day.buckets.gridImportKwh, quality_mask_1.TELEMETRY_DOMAIN.GRID);
         }
@@ -407,6 +428,9 @@ async function tickDayTelemetryInner(host, now) {
             for (const s of (0, energy_integrate_1.splitAmountAcrossSlots)(layout, fromMs, toMs, exp.deltaKwh)) {
                 markDomain(day, s.slotIndex, quality_mask_1.TELEMETRY_DOMAIN.GRID, quality_mask_1.DOMAIN_QUALITY.ok);
             }
+        }
+        else if (exp.deltaKwh === 0 && !exp.reset && sample.gridExportEnergyKwh != null) {
+            integratePowerDomain(day, layout, fromMs, toMs, 0, day.buckets.gridExportKwh, quality_mask_1.TELEMETRY_DOMAIN.GRID);
         }
         const fromSample = (0, sources_1.resolveActiveSharedPowerGroupId)(sample.climateUnitActive, host.config, mem.sharedGroupMap);
         const sharedGroup = fromSample.groupId;
@@ -488,6 +512,7 @@ function roundDayBuckets(day) {
         "batteryDischargedKwh",
         "gridBalanceDischargeKwh",
         "evChargedKwh",
+        "evFastChargedKwh",
         "immersionKwh",
         "climateKwh",
         "climateElecSharedKwh",
@@ -517,7 +542,7 @@ exports.noteDayTelemetryPlanPublished = noteDayTelemetryPlanPublished;
 async function notePlanInner(input) {
     const { host, now, timezone, plan, plannerInput, replanReasons, batteryDecision } = input;
     const dateKey = (0, time_1.localDateKeyInTimezone)(now, timezone);
-    let store = await loadStore(host);
+    let store = await loadStore(host, dateKey);
     const ensured = ensureDay(store, dateKey, timezone);
     store = ensured.store;
     const day = ensured.day;

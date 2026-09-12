@@ -219,8 +219,8 @@ function minimalForecast(overrides = {}) {
         strict_1.default.notEqual(firstSlot.fixedBalancePowerW, null);
         strict_1.default.notEqual(firstSlot.availablePvSurplusPowerW, null);
         strict_1.default.equal(plan.slots.length, slots_1.DAILY_PLAN_HORIZON_HOURS * 4);
-        strict_1.default.equal(plan.validUntil, "2026-07-13T10:00:00.000Z");
-        // Segmente gelten für den konfigurierten Tag (heute); rollierender 48h-Horizont
+        strict_1.default.equal(plan.validUntil, "2026-07-14T10:00:00.000Z");
+        // Segmente gelten für den konfigurierten Tag (heute); rollierender 72-h-Horizont
         // enthält Folgetage ohne Hauslast-Segmente in diesem Fixture → nur Tag 0 prüfen.
         for (const s of plan.slots.filter((x) => x.slot.startIso.startsWith("2026-07-11"))) {
             const hourUtc = new Date(s.slot.startIso).getUTCHours();
@@ -289,11 +289,11 @@ function minimalForecast(overrides = {}) {
     (0, node_test_1.it)("floors to 15 minute boundary", () => {
         strict_1.default.equal((0, slots_1.slotStartIsoFloored)(NOW, TZ), "2026-07-11T10:00:00.000Z");
     });
-    (0, node_test_1.it)("builds rolling horizon of at least 48 hours (Block 5)", () => {
+    (0, node_test_1.it)("builds the rolling 72-hour horizon (Punkt 5)", () => {
         const slots = (0, slots_1.buildDailyHorizonSlots)(NOW, TZ, 15);
         strict_1.default.ok(slots.length > 0);
         strict_1.default.equal(slots[0].startIso, "2026-07-11T10:00:00.000Z");
-        strict_1.default.equal(slots[slots.length - 1].endIso, "2026-07-13T10:00:00.000Z");
+        strict_1.default.equal(slots[slots.length - 1].endIso, "2026-07-14T10:00:00.000Z");
         strict_1.default.equal(slots.length, slots_1.DAILY_PLAN_HORIZON_HOURS * 4);
     });
 });

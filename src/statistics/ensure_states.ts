@@ -14,6 +14,9 @@ export const STATISTICS_STATES = {
 	mobilityTodayJson: `${STATISTICS_BASE}.mobility.today_json`,
 	mobilityMonthJson: `${STATISTICS_BASE}.mobility.month_json`,
 	mobilityPeriodJson: `${STATISTICS_BASE}.mobility.period_json`,
+	energyTodayJson: `${STATISTICS_BASE}.energy.today_json`,
+	energyMonthJson: `${STATISTICS_BASE}.energy.month_json`,
+	energyPeriodJson: `${STATISTICS_BASE}.energy.period_json`,
 	homeTodaySavingsEur: `${STATISTICS_BASE}.home.today_savings_vs_fixed_eur`,
 	homeMonthSavingsEur: `${STATISTICS_BASE}.home.month_savings_vs_fixed_eur`,
 	homePeriodSavingsEur: `${STATISTICS_BASE}.home.period_savings_vs_fixed_eur`,
@@ -120,6 +123,7 @@ export async function ensureStatisticsStateTree(host: StateHost): Promise<void> 
 	await ensureChannel(host, `${STATISTICS_BASE}.mobility.today`, "Mobilität heute (flache States)");
 	await ensureChannel(host, `${STATISTICS_BASE}.mobility.period`, "Mobilität Periode (flache States)");
 	await ensureChannel(host, `${STATISTICS_BASE}.public_charge`, "Statistik Schnellader / manuelle Rechnung");
+	await ensureChannel(host, `${STATISTICS_BASE}.energy`, "Energetische Statistik aus Day-Telemetry");
 
 	await ensureStates(host, [
 		boolState(STATISTICS_STATES.enabled, "Statistik-Sidecar aktiv", true),
@@ -133,6 +137,9 @@ export async function ensureStatisticsStateTree(host: StateHost): Promise<void> 
 		strState(STATISTICS_STATES.mobilityTodayJson, "Mobilität heute (JSON)", "{}"),
 		strState(STATISTICS_STATES.mobilityMonthJson, "Mobilität Monat (JSON)", "{}"),
 		strState(STATISTICS_STATES.mobilityPeriodJson, "Mobilität Periode Vergleich (JSON)", "{}"),
+		strState(STATISTICS_STATES.energyTodayJson, "Energie heute (JSON)", "{}"),
+		strState(STATISTICS_STATES.energyMonthJson, "Energie Monat (JSON)", "{}"),
+		strState(STATISTICS_STATES.energyPeriodJson, "Energie Periode (JSON)", "{}"),
 		numState(STATISTICS_STATES.homeTodaySavingsEur, "Haus heute Ersparnis vs. Festtarif (Legacy)", "EUR"),
 		numState(STATISTICS_STATES.homeMonthSavingsEur, "Haus Monat Ersparnis vs. Festtarif (Legacy)", "EUR"),
 		numState(STATISTICS_STATES.homePeriodSavingsEur, "Haus Periode Ersparnis vs. Festtarif (Legacy)", "EUR"),

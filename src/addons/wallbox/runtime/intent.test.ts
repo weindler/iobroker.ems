@@ -82,6 +82,7 @@ function intentFrom(
 	opts: {
 		governanceEnabled?: boolean;
 		addonEnabled?: boolean;
+		tibberNowHandoffEnabled?: boolean;
 		meta?: Parameters<typeof evaluateWallboxDailyPlan>[0]["meta"];
 	} = {},
 ) {
@@ -94,6 +95,7 @@ function intentFrom(
 		decision: d,
 		governanceEnabled: opts.governanceEnabled ?? true,
 		addonEnabled: opts.addonEnabled ?? true,
+		tibberNowHandoffEnabled: opts.tibberNowHandoffEnabled ?? false,
 		phases: tel.activePhases ?? tel.configuredPhases,
 		now: NOW,
 	});
@@ -115,6 +117,14 @@ describe("wallbox dispatch intent", () => {
 		assert.equal(i.targetPowerW, 3600);
 		assert.equal(i.dailyPlanRevision, 7);
 		assert.ok(i.validUntil);
+	});
+
+	it("configured Tibber handoff suppresses normal PV/min+PV planner dispatch", () => {
+		const i = intentFrom([allocationEntry(3600)], telemetry(), { tibberNowHandoffEnabled: true });
+		assert.equal(i.action, "none");
+		assert.equal(i.enabled, false);
+		assert.equal(i.targetPowerW, 0);
+		assert.match(i.reasonDe, /Tibber Grid Rewards/);
 	});
 
 	it("valid zero allocation produces hold", () => {

@@ -16,6 +16,15 @@ function average(values) {
         return null;
     return round3(values.reduce((a, b) => a + b, 0) / values.length);
 }
+function median(values) {
+    if (values.length === 0)
+        return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return round3(sorted.length % 2 === 0
+        ? (sorted[mid - 1] + sorted[mid]) / 2
+        : sorted[mid]);
+}
 function findNearestSoc(points, targetTs, maxDeltaMs) {
     return (0, night_bridge_1.findNearestSoc)(points, targetTs, maxDeltaMs);
 }
@@ -129,10 +138,28 @@ function computeNightDischarges(params) {
     const gridBalancePoints = params.gridBalancePowerPoints ?? [];
     function scoreWindows(windows) {
         const nights = [];
-        let gridBalanceAttributedNights = 0;
+        const nightSamples = [];
         let gridBalanceExcludedNights = 0;
         for (const w of windows) {
             const obs = expandBridgeWithClockEnvelope(w, params.nightStart, params.nightEnd, params.astroDaily);
+            const diagnostic = {
+                eveningDateKey: w.eveningDateKey,
+                method: w.method,
+                bridgeStartIso: new Date(w.startTs).toISOString(),
+                bridgeEndIso: new Date(w.endTs).toISOString(),
+                observationStartIso: new Date(obs.startTs).toISOString(),
+                observationEndIso: new Date(obs.endTs).toISOString(),
+                startSocPct: null,
+                lowestSocPct: null,
+                grossDischargePct: null,
+                grossDischargeKwh: null,
+                gridBalanceKwh: null,
+                netDischargePct: null,
+                netDischargeKwh: null,
+                recencyWeight: null,
+                accepted: false,
+                exclusionReason: null,
+            };
             /** Abend: SOC bei/vor Beobachtungsstart; Morgen: Tiefstwert im erweiterten Fenster. */
             const socStart = (0, night_bridge_1.findSocAtOrBefore)(params.socPoints, obs.startTs, maxDelta) ??
                 findNearestSoc(params.socPoints, obs.startTs, maxDelta);
@@ -140,18 +167,37 @@ function computeNightDischarges(params) {
             const socEnd = minPoint?.socPct ??
                 (0, night_bridge_1.findSocAtOrBefore)(params.socPoints, obs.endTs, maxDelta) ??
                 findNearestSoc(params.socPoints, obs.endTs, maxDelta);
-            if (socStart === null || socEnd === null)
+            diagnostic.startSocPct = socStart;
+            diagnostic.lowestSocPct = socEnd;
+            if (socStart === null || socEnd === null) {
+                diagnostic.exclusionReason = "missing_soc";
+                nightSamples.push(diagnostic);
                 continue;
+            }
             const dischargePct = socStart - socEnd;
-            if (dischargePct <= 0 || dischargePct > 65)
+            diagnostic.grossDischargePct = round2(dischargePct);
+            diagnostic.grossDischargeKwh =
+                params.capacityKwh !== null ? round3((dischargePct / 100) * params.capacityKwh) : null;
+            if (dischargePct <= 0) {
+                diagnostic.exclusionReason = "no_discharge";
+                nightSamples.push(diagnostic);
                 continue;
+            }
+            if (dischargePct > 65) {
+                diagnostic.exclusionReason = "implausible_discharge";
+                nightSamples.push(diagnostic);
+                continue;
+            }
             /*
              * Zwischenladung (z. B. Netzladung mitten in der Nacht) vor dem Tiefpunkt verfälscht
              * den einfachen Start-Ende-SOC — diese Nacht ist keine „normale“ Nacht und fließt
              * nicht in die Reserve-Basis ein.
              */
-            if (minPoint && (0, night_bridge_1.hasInterimRecharge)(params.socPoints, obs.startTs, minPoint.ts))
+            if (minPoint && (0, night_bridge_1.hasInterimRecharge)(params.socPoints, obs.startTs, minPoint.ts)) {
+                diagnostic.exclusionReason = "interim_recharge";
+                nightSamples.push(diagnostic);
                 continue;
+            }
             let nightPct = dischargePct;
             let nightKwh = params.capacityKwh !== null ? (dischargePct / 100) * params.capacityKwh : null;
             /*
@@ -166,38 +212,58 @@ function computeNightDischarges(params) {
                     const gbKwh = (0, night_bridge_1.integratePowerKwh)(gridBalancePoints, obs.startTs, obs.endTs);
                     if (gbKwh === null) {
                         gridBalanceExcludedNights++;
+                        diagnostic.exclusionReason = "grid_balance_coverage";
+                        nightSamples.push(diagnostic);
                         continue;
                     }
+                    diagnostic.gridBalanceKwh = round3(gbKwh);
                     if (gbKwh > 0.01) {
                         const netKwh = Math.max(0, nightKwh - gbKwh);
                         nightPct =
                             params.capacityKwh > 0 ? Math.max(0, (netKwh / params.capacityKwh) * 100) : nightPct;
                         nightKwh = netKwh;
-                        gridBalanceAttributedNights++;
                     }
                 }
             }
             const ageDays = Math.max(0, (nowMs - w.endTs) / constants_1.MS_PER_DAY);
+            const weight = (0, night_bridge_1.recencyWeight)(ageDays);
+            diagnostic.netDischargePct = round2(nightPct);
+            diagnostic.netDischargeKwh = nightKwh !== null ? round3(nightKwh) : null;
+            diagnostic.recencyWeight = round3(weight);
+            diagnostic.accepted = true;
+            nightSamples.push(diagnostic);
             nights.push({
                 pct: round2(nightPct),
                 kwh: nightKwh !== null ? round3(nightKwh) : null,
-                weight: (0, night_bridge_1.recencyWeight)(ageDays),
+                weight,
                 /** Brückendauer bleibt die dynamische Erkennung (Diagnose), nicht die Uhr-Hülle. */
                 bridgeHours: (w.endTs - w.startTs) / constants_1.MS_PER_HOUR,
+                diagnostic,
             });
         }
         /** Sondernächte mit extremem Verbrauch (> 2.5× Median) dürfen den Lernwert nicht verzerren. */
         const trimmed = trimNightOutliers(nights);
+        const kept = new Set(trimmed);
+        for (const night of nights) {
+            if (kept.has(night))
+                continue;
+            night.diagnostic.accepted = false;
+            night.diagnostic.exclusionReason = "high_outlier";
+        }
         const kwhRecords = trimmed.filter((n) => n.kwh !== null);
         return {
             avgPct: (0, night_bridge_1.weightedAverage)(trimmed.map((n) => n.pct), trimmed.map((n) => n.weight)),
             avgKwh: params.capacityKwh !== null && kwhRecords.length === trimmed.length
                 ? (0, night_bridge_1.weightedAverage)(kwhRecords.map((n) => n.kwh), kwhRecords.map((n) => n.weight))
                 : null,
+            medianKwh: params.capacityKwh !== null && kwhRecords.length === trimmed.length
+                ? median(kwhRecords.map((n) => n.kwh))
+                : null,
             validNights: trimmed.length,
             avgBridgeHours: average(trimmed.map((n) => n.bridgeHours)),
-            gridBalanceAttributedNights,
+            gridBalanceAttributedNights: trimmed.filter((n) => (n.diagnostic.gridBalanceKwh ?? 0) > 0.01).length,
             gridBalanceExcludedNights,
+            nightSamples,
         };
     }
     function isDynamicMethod(m) {
@@ -285,24 +351,28 @@ function computeNightDischarges(params) {
         return {
             avgPct: null,
             avgKwh: null,
+            medianKwh: null,
             validNights: 0,
             method: "none",
             avgBridgeHours: null,
             windows: [],
             gridBalanceAttributedNights: 0,
             gridBalanceExcludedNights: 0,
+            nightSamples: [],
         };
     }
     const bestWindows = candidates.find((c) => c.method === best.method)?.windows ?? [];
     return {
         avgPct: best.avgPct,
         avgKwh: best.avgKwh,
+        medianKwh: best.medianKwh,
         validNights: best.validNights,
         method: best.method,
         avgBridgeHours: best.avgBridgeHours,
         windows: bestWindows,
         gridBalanceAttributedNights: best.gridBalanceAttributedNights,
         gridBalanceExcludedNights: best.gridBalanceExcludedNights,
+        nightSamples: best.nightSamples,
     };
 }
 exports.computeNightDischarges = computeNightDischarges;
@@ -546,6 +616,8 @@ function computeBatteryRuntimeLearning(params) {
         sampleDays: params.sampleDays,
         avgNightDischargePct: night.avgPct,
         avgNightDischargeKwh: night.avgKwh,
+        medianNightDischargeKwh: night.medianKwh,
+        nightEstimator: "recency_weighted_average",
         avgChargeRatePctH: rates.avgChargeRatePctH,
         avgDischargeRatePctH: rates.avgDischargeRatePctH,
         avgChargePowerW: powerStats.avgChargePowerW,
@@ -586,6 +658,7 @@ function computeBatteryRuntimeLearning(params) {
         nightReserveReasonDe: reserve.reasonDe,
         gridBalanceAttributedNights: night.gridBalanceAttributedNights,
         gridBalanceExcludedNights: night.gridBalanceExcludedNights,
+        nightSamples: night.nightSamples,
     };
 }
 exports.computeBatteryRuntimeLearning = computeBatteryRuntimeLearning;
@@ -604,6 +677,7 @@ const EMPTY_POWER_DIAGNOSTICS = {
     nightBridgeValidNights: 0,
     gridBalanceAttributedNights: 0,
     gridBalanceExcludedNights: 0,
+    nightSamples: [],
 };
 function withPowerDiagnostics(result, meta) {
     if (!meta)
@@ -628,6 +702,8 @@ function noSourceResult(cfg) {
         sampleDays: 0,
         avgNightDischargePct: null,
         avgNightDischargeKwh: null,
+        medianNightDischargeKwh: null,
+        nightEstimator: "recency_weighted_average",
         predictedNightConsumptionKwh: null,
         nightConsumptionValidNights: 0,
         predictedNightGridImportKwh: null,

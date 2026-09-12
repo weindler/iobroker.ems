@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureEmsLightStates = void 0;
 const channels_1 = require("./channels");
 const state_util_1 = require("./state_util");
+const catalog_1 = require("../profiles/catalog");
+const core_snapshot_1 = require("../app/core_snapshot");
 const OPERATOR_BRIEFING_DEFAULT = "EMS-Light Phase 1 aktiv. Planner noch nicht initialisiert.";
 function strState(id, name, def, opts) {
     return {
@@ -11,6 +13,15 @@ function strState(id, name, def, opts) {
         defaultVal: def,
         setDefaultIfEmpty: !opts?.alwaysUpdate,
         alwaysUpdate: opts?.alwaysUpdate,
+    };
+}
+function jsonState(id, name, def, alwaysUpdate = false) {
+    return {
+        id,
+        common: { name, type: "string", role: "json", read: true, write: false, def },
+        defaultVal: def,
+        setDefaultIfEmpty: true,
+        alwaysUpdate,
     };
 }
 function numState(id, name, unit) {
@@ -41,6 +52,9 @@ async function ensureEmsLightStates(host, adapterVersion) {
         strState("system.mode", "EMS-Light Modus", "ems_light"),
         strState("system.last_tick_at", "EMS-Light letzter Tick (ISO)"),
         strState("system.health", "EMS-Light Health", "initializing"),
+        jsonState("profiles.catalog_json", "Verfügbare Geräte-/Hersteller-Templates (JSON)", JSON.stringify((0, catalog_1.buildDeviceTemplateCatalog)()), true),
+        jsonState(core_snapshot_1.APP_CORE_CONTRACT_STATE, "Lokaler App-Core-Vertrag (JSON)", JSON.stringify(core_snapshot_1.APP_CORE_CONTRACT), true),
+        jsonState(core_snapshot_1.APP_CORE_SNAPSHOT_STATE, "Lokaler App-Core-Snapshot (JSON)", "{}"),
         numState("live.battery.soc_pct", "Live Batterie SOC", "%"),
         numState("live.battery.capacity_kwh", "Live Batteriekapazität", "kWh"),
         numState("live.battery.pv_ac_power_w", "Live PV AC Leistung", "W"),
@@ -55,6 +69,8 @@ async function ensureEmsLightStates(host, adapterVersion) {
         strState("operator.briefing_de", "Operator Briefing (DE)", OPERATOR_BRIEFING_DEFAULT),
         strState("operator.assessment.json", "Operative EMS-Einschätzung (JSON)", "{}"),
         strState("operator.assessment_de", "Operative EMS-Einschätzung (DE)", "EMS-Einschätzung noch nicht gebildet."),
+        jsonState("operator.outlook_72h.json", "Rollender 72-h-Ausblick (JSON)", "{}"),
+        strState("operator.outlook_72h_de", "Rollender 72-h-Ausblick (DE)", "72-h-Ausblick noch nicht gebildet."),
         strState("operator.product_summary_de", "Produkt-Tageszusammenfassung (DE, deterministisch)", "Noch kein Unified Day Plan."),
         strState("operator.plan.battery_strategy_de", "Strategischer Batterieplan (DE)", ""),
         strState("operator.plan.wallbox_strategy_de", "Strategischer Wallboxplan (DE)", ""),

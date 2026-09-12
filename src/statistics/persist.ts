@@ -9,6 +9,39 @@ import { emptyHomeDay, emptyMobilityDay, localDateKey } from "./compute";
 
 export const STATISTICS_PERSIST_FILE = "statistics_v1.json";
 export const STATISTICS_PERSIST_CATEGORY = "statistics";
+/** Buchhaltungs-Tageswerte: zehn Jahre, im Gegensatz zu 90/120 Tagen Detailtelemetrie. */
+export const STATISTICS_DAILY_RETENTION_DAYS = 3_660;
+
+function validDateKey(value: string): boolean {
+	return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+/**
+ * Harte Obergrenze für den RAM-/SSD-Ledger. Noch nicht abgerechnete öffentliche
+ * Ladesitzungen bleiben aus Datenintegritätsgründen auch jenseits des Cutoffs erhalten.
+ */
+export function pruneStatisticsPersist(
+	data: StatisticsPersist,
+	anchorDateKey: string,
+	retainDays: number = STATISTICS_DAILY_RETENTION_DAYS,
+): StatisticsPersist {
+	if (!validDateKey(anchorDateKey) || !(retainDays > 0)) return data;
+	const anchor = new Date(`${anchorDateKey}T12:00:00.000Z`);
+	anchor.setUTCDate(anchor.getUTCDate() - (Math.floor(retainDays) - 1));
+	const cutoff = anchor.toISOString().slice(0, 10);
+	const days: StatisticsPersist["days"] = {};
+	for (const [dateKey, day] of Object.entries(data.days)) {
+		const pendingInvoice = day.publicSessions?.some((session) => session.status === "pending_invoice") === true;
+		if (!validDateKey(dateKey) || dateKey >= cutoff || pendingInvoice) days[dateKey] = day;
+	}
+	const monthRewardsBilling: StatisticsPersist["monthRewardsBilling"] = {};
+	for (const [monthKey, billing] of Object.entries(data.monthRewardsBilling ?? {})) {
+		if (!/^\d{4}-\d{2}$/.test(monthKey) || monthKey >= cutoff.slice(0, 7)) {
+			monthRewardsBilling[monthKey] = billing;
+		}
+	}
+	return { ...data, days, monthRewardsBilling };
+}
 
 export function emptyRuntime(dateKey: string): StatisticsPersist["runtime"] {
 	return {
@@ -69,6 +102,11 @@ export async function readStatisticsPersist(dir: string): Promise<StatisticsPers
 
 export async function writeStatisticsPersist(dir: string, data: StatisticsPersist): Promise<void> {
 	await mkdir(dir, { recursive: true });
+	const anchor = validDateKey(data.runtime.dateKey) ? data.runtime.dateKey : localDateKey(new Date());
+	const compacted = pruneStatisticsPersist(data, anchor);
+	/* Tick-Cache ebenfalls begrenzen; nicht erst nach Adapter-Neustart. */
+	data.days = compacted.days;
+	data.monthRewardsBilling = compacted.monthRewardsBilling;
 	data.generatedAt = new Date().toISOString();
 	await writeFile(join(dir, STATISTICS_PERSIST_FILE), JSON.stringify(data, null, 2), "utf8");
 }

@@ -4,7 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
- * v0.2.23 — akzeptiertes Compare-`defer_tomorrow` sperrt nur Soft-IH über slotAllowed.
+ * Authority-Grenze: Compare-`defer_tomorrow` bleibt advisory und darf den echten
+ * Unified-Input bzw. dessen Allokationen nicht verändern.
  */
 const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = require("node:test");
@@ -188,8 +189,16 @@ function retainedDeferPrefs(ctx) {
         })),
     ];
 }
-(0, node_test_1.describe)("v0.2.23 accepted defer_tomorrow → Unified Soft slotAllowed", () => {
-    (0, node_test_1.it)("akzeptiertes defer sperrt heutige Soft-IH-Slots, Live-Surplus umgeht das nicht", () => {
+/** Simuliert einen alten Aufrufer; zusätzliche KI-Felder müssen an der Bridge versanden. */
+function withLegacyAiTunnel(ctx, disallowed) {
+    const legacy = {
+        ...ctx,
+        immersionSoftDisallowedSlotIsos: disallowed,
+    };
+    return legacy;
+}
+(0, node_test_1.describe)("AI defer_tomorrow bleibt außerhalb der Unified-Live-Authority", () => {
+    (0, node_test_1.it)("akzeptiertes Compare-B beeinflusst heutige Soft-IH-Allokationen nicht", () => {
         const ctx = buildContext();
         const baseline = (0, allocate_1.allocateUnifiedDayPlan)((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(ctx), { generation: 1 });
         strict_1.default.ok(energyOnLocalDay(baseline, score_allocate_1.IMMERSION_SOFT_CONSUMER_ID, "2026-06-15") > 0.2, "ohne Pref muss Soft heute planbar sein");
@@ -198,9 +207,9 @@ function retainedDeferPrefs(ctx) {
             prefs: retainedDeferPrefs(ctx),
         });
         strict_1.default.ok(disallowed.length > 0);
-        const locked = (0, allocate_1.allocateUnifiedDayPlan)((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({ ...ctx, immersionSoftDisallowedSlotIsos: disallowed }), { generation: 1 });
-        strict_1.default.equal(energyOnLocalDay(locked, score_allocate_1.IMMERSION_SOFT_CONSUMER_ID, "2026-06-15"), 0, "heute keine Soft-IH-Allokation");
-        strict_1.default.ok(energyOnLocalDay(locked, score_allocate_1.IMMERSION_SOFT_CONSUMER_ID, "2026-06-16") > 0.2, "morgen Soft-IH wieder planbar");
+        const locked = (0, allocate_1.allocateUnifiedDayPlan)((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(withLegacyAiTunnel(ctx, disallowed)), { generation: 1 });
+        strict_1.default.equal(energyOnLocalDay(locked, score_allocate_1.IMMERSION_SOFT_CONSUMER_ID, "2026-06-15"), energyOnLocalDay(baseline, score_allocate_1.IMMERSION_SOFT_CONSUMER_ID, "2026-06-15"), "Compare-Präferenzen dürfen den Live-Plan nicht verändern");
+        strict_1.default.equal(Object.prototype.hasOwnProperty.call((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(withLegacyAiTunnel(ctx, disallowed)), "immersionSoftDisallowedSlotIsos"), false);
         strict_1.default.equal(energyByConsumer(locked, score_allocate_1.IMMERSION_HARD_CONSUMER_ID), 0);
     });
     (0, node_test_1.it)("nicht akzeptierte oder gelöschte Preference hat keine Wirkung", () => {
@@ -210,7 +219,7 @@ function retainedDeferPrefs(ctx) {
         strict_1.default.deepEqual(rejected, []);
         const cleared = (0, strategy_preferences_1.parseAiSlotPreferencesJson)("[]");
         strict_1.default.deepEqual((0, strategy_preferences_1.acceptedImmersionSoftDisallowedSlotIsos)({ activePlan: "b", prefs: cleared }), []);
-        const plan = (0, allocate_1.allocateUnifiedDayPlan)((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({ ...ctx, immersionSoftDisallowedSlotIsos: rejected }), { generation: 1 });
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(withLegacyAiTunnel(ctx, rejected)), { generation: 1 });
         strict_1.default.ok(energyOnLocalDay(plan, score_allocate_1.IMMERSION_SOFT_CONSUMER_ID, "2026-06-15") > 0.2);
     });
     (0, node_test_1.it)("stale/Folgetag-ISOs sperren heutige Soft-Slots nicht", () => {
@@ -223,7 +232,7 @@ function retainedDeferPrefs(ctx) {
             ],
         });
         strict_1.default.equal(stale.length, 2);
-        const plan = (0, allocate_1.allocateUnifiedDayPlan)((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({ ...ctx, immersionSoftDisallowedSlotIsos: stale }), { generation: 1 });
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(withLegacyAiTunnel(ctx, stale)), { generation: 1 });
         strict_1.default.ok(energyOnLocalDay(plan, score_allocate_1.IMMERSION_SOFT_CONSUMER_ID, "2026-06-15") > 0.2);
     });
     (0, node_test_1.it)("Hard/Mandatory bleibt trotz Soft-defer heute planbar", () => {
@@ -238,8 +247,8 @@ function retainedDeferPrefs(ctx) {
             activePlan: "b",
             prefs: retainedDeferPrefs(ctx),
         });
-        const plan = (0, allocate_1.allocateUnifiedDayPlan)((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({ ...ctx, immersionSoftDisallowedSlotIsos: disallowed }), { generation: 1 });
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)((0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(withLegacyAiTunnel(ctx, disallowed)), { generation: 1 });
         strict_1.default.ok(energyOnLocalDay(plan, score_allocate_1.IMMERSION_HARD_CONSUMER_ID, "2026-06-15") >= 0.4, "Boiler-Min/Hard darf heute laufen");
-        strict_1.default.equal(energyOnLocalDay(plan, score_allocate_1.IMMERSION_SOFT_CONSUMER_ID, "2026-06-15"), 0);
+        strict_1.default.ok(energyOnLocalDay(plan, score_allocate_1.IMMERSION_SOFT_CONSUMER_ID, "2026-06-15") > 0.2);
     });
 });

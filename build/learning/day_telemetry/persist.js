@@ -28,7 +28,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT = exports.normalizeDayTelemetryStore = exports.assertDayRecordSlotWidth = exports.pruneDayTelemetryStore = exports.readDayTelemetryPersist = exports.writeDayTelemetryPersist = exports.loadOrEmptyDayTelemetryStore = exports.pruneDayTelemetryFiles = exports.migrateMonolithToDayFiles = exports.listDayTelemetryDateKeys = exports.writeDayTelemetryDay = exports.readDayTelemetryDay = exports.normalizeDayRecord = exports.dayTelemetryPersistPath = exports.dayTelemetryDayPath = exports.dayTelemetryDayFileName = exports.DAY_TELEMETRY_CATEGORY = void 0;
+exports.DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT = exports.normalizeDayTelemetryStore = exports.assertDayRecordSlotWidth = exports.pruneDayTelemetryStore = exports.readDayTelemetryPersist = exports.writeDayTelemetryPersist = exports.loadDayTelemetryStoreForDateKeys = exports.loadOrEmptyDayTelemetryStore = exports.pruneDayTelemetryFiles = exports.migrateMonolithToDayFiles = exports.listDayTelemetryDateKeys = exports.writeDayTelemetryDay = exports.readDayTelemetryDay = exports.normalizeDayRecord = exports.dayTelemetryPersistPath = exports.dayTelemetryDayPath = exports.dayTelemetryDayFileName = exports.DAY_TELEMETRY_CATEGORY = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
@@ -115,6 +115,9 @@ function normalizeDayRecord(raw, fallbackDateKey) {
     const slotCount = day.slotCount;
     if (!Array.isArray(day.buckets.gridBalanceDischargeKwh) || day.buckets.gridBalanceDischargeKwh.length !== slotCount) {
         day.buckets.gridBalanceDischargeKwh = Array.from({ length: slotCount }, () => null);
+    }
+    if (!Array.isArray(day.buckets.evFastChargedKwh) || day.buckets.evFastChargedKwh.length !== slotCount) {
+        day.buckets.evFastChargedKwh = Array.from({ length: slotCount }, () => null);
     }
     if (!Array.isArray(day.forecastSnapshots))
         day.forecastSnapshots = [];
@@ -299,6 +302,29 @@ async function loadOrEmptyDayTelemetryStore(baseDir) {
     return store;
 }
 exports.loadOrEmptyDayTelemetryStore = loadOrEmptyDayTelemetryStore;
+/**
+ * Lädt nur explizit benötigte Tagesdateien in den Arbeitsspeicher.
+ *
+ * Produktion hält damit den aktiven Tag und dessen Vortag im RAM; die vollständige
+ * 90-Tage-Historie bleibt weiterhin als Tagesdateien auf Platte und wird von Evaluator-
+ * und Learning-Modulen bei Bedarf einzeln gelesen. Das vermeidet insbesondere die
+ * Rehydration sämtlicher kompakter Forecast-Revisionsketten beim Adapterstart.
+ */
+async function loadDayTelemetryStoreForDateKeys(baseDir, dateKeys) {
+    if (!baseDir)
+        return (0, types_1.emptyDayTelemetryStore)();
+    await migrateMonolithToDayFiles(baseDir);
+    const store = (0, types_1.emptyDayTelemetryStore)();
+    const uniqueKeys = [...new Set(dateKeys.filter((k) => DATE_KEY_RE.test(k)))];
+    for (const dateKey of uniqueKeys) {
+        const day = await readDayTelemetryDay(baseDir, dateKey);
+        if (day)
+            store.days[dateKey] = day;
+    }
+    store.updatedAtIso = new Date().toISOString();
+    return store;
+}
+exports.loadDayTelemetryStoreForDateKeys = loadDayTelemetryStoreForDateKeys;
 /**
  * Schreibt alle Tage im Store als Tagesdateien (Tests / Vollpersist).
  * Produktion: bevorzugt writeDayTelemetryDay für den aktiven Tag.

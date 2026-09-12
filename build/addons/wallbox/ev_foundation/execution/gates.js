@@ -12,15 +12,16 @@ function desiredWantsWrite(desired) {
 }
 function evaluateEvExecutionGates(input) {
     const featureEnabled = input.featureEnabled && write_allowlist_1.EV_EXECUTION_PHASE5_ENABLED;
-    const executionReleased = featureEnabled || input.liveTestPermit === true;
+    const tibberHandoff = input.tibberNowHandoffPermit === true && input.desiredMode === "now";
+    const executionReleased = featureEnabled || input.liveTestPermit === true || tibberHandoff;
     let failsafeReason = "";
     let blockReason = "";
     const wantsWrite = desiredWantsWrite(input.desiredMode);
     if (input.desiredMode !== "noop") {
-        if (input.authorityFailsafeReason) {
+        if (input.authorityFailsafeReason && !tibberHandoff) {
             failsafeReason = input.authorityFailsafeReason;
         }
-        else if (input.authority === "none") {
+        else if (input.authority === "none" && !tibberHandoff) {
             failsafeReason = "authority_unknown";
         }
         else if (input.sourceOffline) {
@@ -48,7 +49,7 @@ function evaluateEvExecutionGates(input) {
         blockReason = "addon_disabled";
     else if (!input.governanceEnabled)
         blockReason = "governance";
-    else if (input.authority === "external")
+    else if (input.authority === "external" && !tibberHandoff)
         blockReason = "external_authority";
     else if (!input.globalLive)
         blockReason = "global_dryrun";
@@ -65,7 +66,7 @@ function evaluateEvExecutionGates(input) {
         blockReason = "evcc_source_stale";
     const ready = input.addonEnabled &&
         input.governanceEnabled &&
-        input.authority === "ems" &&
+        (input.authority === "ems" || tibberHandoff) &&
         input.buttonsReady &&
         input.resolvedVariant === "buttons" &&
         !failsafeReason &&

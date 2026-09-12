@@ -58,6 +58,9 @@ function buildWallboxDispatchIntent(input) {
     if (!decision.connected) {
         return noneIntent("Fahrzeug ist nicht verbunden; es wird kein Lade-Dispatch erzeugt.", now, revision);
     }
+    if (input.tibberNowHandoffEnabled) {
+        return noneIntent("Tibber Grid Rewards ist eingerichtet — EMS übergibt die Ladestrategie nach der Ansteck-Wartezeit an Fahrzeug/Wallbox.", now, revision);
+    }
     if (decision.decisionSource === "missing_telemetry" || decision.decisionSource === "mapping_incomplete") {
         return noneIntent(decision.reasonDe, now, revision);
     }

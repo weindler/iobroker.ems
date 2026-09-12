@@ -61,6 +61,12 @@ import {
 } from "./public_charge";
 import { applyStatisticsAdjust, parseStatisticsAdjustSubmit } from "./adjust";
 import { STATISTICS_FLAT, publishHomeFlat, publishMobilityFlat } from "./flat_states";
+import {
+	DAY_TELEMETRY_CATEGORY,
+	listDayTelemetryDateKeys,
+	readDayTelemetryDay,
+} from "../learning/day_telemetry/persist";
+import { buildEnergeticDayTotals, sumEnergeticDays } from "./energy";
 import type {
 	HouseCompareSummary,
 	MobilityCompareSummary,
@@ -213,6 +219,40 @@ function ensureDay(persist: StatisticsPersist, dateKey: string): StatisticsDayRe
 	return persist.days[dateKey]!;
 }
 
+/**
+ * Übernimmt die kompakte energetische Tagesbilanz in das langfristige Statistik-Ledger.
+ * Abgeschlossene Tage werden nur einmal gelesen; der laufende Tag wird aktualisiert.
+ */
+async function syncEnergeticTelemetry(
+	host: StatisticsHost,
+	persist: StatisticsPersist,
+	todayKey: string,
+): Promise<void> {
+	const dir = baseDir(host);
+	if (!dir) return;
+	const telemetryDir = host.getAbsolutePath?.(DAY_TELEMETRY_CATEGORY);
+	if (!telemetryDir) return;
+	const keys = await listDayTelemetryDateKeys(telemetryDir);
+	for (const key of keys) {
+		if (key > todayKey) continue;
+		const existing = persist.days[key]?.energy;
+		const hasFastChargeSchema =
+			existing != null &&
+			Object.prototype.hasOwnProperty.call(existing, "evFastChargedKwh") &&
+			Object.prototype.hasOwnProperty.call(existing, "evFastBatteryKwh") &&
+			Object.prototype.hasOwnProperty.call(existing, "evFastGridKwh") &&
+			Object.prototype.hasOwnProperty.call(existing, "evFastLocalKwh");
+		if (key !== todayKey && existing?.complete && hasFastChargeSchema) continue;
+		const telemetry = await readDayTelemetryDay(telemetryDir, key);
+		if (!telemetry) continue;
+		const next = buildEnergeticDayTotals(telemetry);
+		const target = ensureDay(persist, key);
+		if (JSON.stringify(target.energy ?? null) === JSON.stringify(next)) continue;
+		target.energy = next;
+		persistDirty = true;
+	}
+}
+
 function rolloverRuntimeIfNeeded(persist: StatisticsPersist, dateKey: string): void {
 	if (persist.runtime.dateKey === dateKey) return;
 	persist.runtime = emptyRuntime(dateKey);
@@ -335,6 +375,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 
 	const reasonsHome: string[] = [];
 	const reasonsMob: string[] = [];
+	await syncEnergeticTelemetry(host, persist, dateKey);
 	const day = ensureDay(persist, dateKey);
 	const rt = persist.runtime;
 	const nowMs = now.getTime();
@@ -621,6 +662,15 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	const monthDayKeys = monthKeys(dateKey, persist.days);
 	const monthHomes = monthDayKeys.map((k) => persist.days[k]!.home);
 	const monthMobs = monthDayKeys.map((k) => persist.days[k]!.mobility);
+	const energyMonth = sumEnergeticDays(
+		monthDayKeys.map((k) => persist.days[k]!.energy),
+		{
+			period: "month",
+			periodLabelDe: "Dieser Monat",
+			fromKey: `${dateKey.slice(0, 7)}-01`,
+			toKey: dateKey,
+		},
+	);
 	const homeMonthPersist = sumHomeDays(monthHomes);
 	const jsonDailyId = cfg.tibberJsonDailyStateId;
 	const jsonMonthlyId = siblingTibberConsumptionState(jsonDailyId, "jsonMonthly");
@@ -833,6 +883,18 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 			);
 		}
 	}
+	const energyPeriodKeys = periodRange
+		? dayKeysInRange(persist.days, periodRange.fromKey, periodRange.toKey)
+		: [];
+	const energyPeriod = sumEnergeticDays(
+		energyPeriodKeys.map((key) => persist.days[key]?.energy),
+		{
+			period: periodId,
+			periodLabelDe: periodMeta.periodLabelDe,
+			fromKey: periodMeta.fromKey,
+			toKey: periodMeta.toKey,
+		},
+	);
 
 	const homeTodaySum = buildHomeSummary("today", day.home, reasonsHome);
 	const homeMonthSum = buildHomeSummary("month", homeMonth, reasonsHome, {
@@ -877,6 +939,9 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	await setIfChanged(host, STATISTICS_STATES.mobilityTodayJson, JSON.stringify(mobTodaySum));
 	await setIfChanged(host, STATISTICS_STATES.mobilityMonthJson, JSON.stringify(mobMonthSum));
 	await setIfChanged(host, STATISTICS_STATES.mobilityPeriodJson, JSON.stringify(mobPeriodSum));
+	await setIfChanged(host, STATISTICS_STATES.energyTodayJson, JSON.stringify(day.energy ?? null));
+	await setIfChanged(host, STATISTICS_STATES.energyMonthJson, JSON.stringify(energyMonth));
+	await setIfChanged(host, STATISTICS_STATES.energyPeriodJson, JSON.stringify(energyPeriod));
 	await setIfChanged(host, STATISTICS_STATES.homeTodaySavingsEur, day.home.savingsVsFixedEur);
 	await setIfChanged(host, STATISTICS_STATES.homeMonthSavingsEur, homeMonth.savingsVsFixedEur);
 	await setIfChanged(host, STATISTICS_STATES.homePeriodSavingsEur, homePeriod.savingsVsFixedEur);

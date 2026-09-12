@@ -1,7 +1,8 @@
 /**
  * EVCC mode-control variants (v0.1.275).
  * buttons = current recommended ioBroker/EVCC interface; pv_control and string_mode remain legacy.
- * Diagnosis only — no live writes in this phase.
+ * Der allgemeine Planner-Live-Dispatch bleibt gesperrt. Ein separater, eng begrenzter
+ * Grid-Rewards-Plug-Edge-Pfad darf ausschließlich den validierten `control.now`-Button nutzen.
  */
 
 import { ADMIN_INTENT_EVCC_MODE_STATE } from "../../intent/core/constants";

@@ -3,6 +3,7 @@ import { ensureChannel, type StateHost } from "./state_util";
 /** EMS-Light Kanäle (Phase 1) — ergänzt bestehenden Baum, löscht nichts. */
 export const EMS_LIGHT_CHANNEL_IDS: Array<{ id: string; nameDe: string }> = [
 	{ id: "profiles", nameDe: "EMS-Light Profile" },
+	{ id: "app", nameDe: "EMS-Light lokale App-Schnittstelle" },
 	{ id: "live", nameDe: "EMS-Light Live-Cache" },
 	{ id: "learning", nameDe: "EMS-Light Learning" },
 	{ id: "planner", nameDe: "EMS-Light Planner" },

@@ -76,7 +76,7 @@ function buildPvContribution(input) {
     const slots = [];
     let shapeActive = false;
     if (hasForecast && input.shape && input.shape.latDeg !== null && input.shape.lonDeg !== null) {
-        // Roadmap Block 5: 15-Min-Form für alle Horizon-Tage mit kWh (Daily Plan ≥48 h),
+        // Arbeitsplan Punkt 5: 15-Min-Form für alle Horizon-Tage mit kWh (Daily Plan 72 h),
         // nicht nur heute/morgen — nie erfundene Tages-kWh.
         const today = todayKey ?? (0, time_1.localDateKeyInTimezone)(input.now, input.shape.timezone);
         const dayKwhByKey = new Map();

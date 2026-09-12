@@ -41,7 +41,8 @@ function isAllowedEvccButtonWriteTarget(stateId, button) {
 }
 exports.isAllowedEvccButtonWriteTarget = isAllowedEvccButtonWriteTarget;
 async function executeEvccButtonWrite(host, input) {
-    const released = write_allowlist_1.EV_EXECUTION_PHASE5_ENABLED || input.liveTestPermit === true;
+    const tibberHandoffReleased = input.tibberNowHandoffPermit === true && input.mode === "now";
+    const released = write_allowlist_1.EV_EXECUTION_PHASE5_ENABLED || input.liveTestPermit === true || tibberHandoffReleased;
     if (!released || !input.writeAllowed) {
         return {
             attempted: false,
@@ -77,7 +78,7 @@ async function executeEvccButtonWrite(host, input) {
     const r = await (0, device_write_1.writeForeignIfChanged)(host, {
         stateId: targetStateId,
         value: true,
-        reason: `ev_execution button ${button}`,
+        reason: tibberHandoffReleased ? "tibber grid rewards handoff button now" : `ev_execution button ${button}`,
         force: true,
     });
     return {

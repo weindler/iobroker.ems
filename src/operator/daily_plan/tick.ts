@@ -43,11 +43,6 @@ import {
 import { IMMERSION_RUNTIME_STATES } from "../../addons/immersion_heater/runtime/types";
 import { asNum } from "../../ems_light/state_util";
 import { AI_STATES } from "../../ai/ensure_states";
-import { COMPARE_STATES } from "../../ai/compare/ensure_states";
-import {
-	acceptedImmersionSoftDisallowedSlotIsos,
-	parseAiSlotPreferencesJson,
-} from "../../ai/strategy_preferences";
 import { buildPlannerConstraints } from "../planning/battery";
 import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
 import { WALLBOX_RUNTIME_STATES } from "../../addons/wallbox/runtime/states";
@@ -1135,14 +1130,6 @@ export async function runDailyPlanTick(
 				typeof batSocSt?.ts === "number" && Number.isFinite(batSocSt.ts)
 					? new Date(batSocSt.ts).toISOString()
 					: null;
-			const compareActivePlan = (await host.getStateAsync(COMPARE_STATES.activePlan))?.val;
-			const retainedPrefs = parseAiSlotPreferencesJson(
-				(await host.getStateAsync(AI_STATES.lastSlotPreferencesJson))?.val,
-			);
-			const immersionSoftDisallowedSlotIsos = acceptedImmersionSoftDisallowedSlotIsos({
-				activePlan: compareActivePlan,
-				prefs: retainedPrefs,
-			});
 			const unifiedInputFinal = buildUnifiedInputFromForecastContext({
 				now,
 				timezone,
@@ -1172,7 +1159,6 @@ export async function runDailyPlanTick(
 				passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
 				preferImmersionLiveSurplusNow: preferLiveIh,
 				continueImmersionSoftCurrentSlot: continueSoftIh,
-				immersionSoftDisallowedSlotIsos,
 				boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
 				feedInCtPerKwh,
 				thermalLearnedPriceTimingScore: blockALearning.thermalPriceTimingScore,

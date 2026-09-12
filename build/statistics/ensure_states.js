@@ -15,6 +15,9 @@ exports.STATISTICS_STATES = {
     mobilityTodayJson: `${exports.STATISTICS_BASE}.mobility.today_json`,
     mobilityMonthJson: `${exports.STATISTICS_BASE}.mobility.month_json`,
     mobilityPeriodJson: `${exports.STATISTICS_BASE}.mobility.period_json`,
+    energyTodayJson: `${exports.STATISTICS_BASE}.energy.today_json`,
+    energyMonthJson: `${exports.STATISTICS_BASE}.energy.month_json`,
+    energyPeriodJson: `${exports.STATISTICS_BASE}.energy.period_json`,
     homeTodaySavingsEur: `${exports.STATISTICS_BASE}.home.today_savings_vs_fixed_eur`,
     homeMonthSavingsEur: `${exports.STATISTICS_BASE}.home.month_savings_vs_fixed_eur`,
     homePeriodSavingsEur: `${exports.STATISTICS_BASE}.home.period_savings_vs_fixed_eur`,
@@ -115,6 +118,7 @@ async function ensureStatisticsStateTree(host) {
     await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.mobility.today`, "Mobilität heute (flache States)");
     await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.mobility.period`, "Mobilität Periode (flache States)");
     await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.public_charge`, "Statistik Schnellader / manuelle Rechnung");
+    await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.energy`, "Energetische Statistik aus Day-Telemetry");
     await (0, state_util_1.ensureStates)(host, [
         boolState(exports.STATISTICS_STATES.enabled, "Statistik-Sidecar aktiv", true),
         strState(exports.STATISTICS_STATES.lastRunAt, "Statistik letzter Lauf (ISO)"),
@@ -127,6 +131,9 @@ async function ensureStatisticsStateTree(host) {
         strState(exports.STATISTICS_STATES.mobilityTodayJson, "Mobilität heute (JSON)", "{}"),
         strState(exports.STATISTICS_STATES.mobilityMonthJson, "Mobilität Monat (JSON)", "{}"),
         strState(exports.STATISTICS_STATES.mobilityPeriodJson, "Mobilität Periode Vergleich (JSON)", "{}"),
+        strState(exports.STATISTICS_STATES.energyTodayJson, "Energie heute (JSON)", "{}"),
+        strState(exports.STATISTICS_STATES.energyMonthJson, "Energie Monat (JSON)", "{}"),
+        strState(exports.STATISTICS_STATES.energyPeriodJson, "Energie Periode (JSON)", "{}"),
         numState(exports.STATISTICS_STATES.homeTodaySavingsEur, "Haus heute Ersparnis vs. Festtarif (Legacy)", "EUR"),
         numState(exports.STATISTICS_STATES.homeMonthSavingsEur, "Haus Monat Ersparnis vs. Festtarif (Legacy)", "EUR"),
         numState(exports.STATISTICS_STATES.homePeriodSavingsEur, "Haus Periode Ersparnis vs. Festtarif (Legacy)", "EUR"),

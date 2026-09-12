@@ -33,10 +33,26 @@ async function publish(host, id, val) {
     }
 }
 /** Für einen einzelnen Tag: reale + simulierte Welten berechnen (reine Funktion, kein I/O). */
-function buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCtPerKwh, aiOverrideActiveForDay, generatedAtIso, economicsLearning) {
+function buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCtPerKwh, aiOverrideActiveForDay, generatedAtIso, economicsLearning, referenceNoEmsPrevious) {
     const real = (0, simulate_1.computeRealDayResult)(day, feedInCtPerKwh);
-    const startSocPct = lastNonNull(previousDay?.buckets.batterySocEndPct ?? []) ?? real.socStartPct ?? null;
+    const previousKey = (0, time_1.addDaysToDateKey)(dateKey, -1);
+    const continuousShadowSoc = referenceNoEmsPrevious?.dateKey === previousKey &&
+        referenceNoEmsPrevious.modelVersion === constants_2.SHADOW_ENGINE_MODEL_VERSION &&
+        referenceNoEmsPrevious.socEndPct !== null
+        ? referenceNoEmsPrevious.socEndPct
+        : null;
+    const previousRealSoc = lastNonNull(previousDay?.buckets.batterySocEndPct ?? []);
+    const startSocPct = continuousShadowSoc ?? previousRealSoc ?? real.socStartPct ?? null;
+    const socStartSource = continuousShadowSoc !== null
+        ? "previous_shadow"
+        : previousRealSoc !== null
+            ? "previous_real"
+            : real.socStartPct !== null
+                ? "current_real"
+                : "missing";
     const referenceNoEms = (0, simulate_1.simulateReferenceNoEms)(day, { ...batteryParams, startSocPct }, feedInCtPerKwh);
+    referenceNoEms.socStartSource = socStartSource;
+    referenceNoEms.socContinuousFromPreviousDay = socStartSource === "previous_shadow";
     const referenceSonnenNative = (0, simulate_1.simulateReferenceSonnenNative)(real, day, economicsLearning ?? { usable: false, alpha: null, beta: null }, feedInCtPerKwh);
     const emsWithoutAi = (0, simulate_1.simulateEmsWithoutAi)(real, aiOverrideActiveForDay);
     return {
@@ -103,7 +119,11 @@ async function runShadowEngineBatch(host, opts = {}) {
         for (const dateKey of allKeys.sort()) {
             if (dateKey >= todayKey)
                 continue;
-            if (processedKeys.has(dateKey)) {
+            const existingRecord = processedKeys.has(dateKey)
+                ? await (0, persist_2.readShadowDayRecord)(resultsDir, dateKey)
+                : null;
+            if (existingRecord?.strategies.reference_no_ems?.modelVersion ===
+                constants_2.SHADOW_ENGINE_MODEL_VERSION) {
                 result.skippedAlreadyProcessed.push(dateKey);
                 continue;
             }
@@ -119,8 +139,16 @@ async function runShadowEngineBatch(host, opts = {}) {
                 }
                 const prevKey = (0, time_1.addDaysToDateKey)(dateKey, -1);
                 const previousDay = await (0, persist_1.readDayTelemetryDay)(telemetryDir, prevKey);
+                const previousShadow = await (0, persist_2.readShadowDayRecord)(resultsDir, prevKey);
+                const referenceNoEmsPrevious = previousShadow?.strategies.reference_no_ems
+                    ? {
+                        dateKey: previousShadow.dateKey,
+                        socEndPct: previousShadow.strategies.reference_no_ems.socEndPct,
+                        modelVersion: previousShadow.strategies.reference_no_ems.modelVersion,
+                    }
+                    : null;
                 const aiOverrideActive = await (0, override_ledger_1.wasAiOverrideActiveOnDate)(host, dateKey);
-                const record = buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCtPerKwh, aiOverrideActive, now.toISOString(), economicsLearning);
+                const record = buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCtPerKwh, aiOverrideActive, now.toISOString(), economicsLearning, referenceNoEmsPrevious);
                 await (0, persist_2.writeShadowDayRecord)(resultsDir, record);
                 result.processedDateKeys.push(dateKey);
                 lastEvaluated = dateKey;

@@ -53,6 +53,7 @@ function batBase(overrides = {}) {
         maxChargeW: 5000,
         chargeCapable: true,
         dischargeCapable: false,
+        passiveSelfConsumptionOnly: true,
         fault: false,
         lockout: false,
         telemetryValid: true,

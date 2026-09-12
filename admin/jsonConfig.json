@@ -640,7 +640,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Empfohlener aktueller EVCC-Pfad: Buttons control.off / control.pv / control.min / control.now, Feedback nur über status.mode, plus maxCurrent und Phasen. pvControl und String-Mode bleiben als Legacy-Varianten im Backend, sind in der Admin-UI aber nur sichtbar, wenn die Mode-Control-Variante ausdrücklich darauf steht. Auto zeigt die Button-Felder. Bei Steuerpfad EVCC niemals Fallback auf Legacy go-e. Keine produktiven Writes in dieser Version."
+					"text": "Empfohlener aktueller EVCC-Pfad: Buttons control.off / control.pv / control.min / control.now, Feedback nur über status.mode, plus maxCurrent und Phasen. pvControl und String-Mode bleiben als Legacy-Varianten im Backend, sind in der Admin-UI aber nur sichtbar, wenn die Mode-Control-Variante ausdrücklich darauf steht. Auto zeigt die Button-Felder. Bei Steuerpfad EVCC niemals Fallback auf Legacy go-e. Der allgemeine Planner-Live-Dispatch bleibt gesperrt; produktive Ausnahme ist ausschließlich die konfigurierte Tibber-Ansteckübergabe auf control.now."
 				},
 				"wb_control_model": {
 					"type": "select",
@@ -669,7 +669,7 @@
 				"wb_evcc_mode_control": {
 					"type": "select",
 					"label": "EVCC Mode-Control-Variante",
-					"help": "Auto erkennt zuerst einen vollständigen Button-Contract, sonst pvControl, sonst String-Mode. Die Felder unten folgen der gewählten Variante (Auto = Button-Felder). Gespeicherte Legacy-Werte bleiben erhalten und werden bei Buttons ignoriert. Noch keine produktiven Writes.",
+					"help": "Auto erkennt zuerst einen vollständigen Button-Contract, sonst pvControl, sonst String-Mode. Die Felder unten folgen der gewählten Variante (Auto = Button-Felder). Gespeicherte Legacy-Werte bleiben erhalten und werden bei Buttons ignoriert. Der allgemeine Planner-Live-Dispatch bleibt gesperrt; nur die konfigurierte Tibber-Ansteckübergabe darf control.now auslösen.",
 					"options": [
 						{
 							"label": "Auto – Buttons bevorzugen",
@@ -1574,7 +1574,7 @@
 				"hEvFoundation": {
 					"type": "header",
 					"size": 2,
-					"text": "EV-Fundament (Phase 2, nur lesen)",
+					"text": "EV-Fundament & Tibber-Übergabe",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -1588,7 +1588,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Read-only: optionale externe Ladeoptimierer auf das neutrale EV-Modell mappen. Keine Takeover-/Tibber-Aktiv-/EVCC-Write-Logik. Optionale Zahlenfelder dürfen leer bleiben (intern null). Mindest-SOC zur Abfahrt ist nicht Tibber „Minimales Ladeniveau“. Bool-Zustände werden nicht allein wegen unverändertem Wert stale."
+					"text": "Externe Ladeoptimierer werden lesend auf das neutrale EV-Modell gemappt. Eng begrenzte Ausnahme: Ist Grid Rewards über Fahrzeug oder Wallbox eingerichtet, setzt EMS nach dem Anstecken und der Wartezeit einmalig den EVCC-Modus Schnell/now, damit Tibber übernehmen kann. Keine direkte Wallbox-/go-e-Steuerung und kein allgemeines EVCC-Takeover. Optionale Zahlenfelder dürfen leer bleiben (intern null). Mindest-SOC zur Abfahrt ist nicht Tibber „Minimales Ladeniveau“."
 				},
 				"wb_evcc_integration_enabled": {
 					"type": "checkbox",
@@ -1603,6 +1603,7 @@
 				"wb_tibber_grid_rewards_vehicle_enabled": {
 					"type": "checkbox",
 					"label": "Tibber Grid Rewards über Fahrzeug eingerichtet",
+					"help": "Dieser Haken ist die Tibber-Freigabe: Nach dem Anstecken setzt EMS unter den normalen Live-/Safety-Gates nach der Wartezeit EVCC einmalig auf Schnell/now. Das aktuelle Grid-Rewards-Aktivsignal muss dafür noch nicht aktiv sein.",
 					"default": false,
 					"xs": 12,
 					"sm": 6,
@@ -1613,6 +1614,7 @@
 				"wb_tibber_grid_rewards_wallbox_enabled": {
 					"type": "checkbox",
 					"label": "Tibber Grid Rewards über Wallbox eingerichtet",
+					"help": "Dieser Haken ist die Tibber-Freigabe: Nach dem Anstecken setzt EMS unter den normalen Live-/Safety-Gates nach der Wartezeit EVCC einmalig auf Schnell/now. Das aktuelle Grid-Rewards-Aktivsignal muss dafür noch nicht aktiv sein.",
 					"default": false,
 					"xs": 12,
 					"sm": 6,
@@ -1626,7 +1628,7 @@
 					"default": 180,
 					"min": 30,
 					"max": 900,
-					"help": "Nur wenn Grid Rewards aktiv: nach disconnected→connected so lange warten, dann EVCC auf Schnell (now). Bricht beim Abstecken ab. Default 180 s — nicht für normales PV-Laden.",
+					"help": "Wenn Grid Rewards über Fahrzeug oder Wallbox eingerichtet ist: nach disconnected→connected so lange warten, dann EVCC einmalig auf Schnell/now setzen. Bricht beim Abstecken ab. Das aktuelle Grid-Rewards-Aktivsignal ist keine Voraussetzung. Default 180 s.",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,

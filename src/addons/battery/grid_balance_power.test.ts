@@ -285,6 +285,85 @@ describe("grid balance live hardening v0.1.289", () => {
 		assert.equal(d.blockReason, "no_hardware_headroom");
 	});
 
+	it("Planner-Budget kann harte Schutzregeln niemals öffnen", () => {
+		const cases: Array<{
+			name: string;
+			override: Partial<GridBalanceSafetyInput>;
+			expectedReason: string;
+			expectedAuthority: string;
+		}> = [
+			{
+				name: "aktive/geplante Batterie-Netzladung",
+				override: { plannedBatteryAction: true, economicsUsable: true },
+				expectedReason: "planned_battery_action",
+				expectedAuthority: "planned_battery",
+			},
+			{
+				name: "EVCC now / tatsächliches Schnellladen",
+				override: { evConflictKind: "ev_now", economicsUsable: true },
+				expectedReason: "ev_now_grid_charge",
+				expectedAuthority: "external_ev",
+			},
+			{
+				name: "Batterie-Hold",
+				override: { holdActive: true, economicsUsable: true },
+				expectedReason: "battery_hold",
+				expectedAuthority: "battery_hold",
+			},
+			{
+				name: "Fault/Lockout",
+				override: { faultActive: true, economicsUsable: true },
+				expectedReason: "fault_lockout",
+				expectedAuthority: "safety",
+			},
+			{
+				name: "Restore",
+				override: { restoreInProgress: true, economicsUsable: true },
+				expectedReason: "restore_in_progress",
+				expectedAuthority: "safety",
+			},
+		];
+
+		for (const c of cases) {
+			const d = evaluateGridBalanceTick(
+				tick({
+					configuredMaxW: 50_000,
+					hardwareMaxDischargeW: 50_000,
+					consumptionW: 20_000,
+					pvAcPowerW: 0,
+					safety: safety({ priceNowCt: 100, ...c.override }),
+				}),
+			);
+			assert.equal(d.blockReason, c.expectedReason, c.name);
+			assert.equal(d.authority, c.expectedAuthority, c.name);
+			assert.equal(d.shouldWrite, false, c.name);
+			assert.equal(d.active, false, c.name);
+		}
+	});
+
+	it("aktive Grid-Balance-Session gibt vor Batterie-Netzladung oder EVCC now genau 0 W frei", () => {
+		for (const [name, override, expectedReason] of [
+			["Batterie-Netzladung", { plannedBatteryAction: true }, "planned_battery_action"],
+			["EVCC now", { evConflictKind: "ev_now" as const }, "ev_now_grid_charge"],
+		] as const) {
+			const d = evaluateGridBalanceTick(
+				tick({
+					ownsSetpoint: true,
+					lastWrittenW: 1800,
+					lastWriteAtMs: 9000,
+					configuredMaxW: 50_000,
+					hardwareMaxDischargeW: 50_000,
+					safety: safety({ priceNowCt: 100, economicsUsable: true, ...override }),
+				}),
+			);
+			assert.equal(d.blockReason, expectedReason, name);
+			assert.equal(d.shouldWrite, false, name);
+			assert.equal(d.shouldRelease, true, name);
+			assert.equal(d.writePowerW, 0, name);
+			assert.equal(d.ownsSetpointNext, false, name);
+		}
+	});
+
 	it("L15: GB Ownership entsteht nur nach eigenem Write", () => {
 		const idle = evaluateGridBalanceTick(tick({ ownsSetpoint: false, consumptionW: 100, pvAcPowerW: 100, offsetW: 0 }));
 		assert.equal(idle.ownsSetpointNext, false);

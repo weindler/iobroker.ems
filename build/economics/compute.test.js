@@ -100,6 +100,7 @@ function shadowFixture(overrides = {}) {
         strict_1.default.equal(rec.tarifvorteilEur, 0.5);
         strict_1.default.equal(rec.emsVorteilEvaluable, true);
         strict_1.default.equal(rec.kiMehrwertEvaluable, true);
+        strict_1.default.equal(rec.shadowModelVersion, "shadow_v3");
     });
     (0, node_test_1.it)("negativer KI-Mehrwert ist darstellbar (kein Schönrechnen)", () => {
         const shadow = shadowFixture({

@@ -1,5 +1,7 @@
 import { ensureEmsLightChannels } from "./channels";
 import { ensureStates, type StateDef, type StateHost } from "./state_util";
+import { buildDeviceTemplateCatalog } from "../profiles/catalog";
+import { APP_CORE_CONTRACT, APP_CORE_CONTRACT_STATE, APP_CORE_SNAPSHOT_STATE } from "../app/core_snapshot";
 
 const OPERATOR_BRIEFING_DEFAULT =
 	"EMS-Light Phase 1 aktiv. Planner noch nicht initialisiert.";
@@ -16,6 +18,16 @@ function strState(
 		defaultVal: def,
 		setDefaultIfEmpty: !opts?.alwaysUpdate,
 		alwaysUpdate: opts?.alwaysUpdate,
+	};
+}
+
+function jsonState(id: string, name: string, def: string, alwaysUpdate = false): StateDef {
+	return {
+		id,
+		common: { name, type: "string", role: "json", read: true, write: false, def },
+		defaultVal: def,
+		setDefaultIfEmpty: true,
+		alwaysUpdate,
 	};
 }
 
@@ -50,6 +62,19 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		strState("system.mode", "EMS-Light Modus", "ems_light"),
 		strState("system.last_tick_at", "EMS-Light letzter Tick (ISO)"),
 		strState("system.health", "EMS-Light Health", "initializing"),
+		jsonState(
+			"profiles.catalog_json",
+			"Verfügbare Geräte-/Hersteller-Templates (JSON)",
+			JSON.stringify(buildDeviceTemplateCatalog()),
+			true,
+		),
+		jsonState(
+			APP_CORE_CONTRACT_STATE,
+			"Lokaler App-Core-Vertrag (JSON)",
+			JSON.stringify(APP_CORE_CONTRACT),
+			true,
+		),
+		jsonState(APP_CORE_SNAPSHOT_STATE, "Lokaler App-Core-Snapshot (JSON)", "{}"),
 
 		numState("live.battery.soc_pct", "Live Batterie SOC", "%"),
 		numState("live.battery.capacity_kwh", "Live Batteriekapazität", "kWh"),
@@ -70,6 +95,12 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 			"operator.assessment_de",
 			"Operative EMS-Einschätzung (DE)",
 			"EMS-Einschätzung noch nicht gebildet.",
+		),
+		jsonState("operator.outlook_72h.json", "Rollender 72-h-Ausblick (JSON)", "{}"),
+		strState(
+			"operator.outlook_72h_de",
+			"Rollender 72-h-Ausblick (DE)",
+			"72-h-Ausblick noch nicht gebildet.",
 		),
 		strState(
 			"operator.product_summary_de",

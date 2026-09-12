@@ -29,6 +29,9 @@ describe("generic_readonly profile", () => {
 		assert.equal(caps.set_operating_mode.available, false);
 		assert.equal(caps.live_control.available, false);
 		assert.equal(profile.supportsLive, false);
+		assert.equal(profile.catalog.genericFallback, true);
+		assert.equal(profile.catalog.manualMappingAvailable, true);
+		assert.equal(profile.plannerCapabilities.chargeDispatch, false);
 	});
 
 	it("never live-ready", () => {
@@ -48,6 +51,15 @@ describe("sonnen_em profile", () => {
 		assert.equal(profile.normalizeOperatingMode(1, input), "manual");
 		assert.equal(profile.normalizeOperatingMode(2, input), "self_consumption");
 		assert.equal(profile.normalizeOperatingMode(7, input), "unknown");
+	});
+
+	it("publishes manufacturer metadata and normalized planner capabilities", () => {
+		assert.equal(profile.catalog.manufacturerId, "sonnen");
+		assert.equal(profile.catalog.manufacturerNameDe, "Sonnen");
+		assert.equal(profile.plannerCapabilities.chargeDispatch, true);
+		assert.equal(profile.plannerCapabilities.activeDischargeDispatch, false);
+		assert.equal(profile.plannerCapabilities.passiveSelfConsumption, true);
+		assert.equal(profile.plannerCapabilities.gridBalanceControl, true);
 	});
 
 	it("capability matrix correct for full config", () => {

@@ -15,6 +15,12 @@ import {
 	formatOperationalAssessmentDe,
 	type AssessmentBuildInput,
 } from "./build";
+import {
+	buildOperatorOutlook72h,
+	formatOperatorOutlook72hDe,
+	OPERATOR_OUTLOOK_72H_DE,
+	OPERATOR_OUTLOOK_72H_JSON,
+} from "../outlook_72h";
 
 export const OPERATOR_ASSESSMENT_JSON = "operator.assessment.json";
 export const OPERATOR_ASSESSMENT_DE = "operator.assessment_de";
@@ -171,7 +177,15 @@ export async function publishOperationalAssessment(
 	};
 
 	const assessment = buildOperationalAssessment(buildInput);
+	const outlook = buildOperatorOutlook72h({
+		now: input.now,
+		timezone: input.timezone,
+		plan: input.plan,
+		plannerInput: input.plannerInput,
+	});
 	const writer = host as unknown as StateHost;
 	await setStateIfChanged(writer, OPERATOR_ASSESSMENT_JSON, JSON.stringify(assessment));
 	await setStateIfChanged(writer, OPERATOR_ASSESSMENT_DE, formatOperationalAssessmentDe(assessment));
+	await setStateIfChanged(writer, OPERATOR_OUTLOOK_72H_JSON, JSON.stringify(outlook));
+	await setStateIfChanged(writer, OPERATOR_OUTLOOK_72H_DE, formatOperatorOutlook72hDe(outlook));
 }

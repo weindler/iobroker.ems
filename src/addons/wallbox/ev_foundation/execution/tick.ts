@@ -91,6 +91,9 @@ async function publishSession(
 		ready: boolean;
 		desired: EvExecutionDesired | null;
 		actual: EvExecutionMode | null;
+		tibberNowHandoffEnabled: boolean;
+		tibberNowHandoffStatus: string;
+		tibberNowHandoffDueAt: string;
 	},
 ): Promise<void> {
 	const st = WALLBOX_EV_FOUNDATION_STATES;
@@ -100,6 +103,9 @@ async function publishSession(
 	await setStateIfChanged(host, st.evExecutionBlockReason, s.blockReason);
 	await setStateIfChanged(host, st.evExecutionDesiredMode, extra.desired ?? "");
 	await setStateIfChanged(host, st.evExecutionExplain, s.explain);
+	await setStateIfChanged(host, st.tibberNowHandoffEnabled, extra.tibberNowHandoffEnabled);
+	await setStateIfChanged(host, st.tibberNowHandoffStatus, extra.tibberNowHandoffStatus);
+	await setStateIfChanged(host, st.tibberNowHandoffDueAt, extra.tibberNowHandoffDueAt);
 	await setStateIfChanged(host, st.evExecutionLiveTestConsumed, liveTest.consumed);
 	await setStateIfChanged(host, st.evExecutionLiveTestResult, liveTest.result);
 	await setStateIfChanged(host, st.evExecutionLiveTestBlockReason, liveTest.blockReason);
@@ -175,10 +181,15 @@ export async function tickEvExecution(host: EvExecutionTickHost, input: EvExecut
 
 	const foundationCfg = evFoundationConfigFromAdapter(host.config ?? {});
 	const tibberEnabled =
-		foundationCfg.tibberGridRewardsViaVehicleEnabled || foundationCfg.tibberGridRewardsViaWallboxEnabled;
+		foundationCfg.evccIntegrationEnabled &&
+		(foundationCfg.tibberGridRewardsViaVehicleEnabled || foundationCfg.tibberGridRewardsViaWallboxEnabled);
 	const connected =
 		input.planDecision.connected ??
 		(input.snap.connected.status === "valid" ? input.snap.connected.value : null);
+	const tibberFeedbackFailed =
+		session.phase === "failsafe" &&
+		session.failsafeReason === "feedback_timeout" &&
+		session.desiredReason === "tibber_now_after_stabilize";
 	const tibberEval = evaluateTibberNowPrepare({
 		enabled: tibberEnabled,
 		connected,
@@ -189,12 +200,17 @@ export async function tickEvExecution(host: EvExecutionTickHost, input: EvExecut
 			isRestoreInProgress() ||
 			!input.governanceEnabled ||
 			!input.addonEnabled,
-		plannerWantsChargeOrStop: projection.desired !== "noop",
 		alreadyNow: actual === "now",
+		feedbackFailed: tibberFeedbackFailed,
 		prev: tibberNowPrepare,
 	});
 	tibberNowPrepare = tibberEval.next;
-	if (tibberEval.action === "set_now" && projection.desired === "noop") {
+	const tibberFeedbackTick =
+		tibberEval.reason === "already_now" &&
+		session.pendingMode === "now" &&
+		session.desiredReason === "tibber_now_after_stabilize";
+	const tibberNowHandoffPermit = tibberEval.action === "set_now" || tibberFeedbackTick;
+	if (tibberNowHandoffPermit) {
 		projection = { desired: "now", reason: tibberEval.reason };
 	}
 
@@ -304,7 +320,9 @@ export async function tickEvExecution(host: EvExecutionTickHost, input: EvExecut
 		governanceEnabled: input.governanceEnabled,
 		authority: stabilized.authority,
 		authorityFailsafeReason: stabilized.failsafeReason,
-		buttonsReady: contract.buttonsReady,
+		buttonsReady: tibberNowHandoffPermit
+			? contract.buttonReady.now && Boolean(contract.modeFeedbackStateId)
+			: contract.buttonsReady,
 		resolvedVariant: contract.resolvedVariant,
 		desiredMode: desired,
 		actualMissing: fb.missing || actual == null,
@@ -318,6 +336,7 @@ export async function tickEvExecution(host: EvExecutionTickHost, input: EvExecut
 			livePermit.blockReason === "live_test_not_armed" || !livePermit.blockReason
 				? "feature_gate"
 				: livePermit.blockReason,
+		tibberNowHandoffPermit,
 	});
 	const writeAllowed = gates.writeAllowed && liveAllowed;
 	if (!liveTest.consumed && liveTest.armed && !writeAllowed && gates.blockReason) {
@@ -331,7 +350,7 @@ export async function tickEvExecution(host: EvExecutionTickHost, input: EvExecut
 		writeAllowed,
 		blockReason: gates.blockReason,
 		failsafeReason: gates.failsafeReason,
-		authorityIsEms: stabilized.authority === "ems",
+		authorityIsEms: stabilized.authority === "ems" || tibberNowHandoffPermit,
 		modeTsMs: fb.tsMs,
 		desiredReason: resolved.reason,
 		retriesBlocked: liveTest.retriesBlocked,
@@ -387,6 +406,7 @@ export async function tickEvExecution(host: EvExecutionTickHost, input: EvExecut
 			mode: stepped.writeMode,
 			writeAllowed: true,
 			liveTestPermit: livePermit.permit,
+			tibberNowHandoffPermit,
 		});
 		if (wr.written && livePermit.consumeOnSuccessfulWrite) {
 			liveTest = consumeEvLiveTest(liveTest, stepped.writeMode, nowMs);
@@ -426,6 +446,15 @@ export async function tickEvExecution(host: EvExecutionTickHost, input: EvExecut
 		ready: gates.ready,
 		desired,
 		actual,
+		tibberNowHandoffEnabled: tibberEnabled,
+		tibberNowHandoffStatus: tibberEval.reason,
+		tibberNowHandoffDueAt:
+			tibberNowPrepare.connectedSinceMs == null || tibberNowPrepare.prepareIssued
+				? ""
+				: new Date(
+						tibberNowPrepare.connectedSinceMs +
+							clampTibberNowStabilizeSeconds(foundationCfg.tibberNowStabilizeSeconds) * 1000,
+					).toISOString(),
 	});
 	return session;
 }

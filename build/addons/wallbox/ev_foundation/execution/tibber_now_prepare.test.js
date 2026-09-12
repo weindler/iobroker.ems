@@ -15,7 +15,6 @@ function evalAt(over) {
         nowMs: NOW,
         delayMs: DELAY,
         blocked: false,
-        plannerWantsChargeOrStop: false,
         alreadyNow: false,
         prev: over.prev ?? (0, tibber_now_prepare_js_1.emptyTibberNowPrepareState)(),
         ...over,
@@ -40,8 +39,11 @@ function evalAt(over) {
         strict_1.default.equal(tooSoon.action, "wait");
         const ready = evalAt({ connected: true, prev: wait.next, nowMs: NOW + DELAY });
         strict_1.default.equal(ready.action, "set_now");
-        const once = evalAt({ connected: true, prev: ready.next, nowMs: NOW + DELAY + 1000 });
+        const pending = evalAt({ connected: true, prev: ready.next, nowMs: NOW + DELAY + 1000 });
+        strict_1.default.equal(pending.action, "set_now");
+        const once = evalAt({ connected: true, prev: pending.next, nowMs: NOW + DELAY + 2000, alreadyNow: true });
         strict_1.default.equal(once.action, "idle");
+        strict_1.default.equal(once.next.lastResult, "confirmed");
     });
     (0, node_test_1.it)("Abstecken während Wartezeit bricht ab", () => {
         const disc = evalAt({ connected: false });
@@ -50,7 +52,7 @@ function evalAt(over) {
         strict_1.default.equal(cancel.action, "cancel");
         strict_1.default.equal(cancel.next.connectedSinceMs, null);
     });
-    (0, node_test_1.it)("Planner-Ladung/Stop oder Sperre verhindert NOW", () => {
+    (0, node_test_1.it)("Safety-Sperre verzögert NOW, ohne den Plug-Edge zu verbrauchen", () => {
         const disc = evalAt({ connected: false });
         const wait = evalAt({ connected: true, prev: disc.next });
         const blocked = evalAt({
@@ -60,12 +62,25 @@ function evalAt(over) {
             blocked: true,
         });
         strict_1.default.equal(blocked.action, "wait");
-        const planner = evalAt({
+        const released = evalAt({
+            connected: true,
+            prev: blocked.next,
+            nowMs: NOW + DELAY + 1000,
+            blocked: false,
+        });
+        strict_1.default.equal(released.action, "set_now");
+    });
+    (0, node_test_1.it)("Feedback-Fehler beendet die Übergabe bis zum nächsten Anstecken", () => {
+        const disc = evalAt({ connected: false });
+        const wait = evalAt({ connected: true, prev: disc.next });
+        const failed = evalAt({
             connected: true,
             prev: wait.next,
             nowMs: NOW + DELAY,
-            plannerWantsChargeOrStop: true,
+            feedbackFailed: true,
         });
-        strict_1.default.equal(planner.action, "wait");
+        strict_1.default.equal(failed.action, "cancel");
+        strict_1.default.equal(failed.reason, "feedback_failed");
+        strict_1.default.equal(failed.next.prepareIssued, true);
     });
 });

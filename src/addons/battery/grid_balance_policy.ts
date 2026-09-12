@@ -22,8 +22,12 @@
 export type GridBalancePolicyExcludedConsumer = {
 	/** Battery-Consumer-Id, z. B. "immersion_heater" (siehe `policy/battery_consumers/types.ts`). */
 	id: string;
-	/** Planner-Entscheidung: darf dieser Verbraucher aktuell die Batterie nutzen? */
-	allowedOnBattery: boolean;
+	/**
+	 * Planner-Entscheidung: darf dieser Verbraucher aktuell die Batterie nutzen?
+	 * `null` bleibt unbekannt und wird sicher geschlossen behandelt; nur ein
+	 * ausdrückliches `true` darf die Last im Netzausgleich belassen.
+	 */
+	allowedOnBattery: boolean | null;
 	/** Aktuell befohlene Leistung dieses Verbrauchers (W); null/0 = nicht aktiv. */
 	commandedPowerW: number | null;
 };
@@ -59,6 +63,13 @@ function roundW(n: number): number {
 	return Math.max(0, Math.round(n));
 }
 
+/** Behält die Planner-Freigabe dreiwertig; nur echtes Boolean wird akzeptiert. */
+export function parseExplicitBatteryPermission(raw: unknown): boolean | null {
+	if (raw === true) return true;
+	if (raw === false) return false;
+	return null;
+}
+
 /**
  * Rechnet die Leistung policy-ausgeschlossener Verbraucher aus der Netzausgleichs-Restlast
  * heraus. Kein Preis-, kein SOC-, kein Hardware-Gate — das bleibt in `grid_balance_contract.ts`
@@ -70,7 +81,7 @@ export function resolveGridBalancePolicyLoadAdjustment(
 ): GridBalancePolicyLoadAdjustment {
 	const raw = Number.isFinite(input.rawConsumptionW) ? Math.max(0, input.rawConsumptionW) : 0;
 	const excluded = input.excludedConsumers.filter(
-		(c) => c.allowedOnBattery === false && c.commandedPowerW !== null && c.commandedPowerW > 0,
+		(c) => c.allowedOnBattery !== true && c.commandedPowerW !== null && c.commandedPowerW > 0,
 	);
 	const excludedLoadW = roundW(
 		excluded.reduce((sum, c) => sum + Math.max(0, c.commandedPowerW ?? 0), 0),
@@ -82,6 +93,8 @@ export function resolveGridBalancePolicyLoadAdjustment(
 			? ""
 			: `Netzausgleich ohne ${excluded
 					.map((c) => `${c.id} (${roundW(c.commandedPowerW ?? 0)} W)`)
-					.join(", ")} — Policy: Batterie für diesen Verbraucher nicht erlaubt.`;
+					.join(", ")} — ${excluded.some((c) => c.allowedOnBattery === null)
+					? "Policy-Freigabe fehlt; Batterie bleibt für diesen Verbraucher gesperrt."
+					: "Policy: Batterie für diesen Verbraucher nicht erlaubt."}`;
 	return { policyAdjustedConsumptionW, excludedLoadW, excludedConsumerIds, reasonDe };
 }

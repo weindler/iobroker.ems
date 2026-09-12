@@ -57,6 +57,7 @@ function batteryInput(overrides: Partial<Parameters<typeof buildBatteryChargeCon
 		maxChargeW: 5000,
 		chargeCapable: true,
 		dischargeCapable: false,
+		passiveSelfConsumptionOnly: true,
 		fault: false,
 		lockout: false,
 		telemetryValid: true,
@@ -464,14 +465,17 @@ describe("battery contributions", () => {
 		assert.equal(c.quality.status, "blocked");
 	});
 
-	it("sonnen_em discharge is unsupported", () => {
-		const c = buildBatteryDischargeContribution(batteryInput({ profileId: "sonnen_em" }));
+	it("passive self-consumption profile has no active discharge dispatch", () => {
+		const c = buildBatteryDischargeContribution(
+			batteryInput({ profileId: "future_vendor", passiveSelfConsumptionOnly: true }),
+		);
 		assert.equal(c.contributionId, CONTRIBUTION_IDS.BATTERY_DISCHARGE);
 		assert.equal(c.flow, "provide");
 		assert.equal(c.enabled, false);
 		assert.equal(c.quality.status, "unsupported");
 		assert.equal(c.slots.length, 0);
 		assert.equal(c.details.passiveSelfConsumptionOnly, true);
+		assert.doesNotMatch(c.reasonDe, /sonnen/i);
 	});
 
 	it("returns three stable battery contributions", () => {

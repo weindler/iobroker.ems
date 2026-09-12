@@ -4,6 +4,7 @@ exports.runEmsLightPhase1Tick = void 0;
 const ems_activity_1 = require("../ems_activity");
 const tree_paths_1 = require("../tree_paths");
 const live_cache_1 = require("./live_cache");
+const core_snapshot_1 = require("../app/core_snapshot");
 /**
  * Operator Forecast → Daily Plan → Allocation.
  * Always on for production control (addons consume these plans).
@@ -161,6 +162,17 @@ async function runEmsLightPhase1Tick(host) {
     }
     catch {
         // kein Throw — Phase 1 soll robust bleiben
+    }
+    try {
+        await (0, core_snapshot_1.publishAppCoreSnapshot)(host, {
+            generatedAtIso: ts,
+            health,
+            executionMode,
+            tickHints: hints,
+        });
+    }
+    catch {
+        // Reporting-Projektion darf den lokalen Steuerpfad niemals beeinflussen.
     }
 }
 exports.runEmsLightPhase1Tick = runEmsLightPhase1Tick;

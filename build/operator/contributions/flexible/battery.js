@@ -255,10 +255,9 @@ function buildBatteryChargeContribution(input) {
 exports.buildBatteryChargeContribution = buildBatteryChargeContribution;
 function buildBatteryDischargeContribution(input) {
     const generatedAt = input.now.toISOString();
-    const unsupported = input.profileId === "sonnen_em" || !input.dischargeCapable;
-    const reasonDe = unsupported
-        ? "Profil sonnen_em unterstützt keinen getrennten Entlade-Sollwert — nur passives Eigenverbrauch."
-        : "Entladesteuerung nicht verfügbar.";
+    const reasonDe = input.passiveSelfConsumptionOnly
+        ? "Batterieprofil unterstützt keinen Planner-Entlade-Sollwert — nur passiver Eigenverbrauch."
+        : "Aktive Batterie-Entladesteuerung ist für den Planner nicht freigegeben.";
     return (0, types_1.baseContribution)(contribution_ids_1.CONTRIBUTION_IDS.BATTERY_DISCHARGE, (0, contributor_1.addonContributorRef)("battery"), "provide", ["storage", "supply", "dispatch"], {
         generatedAt,
         validUntil: null,
@@ -270,7 +269,7 @@ function buildBatteryDischargeContribution(input) {
         reasonDe,
         details: {
             profileId: input.profileId,
-            passiveSelfConsumptionOnly: input.profileId === "sonnen_em",
+            passiveSelfConsumptionOnly: input.passiveSelfConsumptionOnly,
             dischargeCapableFlag: input.dischargeCapable,
             runtimeControlAvailable: false,
         },

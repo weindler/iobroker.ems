@@ -69,11 +69,119 @@ export interface MobilityDayTotals {
 	savingsVsIceEur: number | null;
 }
 
+/**
+ * Rein energetische Tagesbilanz aus der Day-Telemetry.
+ *
+ * Alle Werte beziehen sich nur auf tatsächlich beobachtete Slots. `coveragePct`, `complete`
+ * und `evaluable` machen sichtbar, ob daraus bereits ein belastbarer ganzer Tag geworden ist.
+ * Fehlende Messketten bleiben `null`; insbesondere werden keine Nullen ergänzt.
+ */
+export interface EnergeticDayTotals {
+	dateKey: string;
+	source: "day_telemetry";
+	complete: boolean;
+	evaluable: boolean;
+	coveragePct: number;
+	pvGenerationKwh: number | null;
+	houseConsumptionKwh: number | null;
+	gridImportKwh: number | null;
+	gridExportKwh: number | null;
+	selfConsumptionKwh: number | null;
+	selfConsumptionPct: number | null;
+	/** PV-Menge der gemeinsam beobachteten PV-/Export-Slots als Prozentbasis. */
+	selfConsumptionPvBasisKwh: number | null;
+	autonomyPct: number | null;
+	/** Hausverbrauch der gemeinsam beobachteten Haus-/Import-Slots als Prozentbasis. */
+	autonomyConsumptionBasisKwh: number | null;
+	autonomyGridImportBasisKwh: number | null;
+	batteryChargedKwh: number | null;
+	batteryDischargedKwh: number | null;
+	batteryPvChargedKwh: number | null;
+	batteryPvSharePct: number | null;
+	/** Nur bei vollständiger SOC-/Kapazitäts-/Leistungs-Messkette, sonst null. */
+	batteryMeasuredLossKwh: number | null;
+	immersionEnergyKwh: number | null;
+	immersionPvKwh: number | null;
+	immersionPvSharePct: number | null;
+	evChargedKwh: number | null;
+	evPvKwh: number | null;
+	evPvSharePct: number | null;
+	/** EVCC-Schnellmodus (`now`) — tatsächliche Wallboxenergie. */
+	evFastChargedKwh: number | null;
+	/** Proportionaler Anteil der Hausbatterie an der Schnellmodus-Ladung. */
+	evFastBatteryKwh: number | null;
+	evFastBatterySharePct: number | null;
+	/** Proportionaler Netzanteil an der Schnellmodus-Ladung. */
+	evFastGridKwh: number | null;
+	evFastGridSharePct: number | null;
+	/** Verbleibende lokale Versorgung (typisch PV) nach Batterie und Netz. */
+	evFastLocalKwh: number | null;
+	evFastLocalSharePct: number | null;
+	climateEnergyKwh: number | null;
+	climatePvKwh: number | null;
+	climatePvSharePct: number | null;
+	gridBalanceDischargeKwh: number | null;
+	nonMonetized: {
+		/** Gemessener elektrischer Energieeinsatz des Heizstabs; keine behauptete Pellet-Ersparnis. */
+		thermalElectricalInputKwh: number | null;
+		gridBalanceDischargeKwh: number | null;
+		pelletReliefKwh: null;
+		avoidedBoilerStarts: null;
+		wearValueEur: null;
+		notesDe: string[];
+	};
+	notesDe: string[];
+}
+
+/** Roll-up über einen auswählbaren Zeitraum; Prozentwerte sind energiemengengewichtet. */
+export interface EnergeticPeriodSummary {
+	period: string;
+	periodLabelDe: string;
+	fromKey: string;
+	toKey: string;
+	daysTotal: number;
+	daysWithTelemetry: number;
+	daysEvaluable: number;
+	pvGenerationKwh: number | null;
+	houseConsumptionKwh: number | null;
+	gridImportKwh: number | null;
+	gridExportKwh: number | null;
+	selfConsumptionKwh: number | null;
+	selfConsumptionPct: number | null;
+	autonomyPct: number | null;
+	batteryChargedKwh: number | null;
+	batteryDischargedKwh: number | null;
+	batteryPvChargedKwh: number | null;
+	batteryPvSharePct: number | null;
+	batteryMeasuredLossKwh: number | null;
+	immersionEnergyKwh: number | null;
+	immersionPvKwh: number | null;
+	immersionPvSharePct: number | null;
+	evChargedKwh: number | null;
+	evPvKwh: number | null;
+	evPvSharePct: number | null;
+	evFastChargedKwh: number | null;
+	evFastBatteryKwh: number | null;
+	evFastBatterySharePct: number | null;
+	evFastGridKwh: number | null;
+	evFastGridSharePct: number | null;
+	evFastLocalKwh: number | null;
+	evFastLocalSharePct: number | null;
+	climateEnergyKwh: number | null;
+	climatePvKwh: number | null;
+	climatePvSharePct: number | null;
+	gridBalanceDischargeKwh: number | null;
+	nonMonetized: EnergeticDayTotals["nonMonetized"];
+	notesDe: string[];
+}
+
 export interface StatisticsDayRecord {
 	dateKey: string;
 	home: HomeDayTotals;
 	mobility: MobilityDayTotals;
 	publicSessions: PublicChargeSession[];
+	/** Additiv und rückwärtskompatibel; alte Statistikdateien haben das Feld noch nicht. */
+	energy?: EnergeticDayTotals | null;
 }
 
 export interface StatisticsPersist {

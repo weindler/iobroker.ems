@@ -53,6 +53,16 @@ function localthingsCoolingStart(unit: AcUnitConfig, purpose: AcUnitModePurpose)
 export const GENERIC_AC_PROFILE: AcProfile = {
 	id: "generic",
 	displayNameDe: "Generic (Mapping-basiert)",
+	catalog: {
+		manufacturerId: "generic",
+		manufacturerNameDe: "Generisch",
+		templateKind: "generic",
+		integration: "state_mapping",
+		setupKind: "manual_mapping",
+		genericFallback: true,
+		manualMappingAvailable: true,
+		setupHintDe: "Status- und Befehlsdatenpunkte des Klimageräts manuell zuordnen.",
+	},
 	coolingStartSequence: (unit, purpose) => {
 		const { mode, fanMode, fanSpeed } = modeStringsForPurpose(unit, purpose);
 		return [
@@ -78,6 +88,16 @@ export const GENERIC_AC_PROFILE: AcProfile = {
 export const SAMSUNG_SMARTTHINGS_PROFILE: AcProfile = {
 	id: "samsung_smartthings",
 	displayNameDe: "Samsung SmartThings",
+	catalog: {
+		manufacturerId: "samsung",
+		manufacturerNameDe: "Samsung",
+		templateKind: "manufacturer",
+		integration: "state_mapping",
+		setupKind: "adapter_instance",
+		genericFallback: false,
+		manualMappingAvailable: true,
+		setupHintDe: "SmartThings-Instanz und die Datenpunkte des Innengeräts zuordnen.",
+	},
 	coolingStartSequence: samsungCoolingStart,
 	// Nicht pulse-true auf dem Switch: das wäre „an“. Shared Switch → set off; eigener Off-Button → pulse.
 	coolingStopSequence: () => [
@@ -99,6 +119,16 @@ export const SAMSUNG_SMARTTHINGS_PROFILE: AcProfile = {
 export const SAMSUNG_LOCALTHINGS_HASS_PROFILE: AcProfile = {
 	id: "samsung_localthings_hass",
 	displayNameDe: "Samsung LocalThings (Home Assistant)",
+	catalog: {
+		manufacturerId: "samsung",
+		manufacturerNameDe: "Samsung",
+		templateKind: "manufacturer",
+		integration: "state_mapping",
+		setupKind: "adapter_instance",
+		genericFallback: false,
+		manualMappingAvailable: true,
+		setupHintDe: "Home-Assistant-/LocalThings-Instanz auswählen und die Climate-Entity zuordnen.",
+	},
 	coolingStartSequence: localthingsCoolingStart,
 	coolingStopSequence: () => [{ kind: "switch_off" }],
 	cleaningStartSequence: () => [{ kind: "toggle", role: "cmd_cleaning_start" }],

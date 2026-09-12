@@ -1,4 +1,8 @@
-import { SHADOW_ENGINE_MODULE, SHADOW_ENGINE_SCHEMA_VERSION } from "./constants";
+import {
+	SHADOW_ENGINE_MODEL_VERSION,
+	SHADOW_ENGINE_MODULE,
+	SHADOW_ENGINE_SCHEMA_VERSION,
+} from "./constants";
 
 export type ShadowStrategyId = "reference_no_ems" | "reference_sonnen_native" | "ems_without_ai";
 
@@ -40,6 +44,10 @@ export type ShadowStrategyResult = ShadowWorldEnergy & {
 	missingSlotCount: number;
 	/** Deutsche Kurz-Erklärung der Modellannahmen/Vereinfachungen dieser Welt — keine versteckte Präzision. */
 	assumptionsDe: string[];
+	/** Herkunft des Start-SOC; relevant für mehrtägige reference_no_ems-Ketten. */
+	socStartSource?: "previous_shadow" | "previous_real" | "current_real" | "missing";
+	/** true, wenn der kontrafaktische End-SOC des Vortags lückenlos weitergeführt wurde. */
+	socContinuousFromPreviousDay?: boolean;
 };
 
 export type ShadowDayRecord = {
@@ -62,7 +70,8 @@ export function notEvaluableStrategyResult(
 ): ShadowStrategyResult {
 	return {
 		strategy,
-		modelVersion: "",
+		/* Auch ein nicht bewertbarer Lauf gehört zu einer reproduzierbaren Modellversion. */
+		modelVersion: SHADOW_ENGINE_MODEL_VERSION,
 		evaluable: false,
 		missingSlotCount,
 		assumptionsDe,

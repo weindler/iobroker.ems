@@ -54,6 +54,7 @@ function batBase(overrides: Partial<BatteryContributionBuildInput> = {}): Batter
 		maxChargeW: 5000,
 		chargeCapable: true,
 		dischargeCapable: false,
+		passiveSelfConsumptionOnly: true,
 		fault: false,
 		lockout: false,
 		telemetryValid: true,

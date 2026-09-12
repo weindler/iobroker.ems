@@ -107,21 +107,6 @@ function biasPctFromRawCorrected(raw, corrected) {
         return null;
     return Math.round(((corrected - raw) / raw) * 1000) / 10;
 }
-function sanitizeDisallowedSlotIsos(raw) {
-    if (!Array.isArray(raw) || raw.length === 0)
-        return undefined;
-    const out = [];
-    const seen = new Set();
-    for (const iso of raw) {
-        if (typeof iso !== "string" || !iso)
-            continue;
-        if (seen.has(iso))
-            continue;
-        seen.add(iso);
-        out.push(iso);
-    }
-    return out.length > 0 ? out : undefined;
-}
 /** ct/kWh → Planner; ungültig/negativ → null (kein NaN in Allocation). */
 function normalizeFeedInCtPerKwh(raw) {
     if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0)
@@ -507,6 +492,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
                     hygieneMandatoryKwh: num(ihD, "hygieneMandatoryKwh"),
                     hygieneDue: bool(ihD, "hygieneDue") === true,
                     nightBridgeActive: bool(ihD, "nightBridgeActive") === true,
+                    mayUseBatteryForImmersion: bool(ihD, "mayUseBatteryForImmersion") === true,
                     coolingRateCPerH: emptyUsable ? coolingRateCPerH : null,
                     minimumRuntimeSec: num(ihD, "minimumRuntimeSec"),
                     hysteresisK: num(ihD, "reheatHysteresisK") ?? num(ihD, "temperatureHysteresisK"),
@@ -523,7 +509,6 @@ function buildUnifiedInputFromForecastContext(ctx) {
         globalMode: ctx.globalMode,
         preferImmersionLiveSurplusNow: ctx.preferImmersionLiveSurplusNow === true,
         continueImmersionSoftCurrentSlot: ctx.continueImmersionSoftCurrentSlot === true,
-        immersionSoftDisallowedSlotIsos: sanitizeDisallowedSlotIsos(ctx.immersionSoftDisallowedSlotIsos),
     };
 }
 exports.buildUnifiedInputFromForecastContext = buildUnifiedInputFromForecastContext;

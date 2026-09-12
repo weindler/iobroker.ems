@@ -18,7 +18,7 @@ const SYSTEM_PROMPT_LEGACY = [
 ].join(" ");
 const SYSTEM_PROMPT_THINKING = [
     "You are the optional thinking layer of EMS-Light (Hausenergiemanager).",
-    "You see the rolling 48h Daily Plan (15-min slots: price, PV, house load, allocations),",
+    "You see the rolling 72h Daily Plan (15-min slots: price, PV, house load, allocations),",
     "a live+horizon situation brief, and learning scalars. Think like a human house energy manager:",
     "heat stick today vs tomorrow, PV today vs tomorrow kWh,",
     "EV: cheap grid now vs wait for PV — action MUST match note and situation numbers.",

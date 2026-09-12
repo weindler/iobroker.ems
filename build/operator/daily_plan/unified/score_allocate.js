@@ -673,14 +673,13 @@ function buildConsumerStates(input, slots) {
              * Soft mit emptyAt-Zeitpunkt: Deadline = emptyAt — sonst wandern Slots auf
              * Wochenend-PV obwohl Leerung heute Abend (Export: Surplus heute frei, Plan Sa/So).
              *
-             * Soft-IH NIEMALS aus der Hausbatterie — auch nicht bei SOC 100 %.
-             * Sonst: abends nach PV-Ende Speichernutzung bis Reserve (Export: 100→80 %).
-             * Batterie-Support bleibt Hard/Pflicht (Boiler-Min) vorbehalten.
+             * Soft-IH nutzt Batterie nur bei expliziter Betreiber-Policy. Weitere harte Gates
+             * (thermische Lücke bis PV-Recovery, Reserve-Floor, passive Quelle und
+             * Ersatzwirtschaftlichkeit) folgen in der Kandidatenerzeugung.
              */
             const softEmptyDeadline = Number.isFinite(emptyDeadlineMs) && emptyDeadlineMs > nowMsLocal
                 ? emptyDeadlineMs
                 : Number.POSITIVE_INFINITY;
-            const disallowedSoftIso = new Set(input.immersionSoftDisallowedSlotIsos ?? []);
             out.push({
                 consumerId: exports.IMMERSION_SOFT_CONSUMER_ID,
                 kind: "immersion_heater",
@@ -691,15 +690,12 @@ function buildConsumerStates(input, slots) {
                 mandatory: false,
                 gridEligible: false,
                 pvFirst: true,
-                batteryEligible: false,
+                batteryEligible: th.mayUseBatteryForImmersion === true,
                 energyGoalHard: false,
                 maxShiftHours: null,
                 earliestSlotIdx: 0,
                 thermalBeforeDeadline: Number.isFinite(softEmptyDeadline),
                 thermalSoftOnly: true,
-                ...(disallowedSoftIso.size > 0
-                    ? { slotAllowed: (slotStartIso) => !disallowedSoftIso.has(slotStartIso) }
-                    : {}),
             });
         }
     }
@@ -1049,6 +1045,58 @@ function thermalFeasibility(state, consumer) {
     const pressure = consumer.remainingKwh / Math.max(capKwh, exports.EPS);
     return { capKwh, pressure, peakRemainPv, slotsN };
 }
+/**
+ * Enges Freigabe-Gate für optionalen Heizstab aus passiver Batterieenergie.
+ *
+ * Die Policy allein reicht nicht: Der Wärmespeicher muss vor der nächsten belastbaren
+ * PV-Recovery leer werden, PV vor der thermischen Deadline darf den Rest nicht decken,
+ * und die entnommene kWh muss bis zur Recovery deutlich günstiger ersetzbar sein als
+ * knappe spätere Netzenergie. Reserve-/SOC-Gates greifen zusätzlich zentral.
+ */
+function softThermalBatteryBridgeAllowed(input, state, consumer, slotIdx) {
+    if (!consumer.thermalSoftOnly || !consumer.batteryEligible)
+        return false;
+    if (input.thermal?.mayUseBatteryForImmersion !== true)
+        return false;
+    if (!state.passiveBatteryEnergyAvailable || !state.modePolicy.allowOptimization)
+        return false;
+    const emptyMs = input.thermal.estimatedEmptyAtIso
+        ? Date.parse(input.thermal.estimatedEmptyAtIso)
+        : Number.NaN;
+    const recoveryMs = state.nextReliablePvMs;
+    if (!Number.isFinite(emptyMs) ||
+        recoveryMs === null ||
+        !Number.isFinite(recoveryMs) ||
+        emptyMs <= state.nowMs ||
+        emptyMs >= recoveryMs) {
+        return false;
+    }
+    if (pvBeforeDeadlineKwh(state, consumer.deadlineMs, consumer.slotAllowed) + exports.EPS >= consumer.remainingKwh) {
+        return false;
+    }
+    /*
+     * Für genau diese Brückenentscheidung zählt der tatsächlich folgende PV-Ertrag:
+     * RecoverySlotIdx ist dessen Suchbeginn, nicht sein Ende. Die allgemeine Batterie-
+     * Ersatzkostenkurve bleibt unverändert, damit andere Verbraucher nicht beeinflusst werden.
+     */
+    const recoveryIdx = state.reserveFloor.recoverySlotIdx;
+    let replacementCt = 28;
+    if (recoveryIdx !== null) {
+        let surplusKwh = 0;
+        let minImportCt = null;
+        const end = Math.min(state.slots.length - 1, recoveryIdx + 48);
+        for (let i = Math.max(slotIdx, recoveryIdx); i <= end; i++) {
+            const slot = state.slots[i];
+            surplusKwh += Math.max(0, slot.pvKwh - slot.houseKwh);
+            if (slot.importCt !== null && Number.isFinite(slot.importCt)) {
+                minImportCt = minImportCt === null ? slot.importCt : Math.min(minImportCt, slot.importCt);
+            }
+        }
+        replacementCt = surplusKwh >= 3 - exports.EPS ? Math.min(4, minImportCt ?? 4) : (minImportCt ?? 28);
+    }
+    const scarceFutureCt = peakFutureImportCt(state, slotIdx);
+    return replacementCt <= 12 && replacementCt + 4 <= scarceFutureCt;
+}
 /** Bewertet einen Einzel-Kandidaten (höher = besser). -Infinity = hart unzulässig. */
 function scoreCandidate(input, state, candidate, weights) {
     const slot = state.slots[candidate.slotIdx];
@@ -1237,10 +1285,12 @@ function scoreCandidate(input, state, candidate, weights) {
     if (candidate.kind === "immersion_heater") {
         if (consumer.thermalSoftOnly) {
             /*
-             * Soft-IH: ausschließlich PV-Surplus. Kein Batterie-/Netz-Komfortladen —
-             * Hausspeicher bleibt Reserve/Nacht/Fahrzeug, nicht optionaler Puffer-Nachheizer.
+             * Soft-IH: PV oder — eng gegated — passive Batterie-Brücke. Netz bleibt immer
+             * ausgeschlossen; Policy, thermische Lücke, Reserve und Ersatzkosten müssen passen.
              */
-            if (candidate.source !== "pv_surplus") {
+            if (candidate.source !== "pv_surplus" &&
+                (candidate.source !== "battery" ||
+                    !softThermalBatteryBridgeAllowed(input, state, consumer, candidate.slotIdx))) {
                 return -Infinity;
             }
             /*
@@ -1297,7 +1347,8 @@ function scoreCandidate(input, state, candidate, weights) {
              * auf Samstag während tagsüber eingespeist wird (Dashboard 0.1.322).
              * Bei bekannter mehrtägiger Reichweite kein Live-Snack nur wegen Headroom.
              */
-            const liveNow = input.preferImmersionLiveSurplusNow === true &&
+            const liveNow = candidate.source === "pv_surplus" &&
+                input.preferImmersionLiveSurplusNow === true &&
                 (candidate.slotIdx === 0 ||
                     (slot.startMs <= state.nowMs && Date.parse(slot.endIso) > state.nowMs));
             if (liveNow && !softUrgency.skipWeakSoftWindows) {
@@ -1513,9 +1564,12 @@ function reasonCodesForCandidate(input, candidate, state, wbPresenceCodes) {
         codes.push(reason_codes_1.REASON.THERMAL_FLEX_AVAILABLE, reason_codes_1.REASON.MIN_POWER_SLOT);
         if (candidate.source === "pv_surplus")
             codes.push(reason_codes_1.REASON.PV_SURPLUS_AVAILABLE);
-        if (candidate.source === "battery")
-            codes.push(reason_codes_1.REASON.BATTERY_FROM_RESERVE_FLEX);
         const cons = state.consumers.find((c) => c.consumerId === candidate.consumerId);
+        if (candidate.source === "battery") {
+            codes.push(reason_codes_1.REASON.BATTERY_FROM_RESERVE_FLEX);
+            if (cons?.thermalSoftOnly)
+                codes.push(reason_codes_1.REASON.THERMAL_BATTERY_BRIDGE);
+        }
         if (cons?.thermalBeforeDeadline &&
             Number.isFinite(cons.deadlineMs) &&
             slot.startMs < cons.deadlineMs) {
@@ -1584,13 +1638,21 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
         const hoursFromNow = (slot.startMs - state.nowMs) / 3600_000;
         const continuing = input.preferImmersionLiveSurplusNow === true ||
             input.continueImmersionSoftCurrentSlot === true;
-        if (urgency.skipWeakSoftWindows) {
+        const batteryBridge = softThermalBatteryBridgeAllowed(input, state, consumer, slotIdx);
+        if (urgency.skipWeakSoftWindows && !batteryBridge) {
             const strong = minE <= exports.EPS || slot.remainPvKwh + exports.EPS >= 2 * minE;
-            if ((!strong && !continuing) || (hoursFromNow > 6 && !continuing)) {
+            /*
+             * Mehrtagesplanung: Bei großer thermischer Reichweite schwache Fenster
+             * auslassen, ein wirklich starkes und hinreichend sicheres PV-Fenster an
+             * Tag 2/3 aber als bewussten Warte-Slot zulassen. Die frühere pauschale
+             * >6-h-Sperre machte den 72-h-Forecast für Soft-Wärme wirkungslos.
+             */
+            const trustworthyFuture = hoursFromNow <= 6 || state.pvConfidence >= 0.7;
+            if ((!strong || !trustworthyFuture) && !continuing) {
                 return [];
             }
         }
-        else if (urgency.requireCoherentBlock && minE > exports.EPS && !continuing) {
+        else if (urgency.requireCoherentBlock && minE > exports.EPS && !continuing && !batteryBridge) {
             if (slot.remainPvKwh + exports.EPS < 2 * minE) {
                 return [];
             }
@@ -1662,10 +1724,7 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
         if (slot.remainPvKwh + exports.EPS >= Math.max(minE, exports.EPS))
             sources.push("pv_surplus");
         const pvBeforeDl = pvBeforeDeadlineKwh(state, consumer.deadlineMs, consumer.slotAllowed);
-        /*
-         * Batterie nur Hard/Pflicht (nicht Soft) — auch nicht bei Soft-emptyAt-Deadline.
-         * Soft-emptyAt steuert nur die PV-Fensterwahl, nie Speicherentladung.
-         */
+        /* Batterie für Hard/Pflicht; Soft ausschließlich über das enge Policy-/Recovery-Gate. */
         const thermalNeedsBattery = !consumer.thermalSoftOnly &&
             consumer.thermalBeforeDeadline &&
             pvBeforeDl + exports.EPS < consumer.remainingKwh &&
@@ -1681,11 +1740,11 @@ function generateCandidatesForConsumer(input, state, consumer, slotIdx, wbPresen
             usableBat + exports.EPS >= Math.max(minE, exports.EPS) &&
             slot.remainPvKwh + exports.EPS < Math.max(minE, exports.EPS) &&
             slot.remainPvKwh + usableBat + exports.EPS >= Math.max(minE, exports.EPS);
-        /*
-         * Soft-IH: kein Batterie-Top-up — auch nicht bei knapper PV / voller Batterie.
-         * Mindeststufe nur aus PV (oder gar nicht in diesem Slot).
-         */
-        if (thermalNeedsBattery || hardNeedsBatteryNow)
+        const softNeedsBattery = consumer.thermalSoftOnly &&
+            softThermalBatteryBridgeAllowed(input, state, consumer, slotIdx) &&
+            usableBat + exports.EPS >= Math.max(minE, exports.EPS) &&
+            slot.remainPvKwh + exports.EPS < Math.max(minE, exports.EPS);
+        if (thermalNeedsBattery || hardNeedsBatteryNow || softNeedsBattery)
             sources.push("battery");
     }
     if (consumer.kind === "battery_charge") {

@@ -10,6 +10,7 @@ const types_1 = require("../../addons/immersion_heater/runtime/types");
 const state_write_1 = require("../../policy/core/state_write");
 const strategic_status_1 = require("../../beta/strategic_status");
 const build_1 = require("./build");
+const outlook_72h_1 = require("../outlook_72h");
 exports.OPERATOR_ASSESSMENT_JSON = "operator.assessment.json";
 exports.OPERATOR_ASSESSMENT_DE = "operator.assessment_de";
 function asBool(v) {
@@ -130,8 +131,16 @@ async function publishOperationalAssessment(host, input) {
         },
     };
     const assessment = (0, build_1.buildOperationalAssessment)(buildInput);
+    const outlook = (0, outlook_72h_1.buildOperatorOutlook72h)({
+        now: input.now,
+        timezone: input.timezone,
+        plan: input.plan,
+        plannerInput: input.plannerInput,
+    });
     const writer = host;
     await (0, state_write_1.setStateIfChanged)(writer, exports.OPERATOR_ASSESSMENT_JSON, JSON.stringify(assessment));
     await (0, state_write_1.setStateIfChanged)(writer, exports.OPERATOR_ASSESSMENT_DE, (0, build_1.formatOperationalAssessmentDe)(assessment));
+    await (0, state_write_1.setStateIfChanged)(writer, outlook_72h_1.OPERATOR_OUTLOOK_72H_JSON, JSON.stringify(outlook));
+    await (0, state_write_1.setStateIfChanged)(writer, outlook_72h_1.OPERATOR_OUTLOOK_72H_DE, (0, outlook_72h_1.formatOperatorOutlook72hDe)(outlook));
 }
 exports.publishOperationalAssessment = publishOperationalAssessment;

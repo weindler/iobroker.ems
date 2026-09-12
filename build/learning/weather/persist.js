@@ -23,14 +23,29 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dayResultToPersist = exports.writeWeatherDayPersist = void 0;
+exports.dayResultToPersist = exports.writeWeatherDayPersist = exports.WEATHER_DAY_RETENTION_DAYS = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
+exports.WEATHER_DAY_RETENTION_DAYS = 120;
+async function pruneWeatherDayFiles(baseDir) {
+    let names;
+    try {
+        names = await fs.readdir(baseDir);
+    }
+    catch {
+        return;
+    }
+    const dayFiles = names.filter((name) => /^\d{4}-\d{2}-\d{2}\.json$/.test(name)).sort();
+    for (const name of dayFiles.slice(0, Math.max(0, dayFiles.length - exports.WEATHER_DAY_RETENTION_DAYS))) {
+        await fs.unlink(path.join(baseDir, name)).catch(() => undefined);
+    }
+}
 async function writeWeatherDayPersist(baseDir, payload) {
     await fs.mkdir(baseDir, { recursive: true });
     const filePath = path.join(baseDir, `${payload.date}.json`);
     await (0, atomic_write_1.atomicWriteFile)(filePath, `${JSON.stringify(payload, null, 2)}\n`);
+    await pruneWeatherDayFiles(baseDir);
 }
 exports.writeWeatherDayPersist = writeWeatherDayPersist;
 function dayResultToPersist(day, forecastSource, actualSource) {

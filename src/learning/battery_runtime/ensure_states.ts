@@ -32,6 +32,16 @@ export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promi
 		strState("learning.battery_runtime.last_run", "Battery-Runtime letzter Lauf (ISO)"),
 		numState("learning.battery_runtime.sample_days", "Battery-Runtime Sample-Tage"),
 		numState("learning.battery_runtime.avg_night_discharge_kwh", "Battery-Runtime Ø Nachtentladung", "kWh"),
+		numState(
+			"learning.battery_runtime.median_night_discharge_kwh",
+			"Battery-Runtime Median Nachtentladung (Diagnose)",
+			"kWh",
+		),
+		strState(
+			"learning.battery_runtime.night_estimator",
+			"Battery-Runtime verwendeter Nacht-Schätzer",
+			"recency_weighted_average",
+		),
 		numState("learning.battery_runtime.avg_night_bridge_hours", "Battery-Runtime Ø Nachtbrücken-Dauer", "h"),
 		/*
 		 * Phase 1d — dynamische Nachtverbrauchs-Erfassung/-Prognose und daraus abgeleitete
@@ -64,6 +74,11 @@ export async function ensureBatteryRuntimeLearningStates(host: StateHost): Promi
 		),
 		strState("learning.battery_runtime.night_reserve_reason_de", "Battery-Runtime Reserve-Begründung", ""),
 		strState("learning.battery_runtime.night_bridge_method", "Battery-Runtime Nachtbrücken-Methode", "none"),
+		strState(
+			"learning.battery_runtime.night_samples_json",
+			"Battery-Runtime Nacht-Einzelbefunde (JSON)",
+			"[]",
+		),
 		numState("learning.battery_runtime.night_bridge_pv_points", "Battery-Runtime PV-Punkte für Nachtbrücke"),
 		numState("learning.battery_runtime.night_bridge_house_points", "Battery-Runtime Hauslast-Punkte für Nachtbrücke"),
 		strState("learning.battery_runtime.night_bridge_pv_origin", "Battery-Runtime PV-Quellenart", "none"),

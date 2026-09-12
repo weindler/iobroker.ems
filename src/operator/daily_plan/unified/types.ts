@@ -323,6 +323,11 @@ export type UnifiedThermalInput = {
 	hygieneMandatoryKwh?: number | null;
 	hygieneDue?: boolean;
 	nightBridgeActive: boolean;
+	/**
+	 * Betreiber-Policy: optionaler thermischer Bedarf darf passive Batterieenergie nutzen.
+	 * Fehlend/false bleibt konservativ gesperrt. Safety-/Reserve-Floors gelten zusätzlich.
+	 */
+	mayUseBatteryForImmersion?: boolean;
 	/** Boiler-Kühlrate wenn Learning belastbar. */
 	coolingRateCPerH: number | null;
 	minimumRuntimeSec: number | null;
@@ -457,11 +462,6 @@ export type UnifiedDayPlannerInput = {
 	 * verhindert Relais-Takten wenn Prefer kurz ausfällt und Mid-Slot-Skip sonst 0 W setzt.
 	 */
 	continueImmersionSoftCurrentSlot?: boolean;
-	/**
-	 * Von Compare akzeptierte/retained Slot-ISOs, in denen Soft-IH nicht kandidieren darf
-	 * (`defer_tomorrow`, Gewicht 0). Nie auf den Hard-Consumer anwenden.
-	 */
-	immersionSoftDisallowedSlotIsos?: string[];
 };
 
 /** Prioritätsordnung — Vertrag + Tests; noch kein Solver. */

@@ -78,6 +78,7 @@ function intentFrom(entries, tel = telemetry(), opts = {}) {
         decision: d,
         governanceEnabled: opts.governanceEnabled ?? true,
         addonEnabled: opts.addonEnabled ?? true,
+        tibberNowHandoffEnabled: opts.tibberNowHandoffEnabled ?? false,
         phases: tel.activePhases ?? tel.configuredPhases,
         now: NOW,
     });
@@ -97,6 +98,13 @@ function intentFrom(entries, tel = telemetry(), opts = {}) {
         strict_1.default.equal(i.targetPowerW, 3600);
         strict_1.default.equal(i.dailyPlanRevision, 7);
         strict_1.default.ok(i.validUntil);
+    });
+    (0, node_test_1.it)("configured Tibber handoff suppresses normal PV/min+PV planner dispatch", () => {
+        const i = intentFrom([allocationEntry(3600)], telemetry(), { tibberNowHandoffEnabled: true });
+        strict_1.default.equal(i.action, "none");
+        strict_1.default.equal(i.enabled, false);
+        strict_1.default.equal(i.targetPowerW, 0);
+        strict_1.default.match(i.reasonDe, /Tibber Grid Rewards/);
     });
     (0, node_test_1.it)("valid zero allocation produces hold", () => {
         const i = intentFrom([]);

@@ -29,6 +29,8 @@ export type EconomicsDayRecord = {
 	/** Realistische Sonnen-ohne-EMS; null wenn nicht bewertbar. */
 	referenceSonnenNativeNetCostEur?: number | null;
 	emsWithoutAiNetCostEur: number | null;
+	/** Modellversion der Shadow-Quelle; ermöglicht saubere Neubuchung nach Modellwechsel. */
+	shadowModelVersion: string | null;
 
 	emsVorteilEvaluable: boolean;
 	kiMehrwertEvaluable: boolean;
@@ -39,7 +41,7 @@ export type EconomicsPersist = {
 	module: typeof ECONOMICS_MODULE;
 	schemaVersion: typeof ECONOMICS_SCHEMA_VERSION;
 	updatedAtIso: string;
-	/** dateKey → Tagesbuchung. Klein pro Eintrag — unbeschränkte Retention vertretbar (Accounting-Historie). */
+	/** dateKey → Tagesbuchung. Zehn Jahre harte Retention (siehe persist.ts). */
 	days: Record<string, EconomicsDayRecord>;
 };
 

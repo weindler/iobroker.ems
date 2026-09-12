@@ -69,6 +69,14 @@ const REQUIRED_STATE_PATHS = [
 	"operator.plan.wallbox_strategy_de",
 	"operator.assessment.json",
 	"operator.assessment_de",
+	"operator.outlook_72h.json",
+	"operator.outlook_72h_de",
+	"statistics.energy.today_json",
+	"statistics.energy.month_json",
+	"statistics.energy.period_json",
+	"learning.battery_runtime.median_night_discharge_kwh",
+	"learning.battery_runtime.night_estimator",
+	"learning.battery_runtime.night_bridge_valid_nights",
 	"live.price.now_ct_per_kwh",
 	"addons.battery.telemetry.charging_power_w",
 	"addons.battery.telemetry.discharging_power_w",
@@ -83,6 +91,11 @@ const REQUIRED_STATE_PATHS = [
 	"addons.battery.grid_balance.price_allowed",
 	"addons.battery.grid_balance.price_min_ct_kwh",
 	"addons.battery.grid_balance.effective_power_w",
+	"addons.battery.grid_balance.requested_discharge_w",
+	"addons.battery.grid_balance.effective_discharge_w",
+	"addons.battery.grid_balance.authority",
+	"addons.battery.grid_balance.ownership",
+	"addons.battery.grid_balance.ev_conflict",
 	"addons.battery.grid_balance.grid_power_w",
 	"addons.battery.grid_balance.hold_detected",
 	"planner.intent.contributions.immersion_heater.contributions_json",
@@ -112,6 +125,9 @@ const REQUIRED_STATE_PATHS = [
 	"addons.wallbox.status.evcc.battery_mode",
 	"addons.wallbox.runtime.battery_hold_for_ev_charge",
 	"addons.wallbox.status.ev_foundation.ev_execution_authority",
+	"addons.wallbox.status.ev_foundation.tibber_now_handoff_enabled",
+	"addons.wallbox.status.ev_foundation.tibber_now_handoff_status",
+	"addons.wallbox.status.ev_foundation.tibber_now_handoff_due_at",
 	"addons.wallbox.runtime.tibber_grid_rewards_active",
 	"learning.battery_runtime.predicted_night_consumption_kwh",
 	"planner.battery_discharge.reason_de",
@@ -121,6 +137,11 @@ const REQUIRED_STATE_PATHS = [
 	"learning.daily_evaluator.last_day_global_score",
 	"learning.shadow_engine.yesterday_real_net_cost_eur",
 	"learning.climate_shared_power.summary_de",
+	"learning.climate_thermal.summary_de",
+	"learning.grid_balance_economics.alpha",
+	"learning.grid_balance_economics.beta",
+	"learning.grid_balance_economics.confidence",
+	"learning.grid_balance_economics.pair_count",
 	"economics.today.ems_vorteil_eur",
 	"economics.period.grid_rewards_eur",
 	"economics.cumulative.ems_vorteil_eur",
@@ -145,6 +166,75 @@ describe("VIS operations dashboard", () => {
 		assert.doesNotThrow(() => new Function(extractScript(visHtml)));
 	});
 
+	it("offers all seven planned areas and generic page navigation", () => {
+		for (const [id, label] of [
+			["ops", "Betrieb"],
+			["stats", "Statistik"],
+			["battery", "Batterie"],
+			["thermal", "Heizstab / Wärme"],
+			["climate", "Klima"],
+			["wallbox", "Auto / Wallbox"],
+			["grid", "Grid Balance"],
+		]) {
+			assert.match(visHtml, new RegExp(`data-ems-view="${id}"[^>]*>${label.replace("/", "\\/")}`));
+			assert.match(visHtml, new RegExp(`id="ems-view-${id}"`));
+		}
+		assert.match(visHtml, /var allowed=\["ops","stats","battery","thermal","climate","wallbox","grid"\]/);
+		assert.match(visHtml, /querySelectorAll\("\.ems-view-page"\)/);
+		assert.match(visHtml, /data-ems-open-view/);
+	});
+
+	it("answers state, learning, next action and reason on every device page", () => {
+		for (const renderer of [
+			"renderBatteryPage",
+			"renderThermalPage",
+			"renderClimatePage",
+			"renderWallboxPage",
+			"renderGridPage",
+		]) assert.match(visHtml, new RegExp(`function ${renderer}\\(`));
+		for (const question of [
+			"1 · Was ist der aktuelle Zustand?",
+			"2 · Was hat EMS gelernt?",
+			"3 · Was plant EMS als Nächstes?",
+			"4 · Warum?",
+		]) assert.match(visHtml, new RegExp(question.replace(/[?]/g, "\\?")));
+		assert.match(visHtml, /\.learning\.climate_thermal\.unit_"\+u/);
+		assert.match(visHtml, /"cooling_temp_rate_k_per_h"/);
+		assert.match(visHtml, /Aktive Batterie-Netzladung sowie EVCC now\/tatsächliches Schnellladen sperren Grid Balance zwingend/);
+	});
+
+	it("keeps Betrieb as the 72-hour decision hub with explicit deferrals and links", () => {
+		assert.match(visHtml, /Planner-Entscheidungen/);
+		assert.match(visHtml, /BEWUSST VERSCHOBEN/);
+		assert.match(visHtml, /decision\.explanationDe/);
+		assert.match(visHtml, /EMS – Rollierende 72 Stunden/);
+		assert.match(visHtml, /od\.dayLabelDe/);
+	});
+
+	it("shows energetic statistics and keeps unmeasured benefits non-monetized", () => {
+		assert.match(visHtml, /Energiebilanz heute/);
+		assert.match(visHtml, /PV-Nutzung der Geräte/);
+		assert.match(visHtml, /Eigenverbrauch/);
+		assert.match(visHtml, /Autarkie/);
+		assert.match(visHtml, /Einspeisung/);
+		assert.match(visHtml, /Nutzen ohne Eurobewertung/);
+		assert.match(visHtml, /Pelletentlastung/);
+		assert.match(visHtml, /nicht bewertet/);
+		assert.match(visHtml, /Auto Schnell\/now/);
+		assert.match(visHtml, /Sonnen-Batterie/);
+		assert.match(visHtml, /evFastBatteryKwh/);
+		assert.match(visHtml, /evFastGridKwh/);
+		assert.match(visHtml, /evFastLocalKwh/);
+	});
+
+	it("shows the configured Tibber plug-in handoff separately from the current Rewards signal", () => {
+		assert.match(visHtml, /Übergabe erlaubt/);
+		assert.match(visHtml, /Tibber-Übergabe/);
+		assert.match(visHtml, /Schnell\/now fällig/);
+		assert.match(visHtml, /Wartezeit läuft/);
+		assert.match(visHtml, /Grid Rewards/);
+	});
+
 	it("subscribes to existing states for the live strip and price board", () => {
 		for (const path of REQUIRED_STATE_PATHS) {
 			assert.match(visHtml, new RegExp(path.replace(/\./g, "\\.")));
@@ -167,8 +257,8 @@ describe("VIS operations dashboard", () => {
 	});
 
 	it("keeps boiler and buffer as separate rows", () => {
-		assert.match(visHtml, /\["Boiler",boilerTemp\]/);
-		assert.match(visHtml, /\["Puffer",bufferTemp\]/);
+		assert.match(visHtml, /\["Boiler",boiler===null\?"—":fmtDec\(boiler,1,"°C"\)\]/);
+		assert.match(visHtml, /\["Puffer",buffer===null\?"—":fmtDec\(buffer,1,"°C"\)\]/);
 	});
 
 	it("shows climate HVAC badges only while the device is running", () => {
@@ -571,7 +661,7 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.match(visHtml, /visAcConfiguredName\(g\(base\+"\.name"\)\)/);
 		assert.equal(visHtml.includes('if(!name&&!g(base+".room_temp_c")'), false);
 		assert.equal(visHtml.includes("Klima · —"), false);
-		assert.match(visHtml, /acCard\(5\)/);
+		assert.match(visHtml, /for\(var u=1;u<=5;u\+\+\)/);
 		assert.match(visHtml, /ems-tiles-dense/);
 		assert.match(visHtml, /room_humidity_pct/);
 		assert.match(visHtml, /stats\.today_runtime_sec/);

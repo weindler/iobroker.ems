@@ -20,6 +20,11 @@ async function writeResult(host, result, lastRun, diag) {
     await host.setStateAsync("learning.battery_runtime.last_run", { val: lastRun, ack: true });
     await setNumIfValid(host, "learning.battery_runtime.sample_days", result.sampleDays);
     await setNumIfValid(host, "learning.battery_runtime.avg_night_discharge_kwh", result.avgNightDischargeKwh);
+    await setNumIfValid(host, "learning.battery_runtime.median_night_discharge_kwh", result.medianNightDischargeKwh);
+    await host.setStateAsync("learning.battery_runtime.night_estimator", {
+        val: result.nightEstimator,
+        ack: true,
+    });
     // avg_night_discharge_pct: Surface-Cleanup löscht den State als Ballast — nicht mehr schreiben (Wert in Persist/Log).
     await setNumIfValid(host, "learning.battery_runtime.avg_night_bridge_hours", result.avgNightBridgeHours);
     await setNumIfValid(host, "learning.battery_runtime.predicted_night_consumption_kwh", result.predictedNightConsumptionKwh);
@@ -34,6 +39,10 @@ async function writeResult(host, result, lastRun, diag) {
     });
     await host.setStateAsync("learning.battery_runtime.night_bridge_method", {
         val: result.nightBridgeMethod,
+        ack: true,
+    });
+    await host.setStateAsync("learning.battery_runtime.night_samples_json", {
+        val: JSON.stringify(result.nightSamples.slice(-persist_1.BATTERY_NIGHT_DIAGNOSTIC_RETENTION)),
         ack: true,
     });
     if (diag) {
@@ -164,7 +173,7 @@ async function runBatteryRuntimeLearning(host) {
             housePoints: housePowerPoints.length,
             pvOrigin,
         });
-        host.log.info(`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} validNights=${result.nightBridgeValidNights} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvOrigin=${pvOrigin} pvSrc=${(0, config_1.sourceLabelFromStateId)(sources.pvAcPowerStateId)} houseSrc=${(0, config_1.sourceLabelFromStateId)(sources.consumptionStateId)}`);
+        host.log.info(`Battery-Runtime-Learning: status=${result.status} method=${result.nightBridgeMethod} validNights=${result.nightBridgeValidNights} nights=${result.avgNightDischargePct ?? "n/a"}% kwh=${result.avgNightDischargeKwh ?? "n/a"} medianKwh=${result.medianNightDischargeKwh ?? "n/a"} estimator=${result.nightEstimator} bridgeH=${result.avgNightBridgeHours ?? "n/a"} samples=${result.sampleDays} pvPts=${pvPowerPoints.length} housePts=${housePowerPoints.length} pvOrigin=${pvOrigin} pvSrc=${(0, config_1.sourceLabelFromStateId)(sources.pvAcPowerStateId)} houseSrc=${(0, config_1.sourceLabelFromStateId)(sources.consumptionStateId)}`);
         host.log.debug?.(`Battery-Runtime-Learning detail: full_src=${result.fullChargeSource ?? "—"} sec_since_full=${result.secondsSinceFullCharge ?? "—"} days_since_full=${result.daysSinceFull ?? "—"} soc=${(0, config_1.sourceLabelFromStateId)(sources.socStateId)} power=${(0, config_1.sourceLabelFromStateId)(sources.powerStateId)} invert=${result.powerInvertApplied === null ? "—" : result.powerInvertApplied ? "on" : "off"}${result.powerInvertAuto ? "(auto)" : ""}`);
         if (result.nightBridgeMethod !== "pv_house" &&
             (!sources.pvAcPowerStateId || !sources.consumptionStateId)) {

@@ -22,10 +22,6 @@ const climate_thermal_1 = require("../climate_thermal");
 const ensure_states_3 = require("../climate_thermal/ensure_states");
 const shadow_engine_1 = require("../shadow_engine");
 const economics_1 = require("../../economics");
-const ensure_states_4 = require("../../ai/override/ensure_states");
-const tick_1 = require("../../ai/override/tick");
-const ensure_states_5 = require("../../ai/daily_analyst/ensure_states");
-const run_2 = require("../../ai/daily_analyst/run");
 const config_2 = require("../../intent/config");
 const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
@@ -50,8 +46,6 @@ async function ensureLearningStateTree(adapter) {
     await (0, ensure_states_3.ensureClimateThermalRootStates)(host);
     await (0, shadow_engine_1.ensureShadowEngineStates)(host);
     await (0, economics_1.ensureEconomicsStates)(host);
-    await (0, ensure_states_4.ensureAiValidatorStates)(host);
-    await (0, ensure_states_5.ensureAiDailyAnalystStates)(host);
     await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
     return host;
 }
@@ -165,28 +159,6 @@ async function runLearningTick(host, trigger = "interval") {
         }
         catch (e) {
             host.log.error(`economics tick: ${e instanceof Error ? e.message : String(e)}`);
-        }
-        /*
-         * PHASE 6 — KI-Validator TTL-Sweep (rein deterministisch, kein LLM-Aufruf). Läuft
-         * unabhängig davon, ob aktuell überhaupt Overrides existieren.
-         */
-        try {
-            await (0, tick_1.syncAiValidatorStates)(host);
-        }
-        catch (e) {
-            host.log.error(`ai validator sweep: ${e instanceof Error ? e.message : String(e)}`);
-        }
-        /*
-         * PHASE 4 — KI Daily Analyst. Höchstens ein LLM-Aufruf pro Kalendertag (idempotent
-         * über die persistierte Findings-Datei des Vortags) — kein Hot-Path-Aufruf. Ohne
-         * konfiguriertes Token/Mode bleibt dies ein reiner No-Op (status "disabled"/"no_token"),
-         * das EMS läuft unverändert weiter.
-         */
-        try {
-            await (0, run_2.maybeRunDailyAnalystAutomatically)(host);
-        }
-        catch (e) {
-            host.log.error(`ai_daily_analyst auto run: ${e instanceof Error ? e.message : String(e)}`);
         }
     }
     finally {

@@ -115,10 +115,6 @@ async function ensureEmsLightStateTree(adapter) {
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     await (0, policy_1.ensurePolicyStateTree)(policyHost);
     await (0, intent_1.ensureIntentStates)(buildIntentHost(adapter));
-    const { ensureAiStateTree } = await import("../ai/index.js");
-    await ensureAiStateTree(host);
-    const { ensureCompareStateTree } = await import("../ai/compare/index.js");
-    await ensureCompareStateTree(host);
     learningHost = await (0, pv_bias_1.ensureLearningStateTree)(adapter);
 }
 exports.ensureEmsLightStateTree = ensureEmsLightStateTree;

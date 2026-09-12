@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { allowedKeysByType, validateJsonConfig } from "./validate_json_config";
+import { validateJsonConfig } from "./validate_json_config";
 
 const ROOT = path.resolve(__dirname, "..", "..", "..");
 const SCHEMA_PATH = path.join(ROOT, "src/tools/admin_config/iobroker_jsonConfig.schema.json");
@@ -38,18 +38,10 @@ describe("admin jsonConfig vs ioBroker schema", () => {
 		);
 	});
 
-	it("Daily-Analyst-Button JETZT ANALYSIEREN ist schema-konform und triggert aiDailyAnalystNow", () => {
-		const btn = config.items?.globalTab?.items?.aiAnalystRunNowBtn;
-		assert.ok(btn, "aiAnalystRunNowBtn fehlt");
-		assert.equal(btn.type, "sendTo");
-		assert.equal(btn.command, "aiDailyAnalystNow");
-		assert.equal(btn.disabled, "data.ai_analyst_mode === 'disabled'");
-		assert.equal("alsoDependsOn" in btn, false);
-		const allowed = allowedKeysByType(schema as never).get("sendTo");
-		assert.ok(allowed, "sendTo keys aus Schema");
-		assert.equal(allowed.has("alsoDependsOn"), false);
-		for (const key of Object.keys(btn)) {
-			assert.ok(allowed.has(key), `sendTo additionalProperty: ${key}`);
-		}
+	it("normale Admin-Konfiguration enthält keine KI-Bedienelemente oder Secrets", () => {
+		const serialized = JSON.stringify(config);
+		assert.equal(serialized.includes("ai_openai_api_key"), false);
+		assert.equal(serialized.includes("aiDailyAnalystNow"), false);
+		assert.equal(serialized.includes("KI-Optimierung"), false);
 	});
 });

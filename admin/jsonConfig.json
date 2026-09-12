@@ -13,7 +13,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Beta — Muss konfiguriert werden: 1) PV/Grid/Hauslast-Datenquellen (Mappings). 2) Vorhandene Geräte: Batterie, Heizstab, Klima, EVCC/Fahrzeug. 3) Preisquelle (z. B. Tibber). 4) Strategie (eco/balanced/comfort/forced) und Ausführung Dryrun/Live. Neuinstallation und Restore starten immer in Dryrun. Hierarchie: Global Dryrun sperrt immer alle Gerätewrites. Global Live erlaubt nur Add-ons, die selbst auf Live stehen. Pro Add-on bleiben Dryrun/Live, Aktivierung und KI-Freigabe. Optional/Advanced: Learning, KI (nur Erklärung/Empfehlung, keine Plan-Authority), Support-Diagnose."
+					"text": "Beta — Muss konfiguriert werden: 1) PV/Grid/Hauslast-Datenquellen (Mappings). 2) Vorhandene Geräte: Batterie, Heizstab, Klima, EVCC/Fahrzeug. 3) Preisquelle (z. B. Tibber). 4) Strategie (eco/balanced/comfort/forced) und Ausführung Dryrun/Live. Neuinstallation und Restore starten immer in Dryrun. Global Dryrun sperrt alle Gerätebefehle; Global Live erlaubt nur Add-ons, die selbst auf Live stehen. Optional: Learning und Support-Diagnose."
 				},
 				"global_execution_mode": {
 					"type": "select",
@@ -43,7 +43,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Ein Unified Day Planner steuert Batterie, Heizstab, Klima und Wallbox gemeinsam. AI erklärt und empfiehlt nur — sie verändert keine Allocations. Battery Discharge LIVE ist in der Beta nicht unterstützt. EVCC bleibt alleiniger Wallbox-Controller."
+					"text": "Der Tagesplaner koordiniert Batterie, Heizstab, Klima und Wallbox. Batterieentladung im Live-Betrieb ist in der Beta nicht unterstützt. EVCC bleibt alleiniger Wallbox-Controller."
 				},
 				"hVisDashboard": {
 					"type": "header",
@@ -59,276 +59,12 @@
 					"type": "checkbox",
 					"label": "VIS Diagnose / Begründungen anzeigen",
 					"default": false,
-					"help": "Aus: nur Alltag (Jetzt / Demnächst / Add-ons). An: zusätzlich KI-, Plan- und Detail-Begründungen unten im VIS-Board.",
+					"help": "Aus: nur Alltag (Jetzt / Demnächst / Add-ons). An: zusätzlich Plan- und Detail-Begründungen unten im VIS-Board.",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
 					"lg": 4,
 					"xl": 4
-				},
-				"hAiOptimization": {
-					"type": "header",
-					"size": 2,
-					"text": "KI-Optimierung (optional, standardmäßig aus)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"aiOptimizationIntro": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "EMS-Light funktioniert vollständig ohne KI. Wenn aktiviert, darf die KI nur freigegebene Add-ons (Heizstab/Klima/Batterie-Laden/Wallbox) innerhalb der Policies optimieren — nie direkt auf Geräte, kein EMS-Entladen. Write-back auf die Daily-Plan-Allocation nur, wenn Plan B Plan A messbar schlägt (Kosten/PV/Netz); sonst Auto-KI aus. Aufruf bei relevanter Plan-Änderung (Mindestabstand) oder per Knopf. Kostenschätzung grob (Adapter-Preisliste)."
-				},
-				"ai_user_enabled_hint": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "<b>KI benutzen</b> wird in der EMS-Light-Bedienoberfläche (VIS) bzw. über den Runtime-State <code>ai.user_enabled</code> geschaltet — <b>ohne Adapter-Neustart</b>. Das frühere Admin-Feld „KI global aktiv“ (<code>ai_enabled</code>) ist nur noch Legacy/Migration und steuert den laufenden Betrieb nicht mehr. Token, Modell und Limits unten bleiben Admin-Konfiguration (Speichern kann die Instanz neu starten)."
-				},
-				"ai_thinking_mode": {
-					"type": "checkbox",
-					"label": "Denkmodus (Situation/Horizont)",
-					"default": true,
-					"help": "An: KI denkt wie ein Hausmanager (heute vs. morgen PV/Preis, Entscheidungen). Aus: Legacy nur Slot-Umverteilung.",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"ai_model": {
-					"type": "select",
-					"label": "Modell",
-					"default": "gpt-4.1-mini",
-					"options": [
-						{
-							"label": "GPT-4.1 mini (günstig, empfohlen)",
-							"value": "gpt-4.1-mini"
-						},
-						{
-							"label": "GPT-4o mini (günstig)",
-							"value": "gpt-4o-mini"
-						},
-						{
-							"label": "GPT-5 mini",
-							"value": "gpt-5-mini"
-						},
-						{
-							"label": "GPT-4.1",
-							"value": "gpt-4.1"
-						}
-					],
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"ai_openai_api_key": {
-					"type": "password",
-					"label": "OpenAI API-Token",
-					"default": "",
-					"help": "Wird verschlüsselt gespeichert und nie in Backup-/Support-Exporten mitgeschickt.",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"ai_max_calls_per_day": {
-					"type": "number",
-					"label": "Max. KI-Aufrufe/Tag",
-					"default": 20,
-					"min": 1,
-					"max": 500,
-					"help": "Soft-Warnung ab 80% des Limits. Jeder Aufruf (auch Fehler) zählt.",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"ai_min_interval_minutes": {
-					"type": "number",
-					"label": "Mindestabstand automatische Aufrufe (Min.)",
-					"default": 60,
-					"min": 0,
-					"max": 1440,
-					"help": "Entspricht minimum_replan_interval: Automatische Aufrufe frühestens nach dieser Zeit seit dem letzten automatischen Aufruf. 0 = kein Mindestabstand. Betrifft nicht „Jetzt optimieren“.",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"ai_monthly_cost_limit_eur": {
-					"type": "number",
-					"label": "KI-Monatslimit (EUR)",
-					"default": 0,
-					"min": 0,
-					"max": 1000,
-					"help": "monthly_cost_limit: geschätzte Token-Kosten/Monat; bei Erreichen keine weiteren Aufrufe. 0 = aus.",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"aiOptimizeNowBtn": {
-					"type": "sendTo",
-					"command": "aiOptimizeNow",
-					"jsonData": "{}",
-					"label": "Jetzt optimieren",
-					"help": "Löst sofort einen einzelnen KI-Versuch aus (zählt gegen das Tageslimit) — zum Testen. Ergebnis unter ai.* im Objektbaum.",
-					"showProcess": true,
-					"timeout": 45000,
-					"variant": "contained",
-					"color": "secondary",
-					"icon": "send",
-					"result": {
-						"ok": "KI-Versuch abgeschlossen — Details unter ai.* im Objektbaum",
-						"error": "KI-Versuch fehlgeschlagen — Begründung in der Meldung bzw. ai.last_reason_de",
-						"skipped": "Nicht ausgeführt — Begründung in der Meldung bzw. ai.last_reason_de"
-					},
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"getAiStatusBtn": {
-					"type": "sendTo",
-					"command": "getAiStatus",
-					"jsonData": "{}",
-					"label": "Status prüfen",
-					"help": "Zeigt Status, Aufrufe heute, Kostenschätzung — ohne einen Call auszulösen.",
-					"showProcess": true,
-					"timeout": 15000,
-					"variant": "outlined",
-					"icon": "info",
-					"result": {
-						"ok": "Status gelesen — Details unter ai.* im Objektbaum",
-						"error": "Status nicht lesbar"
-					},
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"hAiDailyAnalyst": {
-					"type": "header",
-					"size": 2,
-					"text": "KI Daily Analyst (optional, standardmäßig aus)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"aiDailyAnalystIntro": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Reine Rückblick-Analyse abgeschlossener Tage (Daily Evaluator + Shadow/Economics). Standard: kein Regler. Optional können validierte, zeitlich begrenzte Planner-Overrides eingeschaltet werden (Phase 6) — niemals Geräte-Direktsteuerung, niemals Safety-Grenzen. Nutzt denselben OpenAI-Token wie oben. Höchstens 1 Aufruf/Kalendertag im Modus „automatisch täglich“."
-				},
-				"ai_analyst_mode": {
-					"type": "select",
-					"label": "Modus",
-					"default": "disabled",
-					"options": [
-						{ "label": "Deaktiviert", "value": "disabled" },
-						{ "label": "Nur manuell (Knopf)", "value": "manual" },
-						{ "label": "Automatisch 1×/Tag", "value": "daily_auto" }
-					],
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"ai_analyst_model": {
-					"type": "select",
-					"label": "Modell",
-					"default": "gpt-4.1-mini",
-					"options": [
-						{ "label": "GPT-4.1 mini (günstig, empfohlen)", "value": "gpt-4.1-mini" },
-						{ "label": "GPT-4o mini (günstig)", "value": "gpt-4o-mini" },
-						{ "label": "GPT-5 mini", "value": "gpt-5-mini" },
-						{ "label": "GPT-4.1", "value": "gpt-4.1" }
-					],
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"ai_analyst_retained_days": {
-					"type": "number",
-					"label": "Findings-Historie (Tage)",
-					"default": 120,
-					"min": 7,
-					"max": 365,
-					"help": "Rebuildable/support_only — kein Backup-Anspruch. Alte Tagesdateien werden nach dieser Zeit gelöscht.",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"ai_override_enabled": {
-					"type": "checkbox",
-					"label": "Validierte temporäre Planner-Overrides erlauben (Phase 6)",
-					"default": false,
-					"help": "Nur Findings mit numerischem Vorschlag und Validator-Freigabe. Safety-/Hardlimits nie veränderbar. Overrides laufen nach 24 h automatisch aus. Standard: aus — KI bleibt Analyst.",
-					"xs": 12,
-					"sm": 12,
-					"md": 6,
-					"lg": 6,
-					"xl": 6
-				},
-				"aiAnalystRunNowBtn": {
-					"type": "sendTo",
-					"command": "aiDailyAnalystNow",
-					"jsonData": "{}",
-					"label": "Jetzt analysieren",
-					"help": "Analysiert den zuletzt vom Daily Evaluator bewerteten Tag. Nutzt denselben Trigger wie ai.daily_analyst.run_now_request. Schaltet keine Planner-Overrides ein.",
-					"showProcess": true,
-					"timeout": 45000,
-					"variant": "contained",
-					"color": "secondary",
-					"icon": "send",
-					"disabled": "data.ai_analyst_mode === 'disabled'",
-					"result": {
-						"ok": "Daily Analyst: siehe Hinweis unter dem Button bzw. ai.daily_analyst.status",
-						"error": "Daily Analyst ist deaktiviert oder der Lauf ist fehlgeschlagen — Details unter ai.daily_analyst.status"
-					},
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"aiAnalystRunNowHint": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Status nach dem Lauf steht unter ai.daily_analyst (status, last_error, last_run_at, findings_count, top_finding_de) — keine JSON-Ausgabe hier. Overrides bleiben eine getrennte Option."
 				},
 				"hGlobalFailsafe": {
 					"type": "header",
@@ -444,7 +180,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "EMS-Light funktioniert vollständig ohne KI. Für jedes Add-on kann getrennt festgelegt werden, ob es vom EMS gesteuert und später durch KI optimiert werden darf."
+					"text": "Für jedes Add-on kann getrennt festgelegt werden, ob es vom EMS geplant und gesteuert werden darf."
 				},
 				"hGovWallbox": {
 					"type": "header",
@@ -461,17 +197,6 @@
 					"label": "Aktiv",
 					"default": true,
 					"help": "Erlaubt Policies, Planung und Steuerung dieses Add-ons. Messwerte und Learning dürfen auch bei deaktivierter Steuerung weiterlaufen.",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"wallbox_ai_optimization_allowed": {
-					"type": "checkbox",
-					"label": "KI-Optimierung erlaubt",
-					"default": false,
-					"help": "Erlaubt einer späteren KI, den Fahrplan dieses Add-ons innerhalb aller Policies und Sicherheitsgrenzen zu optimieren. Ohne Freigabe arbeitet das Add-on weiterhin vollständig deterministisch.",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -499,17 +224,6 @@
 					"lg": 3,
 					"xl": 3
 				},
-				"immersion_heater_ai_optimization_allowed": {
-					"type": "checkbox",
-					"label": "KI-Optimierung erlaubt",
-					"default": false,
-					"help": "Erlaubt einer späteren KI, den Fahrplan dieses Add-ons innerhalb aller Policies und Sicherheitsgrenzen zu optimieren. Ohne Freigabe arbeitet das Add-on weiterhin vollständig deterministisch.",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
 				"hGovBattery": {
 					"type": "header",
 					"size": 3,
@@ -525,17 +239,6 @@
 					"label": "Aktiv",
 					"default": true,
 					"help": "Erlaubt Policies, Planung und Steuerung dieses Add-ons. Messwerte und Learning dürfen auch bei deaktivierter Steuerung weiterlaufen.",
-					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
-				},
-				"battery_ai_optimization_allowed": {
-					"type": "checkbox",
-					"label": "KI-Optimierung erlaubt",
-					"default": false,
-					"help": "Erlaubt einer späteren KI, den Fahrplan dieses Add-ons innerhalb aller Policies und Sicherheitsgrenzen zu optimieren. Ohne Freigabe arbeitet das Add-on weiterhin vollständig deterministisch.",
 					"xs": 12,
 					"sm": 6,
 					"md": 3,
@@ -563,16 +266,14 @@
 					"lg": 3,
 					"xl": 3
 				},
-				"climate_ai_optimization_allowed": {
-					"type": "checkbox",
-					"label": "KI-Optimierung erlaubt",
-					"default": false,
-					"help": "Erlaubt einer späteren KI, den Fahrplan dieses Add-ons innerhalb aller Policies und Sicherheitsgrenzen zu optimieren. Ohne Freigabe arbeitet das Add-on weiterhin vollständig deterministisch.",
+				"climate_control_note": {
+					"type": "staticText",
+					"text": "Die Klima-Geräte werden ausschließlich nach den konfigurierten Regeln, Prognosen und Sicherheitsgrenzen geplant.",
 					"xs": 12,
-					"sm": 6,
-					"md": 3,
-					"lg": 3,
-					"xl": 3
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				}
 			}
 		},
@@ -1992,7 +1693,7 @@
 			"items": {
 				"batteryGovernanceHint": {
 					"type": "staticText",
-					"text": "Aktivierung und KI-Freigabe werden zentral unter GLOBAL verwaltet.",
+					"text": "Aktivierung und Steuerungsfreigabe werden zentral unter GLOBAL verwaltet.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -3282,7 +2983,7 @@
 				"hIhForecast": {
 					"type": "header",
 					"size": 2,
-					"text": "Forecast-Planung (regelbasiert, ohne KI)",
+					"text": "Regelbasierte Prognoseplanung",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -3293,7 +2994,7 @@
 					"type": "checkbox",
 					"label": "Forecast-Modus aktiv",
 					"default": true,
-					"help": "Regelbasiertes Tagesziel aus PV-Prognose (pv_bias). Deaktiviert wenn KI-Optimierung erlaubt ist.",
+					"help": "Regelbasiertes Tagesziel aus der korrigierten PV-Prognose.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -12409,7 +12110,7 @@
 					"md": 12,
 					"lg": 12,
 					"xl": 12,
-					"text": "Plan A (deterministisch) ist der Plan, den EMS tatsächlich ausführt — das ändert sich hier NICHT. Plan B ist eine reine Beobachtungs-Simulation: Sie zeigt, wie die von der KI vorgeschlagenen Zeitpunkt-Präferenzen (nur für hier freigegebene Add-ons: Heizstab/Klima/Batterie-Laden/Wallbox) den Netzbezug/die Kosten verändern würden — bei exakt derselben Energiemenge, nur zu anderen Zeitpunkten. Ohne KI (oder ohne Freigabe) ist Plan B identisch mit Plan A."
+					"text": "Plan A ist der tatsächlich ausgeführte EMS-Plan. Plan B ist eine reine Vergleichsrechnung mit alternativen Zeitfenstern. Die Vergleichsrechnung löst keine Geräteaktion aus."
 				},
 				"compareStates": {
 					"type": "staticText",

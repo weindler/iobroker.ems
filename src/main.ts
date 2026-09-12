@@ -704,11 +704,6 @@ class Ems extends utils.Adapter {
 				await handleRestoreStateChange(this, rel, state.val, state.ack);
 				return;
 			}
-			const { isAiRelatedState, handleAiStateChange } = await import("./ai/index.js");
-			if (isAiRelatedState(rel)) {
-				await handleAiStateChange(this as unknown as Parameters<typeof handleAiStateChange>[0], rel, state.val, state.ack);
-				return;
-			}
 			const { isStatisticsRelatedState, handleStatisticsStateChange } = await import("./statistics/index.js");
 			if (
 				isStatisticsRelatedState(rel) &&

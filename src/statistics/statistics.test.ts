@@ -15,6 +15,7 @@ import {
 	sumTibberJsonDailyForMonth,
 	pickTibberJsonMonthlyForMonth,
 	resolveHomeMonthFromTibber,
+	reconcileCurrentMonthWithToday,
 	siblingTibberConsumptionState,
 	buildHomeMonthTotals,
 	sumHomeDays,
@@ -227,6 +228,39 @@ describe("statistics compute", () => {
 		});
 		assert.equal(kwhOnly.source, "currentMonthConsumption");
 		assert.equal(kwhOnly.gridImportKwh, 88.5);
+	});
+
+	it("ergänzt verzögertes jsonDaily um den laufenden Tag ohne Doppelzählung", () => {
+		const raw = [
+			{ from: "2026-09-10T00:00:00+02:00", consumption: 5, totalCost: 1.2 },
+			{ from: "2026-09-11T00:00:00+02:00", consumption: 6.5, totalCost: 1.5 },
+		];
+		assert.deepEqual(
+			reconcileCurrentMonthWithToday({
+				dateKey: "2026-09-12",
+				jsonDailyRaw: raw,
+				monthGridImportKwh: 11.5,
+				monthDynamicCostEur: 2.7,
+				monthSource: "jsonDaily",
+				todayGridImportKwh: 16.7,
+				todayDynamicCostEur: 3.39,
+			}),
+			{ gridImportKwh: 28.2, dynamicCostEur: 6.09 },
+		);
+
+		const withPartialToday = [...raw, { from: "2026-09-12T00:00:00+02:00", consumption: 4, totalCost: 0.8 }];
+		assert.deepEqual(
+			reconcileCurrentMonthWithToday({
+				dateKey: "2026-09-12",
+				jsonDailyRaw: withPartialToday,
+				monthGridImportKwh: 15.5,
+				monthDynamicCostEur: 3.5,
+				monthSource: "jsonDaily",
+				todayGridImportKwh: 16.7,
+				todayDynamicCostEur: 3.39,
+			}),
+			{ gridImportKwh: 28.2, dynamicCostEur: 6.09 },
+		);
 	});
 
 	it("buildHomeMonthTotals uses elapsed month fraction for fees", () => {

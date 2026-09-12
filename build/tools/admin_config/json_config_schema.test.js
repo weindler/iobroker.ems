@@ -50,18 +50,10 @@ function loadJson(filePath) {
         const issues = (0, validate_json_config_1.validateJsonConfig)(config, schema);
         strict_1.default.deepEqual(issues, [], issues.map((i) => `${i.path} ${i.property ?? ""}: ${i.message}`).join("\n"));
     });
-    (0, node_test_1.it)("Daily-Analyst-Button JETZT ANALYSIEREN ist schema-konform und triggert aiDailyAnalystNow", () => {
-        const btn = config.items?.globalTab?.items?.aiAnalystRunNowBtn;
-        strict_1.default.ok(btn, "aiAnalystRunNowBtn fehlt");
-        strict_1.default.equal(btn.type, "sendTo");
-        strict_1.default.equal(btn.command, "aiDailyAnalystNow");
-        strict_1.default.equal(btn.disabled, "data.ai_analyst_mode === 'disabled'");
-        strict_1.default.equal("alsoDependsOn" in btn, false);
-        const allowed = (0, validate_json_config_1.allowedKeysByType)(schema).get("sendTo");
-        strict_1.default.ok(allowed, "sendTo keys aus Schema");
-        strict_1.default.equal(allowed.has("alsoDependsOn"), false);
-        for (const key of Object.keys(btn)) {
-            strict_1.default.ok(allowed.has(key), `sendTo additionalProperty: ${key}`);
-        }
+    (0, node_test_1.it)("normale Admin-Konfiguration enthält keine KI-Bedienelemente oder Secrets", () => {
+        const serialized = JSON.stringify(config);
+        strict_1.default.equal(serialized.includes("ai_openai_api_key"), false);
+        strict_1.default.equal(serialized.includes("aiDailyAnalystNow"), false);
+        strict_1.default.equal(serialized.includes("KI-Optimierung"), false);
     });
 });

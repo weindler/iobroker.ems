@@ -163,6 +163,31 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.equal(kwhOnly.source, "currentMonthConsumption");
         strict_1.default.equal(kwhOnly.gridImportKwh, 88.5);
     });
+    (0, node_test_1.it)("ergänzt verzögertes jsonDaily um den laufenden Tag ohne Doppelzählung", () => {
+        const raw = [
+            { from: "2026-09-10T00:00:00+02:00", consumption: 5, totalCost: 1.2 },
+            { from: "2026-09-11T00:00:00+02:00", consumption: 6.5, totalCost: 1.5 },
+        ];
+        strict_1.default.deepEqual((0, compute_js_1.reconcileCurrentMonthWithToday)({
+            dateKey: "2026-09-12",
+            jsonDailyRaw: raw,
+            monthGridImportKwh: 11.5,
+            monthDynamicCostEur: 2.7,
+            monthSource: "jsonDaily",
+            todayGridImportKwh: 16.7,
+            todayDynamicCostEur: 3.39,
+        }), { gridImportKwh: 28.2, dynamicCostEur: 6.09 });
+        const withPartialToday = [...raw, { from: "2026-09-12T00:00:00+02:00", consumption: 4, totalCost: 0.8 }];
+        strict_1.default.deepEqual((0, compute_js_1.reconcileCurrentMonthWithToday)({
+            dateKey: "2026-09-12",
+            jsonDailyRaw: withPartialToday,
+            monthGridImportKwh: 15.5,
+            monthDynamicCostEur: 3.5,
+            monthSource: "jsonDaily",
+            todayGridImportKwh: 16.7,
+            todayDynamicCostEur: 3.39,
+        }), { gridImportKwh: 28.2, dynamicCostEur: 6.09 });
+    });
     (0, node_test_1.it)("buildHomeMonthTotals uses elapsed month fraction for fees", () => {
         const r = (0, compute_js_1.buildHomeMonthTotals)({
             dateKey: "2026-08-28",

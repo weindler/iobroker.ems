@@ -936,6 +936,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		iceFuelType: cfg.iceFuelType,
 		iceLPer100Km: cfg.iceLPer100Km,
 		gridRewardsEnabled: cfg.gridRewardsEnabled,
+		feedInCtPerKwh: cfg.feedInCtPerKwh,
 		statisticsStartDate: cfg.statisticsStartDate,
 	};
 

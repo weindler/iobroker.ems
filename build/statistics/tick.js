@@ -534,12 +534,21 @@ async function tickStatistics(host, now = new Date()) {
             ? await readForeignNum(host, cfg.dynamicCostMonthEurStateId)
             : null,
     });
+    const reconciledTibberMonth = (0, compute_1.reconcileCurrentMonthWithToday)({
+        dateKey,
+        jsonDailyRaw,
+        monthGridImportKwh: tibberMonth.gridImportKwh,
+        monthDynamicCostEur: tibberMonth.dynamicCostEur,
+        monthSource: tibberMonth.source,
+        todayGridImportKwh: day.home.gridImportKwh,
+        todayDynamicCostEur: day.home.dynamicCostEur,
+    });
     let homeMonth = homeMonthPersist;
-    if (tibberMonth.gridImportKwh !== null || tibberMonth.dynamicCostEur !== null) {
+    if (reconciledTibberMonth.gridImportKwh !== null || reconciledTibberMonth.dynamicCostEur !== null) {
         homeMonth = (0, compute_1.buildHomeMonthTotals)({
             dateKey,
-            gridImportKwh: tibberMonth.gridImportKwh ?? homeMonthPersist.gridImportKwh,
-            dynamicCostEur: tibberMonth.dynamicCostEur ?? homeMonthPersist.dynamicCostEur,
+            gridImportKwh: reconciledTibberMonth.gridImportKwh ?? homeMonthPersist.gridImportKwh,
+            dynamicCostEur: reconciledTibberMonth.dynamicCostEur ?? homeMonthPersist.dynamicCostEur,
             gridRewardsCreditEur: monthRewards.source === "off" ? null : monthRewards.creditEur,
             gridRewardsSource: monthRewards.source,
             gridExportKwh: homeMonthPersist.gridExportKwh,

@@ -18,6 +18,8 @@ const index_1 = require("./index");
 const smart_plan_parse_1 = require("./smart_plan_parse");
 const remaining_energy_1 = require("./remaining_energy");
 const model_1 = require("../model");
+const publish_1 = require("../publish");
+const ensure_states_1 = require("../ensure_states");
 const write_allowlist_1 = require("../write_allowlist");
 const NOW = new Date("2026-08-13T10:00:00.000Z");
 const SRC = (0, node_path_1.join)(__dirname, "..", "..", "..", "..", "..", "src", "addons", "wallbox");
@@ -129,11 +131,25 @@ const SLOT_FUTURE = {
         strict_1.default.equal(model.externalControlActive, null);
     });
     (0, node_test_1.it)("T4: grid-rewards true maps neutrally", async () => {
-        const { model } = await load(minEvccAdminConfig({
+        const { model, external, capabilities } = await load(minEvccAdminConfig({
             wb_external_grid_rewards_active_state: "ha.0.grid_rewards",
         }), minForeign({ "ha.0.grid_rewards": true }));
         strict_1.default.equal(model.gridRewardsActive, true);
         strict_1.default.equal(model.externalControlActive, null);
+        const states = new Map();
+        const publishHost = {
+            async setObjectNotExistsAsync() {
+                return;
+            },
+            async getStateAsync(id) {
+                return states.has(id) ? { val: states.get(id), ack: true } : null;
+            },
+            async setStateAsync(id, state) {
+                states.set(id, state.val ?? null);
+            },
+        };
+        await (0, publish_1.publishEvFoundationDiagnosis)(publishHost, model, capabilities, NOW.toISOString(), external);
+        strict_1.default.equal(states.get(ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.gridRewardsActive), true);
     });
     (0, node_test_1.it)("T5: JSON array smart plan parses", async () => {
         const { model, capabilities } = await load(minEvccAdminConfig({

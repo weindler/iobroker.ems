@@ -13,6 +13,8 @@ import { readExternalEvInformation } from "./index";
 import { parseSmartPlanPayload } from "./smart_plan_parse";
 import { computeExternalPlanRemainingEnergy } from "./remaining_energy";
 import { buildEvModelV1, derivePreparedEvModuleState } from "../model";
+import { publishEvFoundationDiagnosis } from "../publish";
+import { WALLBOX_EV_FOUNDATION_STATES } from "../ensure_states";
 import {
 	EV_FOUNDATION_PHASE1_PLANNER_WRITES_ENABLED,
 	EV_FOUNDATION_PLANNER_WRITES_ENABLED,
@@ -142,7 +144,7 @@ describe("EV foundation Phase 2 — external control & smart plan (read-only)", 
 	});
 
 	it("T4: grid-rewards true maps neutrally", async () => {
-		const { model } = await load(
+		const { model, external, capabilities } = await load(
 			minEvccAdminConfig({
 				wb_external_grid_rewards_active_state: "ha.0.grid_rewards",
 			}),
@@ -150,6 +152,21 @@ describe("EV foundation Phase 2 — external control & smart plan (read-only)", 
 		);
 		assert.equal(model.gridRewardsActive, true);
 		assert.equal(model.externalControlActive, null);
+
+		const states = new Map<string, ioBroker.StateValue>();
+		const publishHost = {
+			async setObjectNotExistsAsync() {
+				return;
+			},
+			async getStateAsync(id: string) {
+				return states.has(id) ? ({ val: states.get(id), ack: true } as ioBroker.State) : null;
+			},
+			async setStateAsync(id: string, state: ioBroker.SettableState) {
+				states.set(id, state.val ?? null);
+			},
+		};
+		await publishEvFoundationDiagnosis(publishHost, model, capabilities, NOW.toISOString(), external);
+		assert.equal(states.get(WALLBOX_EV_FOUNDATION_STATES.gridRewardsActive), true);
 	});
 
 	it("T5: JSON array smart plan parses", async () => {

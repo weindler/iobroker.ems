@@ -423,9 +423,10 @@ function assertCoreCategories(adapter) {
          * Historisch 350–550. Stand Aug 2026 (leere Config): ~604 States.
          * Phasen 4–7 plus GB-Economics (α/β, C_replace, Shadow-Dreiteilung)
          * addieren schlanke Transparenz-States; JSON-Dumps bleiben in Dateien.
-         * Obergrenze 710: knappe Kopfreserve, State-Explosionen bleiben sichtbar.
+         * Obergrenze 714: vier öffentliche EV-/Tibber-States bleiben nach der
+         * Startbereinigung absichtlich erhalten; State-Explosionen bleiben sichtbar.
          */
-        strict_1.default.ok(states <= 710, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+        strict_1.default.ok(states <= 714, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
         strict_1.default.ok(states >= 250, `unexpectedly small surface states=${states}`);
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes("addons.measured_consumers")), "empty measured_consumers config must not create consumer/aggregate states");
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes(".mapping.")), "mapping shadows remain");

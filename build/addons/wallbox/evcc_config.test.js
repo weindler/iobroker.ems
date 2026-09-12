@@ -61,6 +61,20 @@ const evcc_config_1 = require("./evcc_config");
         strict_1.default.equal((0, evcc_config_1.hasLegacyWallboxWriteMapping)({ wb_set_enabled_target: "go-e.0.allow_charging" }), true);
         strict_1.default.equal((0, evcc_config_1.hasLegacyWallboxWriteMapping)({ wb_set_current_a_target: "go-e.0.amperePV" }), true);
     });
+    (0, node_test_1.it)("uses the EV-foundation Grid-Rewards mapping for hold and keeps the legacy fallback", () => {
+        const canonical = (0, evcc_config_1.wallboxHoldSignalConfigFromAdapter)({
+            wb_external_grid_rewards_active_state: "hass.0.grid_rewards.canonical",
+            wb_tibber_grid_rewards_active_state: "hass.0.grid_rewards.legacy",
+        });
+        strict_1.default.equal(canonical.tibberGridRewardsActiveStateId, "hass.0.grid_rewards.canonical");
+        strict_1.default.deepEqual((0, evcc_config_1.configuredWallboxHoldSignalStateIds)(canonical), [
+            "hass.0.grid_rewards.canonical",
+        ]);
+        const legacy = (0, evcc_config_1.wallboxHoldSignalConfigFromAdapter)({
+            wb_tibber_grid_rewards_active_state: "hass.0.grid_rewards.legacy",
+        });
+        strict_1.default.equal(legacy.tibberGridRewardsActiveStateId, "hass.0.grid_rewards.legacy");
+    });
     (0, node_test_1.it)("legacy config keys load without error", () => {
         const legacy = {
             wb_set_enabled_target: "go-e.0.allow_charging",

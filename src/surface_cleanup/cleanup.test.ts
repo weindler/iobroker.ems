@@ -9,6 +9,10 @@ import { AC_ADDON_ID } from "../addons/air_conditioning/constants.js";
 import { ensureWallboxVehicleProfileStates } from "../addons/wallbox/vehicles/ensure_states.js";
 import { normalizeWallboxVehicleProfiles } from "../addons/wallbox/vehicles/normalize.js";
 import { wallboxVehicleProfilesConfigFromAdapter } from "../addons/wallbox/vehicles/config.js";
+import {
+	ensureWallboxEvFoundationStates,
+	WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS,
+} from "../addons/wallbox/ev_foundation/ensure_states.js";
 // ensure/normalize kept only to plant legacy fat trees for purge assertions
 
 class FakeCleanupHost implements SurfaceCleanupHost {
@@ -65,6 +69,20 @@ class FakeCleanupHost implements SurfaceCleanupHost {
 }
 
 describe("surface cleanup allowlist", () => {
+	it("keeps every public EV-foundation state after ensure and cleanup", async () => {
+		const host = new FakeCleanupHost({});
+		await ensureWallboxEvFoundationStates(host);
+		for (const id of WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS) {
+			assert.equal(host.objects.has(id), true, `${id} must be ensured`);
+			assert.equal(isAllowlistedCleanupRelativeId(id), false, `${id} must not be cleanup ballast`);
+		}
+
+		await runDynamicSurfaceCleanup(host);
+		for (const id of WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS) {
+			assert.equal(host.objects.has(id), true, `${id} must survive cleanup`);
+		}
+	});
+
 	it("keeps public grid_balance policy_excluded states (not cleanup ballast)", () => {
 		// Regression: ensureBatteryArchitectureStates creates these via BATTERY_PUBLIC_STATE_IDS;
 		// Phase-C2 surface cleanup must not delete them before the first grid_balance setState.

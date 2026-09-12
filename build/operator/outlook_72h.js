@@ -229,9 +229,12 @@ function buildOutlookDecisions(args) {
     const wallbox = args.input.wallbox;
     if (wallbox) {
         const wallboxAllocation = decisionAllocation(args.allocations.filter((cell) => cell.kind === "wallbox"), args.nowMs);
+        const validTargetSocPct = wallbox.targetSocPct !== null && wallbox.targetSocPct > 0 && wallbox.targetSocPct <= 100
+            ? wallbox.targetSocPct
+            : null;
         const targetReached = wallbox.vehicleSocPct !== null &&
-            wallbox.targetSocPct !== null &&
-            wallbox.vehicleSocPct >= wallbox.targetSocPct;
+            validTargetSocPct !== null &&
+            wallbox.vehicleSocPct >= validTargetSocPct;
         if (wallboxAllocation.firstStartIso) {
             const firstMs = finiteMs(wallboxAllocation.firstStartIso);
             const state = wallboxAllocation.active
@@ -255,12 +258,16 @@ function buildOutlookDecisions(args) {
                 consumerId: "wallbox",
                 kind: "wallbox",
                 labelDe: "Auto / Wallbox",
-                state: targetReached || wallbox.requiredEnergyKwh === 0 ? "not_needed" : "unallocated",
+                state: externallyManaged
+                    ? "unallocated"
+                    : targetReached || wallbox.requiredEnergyKwh === 0
+                        ? "not_needed"
+                        : "unallocated",
                 allocation: emptyAllocation,
-                explanationDe: targetReached
-                    ? `Keine Wallbox-Ladung nötig; Fahrzeug-SOC ${wallbox.vehicleSocPct.toFixed(0)} % hat das Ziel ${wallbox.targetSocPct.toFixed(0)} % erreicht.`
-                    : externallyManaged
-                        ? "Keine EMS-Wallbox-Allokation; der externe Ladeplan bleibt zuständig."
+                explanationDe: externallyManaged
+                    ? "Keine EMS-Wallbox-Allokation; der externe Ladeplan bleibt zuständig."
+                    : targetReached
+                        ? `Keine Wallbox-Ladung nötig; Fahrzeug-SOC ${wallbox.vehicleSocPct.toFixed(0)} % hat das Ziel ${validTargetSocPct.toFixed(0)} % erreicht.`
                         : "Keine Wallbox-Allokation im 72-h-Plan; Bedarf, Anwesenheit oder ausführbare Slots reichen nicht belastbar aus.",
             }));
         }

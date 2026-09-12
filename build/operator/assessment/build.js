@@ -145,7 +145,9 @@ function assessEv(input) {
     const wb = input.plannerInput?.wallbox ?? null;
     const wbC = input.contributions.find((c) => c.contributionId === "wallbox.ev_session" || c.contributionId.startsWith("wallbox."));
     const soc = wb?.vehicleSocPct ?? (wbC ? numDetail(wbC, "vehicleSocPct") : null);
-    const target = wb?.targetSocPct ?? (wbC ? numDetail(wbC, "targetSocPct") : null);
+    const rawTarget = wb?.targetSocPct ?? (wbC ? numDetail(wbC, "targetSocPct") : null);
+    // 0 is the historical "not configured" sentinel, never a real EV SOC target.
+    const target = rawTarget !== null && rawTarget > 0 && rawTarget <= 100 ? rawTarget : null;
     const connected = wb?.connectedNow ?? (wbC ? boolDetail(wbC, "connectedNow") : null);
     const need = wb?.requiredEnergyKwh ?? (wbC ? numDetail(wbC, "requiredEnergyKwh") : null);
     const hard = (wb?.hardRequiredEnergyKwh ?? 0) > 0.05 || wb?.energyGoalHard === true;
@@ -154,6 +156,11 @@ function assessEv(input) {
     const laterAlloc = allocActive(input.plan, ["wallbox"], nowMs, { later: true, timezone: input.timezone });
     const currentAlloc = allocActive(input.plan, ["wallbox"], nowMs, { current: true });
     const window = firstAllocWindow(input.plan, ["wallbox"], nowMs, input.timezone);
+    const authority = wb?.externalAuthorityState ?? (wbC ? strDetail(wbC, "externalAuthorityState") : null);
+    const externallyManaged = wb?.managementMode === "externally_managed" ||
+        authority === "active" ||
+        authority === "active_without_plan" ||
+        authority === "planned";
     const nearTarget = soc != null &&
         target != null &&
         soc + NEAR_TARGET_SOC_PP >= target &&
@@ -164,6 +171,22 @@ function assessEv(input) {
         : soc != null
             ? `SOC ${roundPct(soc)} %.`
             : "";
+    if (input.ev?.gridRewardsActive === true) {
+        return {
+            status: "active",
+            text: `${input.ev.charging === true
+                ? "Tibber Grid Rewards steuert die aktuelle Autoladung."
+                : "Tibber Grid Rewards ist aktiv und entscheidet über Start oder Pause."} ${socBit}`.trim(),
+            next: "EMS erstellt keinen eigenen Ladeplan; EVCC und Tibber bleiben zuständig.",
+        };
+    }
+    if (externallyManaged) {
+        return {
+            status: input.ev?.charging === true ? "active" : "wait",
+            text: `${input.ev?.charging === true ? "Das Auto lädt unter externer Steuerung." : "Das Auto wird extern verwaltet."} ${socBit}`.trim(),
+            next: "EMS plant keine konkurrierende Ladung; EVCC beziehungsweise der externe Dienst bleibt zuständig.",
+        };
+    }
     if (currentAlloc) {
         return {
             status: "active",

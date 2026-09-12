@@ -291,6 +291,26 @@ function base(over = {}) {
         strict_1.default.match(a.ev.text, /Pflichtladung|Ladefenster/);
         strict_1.default.doesNotMatch(a.ev.text, /kein Laden nötig/);
     });
+    (0, node_test_1.it)("EV: Grid Rewards aktiv wird verständlich benannt und Ziel 0 nicht angezeigt", () => {
+        const a = (0, build_1.buildOperationalAssessment)(base({
+            plannerInput: planner({
+                wallbox: {
+                    ...planner().wallbox,
+                    connectedNow: true,
+                    vehicleSocPct: 64,
+                    targetSocPct: 0,
+                    requiredEnergyKwh: 0,
+                    managementMode: "externally_managed",
+                    externalAuthorityState: "active_without_plan",
+                },
+            }),
+            ev: { gridRewardsActive: true, charging: true },
+        }));
+        strict_1.default.match(a.ev.text, /Tibber Grid Rewards steuert/);
+        strict_1.default.match(a.ev.text, /SOC 64/);
+        strict_1.default.doesNotMatch(a.ev.text, /Ziel 0/);
+        strict_1.default.match(a.ev.next ?? "", /keinen eigenen Ladeplan/);
+    });
     (0, node_test_1.it)("EV: zukünftige Preise unbekannt → keine Billiger-übermorgen-Behauptung", () => {
         const a = (0, build_1.buildOperationalAssessment)(base({
             pvTomorrowKwh: null,

@@ -5,6 +5,9 @@
 import { asNum } from "../../ems_light/state_util";
 import { BAT } from "../../addons/battery/ensure_states";
 import { IMMERSION_RUNTIME_STATES } from "../../addons/immersion_heater/runtime/types";
+import { WALLBOX_EV_FOUNDATION_STATES } from "../../addons/wallbox/ev_foundation/ensure_states";
+import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
+import { WALLBOX_RUNTIME_STATES } from "../../addons/wallbox/runtime/states";
 import { setStateIfChanged } from "../../policy/core/state_write";
 import type { StateHost } from "../../ems_light/state_util";
 import type { PlanContribution } from "../types";
@@ -93,6 +96,9 @@ export async function publishOperationalAssessment(
 		ihMode,
 		ihAuto,
 		ihHygieneJson,
+		evGridRewardsActive,
+		evGridRewardsLegacy,
+		evCharging,
 	] = await Promise.all([
 		readNum(host, "learning.pv_bias.corrected_today_kwh"),
 		readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
@@ -113,6 +119,9 @@ export async function publishOperationalAssessment(
 		readStr(host, "addons.immersion_heater.mode"),
 		readBool(host, IMMERSION_RUNTIME_STATES.autoTargetReached),
 		readStr(host, "addons.immersion_heater.runtime.hygiene_json"),
+		readBool(host, WALLBOX_EV_FOUNDATION_STATES.gridRewardsActive),
+		readBool(host, WALLBOX_RUNTIME_STATES.tibberGridRewardsActive),
+		readBool(host, WALLBOX_EVCC_STATES.charging),
 	]);
 
 	const ihForced = ihMode === "force";
@@ -173,6 +182,15 @@ export async function publishOperationalAssessment(
 			autoTargetReached: ihAuto === true,
 			requiredFlexKwh: null,
 			mode: ihMode,
+		},
+		ev: {
+			gridRewardsActive:
+				evGridRewardsActive === true || evGridRewardsLegacy === true
+					? true
+					: evGridRewardsActive === false || evGridRewardsLegacy === false
+						? false
+						: null,
+			charging: evCharging,
 		},
 	};
 

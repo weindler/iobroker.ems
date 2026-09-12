@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
 	configuredEvccTelemetryStateIds,
+	configuredWallboxHoldSignalStateIds,
 	hasLegacyWallboxWriteMapping,
 	wallboxEvccTelemetryConfigFromAdapter,
 	wallboxEvccTelemetryMappingFromConfig,
+	wallboxHoldSignalConfigFromAdapter,
 } from "./evcc_config";
 
 describe("wallbox evcc_config", () => {
@@ -66,6 +68,22 @@ describe("wallbox evcc_config", () => {
 		assert.equal(hasLegacyWallboxWriteMapping({}), false);
 		assert.equal(hasLegacyWallboxWriteMapping({ wb_set_enabled_target: "go-e.0.allow_charging" }), true);
 		assert.equal(hasLegacyWallboxWriteMapping({ wb_set_current_a_target: "go-e.0.amperePV" }), true);
+	});
+
+	it("uses the EV-foundation Grid-Rewards mapping for hold and keeps the legacy fallback", () => {
+		const canonical = wallboxHoldSignalConfigFromAdapter({
+			wb_external_grid_rewards_active_state: "hass.0.grid_rewards.canonical",
+			wb_tibber_grid_rewards_active_state: "hass.0.grid_rewards.legacy",
+		});
+		assert.equal(canonical.tibberGridRewardsActiveStateId, "hass.0.grid_rewards.canonical");
+		assert.deepEqual(configuredWallboxHoldSignalStateIds(canonical), [
+			"hass.0.grid_rewards.canonical",
+		]);
+
+		const legacy = wallboxHoldSignalConfigFromAdapter({
+			wb_tibber_grid_rewards_active_state: "hass.0.grid_rewards.legacy",
+		});
+		assert.equal(legacy.tibberGridRewardsActiveStateId, "hass.0.grid_rewards.legacy");
 	});
 
 	it("legacy config keys load without error", () => {

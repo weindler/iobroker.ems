@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.statisticsConfigFromAdapter = void 0;
 const ensure_evcc_states_1 = require("../addons/wallbox/ensure_evcc_states");
+const evcc_config_1 = require("../addons/wallbox/evcc_config");
 const state_util_1 = require("../ems_light/state_util");
 function configRecord(config) {
     return config && typeof config === "object" ? config : {};
@@ -64,7 +65,7 @@ function statisticsConfigFromAdapter(config) {
         wallboxConnectedStateId: strField(c, "statistics_wallbox_connected_state", strField(c, "wb_evcc_connected_state")),
         vehicleSocPctStateId: strField(c, "statistics_vehicle_soc_pct_state", strField(c, "wb_evcc_vehicle_soc_pct_state")),
         externalVehicleChargeStateId: strField(c, "statistics_external_vehicle_charge_state", strField(c, "wb_external_vehicle_charge_state")),
-        tibberGridRewardsActiveStateId: strField(c, "statistics_tibber_grid_rewards_active_state", strField(c, "wb_tibber_grid_rewards_active_state")),
+        tibberGridRewardsActiveStateId: strField(c, "statistics_tibber_grid_rewards_active_state", strField(c, evcc_config_1.WB_EXTERNAL_GRID_REWARDS_ACTIVE, strField(c, evcc_config_1.WB_TIBBER_GRID_REWARDS_ACTIVE))),
     };
 }
 exports.statisticsConfigFromAdapter = statisticsConfigFromAdapter;

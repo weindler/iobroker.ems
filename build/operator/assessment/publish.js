@@ -7,6 +7,9 @@ exports.publishOperationalAssessment = exports.OPERATOR_ASSESSMENT_DE = exports.
 const state_util_1 = require("../../ems_light/state_util");
 const ensure_states_1 = require("../../addons/battery/ensure_states");
 const types_1 = require("../../addons/immersion_heater/runtime/types");
+const ensure_states_2 = require("../../addons/wallbox/ev_foundation/ensure_states");
+const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
+const states_1 = require("../../addons/wallbox/runtime/states");
 const state_write_1 = require("../../policy/core/state_write");
 const strategic_status_1 = require("../../beta/strategic_status");
 const build_1 = require("./build");
@@ -50,7 +53,7 @@ async function readBool(host, id) {
     }
 }
 async function publishOperationalAssessment(host, input) {
-    const [pvTodayKwh, pvTomorrowKwh, weatherTodayMinC, weatherTodayMaxC, weatherTomorrowMinC, weatherTomorrowMaxC, surplusW, priceNowCt, gbEnabled, gbActive, gbReady, gbPriceAllowed, gbBlock, gbRequested, gbMin, gbPrice, ihMode, ihAuto, ihHygieneJson,] = await Promise.all([
+    const [pvTodayKwh, pvTomorrowKwh, weatherTodayMinC, weatherTodayMaxC, weatherTomorrowMinC, weatherTomorrowMaxC, surplusW, priceNowCt, gbEnabled, gbActive, gbReady, gbPriceAllowed, gbBlock, gbRequested, gbMin, gbPrice, ihMode, ihAuto, ihHygieneJson, evGridRewardsActive, evGridRewardsLegacy, evCharging,] = await Promise.all([
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readNum(host, "learning.weather.horizon.day1.min_temp_c"),
@@ -70,6 +73,9 @@ async function publishOperationalAssessment(host, input) {
         readStr(host, "addons.immersion_heater.mode"),
         readBool(host, types_1.IMMERSION_RUNTIME_STATES.autoTargetReached),
         readStr(host, "addons.immersion_heater.runtime.hygiene_json"),
+        readBool(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.gridRewardsActive),
+        readBool(host, states_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive),
+        readBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.charging),
     ]);
     const ihForced = ihMode === "force";
     let hygieneDue = input.plannerInput?.thermal?.hygieneDue === true;
@@ -128,6 +134,14 @@ async function publishOperationalAssessment(host, input) {
             autoTargetReached: ihAuto === true,
             requiredFlexKwh: null,
             mode: ihMode,
+        },
+        ev: {
+            gridRewardsActive: evGridRewardsActive === true || evGridRewardsLegacy === true
+                ? true
+                : evGridRewardsActive === false || evGridRewardsLegacy === false
+                    ? false
+                    : null,
+            charging: evCharging,
         },
     };
     const assessment = (0, build_1.buildOperationalAssessment)(buildInput);

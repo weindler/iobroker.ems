@@ -240,6 +240,40 @@ function multiDayThermalInput(args) {
         strict_1.default.equal(decision?.state, "not_needed");
         strict_1.default.match(decision?.explanationDe ?? "", /Ziel.*erreicht/);
     });
+    (0, node_test_1.it)("treats target SOC 0 as unset for an externally managed EV", () => {
+        const input = input80h();
+        input.wallbox = {
+            connectedNow: true,
+            presenceWindows: [],
+            presenceHardConstraint: true,
+            vehicleProfileId: null,
+            vehicleSocPct: 64,
+            socSource: "direct",
+            fallbackEnergyNeedKwh: null,
+            vehicleCapacityKwh: 60,
+            targetSocPct: 0,
+            requiredEnergyKwh: 0,
+            deadlineIso: null,
+            energyGoalHard: false,
+            minChargePowerW: 1380,
+            maxChargePowerW: 11000,
+            chargeLossFactor: 1,
+            evccExecutionMaster: true,
+            evccChargeMode: "now",
+            managementMode: "externally_managed",
+            externalAuthorityState: "active_without_plan",
+            hardRequiredEnergyKwh: 0,
+            targetEnergyKwh: null,
+            uncertainty: input.pv.uncertainty,
+            freshness: input.pv.freshness,
+        };
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        const outlook = (0, outlook_72h_1.buildOperatorOutlook72h)({ now: NOW, timezone: "UTC", plan, plannerInput: input });
+        const decision = outlook.decisions.find((entry) => entry.kind === "wallbox");
+        strict_1.default.equal(decision?.state, "unallocated");
+        strict_1.default.match(decision?.explanationDe ?? "", /externe Ladeplan/);
+        strict_1.default.doesNotMatch(decision?.explanationDe ?? "", /Ziel 0/);
+    });
     (0, node_test_1.it)("places a small EV need into the best available PV window instead of charging immediately", () => {
         const input = input80h();
         input.pv.slots = input.time.slots.map((slot) => {

@@ -62,6 +62,8 @@ function realisticSnapshot(overrides?: {
 	ihQuality?: "valid" | "blocked";
 	connected?: boolean;
 	vehicleSoc?: number | null;
+	planSocPct?: number | null;
+	effectiveLimitSocPct?: number | null;
 	omitBattery?: boolean;
 	omitPv?: boolean;
 	/** ct/kWh aus economics.config.feed_in_ct_per_kwh; weglassen = fehlende Config. */
@@ -158,13 +160,15 @@ function realisticSnapshot(overrides?: {
 		}),
 		contrib(CONTRIBUTION_IDS.WALLBOX_EV_SESSION, {
 			enabled: o.connected === true,
-			details: {
-				connected: o.connected === true,
-				vehicleSocPct: o.vehicleSoc === undefined ? null : o.vehicleSoc,
-				requiredEnergyKwh: o.connected ? 12 : null,
-				maxChargePowerW: 11000,
-				planSocPct: 80,
-			},
+				details: {
+					connected: o.connected === true,
+					vehicleSocPct: o.vehicleSoc === undefined ? null : o.vehicleSoc,
+					requiredEnergyKwh: o.connected ? 12 : null,
+					maxChargePowerW: 11000,
+					planSocPct: o.planSocPct === undefined ? 80 : o.planSocPct,
+					effectiveLimitSocPct:
+						o.effectiveLimitSocPct === undefined ? null : o.effectiveLimitSocPct,
+				},
 		}),
 	);
 
@@ -327,6 +331,28 @@ describe("REAL-005 Real AC Mapping", () => {
 });
 
 describe("REAL-006 Vehicle Connected vs Unknown Presence", () => {
+	it("treats target SOC 0 as unset and falls through to a valid EVCC limit", () => {
+		const fallback = buildUnifiedInputFromForecastContext(
+			realisticSnapshot({
+				connected: true,
+				vehicleSoc: 64,
+				planSocPct: 0,
+				effectiveLimitSocPct: 80,
+			}),
+		);
+		assert.equal(fallback.wallbox?.targetSocPct, 80);
+
+		const unset = buildUnifiedInputFromForecastContext(
+			realisticSnapshot({
+				connected: true,
+				vehicleSoc: 64,
+				planSocPct: 0,
+				effectiveLimitSocPct: 0,
+			}),
+		);
+		assert.equal(unset.wallbox?.targetSocPct, null);
+	});
+
 	it("connectedNow does not invent future presence as available", () => {
 		const input = buildUnifiedInputFromForecastContext(
 			realisticSnapshot({ connected: true, vehicleSoc: 40 }),

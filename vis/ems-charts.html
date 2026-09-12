@@ -31,6 +31,21 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-assess-k{font-size:9px;font-weight:700;color:#58a6ff}
 .ems-assess-v{font-size:11px;color:#e6edf3;line-height:1.3}
 .ems-assess-n{font-size:10px;color:#8b949e;line-height:1.25;margin-top:1px}
+.ems-tibber-banner{grid-column:1/-1;display:flex;align-items:center;gap:9px;min-width:0;min-height:42px;margin-bottom:4px;padding:7px 10px;border:1px solid #6e768166;border-left-width:4px;border-radius:6px;background:#21262d}
+.ems-tibber-banner.active{border-color:#3fb950;background:linear-gradient(90deg,#123b2a 0%,#183326 55%,#21262d 100%);box-shadow:0 0 0 1px #3fb95033}
+.ems-tibber-banner.waiting{border-color:#e3b341;background:linear-gradient(90deg,#3b3014 0%,#2b291d 55%,#21262d 100%)}
+.ems-tibber-banner.ready{border-color:#a371f7;background:linear-gradient(90deg,#2d2146 0%,#292439 55%,#21262d 100%)}
+.ems-tibber-banner.warn{border-color:#f85149;background:linear-gradient(90deg,#3d1114 0%,#302023 55%,#21262d 100%)}
+.ems-tibber-signal{width:10px;height:10px;border-radius:50%;background:#8b949e;flex:0 0 auto}
+.ems-tibber-banner.active .ems-tibber-signal{background:#3fb950;box-shadow:0 0 8px #3fb950}
+.ems-tibber-banner.waiting .ems-tibber-signal{background:#e3b341;box-shadow:0 0 7px #e3b34188}
+.ems-tibber-banner.ready .ems-tibber-signal{background:#a371f7}
+.ems-tibber-banner.warn .ems-tibber-signal{background:#f85149}
+.ems-tibber-main{min-width:0;flex:1 1 auto}
+.ems-tibber-title{font-size:12px;font-weight:800;letter-spacing:.035em;color:#e6edf3}
+.ems-tibber-banner.active .ems-tibber-title{color:#7ee787}
+.ems-tibber-detail{font-size:10px;color:#c9d1d9;line-height:1.3;margin-top:1px}
+.ems-tibber-side{font-size:10px;font-weight:700;color:#e6edf3;white-space:nowrap;padding:2px 6px;border:1px solid #6e768166;border-radius:5px;background:#161b2288}
 .ems-chip{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 6px;min-width:0;flex:1 1 0}
 .ems-chip .ems-k{margin-bottom:0}
 .ems-chip .ems-chip-v{font-size:12px;font-weight:700;line-height:1.15;color:#e6edf3}
@@ -169,6 +184,8 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	.ems-price-svg{height:84px}
 	.ems-live{flex-wrap:wrap}
 	.ems-assess-grid{grid-template-columns:1fr}
+	.ems-tibber-banner{flex-wrap:wrap}
+	.ems-tibber-side{margin-left:19px}
 	.ems-device-grid{grid-template-columns:1fr}
 }
 @media (max-width:560px){.ems-tiles{grid-template-columns:1fr}}
@@ -189,6 +206,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	</div>
 	<div id="ems-view-ops" class="ems-view-page on">
 	<div class="ems-live" id="ems-now"></div>
+	<div id="ems-tibber-banner-host"></div>
 	<div class="ems-assess" id="ems-assessment" style="display:none"></div>
 	<div class="ems-lage" id="ems-lage" style="display:none"></div>
 	<div class="ems-price" id="ems-price"></div>
@@ -523,6 +541,7 @@ var stateIds=[
 	INST+".addons.wallbox.status.evcc.vehicle_soc_pct",
 	INST+".addons.wallbox.status.ev_foundation.ev_execution_authority",
 	INST+".addons.wallbox.status.ev_foundation.external_authority_state",
+	INST+".addons.wallbox.status.ev_foundation.grid_rewards_active",
 	INST+".addons.wallbox.status.ev_foundation.tibber_now_handoff_enabled",
 	INST+".addons.wallbox.status.ev_foundation.tibber_now_handoff_status",
 	INST+".addons.wallbox.status.ev_foundation.tibber_now_handoff_due_at",
@@ -1458,6 +1477,126 @@ function visEmsAction(s){
 	if(owner==="planned_charge"||action==="charge"||action==="topoff")return"Batterie-Ladung";
 	return"keine";
 }
+function visTibberRewardsView(s){
+	s=s||{};
+	var status=visNorm(s.handoffStatus),active=!!s.active,configured=!!s.configured;
+	var connected=s.connected===true;
+	var power=+s.chargePowerW;
+	var charging=s.charging===true||(isFinite(power)&&power>=50);
+	var mode=String(s.modeLabel||"").trim();
+	var side=mode&&mode!=="—"?"EVCC "+mode:"";
+	var detail="";
+	if(active){
+		if(!connected)detail="Grid-Rewards-Signal aktiv · Fahrzeug nicht verbunden.";
+		else if(charging){
+			detail="Tibber steuert die aktuelle Fahrzeugladung";
+			if(isFinite(power)&&power>=50)detail+=" · "+Math.round(power)+" W";
+			detail+=".";
+		}else detail="Grid Rewards sind aktiv · Tibber entscheidet über Start und Pause.";
+		return{show:true,cls:"active",title:"TIBBER GRID REWARDS AKTIV",detail:detail,side:side};
+	}
+	if(status==="feedback_failed"||status==="blocked_by_priority"){
+		return{show:true,cls:"warn",title:"TIBBER-ÜBERGABE GESPERRT",detail:status==="feedback_failed"?"EVCC hat Schnell/now noch nicht bestätigt.":"Eine Safety-Sperre verhindert die Übergabe.",side:side};
+	}
+	if(status==="stabilize_wait"){
+		detail="Fahrzeug erkannt · die eingestellte Wartezeit läuft.";
+		return{show:true,cls:"waiting",title:"TIBBER-ÜBERGABE WARTET",detail:detail,side:s.dueLabel&&s.dueLabel!=="—"?"Schnell/now "+s.dueLabel:side};
+	}
+	if(status==="tibber_now_after_stabilize"){
+		return{show:true,cls:"waiting",title:"TIBBER-ÜBERGABE LÄUFT",detail:"EMS setzt EVCC auf Schnell/now; anschließend kann Tibber übernehmen.",side:side};
+	}
+	if(status==="already_now"||status==="already_prepared"){
+		return{show:true,cls:"ready",title:"EVCC AN TIBBER ÜBERGEBEN",detail:"Schnell/now ist bereit · EMS wartet auf das aktive Grid-Rewards-Signal.",side:side};
+	}
+	if(!configured)return{show:false,cls:"",title:"",detail:"",side:""};
+	if(status==="already_connected_at_start"){
+		return{show:true,cls:"ready",title:"GRID REWARDS EINGERICHTET",detail:"Fahrzeug war beim Adapterstart schon verbunden · für eine neue Übergabe einmal ab- und wieder anstecken.",side:side};
+	}
+	return{show:true,cls:"ready",title:"GRID REWARDS EINGERICHTET",detail:connected?"Wartet auf eine neue Ansteckkante für die Tibber-Übergabe.":"Wartet auf das Anstecken des Fahrzeugs.",side:side};
+}
+function visFiniteNumber(v){
+	if(v===null||v===undefined||v==="")return null;
+	var n=Number(v);return isFinite(n)?n:null;
+}
+function visNumberDe(v,digits){
+	var n=visFiniteNumber(v);if(n===null)return"—";
+	return n.toFixed(digits==null?2:digits).replace(".",",");
+}
+function visMeasuredShareLine(kwh,pct,gridKwh,gridCostEur){
+	var e=visFiniteNumber(kwh),p=visFiniteNumber(pct);
+	if(e===null&&p===null)return"noch keine belastbare Messung";
+	var bits=[];
+	if(e!==null)bits.push(visNumberDe(e,2)+" kWh");
+	if(p!==null)bits.push(Math.round(p)+" %");
+	var gk=visFiniteNumber(gridKwh),gc=visFiniteNumber(gridCostEur);
+	if(e!==null&&gk!==null&&gk>0&&gc!==null&&gc>=0){
+		bits.push("entspricht "+visNumberDe(e*gc/gk,2)+" € Netzstromwert");
+	}
+	return bits.join(" · ");
+}
+function visAutoTodaySummary(s){
+	s=s||{};
+	var active=!!s.rewardsActive,charging=!!s.charging,connected=s.connected===true;
+	var source=visNorm(s.rewardsSource),credit=visFiniteNumber(s.rewardsCreditEur);
+	var gridKwh=visFiniteNumber(s.homeGridKwh),gridCost=visFiniteNumber(s.homeGridCostEur);
+	var fastKwh=visFiniteNumber(s.fastChargedKwh);
+	var rewardsLine="keine Gutschrift erfasst";
+	if(source==="billing"&&credit!==null)rewardsLine=visNumberDe(credit,2)+" € · durch Monatsabrechnung bestätigt";
+	else if((source==="estimate_day"||source==="estimate_month")&&credit!==null)rewardsLine=visNumberDe(credit,2)+" € · vorläufig, Monatsabrechnung ausstehend";
+	else if(active)rewardsLine="aktiv · Eurobetrag noch offen, Monatsabrechnung ausstehend";
+	var gridLine="noch keine belastbare Messung";
+	if(gridKwh!==null){
+		gridLine=visNumberDe(gridKwh,2)+" kWh";
+		if(gridCost!==null)gridLine+=" · "+visNumberDe(gridCost,2)+" € erfasste Kosten";
+	}
+	var batteryLine=fastKwh===null?"heute noch keine Schnelllade-Messung":visMeasuredShareLine(s.fastBatteryKwh,s.fastBatterySharePct,gridKwh,gridCost);
+	var localLine=fastKwh===null?"heute noch keine Schnelllade-Messung":visMeasuredShareLine(s.fastLocalKwh,s.fastLocalSharePct,gridKwh,gridCost);
+	var sentences=[];
+	if(active)sentences.push(charging?"Tibber Grid Rewards steuert die Autoladung gerade.":"Tibber Grid Rewards ist aktiv; Tibber entscheidet gerade über Start oder Pause.");
+	else if(charging)sentences.push("Das Auto lädt gerade ohne aktives Grid-Rewards-Signal.");
+	else sentences.push(connected?"Das Auto ist verbunden, lädt aber gerade nicht.":"Das Auto ist nicht verbunden.");
+	if(source==="billing"&&credit!==null)sentences.push("Die Grid-Rewards-Gutschrift von "+visNumberDe(credit,2)+" € ist durch die Monatsabrechnung bestätigt.");
+	else if((source==="estimate_day"||source==="estimate_month")&&credit!==null)sentences.push("Die vorläufige Grid-Rewards-Gutschrift liegt bei "+visNumberDe(credit,2)+" €; bestätigt wird sie erst mit der Monatsabrechnung.");
+	else if(active)sentences.push("Ein bestätigter Eurobetrag liegt noch nicht vor; maßgeblich ist die Monatsabrechnung.");
+	if(gridKwh!==null)sentences.push("Heute kamen "+visNumberDe(gridKwh,2)+" kWh der Autoladung aus dem Netz"+(gridCost!==null?"; dafür sind "+visNumberDe(gridCost,2)+" € erfasst.":".") );
+	if(fastKwh!==null&&fastKwh>0)sentences.push("Beim Schnellladen kamen "+batteryLine+" aus der Sonnen-Batterie und "+localLine+" aus PV/lokaler Versorgung.");
+	return{
+		hero:active?(charging?"TIBBER STEUERT DIE LADUNG":"TIBBER GRID REWARDS AKTIV"):(charging?"AUTO LÄDT":(connected?"AUTO VERBUNDEN":"AUTO NICHT VERBUNDEN")),
+		rewardsLine:rewardsLine,gridLine:gridLine,batteryLine:batteryLine,localLine:localLine,
+		summary:sentences.join(" ")
+	};
+}
+function visHumanPlannerReason(kind,raw,fallback){
+	var text=String(raw==null?"":raw).replace(/\s+/g," ").trim();
+	var fb=visFirstSentence(fallback);
+	if(!text||text==="—")return fb||"Noch keine verständliche Planbegründung verfügbar.";
+	if(/Keine Allocation für wallbox/i.test(text))return"EMS hat aktuell keine eigene Autoladung eingeplant.";
+	if(/Keine Allocation für battery/i.test(text))return"EMS hat aktuell keine Batterieladung eingeplant.";
+	if(/Keine Allocation für immersion_heater/i.test(text))return"EMS hat aktuell keinen Heizstab-Lauf eingeplant.";
+	if(/Keine Allocation für (air_conditioning|climate)/i.test(text))return"EMS hat aktuell keinen zusätzlichen Klima-Lauf eingeplant.";
+	var first=visFirstSentence(text)
+		.replace(/Unified Plan/gi,"gemeinsamen Tagesplan")
+		.replace(/\bAllocation\b/gi,"Zuteilung")
+		.replace(/\bwallbox\b/gi,"Auto")
+		.replace(/\bimmersion_heater\b/gi,"Heizstab")
+		.replace(/air_conditioning\.unit_\d+/gi,"dieses Klimagerät");
+	if(/unified-\d|PV_today=|Load_today=|replansToday=|\brev=\d|\w+=-?\d/.test(first))return fb||"Der gemeinsame Tagesplan und die Schutzregeln sind maßgeblich.";
+	if(first.length>180)first=first.slice(0,179)+"…";
+	return first||fb||"Der gemeinsame Tagesplan und die Schutzregeln sind maßgeblich.";
+}
+function visExternalAuthorityLabel(raw){
+	var value=visNorm(raw);
+	if(value==="active_without_plan")return"Extern aktiv; EMS plant bewusst nicht parallel";
+	if(value==="active")return"Extern aktiv";
+	if(value==="planned")return"Externer Ladeplan vorgesehen";
+	if(value==="none"||value==="inactive"||!value)return"keine externe Steuerung";
+	return String(raw).replace(/_/g," ");
+}
+function visEvTargetLabel(value,externallyManaged){
+	var n=visFiniteNumber(value);
+	if(n===null||n<=0||n>100)return externallyManaged?"extern verwaltet":"nicht gesetzt";
+	return Math.round(n)+" %";
+}
 function visGbBlockReasonDe(code){
 	var c=String(code||"").trim();
 	var map={
@@ -2024,7 +2163,7 @@ function visLiveSnap(){
 		evccBatteryMode:txt(g("addons.wallbox.status.evcc.battery_mode"),""),
 		batteryHoldForEv:isOn(g("addons.wallbox.runtime.battery_hold_for_ev_charge")),
 		vehicleConnected:wallboxConnected(),
-		tibber:isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active")),
+		tibber:tibberRewardsIsActive(),
 		externalEv:isOn(g("addons.wallbox.runtime.external_vehicle_charge_active")),
 		gbActive:isOn(g("addons.battery.grid_balance.active")),
 		gbEnabled:isOn(g("addons.battery.grid_balance.enabled")),
@@ -2171,7 +2310,7 @@ function ihEnergyNeedLine(){
 	return line;
 }
 function wallboxAuthorityLine(){
-	if(isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active")))return"Tibber";
+	if(tibberRewardsIsActive())return"Tibber";
 	if(isOn(g("addons.wallbox.runtime.external_vehicle_charge_active")))return"External";
 	var auth=String(g("addons.wallbox.status.ev_foundation.ev_execution_authority")||"").toLowerCase();
 	if(auth==="external")return"External";
@@ -2763,8 +2902,9 @@ function renderLegacyStack(){
 	var wbConnected=wallboxConnected();
 	var wbMode=wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—";
 	var wbSoc=fmtPct(g("addons.wallbox.status.evcc.vehicle_soc_pct"));
-	var wbTarget=fmtPct(g("addons.wallbox.status.evcc.effective_limit_soc_pct"));
-	var wbRewards=isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active"));
+	var wbRewards=tibberRewardsIsActive();
+	var wbExternal=visNorm(g("addons.wallbox.status.ev_foundation.external_authority_state"));
+	var wbTarget=visEvTargetLabel(g("addons.wallbox.status.evcc.effective_limit_soc_pct"),wbRewards||wbExternal==="active"||wbExternal==="active_without_plan"||wbExternal==="planned");
 	var wbOpBadge=wbHw?{cls:"on",label:"LÄUFT"}:{cls:"idle",label:"AUS"};
 	var wbBadges={exec:execAuthorityBadge("wallbox"),op:wbOpBadge};
 	var wbNextLine=wbNext?(fmtSmartTime(wbNext.t)+" · "+Math.round(wbNext.w)+" W"):"keines";
@@ -2890,6 +3030,36 @@ function tibberHandoffLabel(raw){
 	if(value==="tibber_grid_rewards_disabled")return"nicht freigegeben";
 	return value||"—";
 }
+function tibberRewardsIsActive(){
+	return isOn(g("addons.wallbox.status.ev_foundation.grid_rewards_active"))
+		||isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active"));
+}
+function currentTibberRewardsView(){
+	return visTibberRewardsView({
+		active:tibberRewardsIsActive(),
+		configured:isOn(g("addons.wallbox.status.ev_foundation.tibber_now_handoff_enabled")),
+		handoffStatus:g("addons.wallbox.status.ev_foundation.tibber_now_handoff_status"),
+		dueLabel:fmtDateTimeOrDash(g("addons.wallbox.status.ev_foundation.tibber_now_handoff_due_at")),
+		connected:wallboxConnected(),
+		charging:isOn(g("addons.wallbox.status.evcc.charging")),
+		chargePowerW:num(g("addons.wallbox.status.evcc.charge_power_w")),
+		modeLabel:wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—"
+	});
+}
+function tibberRewardsBannerHtml(){
+	var v=currentTibberRewardsView();
+	if(!v.show)return"";
+	return '<div class="ems-tibber-banner '+esc(v.cls)+'" role="status">'
+		+'<span class="ems-tibber-signal" aria-hidden="true"></span>'
+		+'<div class="ems-tibber-main"><div class="ems-tibber-title">'+esc(v.title)+'</div>'
+		+'<div class="ems-tibber-detail">'+esc(v.detail)+'</div></div>'
+		+(v.side?'<div class="ems-tibber-side">'+esc(v.side)+'</div>':"")
+		+'</div>';
+}
+function renderTibberRewardsBanner(){
+	var el=document.getElementById("ems-tibber-banner-host");
+	if(el)el.innerHTML=tibberRewardsBannerHtml();
+}
 function decisionStateLabel(state){
 	if(state==="active")return"AKTIV";
 	if(state==="deferred")return"BEWUSST VERSCHOBEN";
@@ -2967,6 +3137,8 @@ function renderBatteryPage(){
 	var decision=outlookDecision("battery_charge",null);
 	var next=firstWindow(g("planner.intent.allocation.battery.plan_json"),ON_W);
 	var fault=isOn(g("addons.battery.status.fault"))||isOn(g("addons.battery.status.lockout"));
+	var batteryStrategy=txt(g("operator.plan.battery_strategy_de"),"");
+	var batteryWhy=visHumanPlannerReason("battery",g("planner.intent.allocation.battery.reason_de"),batteryStrategy);
 	var html="";
 	html+=questionCard("1 · Was ist der aktuelle Zustand?",fault?"Störung / Lockout":motion.label,[
 		["SOC",soc===null?"—":Math.round(soc)+" %"],
@@ -2994,13 +3166,13 @@ function renderBatteryPage(){
 		["Geplante Energie",decision?fmtDec(decision.plannedEnergyKwh,2,"kWh"):"—"],
 		["Reserve bei PV-Ende",fmtPct(g("planner.battery_reserve.required_soc_at_pv_end_pct"))]
 	],decisionExplanation(decision,txt(g("operator.plan.battery_strategy_de"),"")),"#58a6ff");
-	html+=questionCard("4 · Warum?","Planner + Schutzregeln",[
-		["Planner",txt(g("planner.intent.allocation.battery.reason_de"),"—")],
-		["Reserve",txt(g("planner.battery_reserve.reason_de"),"—")],
-		["Entladung",txt(g("planner.battery_discharge.reason_de"),"—")],
+	html+=questionCard("4 · Warum?",fault?"Die Störung hat Vorrang":batteryWhy,[
+		["Planentscheidung",batteryWhy],
+		["Nachtreserve",visHumanPlannerReason("battery",g("planner.battery_reserve.reason_de"),"Die gelernte Nachtreserve wird geschützt.")],
+		["Entladeentscheidung",visHumanPlannerReason("battery",g("planner.battery_discharge.reason_de"),"Eine Entladung erfolgt nur bei ausreichender Reserve und Freigabe.")],
 		["Top-Off",isOn(g("learning.battery_runtime.topoff_due"))?"fällig":"nicht fällig"],
 		["Netzausgleich",gbStatus().label+(gbStatus().reason?" · "+gbStatus().reason:"")]
-	],"Harte SOC-, Safety-, Ownership- und EV-Hold-Regeln haben Vorrang vor Preisoptimierung.","#58a6ff");
+	],"SOC-Grenzen, Nachtreserve, Geräteschutz und eine laufende Autoladung haben immer Vorrang vor der Preisoptimierung.","#58a6ff");
 	paintEl(el,"battery-page",html);
 }
 
@@ -3012,6 +3184,8 @@ function renderThermalPage(){
 	var sched=immersionScheduleRow(g("planner.intent.allocation.immersion_heater.plan_json"));
 	var energyToday=energyStats("today"),energyPeriod=energyStats("period");
 	var fault=immersionFaultActive(),running=immersionHardwareActive(effectiveLiveWrite("immersion_heater"));
+	var thermalStrategy=decisionExplanation(decision,txt(g("addons.immersion_heater.runtime.allocation_reason_de"),""));
+	var thermalWhy=visHumanPlannerReason("immersion_heater",g("planner.intent.allocation.immersion_heater.reason_de"),thermalStrategy);
 	var html="";
 	html+=questionCard("1 · Was ist der aktuelle Zustand?",fault?immersionFaultStatusDe():(running?"HEIZSTAB LÄUFT":"HEIZSTAB AUS"),[
 		["Boiler",boiler===null?"—":fmtDec(boiler,1,"°C")],
@@ -3042,12 +3216,12 @@ function renderThermalPage(){
 		["Boiler-Min",boilerMinForecastLine()],
 		["Hygiene 7 Tage",hygieneWeekPlanLine()]
 	],decisionExplanation(decision,txt(g("addons.immersion_heater.runtime.allocation_reason_de"),"")),"#ffa657");
-	html+=questionCard("4 · Warum?","Pflicht vor Optimierung",[
-		["Planner",txt(g("planner.intent.allocation.immersion_heater.reason_de"),"—")],
-		["Zielgrund",txt(g("addons.immersion_heater.runtime.plan_target_reason_de"),"—")],
-		["Allocation",txt(g("addons.immersion_heater.runtime.allocation_reason_de"),"—")],
-		["Grenzen",fmtTemp(g("addons.immersion_heater.runtime.planning_min_temp_c"))+" bis "+fmtTemp(g("addons.immersion_heater.runtime.planning_max_temp_c"))]
-	],"Safety, Boiler-Min, Hygiene und Forced bleiben hart. Soft-Wärme darf nur in vom Unified Planner belegten Fenstern laufen.","#ffa657");
+	html+=questionCard("4 · Warum?",fault?"Die Störung hat Vorrang":thermalWhy,[
+		["Planentscheidung",thermalWhy],
+		["Temperaturziel",visHumanPlannerReason("immersion_heater",g("addons.immersion_heater.runtime.plan_target_reason_de"),"Das Temperaturziel folgt Bedarf und Reichweite.")],
+		["Energiezuteilung",visHumanPlannerReason("immersion_heater",g("addons.immersion_heater.runtime.allocation_reason_de"),thermalStrategy)],
+		["Erlaubter Bereich",fmtTemp(g("addons.immersion_heater.runtime.planning_min_temp_c"))+" bis "+fmtTemp(g("addons.immersion_heater.runtime.planning_max_temp_c"))]
+	],"Mindesttemperatur, Hygiene und Geräteschutz sind Pflicht. Zusätzliche Wärme läuft nur in einem sicher eingeplanten Zeitfenster.","#ffa657");
 	if(fault)html+='<div class="ems-device-section">Störung</div><div class="ems-q-card">'+immersionFaultResetActionsHtml()+'</div>';
 	paintEl(el,"thermal-page",html);
 }
@@ -3072,6 +3246,8 @@ function renderClimatePage(){
 		var running=isOn(g(base+".running")),contribution=acContribution(u),details=contribution&&contribution.details?contribution.details:{};
 		var decision=outlookDecision("climate","air_conditioning.unit_"+u);
 		var sched=climateScheduleRow(u),display=resolveClimateUnitDisplay(u);
+		var climateWhy=visHumanPlannerReason("climate",g(base+".reason_de"),display.note||decisionExplanation(decision,""));
+		var climatePlanWhy=visHumanPlannerReason("climate",g(base+".allocation_reason_de"),decisionExplanation(decision,display.note));
 		var stats=base+".stats";
 		html+=pageSection("Klima · "+name);
 		html+=questionCard("1 · Was ist der aktuelle Zustand?",running?"LÄUFT · "+(visHvacPurposeLabel(g(base+".mode_purpose"))||"KLIMA"):"AUS",[
@@ -3096,13 +3272,13 @@ function renderClimatePage(){
 			["Erwartete Energie",fmtDec(details.expectedKwhToday,2,"kWh")],
 			["Shared System",txt(g("addons.air_conditioning.runtime.system_shared_power_used"),"—")]
 		],decisionExplanation(decision,display.note),"#79c0ff");
-		html+=questionCard("4 · Warum?","Bedarf + Wetter + Grenzen",[
-			["Runtime",txt(g(base+".reason_de"),"—")],
-			["Allocation",txt(g(base+".allocation_reason_de"),"—")],
-			["Demand-Modell",txt(details.demandModel||details.demand_model,"—")],
-			["Fallback",txt(details.fallbackReasonDe||details.fallback_reason_de,"—")],
-			["Governance",isOn(g(base+".governance_allowed"))?"freigegeben":"gesperrt"]
-		],"Ein Vorziehen erscheint nur bei einem vom Klima-Forecast erkannten Bedarf; Hard-Off, Shared-Power, Komfort und Runtime-Schutz bleiben bindend.","#79c0ff");
+		html+=questionCard("4 · Warum?",climateWhy,[
+			["Aktueller Grund",climateWhy],
+			["Planentscheidung",climatePlanWhy],
+			["Bedarfsmodell",txt(details.demandModel||details.demand_model,"sammelt noch Daten")],
+			["Ersatzmodell",visHumanPlannerReason("climate",details.fallbackReasonDe||details.fallback_reason_de,"nicht benötigt")],
+			["EMS-Freigabe",isOn(g(base+".governance_allowed"))?"freigegeben":"gesperrt"]
+		],"EMS startet nur bei erkennbarem Raum- oder Feuchtebedarf. Zeitgrenzen, gemeinsamer Stromanschluss, Komfort und Geräteschutz bleiben bindend.","#79c0ff");
 	}
 	if(!count)html=questionCard("Klima","Keine Geräte konfiguriert",[],"Aktivierte und benannte Klima-Units erscheinen hier automatisch.","#79c0ff");
 	html+=pageSection("Gemeinsame Energiebilanz")+questionCard("Klima gesamt","PV-Anteil "+fmtDec(energyPeriod.climatePvSharePct,1,"%"),[
@@ -3117,48 +3293,65 @@ function renderClimatePage(){
 function renderWallboxPage(){
 	var el=document.getElementById("ems-wallbox-page");if(!el)return;
 	var connected=wallboxConnected(),charging=isOn(g("addons.wallbox.status.evcc.charging"));
+	var rewardsActive=tibberRewardsIsActive();
 	var decision=outlookDecision("wallbox",null),next=firstWindow(g("planner.intent.allocation.wallbox.plan_json"),ON_W);
 	var energyToday=energyStats("today"),energyPeriod=energyStats("period"),mob=mergeMobFlat("period",parseObj(g("statistics.mobility.period_json")));
-	var html="";
-	html+=questionCard("1 · Was ist der aktuelle Zustand?",charging?"LÄDT":(connected?"VERBUNDEN":"GETRENNT"),[
+	var mobToday=mergeMobFlat("today",parseObj(g("statistics.mobility.today_json")));
+	var homeToday=mergeHomeFlat("today",parseObj(g("statistics.home.today_json")));
+	var rewardsSource=mobToday.gridRewardsSource&&mobToday.gridRewardsSource!=="off"?mobToday.gridRewardsSource:homeToday.gridRewardsSource;
+	var rewardsCredit=num(mobToday.gridRewardsCreditEur);if(rewardsCredit===null)rewardsCredit=num(homeToday.gridRewardsCreditEur);
+	var autoToday=visAutoTodaySummary({
+		rewardsActive:rewardsActive,charging:charging,connected:connected,rewardsSource:rewardsSource,rewardsCreditEur:rewardsCredit,
+		homeGridKwh:mobToday.homeGridKwh,homeGridCostEur:mobToday.homeGridCostEur,
+		fastChargedKwh:energyToday.evFastChargedKwh,fastBatteryKwh:energyToday.evFastBatteryKwh,fastBatterySharePct:energyToday.evFastBatterySharePct,
+		fastLocalKwh:energyToday.evFastLocalKwh,fastLocalSharePct:energyToday.evFastLocalSharePct
+	});
+	var externalRaw=g("addons.wallbox.status.ev_foundation.external_authority_state");
+	var externallyManaged=rewardsActive||/^(active|active_without_plan|planned)$/.test(visNorm(externalRaw));
+	var wallboxStrategy=txt(g("operator.plan.wallbox_strategy_de"),"");
+	var wallboxPlanWhy=visHumanPlannerReason("wallbox",g("planner.intent.allocation.wallbox.reason_de"),wallboxStrategy);
+	var wallboxWhy=rewardsActive?"Tibber steuert; EMS hält sich mit einer eigenen Ladung zurück.":wallboxPlanWhy;
+	var html=tibberRewardsBannerHtml();
+	html+=questionCard("1 · Was ist der aktuelle Zustand?",autoToday.hero,[
 		["Fahrzeug-SOC",fmtPct(g("addons.wallbox.status.evcc.vehicle_soc_pct"))],
-		["Ziel-SOC",fmtPct(g("addons.wallbox.status.evcc.effective_limit_soc_pct"))],
+		["Ziel-SOC",visEvTargetLabel(g("addons.wallbox.status.evcc.effective_limit_soc_pct"),externallyManaged)],
 		["Leistung",fmtW(g("addons.wallbox.status.evcc.charge_power_w"))],
 		["EVCC-Modus",wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—"],
 		["Ausführungsautorität",wallboxAuthorityLine()],
 		["Verbleibend",fmtDec(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"),1,"kWh")]
-	],txt(g("addons.wallbox.runtime.reason_de"),""),"#d2a8ff");
+	],autoToday.summary,"#d2a8ff");
 	html+=questionCard("2 · Was hat EMS gelernt?","Ladehistorie",[
+		["Grid Rewards heute",autoToday.rewardsLine],
+		["Netzstrom fürs Auto heute",autoToday.gridLine],
 		["Heute geladen",fmtDec(energyToday.evChargedKwh,2,"kWh")],
-		["Heute aus PV",fmtDec(energyToday.evPvKwh,2,"kWh")],
-		["Heute PV-Anteil",fmtDec(energyToday.evPvSharePct,1,"%")],
+		["Davon PV gesamt",energyShare(energyToday.evPvKwh,energyToday.evPvSharePct)],
 		["Heute Schnell/now",fmtDec(energyToday.evFastChargedKwh,2,"kWh")],
-		["↳ Sonnen-Batterie",energyShare(energyToday.evFastBatteryKwh,energyToday.evFastBatterySharePct)],
+		["↳ Sonnen-Batterie",autoToday.batteryLine],
 		["↳ Netzbezug",energyShare(energyToday.evFastGridKwh,energyToday.evFastGridSharePct)],
-		["↳ PV/lokal",energyShare(energyToday.evFastLocalKwh,energyToday.evFastLocalSharePct)],
+		["↳ PV/lokal",autoToday.localLine],
 		["Zeitraum geladen",fmtDec(energyPeriod.evChargedKwh,1,"kWh")],
 		["Zeitraum Schnell/now",fmtDec(energyPeriod.evFastChargedKwh,1,"kWh")],
 		["Zeitraum PV-Anteil",fmtDec(energyPeriod.evPvSharePct,1,"%")],
 		["Heim-Netz Kosten",fmtEur(mob.homeGridCostNetEur)],
 		["Öffentlicher Schnellader",fmtKwhStats(mob.publicInvoicedKwh)]
-	],"Schnell/now wird aus zeitgleicher Hauslast, Sonnen-Entladung und Netzbezug bilanziert; der Rest ist PV/lokal.","#d2a8ff");
+	],"Schnell/now wird aus zeitgleichen Messwerten aufgeteilt. Der Netzstromwert bewertet PV und Sonnen-Batterie nur zum heutigen durchschnittlichen Auto-Netzpreis; er ist keine behauptete PV- oder Batteriekostenmessung.","#d2a8ff");
 	html+=questionCard("3 · Was plant EMS als Nächstes?",decision?decisionStateLabel(decision.state):(next?"EINGEPLANT":"KEINE EMS-LADUNG"),[
 		["Nächstes Fenster",next?fmtSmartTime(next.t)+" · "+Math.round(next.w)+" W":"keines"],
 		["Geplante Energie",decision?fmtDec(decision.plannedEnergyKwh,2,"kWh"):"—"],
 		["Benötigte Energie",fmtDec(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"),1,"kWh")],
-		["Grid Rewards",isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active"))?"aktiv":"inaktiv"],
+		["Grid Rewards",rewardsActive?"aktiv — Tibber entscheidet über Start/Pause":"inaktiv"],
 		["Übergabe erlaubt",isOn(g("addons.wallbox.status.ev_foundation.tibber_now_handoff_enabled"))?"ja":"nein"],
 		["Tibber-Übergabe",tibberHandoffLabel(g("addons.wallbox.status.ev_foundation.tibber_now_handoff_status"))],
 		["Schnell/now fällig",fmtDateTimeOrDash(g("addons.wallbox.status.ev_foundation.tibber_now_handoff_due_at"))],
 		["Batterie-Hold",isOn(g("addons.wallbox.runtime.battery_hold_for_ev_charge"))?"aktiv":"inaktiv"]
 	],decisionExplanation(decision,txt(g("operator.plan.wallbox_strategy_de"),"")),"#d2a8ff");
-	html+=questionCard("4 · Warum?","Unified Plan + EVCC",[
-		["Planner",txt(g("planner.intent.allocation.wallbox.reason_de"),"—")],
-		["Strategie",txt(g("operator.plan.wallbox_strategy_de"),"—")],
-		["External Authority",txt(g("addons.wallbox.status.ev_foundation.external_authority_state"),"—")],
-		["Tibber/Grid Rewards",isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active"))?"übernimmt aktuelle Ladung":"keine aktuelle Übernahme"],
-		["Fault",isOn(g("addons.wallbox.runtime.fault_active"))?"aktiv":"nein"]
-	],"SOC, Zielenergie, Anwesenheit und Deadline sind harte Eingaben. EVCC bleibt Ausführungs-Master.","#d2a8ff");
+	html+=questionCard("4 · Warum?",wallboxWhy,[
+		["Planentscheidung",wallboxPlanWhy],
+		["Gerätestrategie",visHumanPlannerReason("wallbox",wallboxStrategy,"EVCC führt die Ladung aus.")],
+		["Aktuelle Steuerung",visExternalAuthorityLabel(externalRaw)],
+		["Grid Rewards",rewardsActive?"Tibber steuert die aktuelle Freigabe":"derzeit keine aktive Übernahme"],
+		["Störung",isOn(g("addons.wallbox.runtime.fault_active"))?"aktiv":"keine"]
+	],"Ein gültiges Ladeziel, die Anwesenheit des Autos und eine Abfahrtszeit bestimmen den Bedarf. Bei aktiver externer Steuerung plant EMS bewusst nicht parallel; EVCC bleibt für die Wallbox zuständig.","#d2a8ff");
 	paintEl(el,"wallbox-page",html);
 }
 
@@ -3196,14 +3389,15 @@ function renderGridPage(){
 		["Letzte Aktion",txt(g("addons.battery.grid_balance.last_action"),"—")],
 		["Letzte Aktion um",fmtDateTimeOrDash(g("addons.battery.grid_balance.last_action_at"))]
 	],"Grid Balance ist reaktiv: Es erhält ein Planner-Budget, regelt aber nur bei echter Restlast und offener Safety-/Preisfreigabe.","#3fb950");
-	html+=questionCard("4 · Warum?",gb.reason||"Freigaben erfüllt",[
-		["Blockiercode",txt(g("addons.battery.grid_balance.block_reason"),"—")],
-		["Erklärung",txt(g("addons.battery.grid_balance.explain"),"—")],
-		["EV-Konflikt",isOn(g("addons.battery.grid_balance.ev_conflict"))?"ja":"nein"],
+	var gridWhy=gb.reason||"Alle Freigaben sind erfüllt.";
+	html+=questionCard("4 · Warum?",gridWhy,[
+		["Entscheidung",gbBlockReasonDe(g("addons.battery.grid_balance.block_reason"))||"freigegeben"],
+		["Erklärung",visHumanPlannerReason("grid_balance",g("addons.battery.grid_balance.explain"),gridWhy)],
+		["EV-Konflikt",isOn(g("addons.battery.grid_balance.ev_conflict"))?"ja — Autoladung hat Vorrang":"nein"],
 		["Ausgeschlossene Last",fmtW(g("addons.battery.grid_balance.policy_excluded_load_w"))],
-		["Policy",txt(g("addons.battery.grid_balance.policy_excluded_reason_de"),"—")],
-		["η-Grund",txt(g("learning.grid_balance_economics.eta_reason_de"),"—")]
-	],"Aktive Batterie-Netzladung sowie EVCC now/tatsächliches Schnellladen sperren Grid Balance zwingend.","#3fb950");
+		["Ausnahmegrund",visHumanPlannerReason("grid_balance",g("addons.battery.grid_balance.policy_excluded_reason_de"),"keine zusätzliche Ausnahme")],
+		["Wirkungsgrad",visHumanPlannerReason("grid_balance",g("learning.grid_balance_economics.eta_reason_de"),"wird aus den Messdaten gelernt")]
+	],"Batterie-Netzladung und tatsächliches Auto-Schnellladen haben Vorrang und sperren den Netzausgleich automatisch.","#3fb950");
 	paintEl(el,"grid-page",html);
 }
 
@@ -3675,6 +3869,7 @@ function setEmsView(mode){
 
 function renderOperations(){
 	renderNow();
+	renderTibberRewardsBanner();
 	renderAssessment();
 	renderPriceBoard();
 	renderAiSummary();

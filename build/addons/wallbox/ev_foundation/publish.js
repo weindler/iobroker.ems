@@ -8,6 +8,7 @@ async function publishEvFoundationDiagnosis(host, model, _capabilities, _observe
     const plan = external?.smartPlan ?? (0, types_1.emptySmartPlanEval)();
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson, JSON.stringify(plan.slots));
     await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct, model.externalSmartChargingMinSocPct);
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.gridRewardsActive, model.gridRewardsActive);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState, decision?.externalAuthorityState ?? model.externalAuthorityState);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity, decision?.takeoverSeverity ?? model.takeoverSeverity);
     await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.WALLBOX_EV_FOUNDATION_STATES.preparedEvState, model.preparedEvState);

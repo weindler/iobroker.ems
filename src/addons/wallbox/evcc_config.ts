@@ -40,6 +40,8 @@ export const WB_EVCC_SMART_COST_ACTIVE = "wb_evcc_smart_cost_active_state";
 /** Optional foreign signals (not EVCC telemetry roles). */
 export const WB_EXTERNAL_VEHICLE_CHARGE = "wb_external_vehicle_charge_state";
 export const WB_TIBBER_GRID_REWARDS_ACTIVE = "wb_tibber_grid_rewards_active_state";
+/** Canonical EV-foundation mapping; the older Tibber key remains a fallback. */
+export const WB_EXTERNAL_GRID_REWARDS_ACTIVE = "wb_external_grid_rewards_active_state";
 
 /** Synced to addons.wallbox.mapping.<role>.target_state */
 export const WALLBOX_EVCC_TELEMETRY_ROLES = [
@@ -267,7 +269,8 @@ export function wallboxHoldSignalConfigFromAdapter(config: unknown): WallboxHold
 	const c = config && typeof config === "object" ? (config as Record<string, unknown>) : {};
 	return {
 		externalVehicleChargeStateId: strField(c, WB_EXTERNAL_VEHICLE_CHARGE),
-		tibberGridRewardsActiveStateId: strField(c, WB_TIBBER_GRID_REWARDS_ACTIVE),
+		tibberGridRewardsActiveStateId:
+			strField(c, WB_EXTERNAL_GRID_REWARDS_ACTIVE) || strField(c, WB_TIBBER_GRID_REWARDS_ACTIVE),
 	};
 }
 

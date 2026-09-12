@@ -84,6 +84,15 @@ function num(d: Record<string, unknown> | null | undefined, key: string): number
 	return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+/**
+ * EVCC/admin use 0 as an unset sentinel in a few optional target fields.
+ * A planner target must be a real SOC percentage; otherwise a zero value can
+ * mask the effective EVCC limit and surface as the misleading "Ziel 0 %".
+ */
+function validEvTargetSocPct(value: number | null): number | null {
+	return value !== null && value > 0 && value <= 100 ? value : null;
+}
+
 function str(d: Record<string, unknown> | null | undefined, key: string): string | null {
 	if (!d) return null;
 	const v = d[key];
@@ -715,13 +724,16 @@ function mapWallbox(
 				? ("direct" as const)
 				: ("unknown" as const);
 	const vehicleSocPct = num(wbD, "vehicleSocPct");
+	const targetSocPct =
+		validEvTargetSocPct(num(wbD, "planSocPct")) ??
+		validEvTargetSocPct(num(wbD, "effectiveLimitSocPct"));
 	const requiredFromSoc =
 		vehicleSocPct !== null &&
 		num(wbD, "vehicleCapacityKwh") !== null &&
-		(num(wbD, "planSocPct") ?? num(wbD, "effectiveLimitSocPct")) !== null
+		targetSocPct !== null
 			? (Math.max(
 					0,
-					(num(wbD, "planSocPct") ?? num(wbD, "effectiveLimitSocPct")!) - vehicleSocPct,
+					targetSocPct - vehicleSocPct,
 				) /
 					100) *
 				num(wbD, "vehicleCapacityKwh")!
@@ -780,7 +792,7 @@ function mapWallbox(
 		socSource,
 		fallbackEnergyNeedKwh: null,
 		vehicleCapacityKwh: num(wbD, "vehicleCapacityKwh"),
-		targetSocPct: num(wbD, "planSocPct") ?? num(wbD, "effectiveLimitSocPct"),
+		targetSocPct,
 		requiredEnergyKwh,
 		deadlineIso,
 		energyGoalHard: false,

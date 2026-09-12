@@ -14,6 +14,7 @@ const constants_js_1 = require("../addons/air_conditioning/constants.js");
 const ensure_states_js_2 = require("../addons/wallbox/vehicles/ensure_states.js");
 const normalize_js_1 = require("../addons/wallbox/vehicles/normalize.js");
 const config_js_1 = require("../addons/wallbox/vehicles/config.js");
+const ensure_states_js_3 = require("../addons/wallbox/ev_foundation/ensure_states.js");
 // ensure/normalize kept only to plant legacy fat trees for purge assertions
 class FakeCleanupHost {
     namespace = "ems.0";
@@ -60,6 +61,18 @@ class FakeCleanupHost {
     }
 }
 (0, node_test_1.describe)("surface cleanup allowlist", () => {
+    (0, node_test_1.it)("keeps every public EV-foundation state after ensure and cleanup", async () => {
+        const host = new FakeCleanupHost({});
+        await (0, ensure_states_js_3.ensureWallboxEvFoundationStates)(host);
+        for (const id of ensure_states_js_3.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS) {
+            strict_1.default.equal(host.objects.has(id), true, `${id} must be ensured`);
+            strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)(id), false, `${id} must not be cleanup ballast`);
+        }
+        await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
+        for (const id of ensure_states_js_3.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS) {
+            strict_1.default.equal(host.objects.has(id), true, `${id} must survive cleanup`);
+        }
+    });
     (0, node_test_1.it)("keeps public grid_balance policy_excluded states (not cleanup ballast)", () => {
         // Regression: ensureBatteryArchitectureStates creates these via BATTERY_PUBLIC_STATE_IDS;
         // Phase-C2 surface cleanup must not delete them before the first grid_balance setState.

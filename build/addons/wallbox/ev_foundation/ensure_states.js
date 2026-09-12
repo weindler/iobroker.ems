@@ -125,6 +125,7 @@ exports.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS = new Set([
     exports.WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson,
     exports.WALLBOX_EV_FOUNDATION_STATES.externalMinSocPct,
     exports.WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState,
+    exports.WALLBOX_EV_FOUNDATION_STATES.gridRewardsActive,
     exports.WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity,
     exports.WALLBOX_EV_FOUNDATION_STATES.preparedEvState,
     exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionEnabled,

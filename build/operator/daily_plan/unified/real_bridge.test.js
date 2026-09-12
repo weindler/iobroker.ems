@@ -134,7 +134,8 @@ function realisticSnapshot(overrides) {
             vehicleSocPct: o.vehicleSoc === undefined ? null : o.vehicleSoc,
             requiredEnergyKwh: o.connected ? 12 : null,
             maxChargePowerW: 11000,
-            planSocPct: 80,
+            planSocPct: o.planSocPct === undefined ? 80 : o.planSocPct,
+            effectiveLimitSocPct: o.effectiveLimitSocPct === undefined ? null : o.effectiveLimitSocPct,
         },
     }));
     return {
@@ -279,6 +280,22 @@ function realisticSnapshot(overrides) {
     });
 });
 (0, node_test_1.describe)("REAL-006 Vehicle Connected vs Unknown Presence", () => {
+    (0, node_test_1.it)("treats target SOC 0 as unset and falls through to a valid EVCC limit", () => {
+        const fallback = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({
+            connected: true,
+            vehicleSoc: 64,
+            planSocPct: 0,
+            effectiveLimitSocPct: 80,
+        }));
+        strict_1.default.equal(fallback.wallbox?.targetSocPct, 80);
+        const unset = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({
+            connected: true,
+            vehicleSoc: 64,
+            planSocPct: 0,
+            effectiveLimitSocPct: 0,
+        }));
+        strict_1.default.equal(unset.wallbox?.targetSocPct, null);
+    });
     (0, node_test_1.it)("connectedNow does not invent future presence as available", () => {
         const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)(realisticSnapshot({ connected: true, vehicleSoc: 40 }));
         strict_1.default.ok(input.wallbox);

@@ -4,7 +4,7 @@
 
 **Quellbasis:** v0.2.26, Commit `dd4b5d73cde310d6c247a5c986b7e3aa75fbcd21`
 
-**Zielstand:** v0.2.27
+**Zielstand:** v0.2.28
 
 **Status:** vollständig implementiert und getestet; für Installation und kontrollierte Live-Erprobung freigegeben
 
@@ -27,6 +27,10 @@ implementiert:
 - eine explizite Safety-Matrix für Batterie-Netzladen, EVCC-`now`, Budget und Ownership,
 - eine getestete Tibber-Übergabe, die nach dem Anstecken und der konfigurierten Wartezeit
   ausschließlich EVCC Schnell/`now` freigibt,
+- eine deutlich sichtbare Tibber-Grid-Rewards-Anzeige mit gemeinsamer Aktivquelle sowie eine
+  gegen Startbereinigung geschützte EV-Fundament-Oberfläche,
+- verständliche Gerätebegründungen und eine Auto-Tagessicht mit vorläufig/abgerechnet
+  gekennzeichneten Rewards, Auto-Netzkosten und gemessener Schnelllade-Quellenaufteilung,
 - reproduzierbarer Testlauf in der Produkt-Zeitzone.
 
 Die vorhandenen Safety-, Hygiene-, Forced-, Readiness-, Ownership-, Dryrun-, EVCC-,
@@ -280,7 +284,7 @@ Batterie-Hold → geplante Batterieaktion → Grid Balance. Die Abschlussmatrix 
 |---|---|
 | TypeScript Build | bestanden |
 | Admin-Config-Check | bestanden |
-| Unit-/Vertragstests | **3.041 / 3.041 bestanden** |
+| Unit-/Vertragstests | **3.049 / 3.049 bestanden** |
 | VIS-Synchronität und Script-Parsing | bestanden |
 | State-Surface-Audit | bestanden, 0 obsolete statische States |
 | `git diff --check` | bestanden |

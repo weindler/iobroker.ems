@@ -46,6 +46,11 @@ export type AssessmentLiveImmersion = {
 	mode: string | null;
 };
 
+export type AssessmentLiveEv = {
+	gridRewardsActive: boolean | null;
+	charging: boolean | null;
+};
+
 export type AssessmentBuildInput = {
 	now: Date;
 	timezone: string;
@@ -63,6 +68,7 @@ export type AssessmentBuildInput = {
 	priceNowCt: number | null;
 	gb: AssessmentLiveGb;
 	immersion: AssessmentLiveImmersion;
+	ev?: AssessmentLiveEv;
 };
 
 function roundPct(n: number): number {
@@ -214,7 +220,9 @@ function assessEv(input: AssessmentBuildInput): AssessmentTopic {
 		(c) => c.contributionId === "wallbox.ev_session" || c.contributionId.startsWith("wallbox."),
 	);
 	const soc = wb?.vehicleSocPct ?? (wbC ? numDetail(wbC, "vehicleSocPct") : null);
-	const target = wb?.targetSocPct ?? (wbC ? numDetail(wbC, "targetSocPct") : null);
+	const rawTarget = wb?.targetSocPct ?? (wbC ? numDetail(wbC, "targetSocPct") : null);
+	// 0 is the historical "not configured" sentinel, never a real EV SOC target.
+	const target = rawTarget !== null && rawTarget > 0 && rawTarget <= 100 ? rawTarget : null;
 	const connected = wb?.connectedNow ?? (wbC ? boolDetail(wbC, "connectedNow") : null);
 	const need = wb?.requiredEnergyKwh ?? (wbC ? numDetail(wbC, "requiredEnergyKwh") : null);
 	const hard = (wb?.hardRequiredEnergyKwh ?? 0) > 0.05 || wb?.energyGoalHard === true;
@@ -223,6 +231,12 @@ function assessEv(input: AssessmentBuildInput): AssessmentTopic {
 	const laterAlloc = allocActive(input.plan, ["wallbox"], nowMs, { later: true, timezone: input.timezone });
 	const currentAlloc = allocActive(input.plan, ["wallbox"], nowMs, { current: true });
 	const window = firstAllocWindow(input.plan, ["wallbox"], nowMs, input.timezone);
+	const authority = wb?.externalAuthorityState ?? (wbC ? strDetail(wbC, "externalAuthorityState") : null);
+	const externallyManaged =
+		wb?.managementMode === "externally_managed" ||
+		authority === "active" ||
+		authority === "active_without_plan" ||
+		authority === "planned";
 
 	const nearTarget =
 		soc != null &&
@@ -236,6 +250,26 @@ function assessEv(input: AssessmentBuildInput): AssessmentTopic {
 			: soc != null
 				? `SOC ${roundPct(soc)} %.`
 				: "";
+
+	if (input.ev?.gridRewardsActive === true) {
+		return {
+			status: "active",
+			text: `${
+				input.ev.charging === true
+					? "Tibber Grid Rewards steuert die aktuelle Autoladung."
+					: "Tibber Grid Rewards ist aktiv und entscheidet über Start oder Pause."
+			} ${socBit}`.trim(),
+			next: "EMS erstellt keinen eigenen Ladeplan; EVCC und Tibber bleiben zuständig.",
+		};
+	}
+
+	if (externallyManaged) {
+		return {
+			status: input.ev?.charging === true ? "active" : "wait",
+			text: `${input.ev?.charging === true ? "Das Auto lädt unter externer Steuerung." : "Das Auto wird extern verwaltet."} ${socBit}`.trim(),
+			next: "EMS plant keine konkurrierende Ladung; EVCC beziehungsweise der externe Dienst bleibt zuständig.",
+		};
+	}
 
 	if (currentAlloc) {
 		return {

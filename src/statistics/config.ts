@@ -1,4 +1,8 @@
 import { WALLBOX_EVCC_STATES } from "../addons/wallbox/ensure_evcc_states";
+import {
+	WB_EXTERNAL_GRID_REWARDS_ACTIVE,
+	WB_TIBBER_GRID_REWARDS_ACTIVE,
+} from "../addons/wallbox/evcc_config";
 import { asBool, asNum } from "../ems_light/state_util";
 import type { IceFuelType } from "./types";
 
@@ -139,7 +143,11 @@ export function statisticsConfigFromAdapter(config: unknown): StatisticsAdminCon
 		tibberGridRewardsActiveStateId: strField(
 			c,
 			"statistics_tibber_grid_rewards_active_state",
-			strField(c, "wb_tibber_grid_rewards_active_state"),
+			strField(
+				c,
+				WB_EXTERNAL_GRID_REWARDS_ACTIVE,
+				strField(c, WB_TIBBER_GRID_REWARDS_ACTIVE),
+			),
 		),
 	};
 }

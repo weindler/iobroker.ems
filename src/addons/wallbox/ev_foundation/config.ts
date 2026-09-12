@@ -6,6 +6,7 @@ import { intentAdminConfigFromAdapter } from "../../../intent/config";
 import {
 	wallboxHoldSignalConfigFromAdapter,
 	type WallboxHoldSignalConfig,
+	WB_EXTERNAL_GRID_REWARDS_ACTIVE,
 	WB_TIBBER_GRID_REWARDS_ACTIVE,
 	WB_EXTERNAL_VEHICLE_CHARGE,
 } from "../evcc_config";
@@ -31,7 +32,7 @@ export const WB_EV_AVAILABLE_UNTIL = "wb_ev_available_until";
 export const WB_HA_DATA_SOURCE_ENABLED = "wb_ha_data_source_enabled";
 export const WB_EXTERNAL_SMART_PLAN_STATE = "wb_external_smart_plan_state";
 export const WB_EXTERNAL_CONTROL_ACTIVE_STATE = "wb_external_control_active_state";
-export const WB_EXTERNAL_GRID_REWARDS_ACTIVE_STATE = "wb_external_grid_rewards_active_state";
+export const WB_EXTERNAL_GRID_REWARDS_ACTIVE_STATE = WB_EXTERNAL_GRID_REWARDS_ACTIVE;
 export const WB_EXTERNAL_SMART_PLAN_ENABLED_STATE = "wb_external_smart_plan_enabled_state";
 export const WB_EXTERNAL_SMART_CHARGING_STATUS_STATE = "wb_external_smart_charging_status_state";
 export const WB_EXTERNAL_PLAN_DEADLINE_STATE = "wb_external_plan_deadline_state";

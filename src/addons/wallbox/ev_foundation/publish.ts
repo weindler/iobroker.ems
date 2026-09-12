@@ -26,6 +26,11 @@ export async function publishEvFoundationDiagnosis(
 	);
 	await setStateIfChanged(
 		host,
+		WALLBOX_EV_FOUNDATION_STATES.gridRewardsActive,
+		model.gridRewardsActive,
+	);
+	await setStateIfChanged(
+		host,
 		WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState,
 		decision?.externalAuthorityState ?? model.externalAuthorityState,
 	);

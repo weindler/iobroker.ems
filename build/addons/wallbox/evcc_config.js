@@ -1,7 +1,7 @@
 "use strict";
 /** EVCC read-only telemetry config (Phase 3B.1). Intent fields stay on intent_evcc_* keys. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hasLegacyWallboxWriteMapping = exports.wallboxEvccTelemetryMappingFromConfig = exports.stateIdForRole = exports.configuredEvccTelemetryStateIds = exports.configuredWallboxHoldSignalStateIds = exports.wallboxHoldSignalConfigFromAdapter = exports.wallboxEvccTelemetryConfigFromAdapter = exports.emptyWallboxEvccTelemetryConfig = exports.EVCC_TELEMETRY_ROLE_CONFIG_FIELD = exports.WB_LEGACY_VEHICLE_SOC = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WB_TIBBER_GRID_REWARDS_ACTIVE = exports.WB_EXTERNAL_VEHICLE_CHARGE = exports.WB_EVCC_SMART_COST_ACTIVE = exports.WB_EVCC_SMART_COST_LIMIT = exports.WB_EVCC_VEHICLE_DETECTION_ACTIVE = exports.WB_EVCC_SESSION_PRICE_PER_KWH = exports.WB_EVCC_SESSION_PRICE = exports.WB_EVCC_CHARGE_VOLTAGES = exports.WB_EVCC_CHARGE_CURRENTS = exports.WB_EVCC_OFFERED_CURRENT = exports.WB_EVCC_EFFECTIVE_MIN_CURRENT = exports.WB_EVCC_EFFECTIVE_MAX_CURRENT = exports.WB_EVCC_CHARGE_REMAINING_DURATION = exports.WB_EVCC_VEHICLE_ODOMETER = exports.WB_EVCC_VEHICLE_RANGE = exports.WB_EVCC_CONNECTION = exports.WB_EVCC_LOADPOINT_MODE = exports.WB_EVCC_BATTERY_BOOST = exports.WB_EVCC_EFFECTIVE_LIMIT_SOC = exports.WB_EVCC_VEHICLE_TITLE = exports.WB_EVCC_VEHICLE_NAME = exports.WB_EVCC_CHARGE_REMAINING_ENERGY = exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL = exports.WB_EVCC_BATTERY_MODE = exports.WB_EVCC_MAX_CURRENT_A = exports.WB_EVCC_MIN_CURRENT_A = exports.WB_EVCC_CONFIGURED_PHASES = exports.WB_EVCC_ACTIVE_PHASES = exports.WB_EVCC_EFFECTIVE_PLAN_TIME = exports.WB_EVCC_PLAN_TIME = exports.WB_EVCC_PLAN_SOC = exports.WB_EVCC_PLAN_ACTIVE = exports.WB_EVCC_VEHICLE_SOC = exports.WB_EVCC_SESSION_ENERGY_KWH = exports.WB_EVCC_CHARGE_POWER_W = exports.WB_EVCC_CHARGING = exports.WB_EVCC_CONNECTED = exports.WB_EVCC_ENABLED = void 0;
+exports.hasLegacyWallboxWriteMapping = exports.wallboxEvccTelemetryMappingFromConfig = exports.stateIdForRole = exports.configuredEvccTelemetryStateIds = exports.configuredWallboxHoldSignalStateIds = exports.wallboxHoldSignalConfigFromAdapter = exports.wallboxEvccTelemetryConfigFromAdapter = exports.emptyWallboxEvccTelemetryConfig = exports.EVCC_TELEMETRY_ROLE_CONFIG_FIELD = exports.WB_LEGACY_VEHICLE_SOC = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE = exports.WB_TIBBER_GRID_REWARDS_ACTIVE = exports.WB_EXTERNAL_VEHICLE_CHARGE = exports.WB_EVCC_SMART_COST_ACTIVE = exports.WB_EVCC_SMART_COST_LIMIT = exports.WB_EVCC_VEHICLE_DETECTION_ACTIVE = exports.WB_EVCC_SESSION_PRICE_PER_KWH = exports.WB_EVCC_SESSION_PRICE = exports.WB_EVCC_CHARGE_VOLTAGES = exports.WB_EVCC_CHARGE_CURRENTS = exports.WB_EVCC_OFFERED_CURRENT = exports.WB_EVCC_EFFECTIVE_MIN_CURRENT = exports.WB_EVCC_EFFECTIVE_MAX_CURRENT = exports.WB_EVCC_CHARGE_REMAINING_DURATION = exports.WB_EVCC_VEHICLE_ODOMETER = exports.WB_EVCC_VEHICLE_RANGE = exports.WB_EVCC_CONNECTION = exports.WB_EVCC_LOADPOINT_MODE = exports.WB_EVCC_BATTERY_BOOST = exports.WB_EVCC_EFFECTIVE_LIMIT_SOC = exports.WB_EVCC_VEHICLE_TITLE = exports.WB_EVCC_VEHICLE_NAME = exports.WB_EVCC_CHARGE_REMAINING_ENERGY = exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL = exports.WB_EVCC_BATTERY_MODE = exports.WB_EVCC_MAX_CURRENT_A = exports.WB_EVCC_MIN_CURRENT_A = exports.WB_EVCC_CONFIGURED_PHASES = exports.WB_EVCC_ACTIVE_PHASES = exports.WB_EVCC_EFFECTIVE_PLAN_TIME = exports.WB_EVCC_PLAN_TIME = exports.WB_EVCC_PLAN_SOC = exports.WB_EVCC_PLAN_ACTIVE = exports.WB_EVCC_VEHICLE_SOC = exports.WB_EVCC_SESSION_ENERGY_KWH = exports.WB_EVCC_CHARGE_POWER_W = exports.WB_EVCC_CHARGING = exports.WB_EVCC_CONNECTED = exports.WB_EVCC_ENABLED = void 0;
 exports.WB_EVCC_ENABLED = "wb_evcc_enabled_state";
 exports.WB_EVCC_CONNECTED = "wb_evcc_connected_state";
 exports.WB_EVCC_CHARGING = "wb_evcc_charging_state";
@@ -41,6 +41,8 @@ exports.WB_EVCC_SMART_COST_ACTIVE = "wb_evcc_smart_cost_active_state";
 /** Optional foreign signals (not EVCC telemetry roles). */
 exports.WB_EXTERNAL_VEHICLE_CHARGE = "wb_external_vehicle_charge_state";
 exports.WB_TIBBER_GRID_REWARDS_ACTIVE = "wb_tibber_grid_rewards_active_state";
+/** Canonical EV-foundation mapping; the older Tibber key remains a fallback. */
+exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE = "wb_external_grid_rewards_active_state";
 /** Synced to addons.wallbox.mapping.<role>.target_state */
 exports.WALLBOX_EVCC_TELEMETRY_ROLES = [
     "evcc_enabled",
@@ -213,7 +215,7 @@ function wallboxHoldSignalConfigFromAdapter(config) {
     const c = config && typeof config === "object" ? config : {};
     return {
         externalVehicleChargeStateId: strField(c, exports.WB_EXTERNAL_VEHICLE_CHARGE),
-        tibberGridRewardsActiveStateId: strField(c, exports.WB_TIBBER_GRID_REWARDS_ACTIVE),
+        tibberGridRewardsActiveStateId: strField(c, exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE) || strField(c, exports.WB_TIBBER_GRID_REWARDS_ACTIVE),
     };
 }
 exports.wallboxHoldSignalConfigFromAdapter = wallboxHoldSignalConfigFromAdapter;

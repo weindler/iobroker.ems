@@ -321,7 +321,7 @@ export const STATE_SURFACE_FAMILIES: StateSurfaceFamily[] = [
 		id: "wallbox",
 		label: "Wallbox runtime / status / EVCC / mapping",
 		idPattern: "addons.wallbox.* (excl. vehicles)",
-		estimatedStaticCount: 220,
+		estimatedStaticCount: 221,
 		dataTypes: ["string", "number", "boolean"],
 		readWrite: "mixed",
 		producer: "addons/wallbox/*ensure*",

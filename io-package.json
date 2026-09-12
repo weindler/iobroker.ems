@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.27",
+		"version": "0.2.28",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [
 			"ai_openai_api_key"
@@ -10,6 +10,10 @@
 			"ai_openai_api_key"
 		],
 		"news": {
+			"0.2.28": {
+				"en": "Tibber Grid Rewards hotfix: the active-state mapping from EV Foundation is now the canonical source for EV model, battery hold, statistics and VIS, with the former mapping retained as a fallback. Betrieb and Auto/Wallbox show a prominent active/waiting/ready/blocked banner plus plain-language energy/cost context. Unset EV target 0 is no longer presented as a real 0% goal. Startup cleanup now preserves all public EV Foundation states, eliminating the missing tibber_now_handoff_* object warnings seen in v0.2.27.",
+				"de": "Tibber-Grid-Rewards-Hotfix: Die Aktiv-Zuordnung aus dem EV-Fundament ist jetzt die gemeinsame Quelle für EV-Modell, Batterie-Hold, Statistik und VIS; die bisherige Zuordnung bleibt als Fallback erhalten. Betrieb und Auto/Wallbox zeigen Aktiv/Warten/Bereit/Gesperrt deutlich als Banner sowie Energie und Kosten in verständlicher Sprache. Ein nicht gesetztes EV-Ziel 0 wird nicht mehr als echtes 0-%-Ziel angezeigt. Die Startbereinigung erhält nun alle öffentlichen EV-Fundament-States und beseitigt damit die Missing-Object-Warnungen zu tibber_now_handoff_* aus v0.2.27."
+			},
 			"0.2.27": {
 				"en": "Weekend implementation bundle: bounded telemetry retention, 72-hour outlook, energetic statistics, profile catalog, read-only app snapshot and stricter safety contracts. Tibber Grid Rewards configured via vehicle/wallbox now hands EVCC over to fast/now once after plug-in delay; VIS shows fast charging split into Sonnen battery, grid and PV/local. Start in dryrun, verify mappings, then enable live deliberately.",
 				"de": "Wochenend-Umsetzungspaket: begrenzte Telemetrie-Retention, 72-Stunden-Ausblick, energetische Statistik, Profilkatalog, read-only App-Snapshot und strengere Safety-Verträge. Bei über Fahrzeug/Wallbox eingerichteten Tibber Grid Rewards übergibt EMS EVCC nach dem Anstecken und der Wartezeit einmalig auf Schnell/now; die VIS trennt Schnellladung in Sonnen-Batterie, Netz und PV/lokal. Zuerst Dryrun und Mappings prüfen, danach Live bewusst freigeben."

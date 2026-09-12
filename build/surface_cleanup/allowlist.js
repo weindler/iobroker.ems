@@ -5,6 +5,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CLEANUP_ALLOWLIST_DESCRIPTION = exports.isAllowlistedCleanupRelativeId = exports.isLeanPlannerPurgeRoot = exports.AC_MAPPING_LEAF_SUFFIXES = exports.STUB_ADDON_PURGE_RE = exports.BATTERY_RUNTIME_DIAG_PURGE_RE = exports.LEARNING_MIRROR_PURGE_RE = exports.LEAN_PLANNER_PURGE_ROOTS = exports.COMPATIBILITY_STATE_PREFIXES = exports.PROTECTED_PREFIXES = void 0;
+const ensure_states_1 = require("../addons/wallbox/ev_foundation/ensure_states");
 /** Never delete these families (core intent / learning status / modes). */
 exports.PROTECTED_PREFIXES = [
     "planner.intent.supply",
@@ -105,28 +106,15 @@ const BATTERY_LEARNING_BALLAST_RE = /^learning\.battery_runtime\.(avg_night_disc
 const PLANNER_LAST_JSON_RE = /^planner\.intent\.(last_json|last_reason_de|battery(\.|$))/;
 const WALLBOX_STATUS_BALLAST_RE = /^addons\.wallbox\.status\.(charging_mode|charging_mode_label|vehicle_soc_pct)$/;
 const WALLBOX_EVCC_BALLAST_RE = /^addons\.wallbox\.status\.evcc\.(snapshot_json|configured_phases|min_current_a|battery_discharge_control|connection|vehicle_range_km|vehicle_odometer_km|charge_remaining_duration_s|effective_max_current_a|effective_min_current_a|offered_current_a|charge_currents_json|charge_voltages_json|session_price|session_price_per_kwh|vehicle_detection_active|vehicle_title|smart_cost_limit|smart_cost_active)$/;
-const WALLBOX_FOUNDATION_KEEP = new Set([
-    "external_smart_plan_json",
-    "external_min_soc_pct",
-    "external_authority_state",
-    "takeover_severity",
-    "prepared_ev_state",
-    "ev_execution_enabled",
-    "ev_execution_authority",
-    "ev_execution_ready",
-    "ev_execution_block_reason",
-    "ev_execution_desired_mode",
-    "ev_execution_explain",
-    "ev_execution_live_test_armed",
-    "ev_execution_live_test_disarm",
-    "ev_execution_live_test_consumed",
-    "ev_execution_live_test_result",
-    "ev_execution_live_test_block_reason",
-]);
+const WALLBOX_FOUNDATION_PREFIX = "addons.wallbox.status.ev_foundation.";
+/** Derive cleanup protection from the canonical public contract to prevent drift. */
+const WALLBOX_FOUNDATION_KEEP = new Set([...ensure_states_1.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS]
+    .filter((id) => id.startsWith(WALLBOX_FOUNDATION_PREFIX))
+    .map((id) => id.slice(WALLBOX_FOUNDATION_PREFIX.length)));
 const BATTERY_KEEP_RE = /^addons\.battery\.(identity|telemetry|status\.(telemetry_ready|effective_execution_mode|state|reason|fault|lockout)|runtime\.(action|state|ownership_active|decision_source|reason_de|daily_plan_status|daily_plan_valid|daily_plan_revision|allocated_charge_power_w|energy_source|battery_setpoint_owner|battery_setpoint_kind|battery_setpoint_w)|diagnostics\.(fault_code|fault_reason)|grid_balance\.(enabled|active|ready|block_reason|current_price_ct_kwh|price_min_ct_kwh|price_allowed|grid_power_w|requested_power_w|requested_discharge_w|effective_power_w|hold_detected|ev_conflict|last_action|explain|live_test_armed|live_test_armed_at|live_test_result|policy_excluded_load_w|policy_excluded_reason_de)|control\.fault_reset|failsafe\.)/;
 const BATTERY_TREE_RE = /^addons\.battery\.(capabilities|limits|dryrun|status\.(profile|profile_loaded|control_ready|dryrun_ready|live_ready)|runtime\.|diagnostics\.|grid_balance\.)/;
 function isWallboxFoundationBallast(relativeId) {
-    const prefix = "addons.wallbox.status.ev_foundation.";
+    const prefix = WALLBOX_FOUNDATION_PREFIX;
     if (!relativeId.startsWith(prefix))
         return false;
     const suffix = relativeId.slice(prefix.length);

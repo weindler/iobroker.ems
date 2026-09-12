@@ -25,7 +25,7 @@ function loadOpsDisplay(html) {
 	assert.ok(start >= 0 && end > start, "vis-ops-display markers required");
 	const code = html.slice(start, end);
 	return new Function(
-		`${code}; return { visBatteryMotion, visEmsAction, visGbStatus, visGridMeterW, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visJoinDurEnergy, visAcPowerDisplayLine, visAcFilterWarn, visAcTodayEnergyLine, visPvBiasPhrase, visPvChipSub, visHorizonOutlook, visLageLine, visLageFacts, visPvIstKwh, visTodayDeviationPct, visDeviationVsRecent, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk, visBatteryPlanLine, visEnergySourceLabel, visWindowEnergyKwh, visImmersionDemandFact, visImmersionWaitNote, visAgendaBuckets, visLocalDayEndMs, visBatteryRemainKwh, visBatteryDayLines, visCarDayLines, visHorizonDayLabel, visHorizonDayLine, visFirstSentence, visClockRange };`,
+		`${code}; return { visBatteryMotion, visEmsAction, visTibberRewardsView, visAutoTodaySummary, visHumanPlannerReason, visExternalAuthorityLabel, visEvTargetLabel, visGbStatus, visGridMeterW, visGridFlow, visTargetedHold, visPriceBand, visPriceAxisRange, visClimateNote, visAcConfiguredName, visClimateHvacBadge, visHvacPurposeLabel, visFmtDurationSec, visFmtKwh, visJoinDurEnergy, visAcPowerDisplayLine, visAcFilterWarn, visAcTodayEnergyLine, visPvBiasPhrase, visPvChipSub, visHorizonOutlook, visLageLine, visLageFacts, visPvIstKwh, visTodayDeviationPct, visDeviationVsRecent, visCheapPhaseLabel, visPriceHeadSummary, visIdleFacts, visNowSummary, visRowValueOk, visBatteryPlanLine, visEnergySourceLabel, visWindowEnergyKwh, visImmersionDemandFact, visImmersionWaitNote, visAgendaBuckets, visLocalDayEndMs, visBatteryRemainKwh, visBatteryDayLines, visCarDayLines, visHorizonDayLabel, visHorizonDayLine, visFirstSentence, visClockRange };`,
 	)();
 }
 
@@ -125,6 +125,7 @@ const REQUIRED_STATE_PATHS = [
 	"addons.wallbox.status.evcc.battery_mode",
 	"addons.wallbox.runtime.battery_hold_for_ev_charge",
 	"addons.wallbox.status.ev_foundation.ev_execution_authority",
+	"addons.wallbox.status.ev_foundation.grid_rewards_active",
 	"addons.wallbox.status.ev_foundation.tibber_now_handoff_enabled",
 	"addons.wallbox.status.ev_foundation.tibber_now_handoff_status",
 	"addons.wallbox.status.ev_foundation.tibber_now_handoff_due_at",
@@ -200,7 +201,9 @@ describe("VIS operations dashboard", () => {
 		]) assert.match(visHtml, new RegExp(question.replace(/[?]/g, "\\?")));
 		assert.match(visHtml, /\.learning\.climate_thermal\.unit_"\+u/);
 		assert.match(visHtml, /"cooling_temp_rate_k_per_h"/);
-		assert.match(visHtml, /Aktive Batterie-Netzladung sowie EVCC now\/tatsächliches Schnellladen sperren Grid Balance zwingend/);
+		assert.match(visHtml, /Batterie-Netzladung und tatsächliches Auto-Schnellladen haben Vorrang/);
+		assert.match(visHtml, /Planentscheidung/);
+		assert.match(visHtml, /Aktuelle Steuerung/);
 	});
 
 	it("keeps Betrieb as the 72-hour decision hub with explicit deferrals and links", () => {
@@ -233,6 +236,76 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /Schnell\/now fällig/);
 		assert.match(visHtml, /Wartezeit läuft/);
 		assert.match(visHtml, /Grid Rewards/);
+		assert.match(visHtml, /id="ems-tibber-banner-host"/);
+		assert.match(visHtml, /TIBBER GRID REWARDS AKTIV/);
+		assert.match(visHtml, /tibberRewardsBannerHtml/);
+	});
+
+	it("highlights active Rewards and distinguishes ready, waiting and hidden states", () => {
+		const display = loadOpsDisplay(visHtml);
+		const active = display.visTibberRewardsView({
+			active: true,
+			configured: true,
+			connected: true,
+			charging: true,
+			chargePowerW: 11000,
+			modeLabel: "Schnell",
+		});
+		assert.equal(active.show, true);
+		assert.equal(active.cls, "active");
+		assert.match(active.title, /AKTIV/);
+		assert.match(active.detail, /Tibber steuert/);
+
+		const waiting = display.visTibberRewardsView({
+			active: false,
+			configured: true,
+			handoffStatus: "stabilize_wait",
+			dueLabel: "12:05",
+			connected: true,
+		});
+		assert.equal(waiting.cls, "waiting");
+		assert.match(waiting.side, /12:05/);
+
+		const ready = display.visTibberRewardsView({ active: false, configured: true, connected: false });
+		assert.equal(ready.cls, "ready");
+		assert.match(ready.title, /EINGERICHTET/);
+		assert.equal(display.visTibberRewardsView({ active: false, configured: false }).show, false);
+	});
+
+	it("explains the Auto tab in plain German without fake target SOC or confirmed Rewards", () => {
+		const display = loadOpsDisplay(visHtml);
+		const summary = display.visAutoTodaySummary({
+			rewardsActive: true,
+			charging: true,
+			connected: true,
+			rewardsSource: "estimate_day",
+			rewardsCreditEur: 1.21,
+			homeGridKwh: 3,
+			homeGridCostEur: 0.6,
+			fastChargedKwh: 5,
+			fastBatteryKwh: 1.5,
+			fastBatterySharePct: 30,
+			fastLocalKwh: 0.5,
+			fastLocalSharePct: 10,
+		});
+		assert.match(summary.hero, /TIBBER/);
+		assert.match(summary.summary, /steuert die Autoladung/);
+		assert.match(summary.rewardsLine, /1,21 €.*vorläufig.*Monatsabrechnung/);
+		assert.match(summary.gridLine, /3,00 kWh.*0,60 €.*Kosten/);
+		assert.match(summary.batteryLine, /30 %.*0,30 € Netzstromwert/);
+		assert.equal(display.visEvTargetLabel(0, true), "extern verwaltet");
+		assert.equal(display.visEvTargetLabel(0, false), "nicht gesetzt");
+		assert.equal(
+			display.visHumanPlannerReason(
+				"wallbox",
+				"Keine Allocation für wallbox. Unified unified-2026-09-12 rev=21: PV_today=33.631kWh.",
+				"",
+			),
+			"EMS hat aktuell keine eigene Autoladung eingeplant.",
+		);
+		assert.match(display.visExternalAuthorityLabel("active_without_plan"), /Extern aktiv/);
+		assert.match(visHtml, /Netzstrom fürs Auto heute/);
+		assert.match(visHtml, /Monatsabrechnung ausstehend/);
 	});
 
 	it("subscribes to existing states for the live strip and price board", () => {

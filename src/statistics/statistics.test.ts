@@ -77,6 +77,19 @@ describe("statistics compute", () => {
 		assert.equal(cfg.tibberMonthlyGridFeeEur, 8);
 	});
 
+	it("uses the canonical EV-foundation Grid-Rewards state for statistics", () => {
+		const canonical = statisticsConfigFromAdapter({
+			wb_external_grid_rewards_active_state: "hass.0.grid_rewards.canonical",
+			wb_tibber_grid_rewards_active_state: "hass.0.grid_rewards.legacy",
+		});
+		assert.equal(canonical.tibberGridRewardsActiveStateId, "hass.0.grid_rewards.canonical");
+
+		const legacy = statisticsConfigFromAdapter({
+			wb_tibber_grid_rewards_active_state: "hass.0.grid_rewards.legacy",
+		});
+		assert.equal(legacy.tibberGridRewardsActiveStateId, "hass.0.grid_rewards.legacy");
+	});
+
 	it("Tarifvorteil = Festtarif − Tibber, ohne Grid Rewards", () => {
 		assert.equal(savingsVsFixedEur(5, 3, 0.5), 2);
 		assert.equal(savingsVsFixedEur(0.6, 0.59, 1.21), 0.01);

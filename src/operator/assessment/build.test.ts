@@ -309,6 +309,29 @@ describe("buildOperationalAssessment", () => {
 		assert.doesNotMatch(a.ev.text, /kein Laden nötig/);
 	});
 
+	it("EV: Grid Rewards aktiv wird verständlich benannt und Ziel 0 nicht angezeigt", () => {
+		const a = buildOperationalAssessment(
+			base({
+				plannerInput: planner({
+					wallbox: {
+						...planner().wallbox!,
+						connectedNow: true,
+						vehicleSocPct: 64,
+						targetSocPct: 0,
+						requiredEnergyKwh: 0,
+						managementMode: "externally_managed",
+						externalAuthorityState: "active_without_plan",
+					},
+				}),
+				ev: { gridRewardsActive: true, charging: true },
+			}),
+		);
+		assert.match(a.ev.text, /Tibber Grid Rewards steuert/);
+		assert.match(a.ev.text, /SOC 64/);
+		assert.doesNotMatch(a.ev.text, /Ziel 0/);
+		assert.match(a.ev.next ?? "", /keinen eigenen Ladeplan/);
+	});
+
 	it("EV: zukünftige Preise unbekannt → keine Billiger-übermorgen-Behauptung", () => {
 		const a = buildOperationalAssessment(
 			base({

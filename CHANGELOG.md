@@ -8,6 +8,23 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.2.28] – 2026-09-12
+
+### Added
+
+- Betrieb und Auto/Wallbox heben Tibber Grid Rewards als eigenes Banner hervor: aktiv, Übergabe wartet/läuft, eingerichtet/bereit oder gesperrt.
+- Auto/Wallbox fasst den aktuellen Tibber-Status, vorläufige beziehungsweise bestätigte Rewards, heutigen Auto-Netzbezug und erfasste Kosten sowie die Schnellladeanteile aus Sonnen-Batterie und PV/lokal in Alltagssprache zusammen. Abgeleitete Beträge werden ehrlich als `Netzstromwert` statt als gemessene PV-/Batteriekosten bezeichnet.
+
+### Changed
+
+- Die im EV-Fundament konfigurierte Grid-Rewards-Aktiv-Zuordnung ist jetzt die gemeinsame Quelle für EV-Modell, Batterie-Hold, Statistik und VIS; die ältere Wallbox-Zuordnung bleibt als kompatibler Fallback erhalten.
+- Die „Warum?“-Blöcke der Geräteansichten zeigen kurze Planentscheidungen und verständliche Bezeichnungen statt langer interner Unified-Plan-Diagnosezeilen.
+
+### Fixed
+
+- Die Startbereinigung leitet ihren Schutz nun direkt aus dem öffentlichen EV-Fundament-Vertrag ab. Dadurch werden `grid_rewards_active` sowie `tibber_now_handoff_enabled`, `tibber_now_handoff_status` und `tibber_now_handoff_due_at` nicht mehr gelöscht und anschließend ohne Objekt beschrieben.
+- Ein historischer EV-Zielwert `0` wird in Einschätzung, 72-Stunden-Ausblick und Auto-Seite als „nicht gesetzt“ beziehungsweise „extern verwaltet“ behandelt und nicht mehr als erreichtes `0 %`-Ziel ausgegeben.
+
 ## [0.2.27] – 2026-09-12
 
 ### Added

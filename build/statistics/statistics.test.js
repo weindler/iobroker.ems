@@ -42,6 +42,17 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.equal(cfg.tibberMonthlyBaseEur, 5);
         strict_1.default.equal(cfg.tibberMonthlyGridFeeEur, 8);
     });
+    (0, node_test_1.it)("uses the canonical EV-foundation Grid-Rewards state for statistics", () => {
+        const canonical = (0, config_js_1.statisticsConfigFromAdapter)({
+            wb_external_grid_rewards_active_state: "hass.0.grid_rewards.canonical",
+            wb_tibber_grid_rewards_active_state: "hass.0.grid_rewards.legacy",
+        });
+        strict_1.default.equal(canonical.tibberGridRewardsActiveStateId, "hass.0.grid_rewards.canonical");
+        const legacy = (0, config_js_1.statisticsConfigFromAdapter)({
+            wb_tibber_grid_rewards_active_state: "hass.0.grid_rewards.legacy",
+        });
+        strict_1.default.equal(legacy.tibberGridRewardsActiveStateId, "hass.0.grid_rewards.legacy");
+    });
     (0, node_test_1.it)("Tarifvorteil = Festtarif − Tibber, ohne Grid Rewards", () => {
         strict_1.default.equal((0, compute_js_1.savingsVsFixedEur)(5, 3, 0.5), 2);
         strict_1.default.equal((0, compute_js_1.savingsVsFixedEur)(0.6, 0.59, 1.21), 0.01);

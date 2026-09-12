@@ -22,10 +22,6 @@ import { runClimateThermalLearning, type ClimateThermalHost } from "../climate_t
 import { ensureClimateThermalRootStates } from "../climate_thermal/ensure_states";
 import { ensureShadowEngineStates, runShadowEngineBatch, type ShadowEngineHost } from "../shadow_engine";
 import { ensureEconomicsStates, tickEconomics, type EconomicsHost } from "../../economics";
-import { ensureAiValidatorStates } from "../../ai/override/ensure_states";
-import { syncAiValidatorStates, type AiValidatorTickHost } from "../../ai/override/tick";
-import { ensureAiDailyAnalystStates } from "../../ai/daily_analyst/ensure_states";
-import { maybeRunDailyAnalystAutomatically, type AiDailyAnalystHost } from "../../ai/daily_analyst/run";
 import { intentAdminConfigFromAdapter } from "../../intent/config";
 import { withLearningDataPath } from "../data_dir";
 import { withHistoryBridge } from "../history_bridge";
@@ -63,8 +59,6 @@ export async function ensureLearningStateTree(adapter: ioBroker.Adapter): Promis
 	await ensureClimateThermalRootStates(host);
 	await ensureShadowEngineStates(host);
 	await ensureEconomicsStates(host);
-	await ensureAiValidatorStates(host);
-	await ensureAiDailyAnalystStates(host);
 	await ensureLearningPersistenceStates(host);
 	return host;
 }
@@ -181,26 +175,6 @@ async function runLearningTick(
 			await tickEconomics(host as unknown as EconomicsHost);
 		} catch (e) {
 			host.log.error(`economics tick: ${e instanceof Error ? e.message : String(e)}`);
-		}
-		/*
-		 * PHASE 6 — KI-Validator TTL-Sweep (rein deterministisch, kein LLM-Aufruf). Läuft
-		 * unabhängig davon, ob aktuell überhaupt Overrides existieren.
-		 */
-		try {
-			await syncAiValidatorStates(host as unknown as AiValidatorTickHost);
-		} catch (e) {
-			host.log.error(`ai validator sweep: ${e instanceof Error ? e.message : String(e)}`);
-		}
-		/*
-		 * PHASE 4 — KI Daily Analyst. Höchstens ein LLM-Aufruf pro Kalendertag (idempotent
-		 * über die persistierte Findings-Datei des Vortags) — kein Hot-Path-Aufruf. Ohne
-		 * konfiguriertes Token/Mode bleibt dies ein reiner No-Op (status "disabled"/"no_token"),
-		 * das EMS läuft unverändert weiter.
-		 */
-		try {
-			await maybeRunDailyAnalystAutomatically(host as unknown as AiDailyAnalystHost);
-		} catch (e) {
-			host.log.error(`ai_daily_analyst auto run: ${e instanceof Error ? e.message : String(e)}`);
 		}
 	} finally {
 		learningTickInFlight = false;

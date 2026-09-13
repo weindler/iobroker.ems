@@ -16,8 +16,11 @@
 					"text": "Beta — Muss konfiguriert werden: 1) PV/Grid/Hauslast-Datenquellen (Mappings). 2) Vorhandene Geräte: Batterie, Heizstab, Klima, EVCC/Fahrzeug. 3) Preisquelle (z. B. Tibber). 4) Strategie (eco/balanced/comfort/forced) und Ausführung Dryrun/Live. Neuinstallation und Restore starten immer in Dryrun. Global Dryrun sperrt alle Gerätebefehle; Global Live erlaubt nur Add-ons, die selbst auf Live stehen. Optional: Learning und Support-Diagnose."
 				},
 				"global_execution_mode": {
-					"type": "select",
-					"label": "Global: Ausführung (Dryrun sperrt Writes)",
+					"type": "state",
+					"oid": "global.execution_mode",
+					"control": "select",
+					"controlled": true,
+					"label": "Gesamtsteuerung: Dry-run / Live",
 					"options": [
 						{
 							"label": "Dryrun",
@@ -28,13 +31,12 @@
 							"value": "live"
 						}
 					],
-					"default": "dryrun",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
 					"lg": 4,
 					"xl": 4,
-					"help": "Global Dryrun: keine realen Schaltbefehle. Global Live: reale Steuerung nur für Add-ons, die selbst auf Live stehen."
+					"help": "Wirkt sofort und ohne Speichern oder Adapterneustart. Dry-run sperrt alle realen Schaltbefehle; Live erlaubt nur Add-ons, die selbst auf Live stehen."
 				},
 				"introPlannerOff": {
 					"type": "staticText",
@@ -341,7 +343,10 @@
 					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert."
 				},
 				"wb_addon_mode": {
-					"type": "select",
+					"type": "state",
+					"oid": "addons.wallbox.mode",
+					"control": "select",
+					"controlled": true,
 					"label": "Wallbox: Aus / Dryrun / Live",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"options": [
@@ -358,7 +363,6 @@
 							"value": "live"
 						}
 					],
-					"default": "dryrun",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -1755,7 +1759,10 @@
 					"xl": 12
 				},
 				"bat_addon_mode": {
-					"type": "select",
+					"type": "state",
+					"oid": "addons.battery.mode",
+					"control": "select",
+					"controlled": true,
 					"label": "Batterie: Aus / Dryrun / Live",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"options": [
@@ -1772,7 +1779,6 @@
 							"value": "live"
 						}
 					],
-					"default": "dryrun",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -2859,7 +2865,10 @@
 					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert. Ausführung: Global Dryrun sperrt immer; bei Global Live gilt der Heizstab-Schalter unten."
 				},
 				"ih_addon_mode": {
-					"type": "select",
+					"type": "state",
+					"oid": "addons.immersion_heater.mode",
+					"control": "select",
+					"controlled": true,
 					"label": "Heizstab: Aus / Dryrun / Live",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"options": [
@@ -2876,7 +2885,6 @@
 							"value": "live"
 						}
 					],
-					"default": "dryrun",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -3564,7 +3572,10 @@
 					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert. Ausführung: Global Dryrun sperrt immer; bei Global Live gilt der Klima-Schalter unten."
 				},
 				"ac_addon_mode": {
-					"type": "select",
+					"type": "state",
+					"oid": "addons.air_conditioning.mode",
+					"control": "select",
+					"controlled": true,
 					"label": "Klima: Aus / Dryrun / Live",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"options": [
@@ -3581,7 +3592,6 @@
 							"value": "live"
 						}
 					],
-					"default": "dryrun",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,

@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.0",
+		"version": "0.4.1",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.1": {
+				"en": "Completed the dashboard acceptance fixes: corrected legacy night demand, clear add-on modes and charging authority, larger 12-hour Tibber chart, compact planning, and user-focused heater and climate status displays.",
+				"de": "Dashboard-Abnahmepunkte vervollständigt: historische Nachtbedarfswerte korrigiert, eindeutige Add-on-Modi und Ladehoheit, größerer 12-Stunden-Tibber-Graph, kompaktere Planung sowie verständliche Heizstab- und Klimastatusanzeigen."
+			},
 			"0.4.0": {
 				"en": "Corrected night-reserve attribution, real smart-meter statistics, restart-free runtime modes and completed the user-facing dashboard overhaul.",
 				"de": "Nachtreserve-Zuordnung korrigiert, reale Smart-Meter-Statistik, Laufzeitmodi ohne Neustart und die benutzerfreundliche Dashboard-Überarbeitung vervollständigt."

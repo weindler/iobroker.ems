@@ -8,6 +8,21 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.1] – 2026-09-13
+
+### Changed
+
+- Add-on-Modi sind auf jeder Fachseite und im Admin eindeutig als `Aus`, `Dry-run` oder `Live` sichtbar und weiterhin ohne Adapterneustart schaltbar.
+- Der Tibber-Preisgraph zeigt standardmäßig die nächsten zwölf Stunden größer an; der gesamte verfügbare Zeitraum ist per Umschalter erreichbar.
+- Planung, Heizstab, Klima und Auto/Wallbox wurden aus Nutzersicht verdichtet: weniger Scrollen, verständliche Lauf-/Restzeitangaben, ein gemeinsamer Klima-Leistungswert und klare Ladehoheit zwischen EMS und Grid Rewards.
+- Technische Klima-Lerntexte und die wiederholte Außengeräte-Kombinationsstatistik wurden aus den normalen Ansichten entfernt.
+
+### Fixed
+
+- Historische Nachtmessungen mit fälschlich gespeicherter voller Batterieentladung werden auf den tatsächlich konfigurierten Netzausgleichs-Offset begrenzt; der reale 3,6-kWh-Nachtfall ergibt damit rund 3,3 kWh statt 1,6 kWh.
+- Die elektrische Leistung des gemeinsamen Klima-Außengeräts wird ausschließlich über den dafür gemessenen Gerätekanal ermittelt und nur einmal als Systemverbrauch dargestellt.
+- Der Wallbox-Status behauptet keine Tibber-Übergabe mehr: Er zeigt eindeutig `Grid Rewards aktiv`, `EMS steuert`, `Ladeziel erreicht`, `nicht angesteckt` oder `keine Ladung aktiv`.
+
 ## [0.4.0] – 2026-09-13
 
 ### Added

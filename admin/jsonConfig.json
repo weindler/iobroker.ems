@@ -16,26 +16,18 @@
 					"text": "Beta — Muss konfiguriert werden: 1) PV/Grid/Hauslast-Datenquellen (Mappings). 2) Vorhandene Geräte: Batterie, Heizstab, Klima, EVCC/Fahrzeug. 3) Preisquelle (z. B. Tibber). 4) Strategie (eco/balanced/comfort/forced) und Ausführung Dryrun/Live. Neuinstallation und Restore starten immer in Dryrun. Global Dryrun sperrt alle Gerätebefehle; Global Live erlaubt nur Add-ons, die selbst auf Live stehen. Optional: Learning und Support-Diagnose."
 				},
 				"global_execution_mode": {
-					"type": "state",
-					"oid": "global.execution_mode",
-					"control": "select",
-					"controlled": true,
-					"label": "Gesamtsteuerung: Dry-run / Live",
-					"options": [
-						{
-							"label": "Dryrun",
-							"value": "dryrun"
-						},
-						{
-							"label": "Live",
-							"value": "live"
-						}
-					],
+					"type": "panel",
+					"label": "Gesamtsteuerung – wirkt sofort",
+					"items": {
+						"current": {"type":"state","oid":"global.execution_mode","control":"text","label":"Aktueller Modus","size":"large","blinkOnUpdate":true,"xs":12,"sm":4,"md":4,"lg":4,"xl":4},
+						"dryrun": {"type":"state","oid":"global.execution_mode","control":"button","controlled":true,"buttonValue":"dryrun","label":"DRY-RUN","variant":"contained","xs":6,"sm":4,"md":4,"lg":4,"xl":4},
+						"live": {"type":"state","oid":"global.execution_mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","confirm":"Live erlaubt reale Gerätebefehle für Add-ons, die ebenfalls auf Live stehen.","xs":6,"sm":4,"md":4,"lg":4,"xl":4}
+					},
 					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
 					"help": "Wirkt sofort und ohne Speichern oder Adapterneustart. Dry-run sperrt alle realen Schaltbefehle; Live erlaubt nur Add-ons, die selbst auf Live stehen."
 				},
 				"introPlannerOff": {
@@ -343,31 +335,20 @@
 					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert."
 				},
 				"wb_addon_mode": {
-					"type": "state",
-					"oid": "addons.wallbox.mode",
-					"control": "select",
-					"controlled": true,
-					"label": "Wallbox: Aus / Dryrun / Live",
+					"type": "panel",
+					"label": "Wallbox-Steuerung – wirkt sofort",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
-					"options": [
-						{
-							"label": "Aus",
-							"value": "off"
-						},
-						{
-							"label": "Dryrun",
-							"value": "dryrun"
-						},
-						{
-							"label": "Live",
-							"value": "live"
-						}
-					],
+					"items": {
+						"current": {"type":"state","oid":"addons.wallbox.mode","control":"text","label":"Aktueller Modus","size":"large","blinkOnUpdate":true,"xs":12,"sm":3,"md":3,"lg":3,"xl":3},
+						"off": {"type":"state","oid":"addons.wallbox.mode","control":"button","controlled":true,"buttonValue":"off","label":"AUS","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
+						"dryrun": {"type":"state","oid":"addons.wallbox.mode","control":"button","controlled":true,"buttonValue":"dryrun","label":"DRY-RUN","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
+						"live": {"type":"state","oid":"addons.wallbox.mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3}
+					},
 					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"hWallboxDefaults": {
 					"type": "header", "size": 2, "text": "Standardvorgaben für Ladeaufträge",
@@ -1759,31 +1740,20 @@
 					"xl": 12
 				},
 				"bat_addon_mode": {
-					"type": "state",
-					"oid": "addons.battery.mode",
-					"control": "select",
-					"controlled": true,
-					"label": "Batterie: Aus / Dryrun / Live",
+					"type": "panel",
+					"label": "Batterie-Steuerung – wirkt sofort",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
-					"options": [
-						{
-							"label": "Aus",
-							"value": "off"
-						},
-						{
-							"label": "Dryrun",
-							"value": "dryrun"
-						},
-						{
-							"label": "Live",
-							"value": "live"
-						}
-					],
+					"items": {
+						"current": {"type":"state","oid":"addons.battery.mode","control":"text","label":"Aktueller Modus","size":"large","blinkOnUpdate":true,"xs":12,"sm":3,"md":3,"lg":3,"xl":3},
+						"off": {"type":"state","oid":"addons.battery.mode","control":"button","controlled":true,"buttonValue":"off","label":"AUS","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
+						"dryrun": {"type":"state","oid":"addons.battery.mode","control":"button","controlled":true,"buttonValue":"dryrun","label":"DRY-RUN","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
+						"live": {"type":"state","oid":"addons.battery.mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3}
+					},
 					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"batExecutionHint": {
 					"type": "staticText",
@@ -2865,31 +2835,20 @@
 					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert. Ausführung: Global Dryrun sperrt immer; bei Global Live gilt der Heizstab-Schalter unten."
 				},
 				"ih_addon_mode": {
-					"type": "state",
-					"oid": "addons.immersion_heater.mode",
-					"control": "select",
-					"controlled": true,
-					"label": "Heizstab: Aus / Dryrun / Live",
+					"type": "panel",
+					"label": "Heizstab-Steuerung – wirkt sofort",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
-					"options": [
-						{
-							"label": "Aus",
-							"value": "off"
-						},
-						{
-							"label": "Dryrun",
-							"value": "dryrun"
-						},
-						{
-							"label": "Live",
-							"value": "live"
-						}
-					],
+					"items": {
+						"current": {"type":"state","oid":"addons.immersion_heater.mode","control":"text","label":"Aktueller Modus","size":"large","blinkOnUpdate":true,"xs":12,"sm":3,"md":3,"lg":3,"xl":3},
+						"off": {"type":"state","oid":"addons.immersion_heater.mode","control":"button","controlled":true,"buttonValue":"off","label":"AUS","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
+						"dryrun": {"type":"state","oid":"addons.immersion_heater.mode","control":"button","controlled":true,"buttonValue":"dryrun","label":"DRY-RUN","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
+						"live": {"type":"state","oid":"addons.immersion_heater.mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3}
+					},
 					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"hIhEnabled": {
 					"type": "header",
@@ -3572,31 +3531,71 @@
 					"text": "Dieses Add-on wird zentral unter GLOBAL aktiviert. Ausführung: Global Dryrun sperrt immer; bei Global Live gilt der Klima-Schalter unten."
 				},
 				"ac_addon_mode": {
-					"type": "state",
-					"oid": "addons.air_conditioning.mode",
-					"control": "select",
-					"controlled": true,
-					"label": "Klima: Aus / Dryrun / Live",
+					"type": "panel",
+					"label": "Klima-Steuerung – wirkt sofort",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
-					"options": [
-						{
-							"label": "Aus",
-							"value": "off"
+					"items": {
+						"current": {
+							"type": "state",
+							"oid": "addons.air_conditioning.mode",
+							"control": "text",
+							"label": "Aktueller Modus",
+							"size": "large",
+							"blinkOnUpdate": true,
+							"xs": 12,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
 						},
-						{
-							"label": "Dryrun",
-							"value": "dryrun"
+						"off": {
+							"type": "state",
+							"oid": "addons.air_conditioning.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "off",
+							"label": "AUS",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
 						},
-						{
-							"label": "Live",
-							"value": "live"
+						"dryrun": {
+							"type": "state",
+							"oid": "addons.air_conditioning.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "dryrun",
+							"label": "DRY-RUN",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"live": {
+							"type": "state",
+							"oid": "addons.air_conditioning.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "live",
+							"label": "LIVE",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
 						}
-					],
+					},
 					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"ac_outdoor_max_power_w": {
 					"type": "number",

@@ -33,18 +33,25 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-assess-v{font-size:11px;color:#e6edf3;line-height:1.3}
 .ems-assess-n{font-size:10px;color:#8b949e;line-height:1.25;margin-top:1px}
 .ems-tibber-banner{grid-column:1/-1;display:flex;align-items:center;gap:9px;min-width:0;min-height:42px;margin-bottom:4px;padding:7px 10px;border:1px solid #6e768166;border-left-width:4px;border-radius:6px;background:#21262d}
-.ems-tibber-banner.active{border-color:#3fb950;background:linear-gradient(90deg,#123b2a 0%,#183326 55%,#21262d 100%);box-shadow:0 0 0 1px #3fb95033}
+.ems-tibber-banner.active{border-color:#a371f7;background:linear-gradient(90deg,#2d2146 0%,#292439 55%,#21262d 100%);box-shadow:0 0 0 1px #a371f733}
+.ems-tibber-banner.complete{border-color:#3fb950;background:linear-gradient(90deg,#123b2a 0%,#183326 55%,#21262d 100%)}
+.ems-tibber-banner.ems{border-color:#58a6ff;background:linear-gradient(90deg,#102d4d 0%,#1d2b3b 55%,#21262d 100%)}
+.ems-tibber-banner.neutral{border-color:#6e7681;background:#21262d}
 .ems-tibber-banner.waiting{border-color:#e3b341;background:linear-gradient(90deg,#3b3014 0%,#2b291d 55%,#21262d 100%)}
 .ems-tibber-banner.ready{border-color:#a371f7;background:linear-gradient(90deg,#2d2146 0%,#292439 55%,#21262d 100%)}
 .ems-tibber-banner.warn{border-color:#f85149;background:linear-gradient(90deg,#3d1114 0%,#302023 55%,#21262d 100%)}
 .ems-tibber-signal{width:10px;height:10px;border-radius:50%;background:#8b949e;flex:0 0 auto}
-.ems-tibber-banner.active .ems-tibber-signal{background:#3fb950;box-shadow:0 0 8px #3fb950}
+.ems-tibber-banner.active .ems-tibber-signal{background:#a371f7;box-shadow:0 0 8px #a371f7}
+.ems-tibber-banner.complete .ems-tibber-signal{background:#3fb950;box-shadow:0 0 8px #3fb950}
+.ems-tibber-banner.ems .ems-tibber-signal{background:#58a6ff;box-shadow:0 0 8px #58a6ff}
 .ems-tibber-banner.waiting .ems-tibber-signal{background:#e3b341;box-shadow:0 0 7px #e3b34188}
 .ems-tibber-banner.ready .ems-tibber-signal{background:#a371f7}
 .ems-tibber-banner.warn .ems-tibber-signal{background:#f85149}
 .ems-tibber-main{min-width:0;flex:1 1 auto}
 .ems-tibber-title{font-size:12px;font-weight:800;letter-spacing:.035em;color:#e6edf3}
-.ems-tibber-banner.active .ems-tibber-title{color:#7ee787}
+.ems-tibber-banner.active .ems-tibber-title{color:#d2a8ff}
+.ems-tibber-banner.complete .ems-tibber-title{color:#7ee787}
+.ems-tibber-banner.ems .ems-tibber-title{color:#79c0ff}
 .ems-tibber-detail{font-size:10px;color:#c9d1d9;line-height:1.3;margin-top:1px}
 .ems-tibber-side{font-size:10px;font-weight:700;color:#e6edf3;white-space:nowrap;padding:2px 6px;border:1px solid #6e768166;border-radius:5px;background:#161b2288}
 .ems-chip{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 6px;min-width:0;flex:1 1 0}
@@ -59,10 +66,13 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-chip.gb-block{border-color:#f0883e66}
 .ems-chip.gb-ready{border-color:#1f6feb66}
 .ems-chip.gb-on{border-color:#3fb95066}
-.ems-price{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:4px 6px 3px;margin-bottom:4px;flex:0 0 auto}
+.ems-price{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:7px 9px 6px;margin-bottom:4px;flex:1 1 auto;min-height:190px}
 .ems-price-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px}
-.ems-price-meta{font-size:9px;color:#c9d1d9;line-height:1.25}
-.ems-price-svg{width:100%;height:84px;display:block}
+.ems-price-meta{font-size:10px;color:#c9d1d9;line-height:1.25}
+.ems-price-controls{display:flex;gap:4px;margin:5px 0 3px}
+.ems-price-toggle{border:1px solid #30363d;background:#161b22;color:#8b949e;border-radius:5px;padding:4px 9px;font-size:9px;font-weight:700;cursor:pointer}
+.ems-price-toggle.on{border-color:#58a6ff;background:#1f6feb33;color:#79c0ff}
+.ems-price-svg{width:100%;height:150px;display:block}
 .ems-price-legend{display:flex;flex-wrap:wrap;gap:6px;font-size:8px;color:#8b949e;margin-top:1px}
 .ems-price-legend span{display:inline-flex;align-items:center;gap:3px}
 .ems-sw{width:7px;height:7px;border-radius:2px;display:inline-block}
@@ -81,6 +91,10 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-page-title{font-size:16px;font-weight:750;line-height:1.2}
 .ems-page-sub{font-size:10px;color:#8b949e;line-height:1.35;margin-top:2px}
 .ems-device-grid{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:6px;align-content:start}
+.ems-planning-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:start}
+.ems-planning-grid #ems-stack{grid-column:1/-1;height:auto;overflow:visible}
+.ems-planning-grid .ems-timeline{max-height:none;overflow:visible}
+.ems-planning-grid .ems-next-body{overflow:visible}
 .ems-device-section{grid-column:1/-1;font-size:11px;font-weight:700;color:#c9d1d9;margin:5px 2px -1px;padding-top:4px;border-top:1px solid #30363d}
 .ems-q-card{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:8px 9px;min-height:118px;display:flex;flex-direction:column}
 .ems-q-k{font-size:8px;color:#58a6ff;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;font-weight:700}
@@ -105,6 +119,10 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-stats-hero.pos{color:#3fb950}.ems-stats-hero.neg{color:#f85149}.ems-stats-hero.neu{color:#8b949e}
 .ems-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}.ems-flow-part{border-radius:5px;padding:5px;text-align:center;background:#161b22}.ems-flow-part b{display:block;font-size:15px}.ems-flow-part span{font-size:9px;color:#8b949e}.ems-flow-part.pv{border-bottom:3px solid #f2cc60}.ems-flow-part.pv b{color:#f2cc60}.ems-flow-part.bat{border-bottom:3px solid #58a6ff}.ems-flow-part.bat b{color:#58a6ff}.ems-flow-part.grid{border-bottom:3px solid #f85149}.ems-flow-part.grid b{color:#f85149}.ems-flow-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#30363d;margin:7px 0 3px}.ems-flow-bar i{display:block;height:100%}.ems-flow-bar .pv{background:#f2cc60}.ems-flow-bar .bat{background:#58a6ff}.ems-flow-bar .grid{background:#f85149}.ems-forecast-row{display:grid;grid-template-columns:70px 1fr 1.25fr 1.5fr;gap:7px;padding:6px 0;border-bottom:1px solid #30363d;font-size:10px;align-items:center}.ems-forecast-row:last-child{border-bottom:0}.ems-trend{height:7px;background:#30363d;border-radius:5px;overflow:hidden;margin-top:3px}.ems-trend i{display:block;height:100%;border-radius:5px}.ems-trend.good i{background:#3fb950}.ems-trend.normal i{background:#d29922}.ems-trend.bad i{background:#f0883e}.ems-trend.published i{background:#58a6ff}.ems-verdict{font-weight:700}.ems-verdict.good{color:#3fb950}.ems-verdict.warn{color:#d29922}.ems-verdict.bad{color:#f85149}
 .ems-gauge-wrap{display:flex;align-items:center;gap:18px;min-height:94px}.ems-gauge{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto}.ems-gauge:after{content:"";width:66px;height:66px;background:#21262d;border-radius:50%;position:absolute}.ems-gauge-value{z-index:1;text-align:center;font-size:18px;font-weight:800}.ems-gauge-value small{display:block;font-size:9px;color:#8b949e;font-weight:600}.ems-gauge-facts{font-size:11px;line-height:1.55}.ems-gauge-facts b{color:#58a6ff}
+.ems-mode-strip{grid-column:1/-1;display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid #30363d;border-left-width:5px;border-radius:6px;background:#21262d;font-size:10px}
+.ems-mode-strip b{font-size:12px;letter-spacing:.04em}.ems-mode-strip.live{border-left-color:#3fb950}.ems-mode-strip.live b{color:#7ee787}.ems-mode-strip.dryrun{border-left-color:#a371f7}.ems-mode-strip.dryrun b{color:#d2a8ff}.ems-mode-strip.off{border-left-color:#6e7681}.ems-mode-strip.off b{color:#8b949e}.ems-mode-strip.blocked{border-left-color:#f0883e}.ems-mode-strip.blocked b{color:#ffa657}
+.ems-system-gauge{grid-column:1/-1;display:grid;grid-template-columns:minmax(230px,.8fr) minmax(280px,1.2fr);gap:6px}
+.ems-climate-now{display:flex;align-items:center;gap:16px}.ems-climate-ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;position:relative}.ems-climate-ring:after{content:"";position:absolute;width:76px;height:76px;border-radius:50%;background:#21262d}.ems-climate-ring-value{position:relative;z-index:1;text-align:center;font-size:17px;font-weight:800}.ems-climate-ring-value small{display:block;font-size:9px;color:#8b949e}.ems-climate-values{font-size:12px;line-height:1.55}.ems-climate-values b{font-size:14px;color:#79c0ff}
 .ems-meter{display:flex;gap:14px;align-items:center}.ems-meter-icon{width:72px;height:86px;border:3px solid #8b949e;border-radius:8px;display:grid;place-items:center;font-size:24px;font-weight:800;color:#58a6ff;background:#161b22}.ems-entry{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.ems-entry input,.ems-entry select{background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:4px;padding:5px;font-size:10px}.ems-entry .wide{grid-column:1/-1}.ems-entry-actions{display:flex;gap:6px;grid-column:1/-1}
 .ems-stats-pending{border-color:#f0883e66}
 @media(max-width:900px){.ems-stats-grid{grid-template-columns:1fr}}
@@ -191,6 +209,9 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	.ems-tibber-banner{flex-wrap:wrap}
 	.ems-tibber-side{margin-left:19px}
 	.ems-device-grid{grid-template-columns:1fr}
+	.ems-planning-grid{grid-template-columns:1fr}
+	.ems-planning-grid #ems-stack{grid-column:1}
+	.ems-system-gauge{grid-template-columns:1fr}
 }
 @media (max-width:560px){.ems-tiles{grid-template-columns:1fr}}
 </style>
@@ -217,7 +238,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	</div>
 	<div id="ems-view-planning" class="ems-view-page ems-device-view">
 	<div class="ems-page-head"><div><div class="ems-page-title">Planung / 72 Stunden</div><div class="ems-page-sub">Was heute und in den kommenden drei Tagen voraussichtlich geschieht.</div></div></div>
-	<div class="ems-main">
+	<div class="ems-planning-grid">
 		<div class="ems-tiles" id="ems-stack"></div>
 		<aside class="ems-timeline" id="ems-next"></aside>
 		<aside class="ems-timeline" id="ems-horizon"></aside>
@@ -780,16 +801,20 @@ function immersionScheduleRow(planJson){
 	if(parts.current){
 		return{
 			label:"Jetzt bis",
-			value:fmtSmartTime(new Date(parts.current.endMs).toISOString())+" · "+Math.round(parts.current.powerW)+" W"
+			value:fmtSmartTime(new Date(parts.current.endMs).toISOString())+" · "+Math.round(parts.current.powerW)+" W",
+			current:parts.current,
+			future:parts.future
 		};
 	}
 	if(parts.future){
 		return{
 			label:"Nächstes",
-			value:fmtSmartTime(parts.future.startIso||new Date(parts.future.startMs).toISOString())+" · "+Math.round(parts.future.powerW)+" W"
+			value:fmtSmartTime(parts.future.startIso||new Date(parts.future.startMs).toISOString())+" · "+Math.round(parts.future.powerW)+" W",
+			current:null,
+			future:parts.future
 		};
 	}
-	return{label:"Nächstes",value:"keines"};
+	return{label:"Nächstes",value:"keines",current:null,future:null};
 }
 
 /** Autoritativ: plan_json-Slots → Fenster mit Leistung nur dieses Fensters (kein globaler maxW). */
@@ -1499,9 +1524,18 @@ function visTibberRewardsView(s){
 	var connected=s.connected===true;
 	var power=+s.chargePowerW;
 	var charging=s.charging===true||(isFinite(power)&&power>=50);
+	var soc=visFiniteNumber(s.socPct),target=visFiniteNumber(s.targetSocPct);
+	var targetReached=connected&&soc!==null&&target!==null&&target>0&&soc>=target-0.5;
+	var authority=String(s.authorityLabel||"").trim();
 	var mode=String(s.modeLabel||"").trim();
 	var side=mode&&mode!=="—"?"EVCC "+mode:"";
 	var detail="";
+	if(!connected){
+		return{show:true,cls:"neutral",title:"AUTO NICHT ANGESTECKT",detail:configured?"Grid Rewards ist eingerichtet. Die Übergabe beginnt erst nach dem Anstecken.":"Weder EMS noch Grid Rewards kann ohne angeschlossenes Fahrzeug laden.",side:""};
+	}
+	if(targetReached&&!charging){
+		return{show:true,cls:"complete",title:"LADEZIEL ERREICHT",detail:"SOC "+Math.round(soc)+" %, Ziel "+Math.round(target)+" %. Kein weiteres Laden erforderlich.",side:"fertig"};
+	}
 	if(active){
 		if(!connected)detail="Grid-Rewards-Signal aktiv · Fahrzeug nicht verbunden.";
 		else if(charging){
@@ -1510,6 +1544,12 @@ function visTibberRewardsView(s){
 			detail+=".";
 		}else detail="Grid Rewards sind aktiv · Tibber entscheidet über Start und Pause.";
 		return{show:true,cls:"active",title:"TIBBER GRID REWARDS AKTIV",detail:detail,side:side};
+	}
+	if(charging&&authority==="EMS"){
+		return{show:true,cls:"ems",title:"EMS STEUERT DIE LADUNG",detail:"Das EMS gibt EVCC den aktuellen Ladeauftrag"+(isFinite(power)&&power>=50?" · "+Math.round(power)+" W":"")+".",side:side};
+	}
+	if(charging){
+		return{show:true,cls:"neutral",title:(authority||"EVCC")+" STEUERT DIE LADUNG",detail:"Die Wallbox lädt aktuell außerhalb einer aktiven Grid-Rewards-Übernahme"+(isFinite(power)&&power>=50?" · "+Math.round(power)+" W":"")+".",side:side};
 	}
 	if(status==="feedback_failed"||status==="blocked_by_priority"){
 		return{show:true,cls:"warn",title:"TIBBER-ÜBERGABE GESPERRT",detail:status==="feedback_failed"?"EVCC hat Schnell/now noch nicht bestätigt.":"Eine Safety-Sperre verhindert die Übergabe.",side:side};
@@ -1522,13 +1562,13 @@ function visTibberRewardsView(s){
 		return{show:true,cls:"waiting",title:"TIBBER-ÜBERGABE LÄUFT",detail:"EMS setzt EVCC auf Schnell/now; anschließend kann Tibber übernehmen.",side:side};
 	}
 	if(status==="already_now"||status==="already_prepared"){
-		return{show:true,cls:"ready",title:"EVCC AN TIBBER ÜBERGEBEN",detail:"Schnell/now ist bereit · EMS wartet auf das aktive Grid-Rewards-Signal.",side:side};
+		return{show:true,cls:"waiting",title:"GRID REWARDS BEREIT",detail:"EVCC ist vorbereitet. Tibber startet oder pausiert erst bei einem echten Grid-Rewards-Signal.",side:side};
 	}
-	if(!configured)return{show:false,cls:"",title:"",detail:"",side:""};
+	if(!configured)return{show:true,cls:"neutral",title:"KEINE LADUNG AKTIV",detail:"Weder EMS noch Grid Rewards gibt aktuell einen Ladebefehl.",side:""};
 	if(status==="already_connected_at_start"){
 		return{show:true,cls:"ready",title:"GRID REWARDS EINGERICHTET",detail:"Fahrzeug war beim Adapterstart schon verbunden · für eine neue Übergabe einmal ab- und wieder anstecken.",side:side};
 	}
-	return{show:true,cls:"ready",title:"GRID REWARDS EINGERICHTET",detail:connected?"Wartet auf eine neue Ansteckkante für die Tibber-Übergabe.":"Wartet auf das Anstecken des Fahrzeugs.",side:side};
+	return{show:true,cls:"waiting",title:"GRID REWARDS BEREIT",detail:"Fahrzeug ist angesteckt. EMS wartet auf das echte Grid-Rewards-Signal; ohne Signal wird keine Tibber-Ladung behauptet.",side:side};
 }
 function visFiniteNumber(v){
 	if(v===null||v===undefined||v==="")return null;
@@ -1910,20 +1950,20 @@ function visJoinDurEnergy(sec,kwh,totalHours){
 }
 function visHvacPurposeLabel(p){
 	p=String(p||"").trim().toLowerCase();
-	if(p==="dehumidify")return"DRY";
-	if(p==="cooling")return"COOL";
-	if(p==="heating")return"HEAT";
-	if(p==="fan_only")return"FAN";
+	if(p==="dehumidify")return"ENTFEUCHTEN";
+	if(p==="cooling")return"KÜHLEN";
+	if(p==="heating")return"HEIZEN";
+	if(p==="fan_only")return"LÜFTEN";
 	return"";
 }
 function visClimateHvacBadge(purpose,running){
 	if(!running)return null;
 	var label=visHvacPurposeLabel(purpose);
 	if(!label)return null;
-	if(label==="DRY")return{cls:"hvac-dry",label:"DRY"};
-	if(label==="COOL")return{cls:"hvac-cool",label:"COOL"};
-	if(label==="HEAT")return{cls:"hvac-heat",label:"HEAT"};
-	if(label==="FAN")return{cls:"hvac-fan",label:"FAN"};
+	if(label==="ENTFEUCHTEN")return{cls:"hvac-dry",label:"ENTFEUCHTEN"};
+	if(label==="KÜHLEN")return{cls:"hvac-cool",label:"KÜHLEN"};
+	if(label==="HEIZEN")return{cls:"hvac-heat",label:"HEIZEN"};
+	if(label==="LÜFTEN")return{cls:"hvac-fan",label:"LÜFTEN"};
 	return null;
 }
 function visCheapPhaseLabel(slots,nowMs){
@@ -2326,14 +2366,14 @@ function ihEnergyNeedLine(){
 	return line;
 }
 function wallboxAuthorityLine(){
-	if(tibberRewardsIsActive())return"Tibber";
-	if(isOn(g("addons.wallbox.runtime.external_vehicle_charge_active")))return"External";
+	if(tibberRewardsIsActive())return"Tibber Grid Rewards";
+	if(isOn(g("addons.wallbox.runtime.external_vehicle_charge_active")))return"EVCC / Nutzer";
 	var auth=String(g("addons.wallbox.status.ev_foundation.ev_execution_authority")||"").toLowerCase();
-	if(auth==="external")return"External";
+	if(auth==="external")return"EVCC / Nutzer";
 	if(auth==="ems")return"EMS";
 	var ext=String(g("addons.wallbox.status.ev_foundation.external_authority_state")||"").toLowerCase();
-	if(ext&&ext!=="inactive"&&ext!=="none"&&ext!=="unavailable")return"External";
-	return "—";
+	if(ext&&ext!=="inactive"&&ext!=="none"&&ext!=="unavailable")return"EVCC / externe Steuerung";
+	return "keine aktive Ladefreigabe";
 }
 function wallboxConnected(){
 	return isOn(g("addons.wallbox.status.evcc.connected"));
@@ -2353,6 +2393,7 @@ function priceBoard(){
 	if(!o||!Array.isArray(o.slots))return{slots:[],meta:o||{}};
 	return{slots:o.slots,meta:o};
 }
+var priceWindowMode="focus";
 function renderAlerts(){
 	var el=document.getElementById("ems-alerts");
 	if(!el)return;
@@ -2366,8 +2407,13 @@ function renderPriceBoard(){
 	var el=document.getElementById("ems-price");
 	if(!el)return;
 	var board=priceBoard();
-	var slots=board.slots||[];
+	var allSlots=board.slots||[],slots=allSlots;
 	var meta=board.meta||{};
+	if(priceWindowMode==="focus"&&allSlots.length){
+		var focusStart=Date.now(),focusEnd=focusStart+12*60*60*1000;
+		var focused=allSlots.filter(function(s){var a=Date.parse(s.startIso||""),b=Date.parse(s.endIso||"");return isFinite(a)&&isFinite(b)&&b>focusStart&&a<focusEnd;});
+		if(focused.length)slots=focused;
+	}
 	var gbMin=num(meta.gbMinPriceCt);
 	if(gbMin===null)gbMin=num(g("addons.battery.grid_balance.price_min_ct_kwh"));
 	var nowPrice=num(meta.currentPriceCt);
@@ -2398,8 +2444,8 @@ function renderPriceBoard(){
 	var axis=visPriceAxisRange(prices,gbMin);
 	var pMin=axis.axisMin,pMax=axis.axisMax;
 	if(pMax<=pMin)pMax=pMin+1;
-	var padL=36,padR=8,padT=12,padB=16;
-	var W=640,H=84;
+	var padL=44,padR=10,padT=14,padB=25;
+	var W=1000,H=150;
 	var innerW=W-padL-padR,innerH=H-padT-padB;
 	function yOf(ct){return padT+innerH-((ct-pMin)/(pMax-pMin))*innerH;}
 	function xOf(idx){return padL+(idx+0.5)*(innerW/slots.length);}
@@ -2423,7 +2469,7 @@ function renderPriceBoard(){
 		var hx1=padL+(hourEnd+1)*(innerW/slots.length);
 		hourBg='<rect x="'+hx0.toFixed(1)+'" y="'+padT+'" width="'+(hx1-hx0).toFixed(1)+'" height="'+innerH.toFixed(1)+'" fill="#58a6ff22"/>';
 	}
-	var bars="",acts="",labels="",gbMarks="",currentBg="",j;
+	var priceBands="",curvePoints=[],acts="",labels="",gbMarks="",currentBg="",j;
 	var lastHour="";
 	for(j=0;j<slots.length;j++){
 		var s=slots[j];
@@ -2433,10 +2479,11 @@ function renderPriceBoard(){
 		var h=ct===null?0:((ct-pMin)/(pMax-pMin))*innerH;
 		var y=padT+innerH-h;
 		var fill=visPriceBandFill(visPriceBand(ct,bandLo,bandHi));
+		priceBands+='<rect x="'+x.toFixed(1)+'" y="'+padT+'" width="'+bw.toFixed(1)+'" height="'+innerH.toFixed(1)+'" fill="'+fill+'" opacity="0.10"/>';
 		if(s.current){
 			currentBg='<rect x="'+x.toFixed(1)+'" y="'+padT+'" width="'+bw.toFixed(1)+'" height="'+innerH.toFixed(1)+'" fill="#f0b42955"/>';
 		}
-		bars+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,h).toFixed(1)+'" rx="1" fill="'+fill+'"'+(s.current?' stroke="#f0b429" stroke-width="1.6"':'')+'/>';
+		if(ct!==null)curvePoints.push({x:x+bw/2,y:y,current:!!s.current});
 		if(s.current&&s.gbPriceOk&&gbMin!==null){
 			var mx=(x+bw/2).toFixed(1),my=yOf(gbMin).toFixed(1);
 			gbMarks+='<circle cx="'+mx+'" cy="'+my+'" r="2.2" fill="#f85149" stroke="#0d1117" stroke-width="0.7"/>';
@@ -2466,11 +2513,19 @@ function renderPriceBoard(){
 	}
 	var yLab='<text x="2" y="'+(padT+8)+'" fill="#8b949e" font-size="8">'+esc(pMax.toFixed(0))+'</text>'
 		+'<text x="2" y="'+(padT+innerH)+'" fill="#8b949e" font-size="8">'+esc(pMin.toFixed(0))+"</text>";
+	var curve="";
+	if(curvePoints.length){
+		var linePath="M "+curvePoints.map(function(p){return p.x.toFixed(1)+" "+p.y.toFixed(1);}).join(" L ");
+		var areaPath=linePath+" L "+curvePoints[curvePoints.length-1].x.toFixed(1)+" "+(padT+innerH)+" L "+curvePoints[0].x.toFixed(1)+" "+(padT+innerH)+" Z";
+		curve='<path d="'+areaPath+'" fill="#58a6ff18"/><path d="'+linePath+'" fill="none" stroke="#79c0ff" stroke-width="2.5" vector-effect="non-scaling-stroke"/>';
+		for(var cp=0;cp<curvePoints.length;cp++)if(curvePoints[cp].current)curve+='<circle cx="'+curvePoints[cp].x.toFixed(1)+'" cy="'+curvePoints[cp].y.toFixed(1)+'" r="4" fill="#f0b429" stroke="#0d1117" stroke-width="1.2"/>';
+	}
 	el.innerHTML='<div class="ems-price-head"><div class="ems-k">Tibber-Preis</div><div class="ems-price-meta">'
 		+esc(headLine||[gateLine,thrLine].filter(Boolean).join(" · "))
 		+"</div></div>"
+		+'<div class="ems-price-controls"><button type="button" class="ems-price-toggle '+(priceWindowMode==='focus'?'on':'')+'" data-ems-action="price-focus">Nächste 12 Stunden</button><button type="button" class="ems-price-toggle '+(priceWindowMode==='all'?'on':'')+'" data-ems-action="price-all">Gesamter verfügbarer Zeitraum</button></div>'
 		+'<svg class="ems-price-svg" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="none" role="img" aria-label="Tibber-Preisachse">'
-		+zones+hourBg+currentBg+yLab+bars+thr+gbMarks+acts+labels+"</svg>"
+		+zones+priceBands+hourBg+currentBg+yLab+curve+thr+gbMarks+acts+labels+"</svg>"
 		+'<div class="ems-price-legend">'
 		+'<span><i class="ems-sw" style="background:#f0b429"></i>jetzt</span>'
 		+'<span><i class="ems-sw" style="background:#58a6ff44;border:1px solid #58a6ff"></i>aktuelle Stunde</span>'
@@ -2693,8 +2748,6 @@ function climateTodayLines(){
 		if(note)line+=" — "+note;
 		lines.push(line);
 	}
-	var sp=txt(g("learning.climate_shared_power.summary_de"),"");
-	if(sp&&sp!=="—")lines.push("Gemeinsames Außengerät: "+sp);
 	return lines;
 }
 var paintedHtml={next:"",horizon:"",stack:""};
@@ -3006,10 +3059,6 @@ function renderLegacyStack(){
 		}
 		var acSched=climateScheduleRow(unitIndex);
 		rows.push([acSched.label,acSched.value]);
-		if(unitIndex===1){
-			var sp=txt(g("learning.climate_shared_power.summary_de"),"");
-			if(sp&&sp!=="—")rows.push(["Gemeinsames Außengerät",shortNote(sp,90)]);
-		}
 		return card(title,"#79c0ff",badges,rows,climateCardNote(unitIndex),null,"ac");
 	}
 
@@ -3067,6 +3116,7 @@ function tibberRewardsIsActive(){
 		||isOn(g("addons.wallbox.runtime.tibber_grid_rewards_active"));
 }
 function currentTibberRewardsView(){
+	var authority=wallboxAuthorityLine();
 	return visTibberRewardsView({
 		active:tibberRewardsIsActive(),
 		configured:isOn(g("addons.wallbox.status.ev_foundation.tibber_now_handoff_enabled")),
@@ -3075,7 +3125,10 @@ function currentTibberRewardsView(){
 		connected:wallboxConnected(),
 		charging:isOn(g("addons.wallbox.status.evcc.charging")),
 		chargePowerW:num(g("addons.wallbox.status.evcc.charge_power_w")),
-		modeLabel:wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—"
+		modeLabel:wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—",
+		socPct:num(g("addons.wallbox.status.evcc.vehicle_soc_pct")),
+		targetSocPct:num(g("addons.wallbox.status.evcc.effective_limit_soc_pct")),
+		authorityLabel:authority
 	});
 }
 function tibberRewardsBannerHtml(){
@@ -3097,7 +3150,7 @@ function decisionStateLabel(state){
 	if(state==="deferred")return"BEWUSST VERSCHOBEN";
 	if(state==="scheduled")return"EINGEPLANT";
 	if(state==="not_needed")return"NICHT NÖTIG";
-	return"NICHT ALLOKIERT";
+	return"DERZEIT NICHT EINGEPLANT";
 }
 function decisionCss(state){return state==="active"?"active":(state==="deferred"?"defer":(state==="not_needed"?"none":""));}
 function decisionView(kind){
@@ -3128,6 +3181,18 @@ function questionCard(question,hero,rows,note,color){
 	}
 	if(note)html+='<div class="ems-q-note">'+esc(note)+'</div>';
 	return html+'</div>';
+}
+function addonModeStrip(addonId,label){
+	var globalMode=String(g("global.execution_mode")||"dryrun").toLowerCase();
+	var mode=String(g("addons."+addonId+".mode")||"dryrun").toLowerCase();
+	var cls=mode==="off"?"off":(mode==="dryrun"?"dryrun":(globalMode==="live"?"live":"blocked"));
+	var title=mode==="off"?"AUS":(mode==="dryrun"?"DRY-RUN":(globalMode==="live"?"LIVE":"LIVE VORBEREITET · GLOBAL DRY-RUN"));
+	var note=mode==="off"?"EMS beobachtet, plant und steuert dieses Add-on nicht.":(mode==="dryrun"?"EMS plant und zeigt mögliche Aktionen, sendet aber keine Gerätebefehle.":(globalMode==="live"?"EMS darf nach allen Sicherheitsprüfungen reale Gerätebefehle senden.":"Die globale Schreibsperre verhindert reale Gerätebefehle."));
+	return '<div class="ems-mode-strip '+cls+'"><span>'+esc(label)+':</span><b>'+esc(title)+'</b><span>'+esc(note)+'</span></div>';
+}
+function remainingRuntimeLabel(endMs){
+	var sec=Math.max(0,Math.ceil((Number(endMs)-Date.now())/1000));
+	return sec>0?(visFmtDurationSec(sec)||"unter 1 Min."):"endet jetzt";
 }
 function currentSupplyMix(devicePowerW){
 	var total=Math.max(0,num(devicePowerW)||0),pv=Math.max(0,num(g("live.pv.power_w"))||0);
@@ -3261,7 +3326,7 @@ function renderBatteryPage(){
 	var fault=isOn(g("addons.battery.status.fault"))||isOn(g("addons.battery.status.lockout"));
 	var batteryStrategy=txt(g("operator.plan.battery_strategy_de"),"");
 	var batteryWhy=visHumanPlannerReason("battery",g("planner.intent.allocation.battery.reason_de"),batteryStrategy);
-	var html="";
+	var html=addonModeStrip("battery","Batteriesteuerung");
 	var gaugeSoc=Math.max(0,Math.min(100,soc===null?0:soc)),gaugeColor=motion.label==="LADEN"?"#3fb950":(motion.label==="ENTLADEN"?"#f0883e":"#58a6ff");
 	var efficiency=num(g("learning.grid_balance_economics.eta_pv_path"));
 	html+='<div class="ems-q-card"><div class="ems-q-k">Batterie-Anzeige</div><div class="ems-gauge-wrap"><div class="ems-gauge" style="position:relative;background:conic-gradient('+gaugeColor+' '+gaugeSoc+'%,#30363d 0)"><div class="ems-gauge-value">'+(soc===null?'—':Math.round(soc)+' %')+'<small>Ladezustand</small></div></div><div class="ems-gauge-facts"><b>'+esc(motion.label)+'</b><br>'+esc(power===null?'Leistung unbekannt':Math.round(Math.abs(power))+' W')+'<br>Wirkungsgrad '+esc(efficiency===null?'wird gelernt':Math.round(efficiency*100)+' %')+'<br>Netzausgleich '+esc(gbStatus().label)+'</div></div></div>';
@@ -3321,12 +3386,14 @@ function renderThermalPage(){
 	var fault=immersionFaultActive(),running=immersionHardwareActive(effectiveLiveWrite("immersion_heater"));
 	var thermalStrategy=decisionExplanation(decision,txt(g("addons.immersion_heater.runtime.allocation_reason_de"),""));
 	var thermalWhy=visHumanPlannerReason("immersion_heater",g("planner.intent.allocation.immersion_heater.reason_de"),thermalStrategy);
-	var html="";
-	html+=questionCard("1 · Was ist der aktuelle Zustand?",fault?immersionFaultStatusDe():(running?"HEIZSTAB LÄUFT":"HEIZSTAB AUS"),[
+	var html=addonModeStrip("immersion_heater","Heizstabsteuerung");
+	var thermalHero=fault?immersionFaultStatusDe():(running?("HEIZSTAB LÄUFT"+(sched.current?" · NOCH "+remainingRuntimeLabel(sched.current.endMs).toUpperCase():"")):"HEIZSTAB AUS");
+	html+=questionCard("1 · Was ist der aktuelle Zustand?",thermalHero,[
 		["Boiler",boiler===null?"—":fmtDec(boiler,1,"°C")],
 		["Puffer",buffer===null?"—":fmtDec(buffer,1,"°C")],
 		["Leistung",fmtW(g("addons.immersion_heater.runtime.measured_power_w"))],
 		["Aktive Heizstufe",txt(g("addons.immersion_heater.runtime.feedback_stage"),"—")],
+		["Restzeit",running?(sched.current?remainingRuntimeLabel(sched.current.endMs):"aus dem aktuellen Plan nicht ableitbar"):"—"],
 		["Hygiene",txt(g("addons.immersion_heater.runtime.hygiene_status_de"),"—")],
 		["Heute Energie",fmtDec(energyToday.immersionEnergyKwh,2,"kWh")],
 		["Heute PV-Anteil",fmtDec(energyToday.immersionPvSharePct,1,"%")]
@@ -3374,7 +3441,21 @@ function climateLearningRows(unitIndex){
 }
 function renderClimatePage(){
 	var el=document.getElementById("ems-climate-page");if(!el)return;
-	var html="",count=0,energyToday=energyStats("today"),energyPeriod=energyStats("period");
+	var html=addonModeStrip("air_conditioning","Klimasteuerung"),count=0,energyToday=energyStats("today"),energyPeriod=energyStats("period");
+	var activeNames=[],activePurposes=[],sourceName="zugeordneter Außengeräte-Zähler",systemPower=num(g("addons.air_conditioning.runtime.system_power_w"));
+	for(var si=1;si<=5;si++){
+		var sb="addons.air_conditioning.units.unit_"+si, sn=visAcConfiguredName(g(sb+".name"));
+		if(!sn)continue;
+		var sc=acContribution(si),sd=sc&&sc.details?sc.details:{};
+		if(sd.sharedPowerGroupId&&String(g(sb+".power_display_kind")||"").toLowerCase()==="measured")sourceName=sn;
+		if(isOn(g(sb+".running"))){activeNames.push(sn);var sp=visHvacPurposeLabel(g(sb+".mode_purpose"));if(sp&&activePurposes.indexOf(sp)<0)activePurposes.push(sp);}
+	}
+	var systemState="AUS";
+	if(activePurposes.length===1){
+		var rawPurpose=activePurposes[0].toLowerCase();
+		systemState=rawPurpose.indexOf("entfe")>=0?"ENTFEUCHTET":(rawPurpose.indexOf("heiz")>=0?"HEIZT":(rawPurpose.indexOf("kühl")>=0?"KÜHLT":"LÄUFT"));
+	}else if(activePurposes.length>1)systemState="LÄUFT · "+activePurposes.join(" + ").toUpperCase();
+	html+='<div class="ems-system-gauge"><div class="ems-q-card"><div class="ems-q-k">Gemeinsames Außengerät · aktueller Zustand</div><div class="ems-gauge-wrap"><div class="ems-gauge" style="position:relative;background:conic-gradient('+(systemPower&&systemPower>=50?'#79c0ff':'#6e7681')+' '+(systemPower&&systemPower>=50?'100':'4')+'%,#30363d 0)"><div class="ems-gauge-value">'+esc(systemState)+'<small>'+(systemPower===null?'Leistung unbekannt':esc(Math.round(Math.max(0,systemPower))+' W gesamt'))+'</small></div></div><div class="ems-gauge-facts"><b>'+esc(systemState)+'</b><br>'+(activeNames.length?'Aktive Innengeräte: '+esc(activeNames.join(', ')):'Kein Innengerät aktiv')+'<br>Leistungsmessung: '+esc(sourceName)+'<br>Heute '+esc(fmtDec(energyToday.climateEnergyKwh,2,'kWh'))+'</div></div><div class="ems-q-note">Die elektrische Leistung gehört zum gemeinsamen Außengerät und wird genau einmal gezählt – niemals als Einzelverbrauch eines Zimmers.</div></div>'+energyFlowCard("gemeinsames Außengerät",systemPower)+'</div>';
 	for(var u=1;u<=5;u++){
 		var base="addons.air_conditioning.units.unit_"+u;
 		var name=visAcConfiguredName(g(base+".name"));if(!name)continue;
@@ -3383,48 +3464,23 @@ function renderClimatePage(){
 		var decision=outlookDecision("climate","air_conditioning.unit_"+u);
 		var sched=climateScheduleRow(u),display=resolveClimateUnitDisplay(u);
 		var climateWhy=visHumanPlannerReason("climate",g(base+".reason_de"),display.note||decisionExplanation(decision,""));
-		var climatePlanWhy=visHumanPlannerReason("climate",g(base+".allocation_reason_de"),decisionExplanation(decision,display.note));
 		var stats=base+".stats";
+		var temp=num(g(base+".room_temp_c")),hum=num(g(base+".room_humidity_pct"));
+		var purpose=visHvacPurposeLabel(g(base+".mode_purpose"))||"Klima";
+		var roomState="AUS",purposeNorm=purpose.toLowerCase();
+		if(running)roomState=purposeNorm.indexOf("entfe")>=0?"ENTFEUCHTET":(purposeNorm.indexOf("heiz")>=0?"HEIZT":(purposeNorm.indexOf("kühl")>=0?"KÜHLT":(purposeNorm.indexOf("lüft")>=0?"LÜFTET":"LÄUFT")));
+		var ring=Math.max(4,Math.min(100,hum===null?4:hum));
 		html+=pageSection("Klima · "+name);
-		html+=questionCard("1 · Was ist der aktuelle Zustand?",running?"LÄUFT · "+(visHvacPurposeLabel(g(base+".mode_purpose"))||"KLIMA"):"AUS",[
-			["Raum",fmtTemp(g(base+".room_temp_c"))],
-			["Feuchte",fmtHumidity(g(base+".room_humidity_pct"))],
-			["Sollwert",fmtTemp(g(base+".setpoint_temp_c"))],
-			["Leistung",fmtW(g(base+".measured_power_w"))],
-			["Modus",visHvacPurposeLabel(g(base+".mode_purpose"))||"—"],
-			["Spätestes Ausschalten",txt(details.hardOffAt,"—")],
-			["Gemeinsames Außengerät",txt(details.sharedPowerGroupId,"eigenständig")]
-		],climateCardNote(u),"#79c0ff");
-		if(!details.sharedPowerGroupId)html+=energyFlowCard(name,g(base+".measured_power_w"));
-		html+=questionCard("2 · Was hat EMS gelernt?",txt(details.demandModel||details.demand_model,"sammelt Daten"),climateLearningRows(u).concat([
-			["Heute Laufzeit",visFmtDurationSec(num(g(stats+".today_runtime_sec")))||"—"],
-			["Heute Energie",visFmtKwh(num(g(stats+".today_energy_kwh")))||"—"],
-			["Gesamt Laufzeit",visFmtDurationSec(num(g(stats+".total_runtime_sec")))||"—"],
-			["Gesamt Energie",visFmtKwh(num(g(stats+".total_energy_kwh")))||"—"]
-		]),txt(g("learning.climate_thermal.unit_"+u+".reason_de"),""),"#79c0ff");
-		html+=questionCard("3 · Was plant EMS als Nächstes?",decision?decisionStateLabel(decision.state):(sched.value!=="keines"?"EINGEPLANT":"KEINE AKTION"),[
+		html+='<div class="ems-q-card" style="border-color:#79c0ff55"><div class="ems-q-k">Aktuelles Raumklima</div><div class="ems-climate-now"><div class="ems-climate-ring" style="background:conic-gradient('+(hum!==null&&hum>=65?'#f0883e':'#79c0ff')+' '+ring+'%,#30363d 0)"><div class="ems-climate-ring-value">'+esc(temp===null?'—':temp.toFixed(1).replace('.',',')+' °C')+'<small>'+esc(hum===null?'Feuchte unbekannt':Math.round(hum)+' % Feuchte')+'</small></div></div><div class="ems-climate-values"><b>'+esc(roomState)+'</b><br>Sollwert '+esc(fmtTemp(g(base+".setpoint_temp_c")))+'<br>'+esc(climateCardNote(u)||'Raumklima wird beobachtet.')+'<br><span style="color:#8b949e">Kein eigener Stromzähler für dieses Innengerät.</span></div></div></div>';
+		html+=questionCard("Heute und als Nächstes",decision?decisionStateLabel(decision.state):(sched.value!=="keines"?"EINGEPLANT":"KEINE KLIMATISIERUNG GEPLANT"),[
 			[sched.label,sched.value],
-			["Tagesbudget",acHeuteLine(u,!!(sched.current||sched.future))],
-			["Prognose-Schwelle",fmtDateTimeOrDash(details.predicted_threshold_crossing_at)],
-			["Erwartete Energie",fmtDec(details.expectedKwhToday,2,"kWh")],
-			["Gemeinsame Leistung berücksichtigt",txt(g("addons.air_conditioning.runtime.system_shared_power_used"),"—")]
-		],decisionExplanation(decision,display.note),"#79c0ff");
-		html+=questionCard("4 · Warum?",climateWhy,[
-			["Aktueller Grund",climateWhy],
-			["Planentscheidung",climatePlanWhy],
-			["Bedarfsmodell",txt(details.demandModel||details.demand_model,"sammelt noch Daten")],
-			["Ersatzmodell",visHumanPlannerReason("climate",details.fallbackReasonDe||details.fallback_reason_de,"nicht benötigt")],
-			["EMS-Freigabe",isOn(g(base+".governance_allowed"))?"freigegeben":"gesperrt"]
-		],"EMS startet nur bei erkennbarem Raum- oder Feuchtebedarf. Zeitgrenzen, gemeinsamer Stromanschluss, Komfort und Geräteschutz bleiben bindend.","#79c0ff");
+			["Erwarteter Bedarf",acHeuteLine(u,!!(sched.current||sched.future))],
+			["Mögliche Schwellenzeit",fmtDateTimeOrDash(details.predicted_threshold_crossing_at)],
+			["Heute gelaufen",visFmtDurationSec(num(g(stats+".today_runtime_sec")))||"noch nicht"],
+			["Grund",climateWhy]
+		],display.note||"Temperatur und Luftfeuchte werden getrennt bewertet; die gemeinsame Außengeräteleistung wird bei der Planung nur einmal berücksichtigt.","#79c0ff");
 	}
 	if(!count)html=questionCard("Klima","Keine Geräte konfiguriert",[],"Aktivierte und benannte Klima-Units erscheinen hier automatisch.","#79c0ff");
-	html+=pageSection("Gemeinsames Außengerät und Energiebilanz")+questionCard("Gemeinsames Außengerät",fmtW(g("addons.air_conditioning.runtime.system_power_w"))+" live",[
-		["Heute",fmtDec(energyToday.climateEnergyKwh,2,"kWh")],
-		["Heute aus PV",fmtDec(energyToday.climatePvKwh,2,"kWh")],
-		["Zeitraum",fmtDec(energyPeriod.climateEnergyKwh,1,"kWh")],
-		["Zuordnung",isOn(g("addons.air_conditioning.runtime.system_shared_power_used"))?"Leistung wird systemweit nur einmal gezählt":"getrennte Messung"],
-		["Hinweis","Der Messwert gehört zum Außengerät, nicht zu einem einzelnen Innengerät."]
-	],txt(g("learning.climate_thermal.summary_de"),""),"#79c0ff");
 	paintEl(el,"climate-page",html);
 }
 
@@ -3449,7 +3505,7 @@ function renderWallboxPage(){
 	var wallboxStrategy=txt(g("operator.plan.wallbox_strategy_de"),"");
 	var wallboxPlanWhy=visHumanPlannerReason("wallbox",g("planner.intent.allocation.wallbox.reason_de"),wallboxStrategy);
 	var wallboxWhy=rewardsActive?"Tibber steuert; EMS hält sich mit einer eigenen Ladung zurück.":wallboxPlanWhy;
-	var html=tibberRewardsBannerHtml();
+	var html=addonModeStrip("wallbox","Wallboxsteuerung")+tibberRewardsBannerHtml();
 	html+=questionCard("1 · Was ist der aktuelle Zustand?",autoToday.hero,[
 		["Fahrzeug-SOC",fmtPct(g("addons.wallbox.status.evcc.vehicle_soc_pct"))],
 		["Ziel-SOC",visEvTargetLabel(g("addons.wallbox.status.evcc.effective_limit_soc_pct"),externallyManaged)],
@@ -4094,6 +4150,12 @@ function bindUiActions(){
 				}
 				if(t.getAttribute&&t.getAttribute("data-ems-action")==="public-charge-discard"){
 					ev.preventDefault();submitPublicCharge(true);return;
+				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="price-focus"){
+					ev.preventDefault();priceWindowMode="focus";renderPriceBoard();return;
+				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="price-all"){
+					ev.preventDefault();priceWindowMode="all";renderPriceBoard();return;
 				}
 				t=t.parentNode;
 			}

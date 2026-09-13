@@ -131,6 +131,9 @@ export interface EnergeticDayTotals {
 		notesDe: string[];
 	};
 	notesDe: string[];
+	/** Reale Zählerdifferenz 1.8.0/2.8.0 ersetzt die rechnerische Netzintegration. */
+	gridTruthSource?: "day_telemetry" | "smart_meter";
+	meterCaptureSinceIso?: string | null;
 }
 
 /** Roll-up über einen auswählbaren Zeitraum; Prozentwerte sind energiemengengewichtet. */
@@ -205,6 +208,7 @@ export interface StatisticsPersist {
 		homeGridCostEur: number;
 		lastVehicleSocPct: number | null;
 		lastWallboxConnected: boolean | null;
+		meterCaptureSinceIso?: string | null;
 	};
 }
 

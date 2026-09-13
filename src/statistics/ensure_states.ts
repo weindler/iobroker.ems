@@ -30,6 +30,11 @@ export const STATISTICS_STATES = {
 	publicSubmitAckDe: `${STATISTICS_BASE}.public_charge.submit_ack_de`,
 	adjustRequest: `${STATISTICS_BASE}.adjust_request`,
 	adjustAckDe: `${STATISTICS_BASE}.adjust_ack_de`,
+	meterLivePowerW: `${STATISTICS_BASE}.meter.live_power_w`,
+	meterImport180Kwh: `${STATISTICS_BASE}.meter.import_1_8_0_kwh`,
+	meterExport280Kwh: `${STATISTICS_BASE}.meter.export_2_8_0_kwh`,
+	meterCaptureSince: `${STATISTICS_BASE}.meter.capture_since`,
+	meterSourceDe: `${STATISTICS_BASE}.meter.source_de`,
 } as const;
 
 function numState(id: string, name: string, unit?: string) {
@@ -124,6 +129,7 @@ export async function ensureStatisticsStateTree(host: StateHost): Promise<void> 
 	await ensureChannel(host, `${STATISTICS_BASE}.mobility.period`, "Mobilität Periode (flache States)");
 	await ensureChannel(host, `${STATISTICS_BASE}.public_charge`, "Statistik Schnellader / manuelle Rechnung");
 	await ensureChannel(host, `${STATISTICS_BASE}.energy`, "Energetische Statistik aus Day-Telemetry");
+	await ensureChannel(host, `${STATISTICS_BASE}.meter`, "Reale Smart-Meter-Zählerwerte");
 
 	await ensureStates(host, [
 		boolState(STATISTICS_STATES.enabled, "Statistik-Sidecar aktiv", true),
@@ -140,6 +146,11 @@ export async function ensureStatisticsStateTree(host: StateHost): Promise<void> 
 		strState(STATISTICS_STATES.energyTodayJson, "Energie heute (JSON)", "{}"),
 		strState(STATISTICS_STATES.energyMonthJson, "Energie Monat (JSON)", "{}"),
 		strState(STATISTICS_STATES.energyPeriodJson, "Energie Periode (JSON)", "{}"),
+		numState(STATISTICS_STATES.meterLivePowerW, "Smart Meter aktuelle Netzleistung", "W"),
+		numState(STATISTICS_STATES.meterImport180Kwh, "Smart Meter Bezug 1.8.0", "kWh"),
+		numState(STATISTICS_STATES.meterExport280Kwh, "Smart Meter Einspeisung 2.8.0", "kWh"),
+		strState(STATISTICS_STATES.meterCaptureSince, "Smart Meter Differenzerfassung seit"),
+		strState(STATISTICS_STATES.meterSourceDe, "Smart Meter Datenbasis", "nicht konfiguriert"),
 		numState(STATISTICS_STATES.homeTodaySavingsEur, "Haus heute Ersparnis vs. Festtarif (Legacy)", "EUR"),
 		numState(STATISTICS_STATES.homeMonthSavingsEur, "Haus Monat Ersparnis vs. Festtarif (Legacy)", "EUR"),
 		numState(STATISTICS_STATES.homePeriodSavingsEur, "Haus Periode Ersparnis vs. Festtarif (Legacy)", "EUR"),

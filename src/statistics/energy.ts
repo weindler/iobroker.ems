@@ -364,6 +364,7 @@ export function buildEnergeticDayTotals(day: DayTelemetryDayRecord): EnergeticDa
 	return {
 		dateKey: day.dateKey,
 		source: "day_telemetry",
+		gridTruthSource: "day_telemetry",
 		complete: day.complete,
 		evaluable: day.evaluable,
 		coveragePct: round1(day.coveragePct),
@@ -411,6 +412,41 @@ export function buildEnergeticDayTotals(day: DayTelemetryDayRecord): EnergeticDa
 			],
 		},
 		notesDe,
+	};
+}
+
+/**
+ * Verwendet 1.8.0/2.8.0 als einzige Wahrheit für Netzbezug und Einspeisung.
+ * Davon abhängige Quoten werden mit derselben Zählerbasis neu berechnet.
+ */
+export function reconcileEnergeticGridTruth(
+	energy: EnergeticDayTotals,
+	input: { gridImportKwh: number | null; gridExportKwh: number | null; captureSinceIso?: string | null },
+): EnergeticDayTotals {
+	const gridImportKwh = finite(input.gridImportKwh) ? round3(Math.max(0, input.gridImportKwh)) : energy.gridImportKwh;
+	const gridExportKwh = finite(input.gridExportKwh) ? round3(Math.max(0, input.gridExportKwh)) : energy.gridExportKwh;
+	const pv = energy.pvGenerationKwh;
+	const house = energy.houseConsumptionKwh;
+	const selfConsumptionKwh = finite(pv) && finite(gridExportKwh) ? round3(Math.max(0, Math.min(pv, pv - gridExportKwh))) : null;
+	const autonomyGrid = finite(house) && finite(gridImportKwh) ? Math.min(house, gridImportKwh) : null;
+	const autonomyNonGrid = finite(house) && finite(autonomyGrid) ? Math.max(0, house - autonomyGrid) : null;
+	const notes = energy.notesDe.filter((note) => !note.startsWith("Netzwerte:"));
+	notes.push(input.captureSinceIso
+		? `Netzwerte: reale Smart-Meter-Differenz; Erfassung seit ${input.captureSinceIso}, der erste Tag kann unvollständig sein.`
+		: "Netzwerte: reale Smart-Meter-Differenz 1.8.0/2.8.0.");
+	return {
+		...energy,
+		gridImportKwh,
+		gridExportKwh,
+		selfConsumptionKwh,
+		selfConsumptionPvBasisKwh: finite(pv) ? pv : null,
+		selfConsumptionPct: percentage(selfConsumptionKwh, pv),
+		autonomyPct: percentage(autonomyNonGrid, house),
+		autonomyConsumptionBasisKwh: finite(house) ? house : null,
+		autonomyGridImportBasisKwh: autonomyGrid,
+		gridTruthSource: "smart_meter",
+		meterCaptureSinceIso: input.captureSinceIso ?? null,
+		notesDe: notes,
 	};
 }
 

@@ -281,6 +281,8 @@ async function tickStatistics(host, now = new Date()) {
     const dtSec = rt.lastTickMs !== null && nowMs > rt.lastTickMs
         ? Math.min(600, (nowMs - rt.lastTickMs) / 1000)
         : 0;
+    if (rt.meterCaptureSinceIso === undefined)
+        rt.meterCaptureSinceIso = null;
     const [gridImportEnergy, gridExportEnergy, gridImportPowerW, dynamicCostMapped, rewardsCreditDay, rewardsCreditMonth, fuelMapped, evConsMapped, sessionEnergy, sessionPricePerKwh, wbConnected, vehicleSoc, priceNowCt, capacityKwh, rewardsActive,] = await Promise.all([
         readForeignNum(host, cfg.gridImportEnergyKwhStateId),
         readForeignNum(host, cfg.gridExportEnergyKwhStateId),
@@ -300,10 +302,18 @@ async function tickStatistics(host, now = new Date()) {
     ]);
     void rewardsActive;
     void (await readForeignRaw(host, cfg.externalVehicleChargeStateId));
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterLivePowerW, gridImportPowerW ?? null);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterImport180Kwh, gridImportEnergy ?? null);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterExport280Kwh, gridExportEnergy ?? null);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterSourceDe, cfg.gridImportEnergyKwhStateId || cfg.gridExportEnergyKwhStateId
+        ? "Reale kumulative Zählerstände; Tages- und Zeitraumwerte aus Differenzen"
+        : "nicht konfiguriert");
     // --- Haus: Import-Energie ---
     let importKwhToday = day.home.gridImportKwh ?? 0;
     let haveImport = day.home.gridImportKwh !== null;
     if (cfg.gridImportEnergyKwhStateId) {
+        if (gridImportEnergy !== null && rt.meterCaptureSinceIso === null)
+            rt.meterCaptureSinceIso = now.toISOString();
         const d = (0, compute_1.energyCounterDeltaKwh)(rt.gridImportEnergyBaselineKwh, gridImportEnergy);
         rt.gridImportEnergyBaselineKwh = d.newBaseline;
         if (d.deltaKwh !== null && d.deltaKwh > 0) {
@@ -319,6 +329,8 @@ async function tickStatistics(host, now = new Date()) {
         reasonsHome.push("Netzbezug-Zähler nicht gemappt.");
     }
     if (cfg.gridExportEnergyKwhStateId) {
+        if (gridExportEnergy !== null && rt.meterCaptureSinceIso === null)
+            rt.meterCaptureSinceIso = now.toISOString();
         const d = (0, compute_1.energyCounterDeltaKwh)(rt.gridExportEnergyBaselineKwh, gridExportEnergy);
         rt.gridExportEnergyBaselineKwh = d.newBaseline;
         if (d.deltaKwh !== null && d.deltaKwh > 0) {
@@ -368,6 +380,14 @@ async function tickStatistics(host, now = new Date()) {
     }
     if (haveImport) {
         day.home.gridImportKwh = importKwhToday;
+    }
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterCaptureSince, rt.meterCaptureSinceIso ?? "");
+    if (day.energy && (cfg.gridImportEnergyKwhStateId || cfg.gridExportEnergyKwhStateId)) {
+        day.energy = (0, energy_1.reconcileEnergeticGridTruth)(day.energy, {
+            gridImportKwh: day.home.gridImportKwh,
+            gridExportKwh: day.home.gridExportKwh,
+            captureSinceIso: rt.meterCaptureSinceIso,
+        });
     }
     day.home.fixedTariffCostEur = (0, compute_1.fixedTariffCostEur)({
         gridImportKwh: day.home.gridImportKwh,

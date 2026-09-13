@@ -31,6 +31,11 @@ exports.STATISTICS_STATES = {
     publicSubmitAckDe: `${exports.STATISTICS_BASE}.public_charge.submit_ack_de`,
     adjustRequest: `${exports.STATISTICS_BASE}.adjust_request`,
     adjustAckDe: `${exports.STATISTICS_BASE}.adjust_ack_de`,
+    meterLivePowerW: `${exports.STATISTICS_BASE}.meter.live_power_w`,
+    meterImport180Kwh: `${exports.STATISTICS_BASE}.meter.import_1_8_0_kwh`,
+    meterExport280Kwh: `${exports.STATISTICS_BASE}.meter.export_2_8_0_kwh`,
+    meterCaptureSince: `${exports.STATISTICS_BASE}.meter.capture_since`,
+    meterSourceDe: `${exports.STATISTICS_BASE}.meter.source_de`,
 };
 function numState(id, name, unit) {
     return {
@@ -119,6 +124,7 @@ async function ensureStatisticsStateTree(host) {
     await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.mobility.period`, "Mobilität Periode (flache States)");
     await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.public_charge`, "Statistik Schnellader / manuelle Rechnung");
     await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.energy`, "Energetische Statistik aus Day-Telemetry");
+    await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.meter`, "Reale Smart-Meter-Zählerwerte");
     await (0, state_util_1.ensureStates)(host, [
         boolState(exports.STATISTICS_STATES.enabled, "Statistik-Sidecar aktiv", true),
         strState(exports.STATISTICS_STATES.lastRunAt, "Statistik letzter Lauf (ISO)"),
@@ -134,6 +140,11 @@ async function ensureStatisticsStateTree(host) {
         strState(exports.STATISTICS_STATES.energyTodayJson, "Energie heute (JSON)", "{}"),
         strState(exports.STATISTICS_STATES.energyMonthJson, "Energie Monat (JSON)", "{}"),
         strState(exports.STATISTICS_STATES.energyPeriodJson, "Energie Periode (JSON)", "{}"),
+        numState(exports.STATISTICS_STATES.meterLivePowerW, "Smart Meter aktuelle Netzleistung", "W"),
+        numState(exports.STATISTICS_STATES.meterImport180Kwh, "Smart Meter Bezug 1.8.0", "kWh"),
+        numState(exports.STATISTICS_STATES.meterExport280Kwh, "Smart Meter Einspeisung 2.8.0", "kWh"),
+        strState(exports.STATISTICS_STATES.meterCaptureSince, "Smart Meter Differenzerfassung seit"),
+        strState(exports.STATISTICS_STATES.meterSourceDe, "Smart Meter Datenbasis", "nicht konfiguriert"),
         numState(exports.STATISTICS_STATES.homeTodaySavingsEur, "Haus heute Ersparnis vs. Festtarif (Legacy)", "EUR"),
         numState(exports.STATISTICS_STATES.homeMonthSavingsEur, "Haus Monat Ersparnis vs. Festtarif (Legacy)", "EUR"),
         numState(exports.STATISTICS_STATES.homePeriodSavingsEur, "Haus Periode Ersparnis vs. Festtarif (Legacy)", "EUR"),

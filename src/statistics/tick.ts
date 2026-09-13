@@ -67,7 +67,7 @@ import {
 	listDayTelemetryDateKeys,
 	readDayTelemetryDay,
 } from "../learning/day_telemetry/persist";
-import { buildEnergeticDayTotals, sumEnergeticDays } from "./energy";
+import { buildEnergeticDayTotals, reconcileEnergeticGridTruth, sumEnergeticDays } from "./energy";
 import type {
 	HouseCompareSummary,
 	MobilityCompareSummary,
@@ -384,6 +384,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		rt.lastTickMs !== null && nowMs > rt.lastTickMs
 			? Math.min(600, (nowMs - rt.lastTickMs) / 1000)
 			: 0;
+	if (rt.meterCaptureSinceIso === undefined) rt.meterCaptureSinceIso = null;
 
 	const [
 		gridImportEnergy,
@@ -422,11 +423,19 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	]);
 	void rewardsActive;
 	void (await readForeignRaw(host, cfg.externalVehicleChargeStateId));
+	await setIfChanged(host, STATISTICS_STATES.meterLivePowerW, gridImportPowerW ?? (null as unknown as number));
+	await setIfChanged(host, STATISTICS_STATES.meterImport180Kwh, gridImportEnergy ?? (null as unknown as number));
+	await setIfChanged(host, STATISTICS_STATES.meterExport280Kwh, gridExportEnergy ?? (null as unknown as number));
+	await setIfChanged(host, STATISTICS_STATES.meterSourceDe,
+		cfg.gridImportEnergyKwhStateId || cfg.gridExportEnergyKwhStateId
+			? "Reale kumulative Zählerstände; Tages- und Zeitraumwerte aus Differenzen"
+			: "nicht konfiguriert");
 
 	// --- Haus: Import-Energie ---
 	let importKwhToday = day.home.gridImportKwh ?? 0;
 	let haveImport = day.home.gridImportKwh !== null;
 	if (cfg.gridImportEnergyKwhStateId) {
+		if (gridImportEnergy !== null && rt.meterCaptureSinceIso === null) rt.meterCaptureSinceIso = now.toISOString();
 		const d = energyCounterDeltaKwh(rt.gridImportEnergyBaselineKwh, gridImportEnergy);
 		rt.gridImportEnergyBaselineKwh = d.newBaseline;
 		if (d.deltaKwh !== null && d.deltaKwh > 0) {
@@ -441,6 +450,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	}
 
 	if (cfg.gridExportEnergyKwhStateId) {
+		if (gridExportEnergy !== null && rt.meterCaptureSinceIso === null) rt.meterCaptureSinceIso = now.toISOString();
 		const d = energyCounterDeltaKwh(rt.gridExportEnergyBaselineKwh, gridExportEnergy);
 		rt.gridExportEnergyBaselineKwh = d.newBaseline;
 		if (d.deltaKwh !== null && d.deltaKwh > 0) {
@@ -491,6 +501,14 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 
 	if (haveImport) {
 		day.home.gridImportKwh = importKwhToday;
+	}
+	await setIfChanged(host, STATISTICS_STATES.meterCaptureSince, rt.meterCaptureSinceIso ?? "");
+	if (day.energy && (cfg.gridImportEnergyKwhStateId || cfg.gridExportEnergyKwhStateId)) {
+		day.energy = reconcileEnergeticGridTruth(day.energy, {
+			gridImportKwh: day.home.gridImportKwh,
+			gridExportKwh: day.home.gridExportKwh,
+			captureSinceIso: rt.meterCaptureSinceIso,
+		});
 	}
 
 	day.home.fixedTariffCostEur = fixedTariffCostEur({

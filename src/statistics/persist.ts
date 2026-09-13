@@ -58,6 +58,7 @@ export function emptyRuntime(dateKey: string): StatisticsPersist["runtime"] {
 		homeGridCostEur: 0,
 		lastVehicleSocPct: null,
 		lastWallboxConnected: null,
+		meterCaptureSinceIso: null,
 	};
 }
 

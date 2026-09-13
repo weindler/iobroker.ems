@@ -28,6 +28,19 @@ function fixture(dateKey = "2026-09-10") {
     return day;
 }
 (0, node_test_1.describe)("energetische Statistik", () => {
+    (0, node_test_1.it)("uses Smart Meter 1.8.0/2.8.0 as the single grid truth", () => {
+        const result = (0, energy_1.reconcileEnergeticGridTruth)((0, energy_1.buildEnergeticDayTotals)(fixture()), {
+            gridImportKwh: 1.2,
+            gridExportKwh: 0.4,
+            captureSinceIso: "2026-09-10T08:00:00Z",
+        });
+        strict_1.default.equal(result.gridImportKwh, 1.2);
+        strict_1.default.equal(result.gridExportKwh, 0.4);
+        strict_1.default.equal(result.selfConsumptionKwh, 2.6);
+        strict_1.default.equal(result.autonomyPct, 65.7);
+        strict_1.default.equal(result.gridTruthSource, "smart_meter");
+        strict_1.default.match(result.notesDe.join(" "), /erste Tag kann unvollständig/);
+    });
     (0, node_test_1.it)("berechnet Eigenverbrauch, Autarkie und gemessene Geräte-PV-Anteile", () => {
         const result = (0, energy_1.buildEnergeticDayTotals)(fixture());
         strict_1.default.equal(result.pvGenerationKwh, 3);

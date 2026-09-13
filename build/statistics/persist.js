@@ -52,6 +52,7 @@ function emptyRuntime(dateKey) {
         homeGridCostEur: 0,
         lastVehicleSocPct: null,
         lastWallboxConnected: null,
+        meterCaptureSinceIso: null,
     };
 }
 exports.emptyRuntime = emptyRuntime;

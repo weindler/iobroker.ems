@@ -6,7 +6,7 @@
  * unvollständige Messketten ergeben `null` statt einer erfundenen Null.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sumEnergeticDays = exports.buildEnergeticDayTotals = exports.fastChargeAttribution = void 0;
+exports.sumEnergeticDays = exports.reconcileEnergeticGridTruth = exports.buildEnergeticDayTotals = exports.fastChargeAttribution = void 0;
 const quality_mask_1 = require("../learning/day_telemetry/quality_mask");
 function finite(value) {
     return value != null && Number.isFinite(value);
@@ -334,6 +334,7 @@ function buildEnergeticDayTotals(day) {
     return {
         dateKey: day.dateKey,
         source: "day_telemetry",
+        gridTruthSource: "day_telemetry",
         complete: day.complete,
         evaluable: day.evaluable,
         coveragePct: round1(day.coveragePct),
@@ -384,6 +385,38 @@ function buildEnergeticDayTotals(day) {
     };
 }
 exports.buildEnergeticDayTotals = buildEnergeticDayTotals;
+/**
+ * Verwendet 1.8.0/2.8.0 als einzige Wahrheit für Netzbezug und Einspeisung.
+ * Davon abhängige Quoten werden mit derselben Zählerbasis neu berechnet.
+ */
+function reconcileEnergeticGridTruth(energy, input) {
+    const gridImportKwh = finite(input.gridImportKwh) ? round3(Math.max(0, input.gridImportKwh)) : energy.gridImportKwh;
+    const gridExportKwh = finite(input.gridExportKwh) ? round3(Math.max(0, input.gridExportKwh)) : energy.gridExportKwh;
+    const pv = energy.pvGenerationKwh;
+    const house = energy.houseConsumptionKwh;
+    const selfConsumptionKwh = finite(pv) && finite(gridExportKwh) ? round3(Math.max(0, Math.min(pv, pv - gridExportKwh))) : null;
+    const autonomyGrid = finite(house) && finite(gridImportKwh) ? Math.min(house, gridImportKwh) : null;
+    const autonomyNonGrid = finite(house) && finite(autonomyGrid) ? Math.max(0, house - autonomyGrid) : null;
+    const notes = energy.notesDe.filter((note) => !note.startsWith("Netzwerte:"));
+    notes.push(input.captureSinceIso
+        ? `Netzwerte: reale Smart-Meter-Differenz; Erfassung seit ${input.captureSinceIso}, der erste Tag kann unvollständig sein.`
+        : "Netzwerte: reale Smart-Meter-Differenz 1.8.0/2.8.0.");
+    return {
+        ...energy,
+        gridImportKwh,
+        gridExportKwh,
+        selfConsumptionKwh,
+        selfConsumptionPvBasisKwh: finite(pv) ? pv : null,
+        selfConsumptionPct: percentage(selfConsumptionKwh, pv),
+        autonomyPct: percentage(autonomyNonGrid, house),
+        autonomyConsumptionBasisKwh: finite(house) ? house : null,
+        autonomyGridImportBasisKwh: autonomyGrid,
+        gridTruthSource: "smart_meter",
+        meterCaptureSinceIso: input.captureSinceIso ?? null,
+        notesDe: notes,
+    };
+}
+exports.reconcileEnergeticGridTruth = reconcileEnergeticGridTruth;
 function sumField(days, pick) {
     let total = 0;
     let count = 0;

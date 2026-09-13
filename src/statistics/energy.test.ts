@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { DAY_TELEMETRY_SLOT_MS } from "../learning/day_telemetry/constants";
 import { DOMAIN_QUALITY, encodeQualityMask } from "../learning/day_telemetry/quality_mask";
 import { emptyDayRecord, type PlannerKnowledgeSnapshot } from "../learning/day_telemetry/types";
-import { buildEnergeticDayTotals, sumEnergeticDays } from "./energy";
+import { buildEnergeticDayTotals, reconcileEnergeticGridTruth, sumEnergeticDays } from "./energy";
 
 function fixture(dateKey = "2026-09-10") {
 	const startMs = Date.parse(`${dateKey}T00:00:00+02:00`);
@@ -25,6 +25,19 @@ function fixture(dateKey = "2026-09-10") {
 }
 
 describe("energetische Statistik", () => {
+	it("uses Smart Meter 1.8.0/2.8.0 as the single grid truth", () => {
+		const result = reconcileEnergeticGridTruth(buildEnergeticDayTotals(fixture()), {
+			gridImportKwh: 1.2,
+			gridExportKwh: 0.4,
+			captureSinceIso: "2026-09-10T08:00:00Z",
+		});
+		assert.equal(result.gridImportKwh, 1.2);
+		assert.equal(result.gridExportKwh, 0.4);
+		assert.equal(result.selfConsumptionKwh, 2.6);
+		assert.equal(result.autonomyPct, 65.7);
+		assert.equal(result.gridTruthSource, "smart_meter");
+		assert.match(result.notesDe.join(" "), /erste Tag kann unvollständig/);
+	});
 	it("berechnet Eigenverbrauch, Autarkie und gemessene Geräte-PV-Anteile", () => {
 		const result = buildEnergeticDayTotals(fixture());
 		assert.equal(result.pvGenerationKwh, 3);

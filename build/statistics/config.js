@@ -37,6 +37,7 @@ function statisticsConfigFromAdapter(config) {
         tibberMonthlyBaseEur: numField(c, "tariff_monthly_base_eur", null),
         tibberMonthlyGridFeeEur: numField(c, "tariff_grid_fee_monthly_eur", null),
         feedInCtPerKwh: numField(c, "statistics_feed_in_ct_per_kwh", feedIn),
+        batteryWearCostCtPerKwh: numField(c, "battery_wear_cost_ct_per_kwh", null),
         gridImportEnergyKwhStateId: strField(c, "statistics_grid_import_energy_kwh_state"),
         gridExportEnergyKwhStateId: strField(c, "statistics_grid_export_energy_kwh_state"),
         gridImportPowerWStateId: strField(c, "statistics_grid_import_power_w_state"),

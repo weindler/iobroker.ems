@@ -1,4 +1,5 @@
 import { GLOBAL, addonMode } from "./tree_paths";
+import { isSeasonallyPausedAddon } from "./season_control";
 
 /** Global: nur Dryrun|Live (kein Off). */
 export type GlobalExecutionMode = "dryrun" | "live";
@@ -140,6 +141,7 @@ export async function isLiveWriteAllowed(
 	getState: (id: string) => Promise<ioBroker.State | null | undefined>,
 	addonId: string,
 ): Promise<boolean> {
+	if (isSeasonallyPausedAddon(addonId)) return false;
 	const global = await getState(GLOBAL.executionMode);
 	if (parseGlobalMode(global?.val) !== "live") {
 		return false;
@@ -525,12 +527,11 @@ export async function handleExecutionModeStateChange(
 	if (isGlobal) {
 		await adapter.setStateAsync("execution.safety.global_execution_mode", { val: mode, ack: true });
 	}
-	const adminUpdated = await persistExecutionModeToAdminConfig(adapter, relativeId, mode);
-	adapter.log.info(
-		adminUpdated
-			? `${relativeId} → ${mode} (Objektbaum, Admin übernommen)`
-			: `${relativeId} → ${mode} (Objektbaum)`,
-	);
+	// Runtime modes are deliberately persisted in ioBroker states. Writing the
+	// native instance config here via updateConfig restarts the adapter and can
+	// interrupt an active safe transition. Native mode fields are migration
+	// inputs only; normal mode changes never touch the instance configuration.
+	adapter.log.info(`${relativeId} → ${mode} (Laufzeit, ohne Neustart)`);
 
 	if (addonModeReplanHook) {
 		const addonId = isGlobal

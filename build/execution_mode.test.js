@@ -78,6 +78,30 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         strict_1.default.equal(store.get("addons.immersion_heater.mode")?.val, "live");
         strict_1.default.equal(store.get("addons.immersion_heater.mode")?.ack, true);
     });
+    (0, node_test_1.it)("runtime mode change never updates native config or restarts the instance", async () => {
+        const store = new Map();
+        let updateCalls = 0;
+        const adapter = {
+            namespace: "ems.0",
+            config: { ih_addon_mode: "dryrun" },
+            log: { info: () => { }, warn: () => { } },
+            getStateAsync: async (id) => store.get(id) ?? null,
+            setStateAsync: async (id, st) => {
+                store.set(id, { val: st.val, ack: st.ack ?? false });
+            },
+            setObjectNotExistsAsync: async () => undefined,
+            updateConfig: async () => {
+                updateCalls++;
+            },
+        };
+        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, "ems.0.addons.immersion_heater.mode", {
+            val: "live",
+            ack: false,
+        });
+        strict_1.default.equal(updateCalls, 0);
+        strict_1.default.equal(store.get("addons.immersion_heater.mode")?.val, "live");
+        strict_1.default.equal(store.get("addons.immersion_heater.mode")?.ack, true);
+    });
     (0, node_test_1.it)("syncExecutionModesFromConfig preserves runtime modes when admin unchanged", async () => {
         const store = new Map([
             ["global.execution_mode", { val: "live", ack: true }],

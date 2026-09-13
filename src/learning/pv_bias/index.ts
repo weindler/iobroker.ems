@@ -32,6 +32,7 @@ import {
 	type PersistenceMirrorHost,
 } from "../persistence_mirror";
 import type { StateHost } from "../../ems_light/state_util";
+import { isWinterOperationActive } from "../../season_control";
 
 let pvBiasTimer: NodeJS.Timeout | null = null;
 let learningTickInFlight = false;
@@ -93,14 +94,17 @@ async function runLearningTick(
 	if (learningTickInFlight) return;
 	learningTickInFlight = true;
 	try {
+		const seasonalPause = isWinterOperationActive();
 		/*
 		 * Boiler zuerst: Live-Diagnose darf nicht hinter PV-Bias/House-Load/90-Tage-Puffer-History
 		 * in der gemeinsamen History-Queue stecken bleiben.
 		 */
-		try {
-			await runThermalBoilerLearning(host, { trigger: trigger === "startup" ? "startup" : "learning_tick" });
-		} catch (e) {
-			host.log.error(`Boiler-Learning tick: ${e instanceof Error ? e.message : String(e)}`);
+		if (!seasonalPause) {
+			try {
+				await runThermalBoilerLearning(host, { trigger: trigger === "startup" ? "startup" : "learning_tick" });
+			} catch (e) {
+				host.log.error(`Boiler-Learning tick: ${e instanceof Error ? e.message : String(e)}`);
+			}
 		}
 		await ensureEnergyDailyRollupForLearning(host);
 		await runPvBiasLearning(host);
@@ -110,7 +114,7 @@ async function runLearningTick(
 		await ensurePowerRollupForLearning(host);
 		// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
 		await runHouseLoadLearning(host);
-		await runThermalRuntimeLearning(host);
+		if (!seasonalPause) await runThermalRuntimeLearning(host);
 		await runBatteryRuntimeLearning(host);
 		try {
 			const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
@@ -139,20 +143,24 @@ async function runLearningTick(
 		 * schreibt ausschließlich in seine eigene Persistenz/States — keine Fremd-Writes, kein
 		 * Einfluss auf andere Learning-Module. Läuft im selben langsamen Lern-Intervall.
 		 */
-		try {
-			await runClimateSharedPowerLearning(host as unknown as ClimateSharedPowerHost);
-		} catch (e) {
-			host.log.error(`climate_shared_power learning: ${e instanceof Error ? e.message : String(e)}`);
+		if (!seasonalPause) {
+			try {
+				await runClimateSharedPowerLearning(host as unknown as ClimateSharedPowerHost);
+			} catch (e) {
+				host.log.error(`climate_shared_power learning: ${e instanceof Error ? e.message : String(e)}`);
+			}
 		}
 		/*
 		 * Predictive Climate Foundation — Thermal Learning. Liest nur day_telemetry,
 		 * schreibt ausschließlich eigene Persistenz/States. Kein Einfluss auf
 		 * planCooling / Runtime / Unified / Shared-Power-Steuerung.
 		 */
-		try {
-			await runClimateThermalLearning(host as unknown as ClimateThermalHost);
-		} catch (e) {
-			host.log.error(`climate_thermal learning: ${e instanceof Error ? e.message : String(e)}`);
+		if (!seasonalPause) {
+			try {
+				await runClimateThermalLearning(host as unknown as ClimateThermalHost);
+			} catch (e) {
+				host.log.error(`climate_thermal learning: ${e instanceof Error ? e.message : String(e)}`);
+			}
 		}
 		/*
 		 * PHASE 5 — Shadow/Counterfactual-Engine. Rein additiv/diagnostisch, liest nur

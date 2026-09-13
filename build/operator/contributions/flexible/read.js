@@ -33,6 +33,7 @@ const climate_shared_power_1 = require("../../../learning/climate_shared_power")
 const constants_2 = require("../../../learning/pv_horizon/constants");
 const tree_paths_1 = require("../../../tree_paths");
 const execution_mode_1 = require("../../../execution_mode");
+const season_control_1 = require("../../../season_control");
 const mode_policy_1 = require("../../../planner/mode_policy");
 const intent_read_2 = require("../../../addons/immersion_heater/runtime/intent_read");
 const time_1 = require("../../time");
@@ -531,7 +532,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             addonEnabled: immersionEnabled !== false,
             governanceEnabled: immersionGov,
             globalModeOff,
-            addonExecutionOff: (0, execution_mode_1.parseAddonMode)(immersionModeRaw) === "off",
+            addonExecutionOff: (0, execution_mode_1.parseAddonMode)(immersionModeRaw) === "off" || (0, season_control_1.isWinterOperationActive)(),
             modePolicy,
             config: immersionConfig,
             bufferTempC: bufferTemp,
@@ -563,7 +564,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             addonEnabled: climateEnabled !== false,
             governanceEnabled: climateGov,
             globalModeOff,
-            addonExecutionOff: (0, execution_mode_1.parseAddonMode)(climateModeRaw) === "off",
+            addonExecutionOff: (0, execution_mode_1.parseAddonMode)(climateModeRaw) === "off" || (0, season_control_1.isWinterOperationActive)(),
             modePolicy,
             acConfig,
             outdoorTempC: outdoorTemp,

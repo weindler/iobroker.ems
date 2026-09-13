@@ -36,6 +36,7 @@ import type { ClimateSharedPowerStat } from "../../../learning/climate_shared_po
 import { PV_HORIZON_DAY_COUNT, PV_HORIZON_EXTENDED_FIRST_DAY } from "../../../learning/pv_horizon/constants";
 import { addonEnabled, addonMode } from "../../../tree_paths";
 import { parseAddonMode } from "../../../execution_mode";
+import { isWinterOperationActive } from "../../../season_control";
 import { plannerModePolicyFromGlobalMode, type PlannerModePolicy } from "../../../planner/mode_policy";
 import { parseResolvedIntentJson, resolvedModeFromIntent } from "../../../addons/immersion_heater/runtime/intent_read";
 import type { GridSupplyForecast } from "../../types";
@@ -698,7 +699,7 @@ export async function collectFlexibleContributions(
 			addonEnabled: immersionEnabled !== false,
 			governanceEnabled: immersionGov,
 			globalModeOff,
-			addonExecutionOff: parseAddonMode(immersionModeRaw) === "off",
+			addonExecutionOff: parseAddonMode(immersionModeRaw) === "off" || isWinterOperationActive(),
 			modePolicy,
 			config: immersionConfig,
 			bufferTempC: bufferTemp,
@@ -730,7 +731,7 @@ export async function collectFlexibleContributions(
 			addonEnabled: climateEnabled !== false,
 			governanceEnabled: climateGov,
 			globalModeOff,
-			addonExecutionOff: parseAddonMode(climateModeRaw) === "off",
+			addonExecutionOff: parseAddonMode(climateModeRaw) === "off" || isWinterOperationActive(),
 			modePolicy,
 			acConfig,
 			outdoorTempC: outdoorTemp,

@@ -26,6 +26,7 @@ const config_2 = require("../../intent/config");
 const data_dir_1 = require("../data_dir");
 const history_bridge_1 = require("../history_bridge");
 const persistence_mirror_1 = require("../persistence_mirror");
+const season_control_1 = require("../../season_control");
 let pvBiasTimer = null;
 let learningTickInFlight = false;
 /** Phase B — Learning-States ohne Timer oder Persist-Restore. */
@@ -70,15 +71,18 @@ async function runLearningTick(host, trigger = "interval") {
         return;
     learningTickInFlight = true;
     try {
+        const seasonalPause = (0, season_control_1.isWinterOperationActive)();
         /*
          * Boiler zuerst: Live-Diagnose darf nicht hinter PV-Bias/House-Load/90-Tage-Puffer-History
          * in der gemeinsamen History-Queue stecken bleiben.
          */
-        try {
-            await (0, thermal_boiler_1.runThermalBoilerLearning)(host, { trigger: trigger === "startup" ? "startup" : "learning_tick" });
-        }
-        catch (e) {
-            host.log.error(`Boiler-Learning tick: ${e instanceof Error ? e.message : String(e)}`);
+        if (!seasonalPause) {
+            try {
+                await (0, thermal_boiler_1.runThermalBoilerLearning)(host, { trigger: trigger === "startup" ? "startup" : "learning_tick" });
+            }
+            catch (e) {
+                host.log.error(`Boiler-Learning tick: ${e instanceof Error ? e.message : String(e)}`);
+            }
         }
         await (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host);
         await (0, run_1.runPvBiasLearning)(host);
@@ -88,7 +92,8 @@ async function runLearningTick(host, trigger = "interval") {
         await (0, power_rollup_1.ensurePowerRollupForLearning)(host);
         // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
         await (0, house_load_1.runHouseLoadLearning)(host);
-        await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
+        if (!seasonalPause)
+            await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
         await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
         try {
             const timezone = (0, config_2.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
@@ -119,22 +124,26 @@ async function runLearningTick(host, trigger = "interval") {
          * schreibt ausschließlich in seine eigene Persistenz/States — keine Fremd-Writes, kein
          * Einfluss auf andere Learning-Module. Läuft im selben langsamen Lern-Intervall.
          */
-        try {
-            await (0, climate_shared_power_1.runClimateSharedPowerLearning)(host);
-        }
-        catch (e) {
-            host.log.error(`climate_shared_power learning: ${e instanceof Error ? e.message : String(e)}`);
+        if (!seasonalPause) {
+            try {
+                await (0, climate_shared_power_1.runClimateSharedPowerLearning)(host);
+            }
+            catch (e) {
+                host.log.error(`climate_shared_power learning: ${e instanceof Error ? e.message : String(e)}`);
+            }
         }
         /*
          * Predictive Climate Foundation — Thermal Learning. Liest nur day_telemetry,
          * schreibt ausschließlich eigene Persistenz/States. Kein Einfluss auf
          * planCooling / Runtime / Unified / Shared-Power-Steuerung.
          */
-        try {
-            await (0, climate_thermal_1.runClimateThermalLearning)(host);
-        }
-        catch (e) {
-            host.log.error(`climate_thermal learning: ${e instanceof Error ? e.message : String(e)}`);
+        if (!seasonalPause) {
+            try {
+                await (0, climate_thermal_1.runClimateThermalLearning)(host);
+            }
+            catch (e) {
+                host.log.error(`climate_thermal learning: ${e instanceof Error ? e.message : String(e)}`);
+            }
         }
         /*
          * PHASE 5 — Shadow/Counterfactual-Engine. Rein additiv/diagnostisch, liest nur

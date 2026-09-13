@@ -8,6 +8,28 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.3.0] – 2026-09-13
+
+### Added
+
+- Laufzeitumschaltung des globalen Modus ohne Native-Config-Schreibzugriff und ohne Adapterneustart; Admin-Bedienung mit bestätigter Rückmeldung.
+- Optionaler externer Winterbetrieb: Klima und Heizstab werden sicher aus Planung und Geräte-Writes genommen; der letzte bestätigte Zustand bleibt bei Quellenausfall erhalten.
+- Erklärter Pauschalwert für Batterieverschleiß sowie Admin-Übersicht für Speicher und unterschiedliche Aufbewahrungsfristen.
+- Eigene Seite „Planung / 72 Stunden“, gegliederte PV-Rohwert-/Bias-Anzeige und verständlicher Sieben-Tage-PV-/Preisausblick.
+
+### Changed
+
+- Tab-Reihenfolge auf die morgendliche Schnellübersicht ausgerichtet; Statistik steht am Ende, Netzausgleich ist in die Batterieseite integriert.
+- Statistik zeigt genau den gewählten Zeitraum statt „Heute“ doppelt; Schnellader-Eingabe nur bei offenen Vorgängen.
+- Auto-Ladevergleich zieht Grid Rewards ab und berücksichtigt Einspeisevergütung, Batterieverluste und optionalen Verschleiß.
+- Policy- und Ladeauftragsfelder wurden fachlich nach Global, Tarif und Wallbox verschoben; Plan-Vergleich wurde entfernt.
+- Technische Begriffe in den normalen Batterie-, Planungs- und Statistikansichten durch deutsche Erklärungen ersetzt.
+
+### Removed
+
+- Normale VIS-Kacheln für Tagesbewertung, pauschale Wirtschaftlichkeit und theoretischen Vergleich „ohne EMS“.
+- Eigenständige Admin-Tabs „Policy“, „Intent“ und „Plan-Vergleich“ sowie der separate VIS-Tab „Grid Balance“.
+
 ## [0.2.28] – 2026-09-12
 
 ### Added

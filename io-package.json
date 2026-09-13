@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.2.29",
+		"version": "0.3.0",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.3.0": {
+				"en": "Major usability release: runtime mode switching without adapter restart, optional winter-state pause for climate/immersion planning, clearer planning and device pages, Grid Balance integrated into Battery, coherent period statistics, corrected Grid Rewards comparison, optional battery-wear cost and storage/retention overview.",
+				"de": "Großes Bedienungsupdate: Laufzeitmodi ohne Adapterneustart, optionale Winter-Sperre für Klima-/Heizstabplanung, klarere Planungs- und Geräteseiten, Netzausgleich in Batterie integriert, konsistente Zeitraumstatistik, korrigierter Grid-Rewards-Vergleich, optionaler Batterieverschleiß und Speicher-/Aufbewahrungsübersicht."
+			},
 			"0.2.29": {
 				"en": "Energy Manager dashboard: live per-device power with estimated PV/battery/grid origin, reconciled day/month/period statistics, EV charging scenario comparison including Grid Rewards, feed-in tariff and battery losses, battery-refill assessment, actionable charging recommendation, and a transparent seven-day outlook. Technical AI controls and wording were removed from the normal configuration and runtime.",
 				"de": "Energiemanager-Dashboard: Live-Leistung je Gerät mit rechnerischer Herkunft aus PV/Batterie/Netz, konsistente Tages-/Monats-/Zeitraumstatistik, Autolade-Vergleich inklusive Grid Rewards, Einspeisevergütung und Batterieverlusten, Prüfung der Wiederaufladung, konkrete Ladeempfehlung sowie transparenter 7-Tage-Ausblick. Technische KI-Bedienelemente und Begriffe wurden aus normaler Konfiguration und Laufzeit entfernt."

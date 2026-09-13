@@ -36,6 +36,70 @@
 					"xl": 4,
 					"help": "Global Dryrun: keine realen Schaltbefehle. Global Live: reale Steuerung nur für Add-ons, die selbst auf Live stehen."
 				},
+				"hRuntimeModes": {
+					"type": "header", "size": 2, "text": "Laufzeitmodi – ohne Adapterneustart",
+					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+				},
+				"runtime_global_mode": {
+					"type": "selectSendTo", "label": "Gesamtsteuerung – Laufzeitmodus", "command": "getExecutionModeOptions",
+					"jsonData": "{\"target\":\"global\"}", "manual": false, "noTranslation": true, "doNotSave": true,
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"runtime_global_mode_apply": {
+					"type": "sendTo", "label": "Gesamtmodus sofort umschalten", "command": "setExecutionMode",
+					"jsonData": "{\"target\":\"global\",\"mode\":\"${data.runtime_global_mode}\"}", "showProcess": true, "timeout": 15000,
+					"result": {"ok": "Modus ist ohne Neustart aktiv", "error": "Umschaltung fehlgeschlagen"},
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"runtime_wallbox_mode": {
+					"type": "selectSendTo", "label": "Auto / Wallbox – Laufzeitmodus", "command": "getExecutionModeOptions",
+					"jsonData": "{\"target\":\"wallbox\"}", "manual": false, "noTranslation": true, "doNotSave": true,
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"runtime_wallbox_mode_apply": {
+					"type": "sendTo", "label": "Auto / Wallbox sofort umschalten", "command": "setExecutionMode",
+					"jsonData": "{\"target\":\"wallbox\",\"mode\":\"${data.runtime_wallbox_mode}\"}", "showProcess": true, "timeout": 15000,
+					"result": {"ok": "Modus ist ohne Neustart aktiv", "error": "Umschaltung fehlgeschlagen"},
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"runtime_battery_mode": {
+					"type": "selectSendTo", "label": "Batterie – Laufzeitmodus", "command": "getExecutionModeOptions",
+					"jsonData": "{\"target\":\"battery\"}", "manual": false, "noTranslation": true, "doNotSave": true,
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"runtime_battery_mode_apply": {
+					"type": "sendTo", "label": "Batterie sofort umschalten", "command": "setExecutionMode",
+					"jsonData": "{\"target\":\"battery\",\"mode\":\"${data.runtime_battery_mode}\"}", "showProcess": true, "timeout": 15000,
+					"result": {"ok": "Modus ist ohne Neustart aktiv", "error": "Umschaltung fehlgeschlagen"},
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"runtime_immersion_heater_mode": {
+					"type": "selectSendTo", "label": "Heizstab – Laufzeitmodus", "command": "getExecutionModeOptions",
+					"jsonData": "{\"target\":\"immersion_heater\"}", "manual": false, "noTranslation": true, "doNotSave": true,
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"runtime_immersion_heater_mode_apply": {
+					"type": "sendTo", "label": "Heizstab sofort umschalten", "command": "setExecutionMode",
+					"jsonData": "{\"target\":\"immersion_heater\",\"mode\":\"${data.runtime_immersion_heater_mode}\"}", "showProcess": true, "timeout": 15000,
+					"result": {"ok": "Modus ist ohne Neustart aktiv", "error": "Umschaltung fehlgeschlagen"},
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"runtime_air_conditioning_mode": {
+					"type": "selectSendTo", "label": "Klima – Laufzeitmodus", "command": "getExecutionModeOptions",
+					"jsonData": "{\"target\":\"air_conditioning\"}", "manual": false, "noTranslation": true, "doNotSave": true,
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"runtime_air_conditioning_mode_apply": {
+					"type": "sendTo", "label": "Klima sofort umschalten", "command": "setExecutionMode",
+					"jsonData": "{\"target\":\"air_conditioning\",\"mode\":\"${data.runtime_air_conditioning_mode}\"}", "showProcess": true, "timeout": 15000,
+					"result": {"ok": "Modus ist ohne Neustart aktiv", "error": "Umschaltung fehlgeschlagen"},
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+
+				"runtime_modes_hint": {
+					"type": "staticText", "text": "Die Add-on-Modi können ebenfalls ohne Neustart über die beschreibbaren Zustände addons.&lt;addon&gt;.mode umgeschaltet werden. Der bestätigte Zustand ist maßgeblich; die Felder werden nicht mehr in die Native-Konfiguration zurückgeschrieben.",
+					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+				},
 				"introPlannerOff": {
 					"type": "staticText",
 					"xs": 12,
@@ -266,6 +330,47 @@
 					"lg": 3,
 					"xl": 3
 				},
+				"hSeasonControl": {
+					"type": "header",
+					"size": 2,
+					"text": "Sommer- / Winterbetrieb",
+					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+				},
+				"winter_operation_state": {
+					"type": "objectId",
+					"label": "Winterbetrieb aktiv (bool, optional)",
+					"types": ["state"],
+					"help": "True: Klima- und Heizstabplanung samt zugehörigem Lernen pausieren. False: Betrieb entsprechend dem jeweiligen Add-on-Modus. Bei Ausfall bleibt der letzte bestätigte Wert erhalten.",
+					"xs": 12, "sm": 12, "md": 8, "lg": 8, "xl": 8
+				},
+				"winter_operation_invert": {
+					"type": "checkbox",
+					"label": "Signal umkehren (True bedeutet Sommerbetrieb)",
+					"default": false,
+					"xs": 12, "sm": 12, "md": 4, "lg": 4, "xl": 4
+				},
+				"hGlobalRules": {
+					"type": "header", "size": 2, "text": "Globale Regeln für aktive Add-ons",
+					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+				},
+				"global_policy_energy_priority_json": {
+					"type": "text", "label": "Energie-Priorität (erweiterte Einstellung)", "default": "",
+					"help": "Optional. Leer verwendet die sichere Standardreihenfolge. Eine benutzerfreundliche Sortierauswahl folgt; ungültige Eingaben werden nicht übernommen.",
+					"xs": 12, "sm": 12, "md": 6, "lg": 6, "xl": 6
+				},
+				"global_policy_mutual_exclusions_json": {
+					"type": "text", "label": "Zusätzliche gegenseitige Ausschlüsse (erweitert)", "default": "",
+					"help": "Die festen Sicherheitsausschlüsse sind immer aktiv. Leer lassen, wenn keine projektspezifische Sonderregel benötigt wird.",
+					"xs": 12, "sm": 12, "md": 6, "lg": 6, "xl": 6
+				},
+				"intent_timezone": {
+					"type": "text", "label": "Zeitzone", "default": "Europe/Berlin",
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"intent_manual_override_max_minutes": {
+					"type": "text", "label": "Maximale manuelle Übersteuerung (Minuten, optional)", "placeholder": "z. B. 120",
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
 				"climate_control_note": {
 					"type": "staticText",
 					"text": "Die Klima-Geräte werden ausschließlich nach den konfigurierten Regeln, Prognosen und Sicherheitsgrenzen geplant.",
@@ -323,6 +428,19 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				},
+				"hWallboxDefaults": {
+					"type": "header", "size": 2, "text": "Standardvorgaben für Ladeaufträge",
+					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+				},
+				"intent_default_charge_strategy": {
+					"type": "select", "label": "Standard-Ladestrategie (optional)", "default": "",
+					"options": [{"label":"Keine Vorgabe","value":""},{"label":"Aus","value":"off"},{"label":"Minimum + PV","value":"min_pv"},{"label":"Nur PV","value":"pv"},{"label":"Sofort","value":"immediate"}],
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"intent_default_target_soc_pct": {
+					"type": "text", "label": "Standard-Ziel-SOC (%, optional)", "placeholder": "z. B. 80",
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
 				},
 				"hEvccControlWrite": {
 					"type": "header",
@@ -1792,6 +1910,13 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				},
+				"battery_wear_cost_ct_per_kwh": {
+					"type": "number",
+					"label": "Pauschaler Batterieverschleiß (ct je entnommener kWh, optional)",
+					"min": 0, "max": 100, "step": 0.1,
+					"help": "Vereinfachter Tendenzwert: geschätzte Batteriekosten ÷ erwarteter Energieumsatz über die Lebensdauer. Leer oder 0 = Verschleiß nicht in Euro bewerten. Der Wert ist keine exakte Alterungsdiagnose.",
+					"xs": 12, "sm": 12, "md": 4, "lg": 4, "xl": 4
 				},
 				"hBatProfile": {
 					"type": "header",
@@ -10404,6 +10529,24 @@
 					"md": 4,
 					"lg": 4,
 					"xl": 4
+				},
+				"hGridLimits": {
+					"type": "header", "size": 2, "text": "Netzanschluss und Leistungsgrenzen",
+					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+				},
+				"global_policy_house_fuse_limit_w": {
+					"type": "number", "label": "Haus-Sicherung (W, optional)", "min": 0,
+					"help": "Harte Obergrenze des Hausanschlusses. Flexible Verbraucher werden darunter begrenzt.",
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"global_policy_max_grid_import_w": {
+					"type": "number", "label": "Maximaler Netzbezug (W, optional)", "min": 0,
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+				},
+				"global_policy_grid_import_allowed": {
+					"type": "checkbox", "label": "Netzbezug für flexible Verbraucher erlaubt", "default": true,
+					"help": "Ausschalten sperrt unter anderem Batterie-Netzladung. Der normale unvermeidbare Hausbezug kann dadurch nicht technisch verhindert werden.",
+					"xs": 12, "sm": 12, "md": 4, "lg": 4, "xl": 4
 				}
 			}
 		},
@@ -11939,207 +12082,25 @@
 				}
 			}
 		},
-		"emsLightPolicyTab": {
+		"storageRetentionTab": {
 			"type": "panel",
-			"label": "Policy",
+			"label": "Speicher & Aufbewahrung",
 			"items": {
-				"policyIntro": {
+				"storageIntro": {
 					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Phase 3A: Globale Policy-Grundlage (read-only). Keine Geräteentscheidungen. Leere Felder bleiben unbekannt — kein stiller Fallback auf 0."
+					"text": "Zeigt die tatsächlich von dieser EMS-Instanz belegten Dateien und den freien Platz des Datenträgers. Haltezeiten unterscheiden sich je Datenart; alte Daten werden weiterhin automatisch begrenzt.",
+					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
 				},
-				"global_policy_house_fuse_limit_w": {
-					"type": "number",
-					"label": "Haus-Sicherung (W, optional)",
-					"min": 0,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
+				"storageReport": {
+					"type": "sendTo", "command": "getStorageReport", "jsonData": "{}",
+					"label": "Speicherbelegung jetzt berechnen", "showProcess": true, "timeout": 30000,
+					"result": {"ok": "Speicherbelegung ermittelt", "error": "Speicherbelegung nicht ermittelbar"},
+					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
 				},
-				"global_policy_max_grid_import_w": {
-					"type": "number",
-					"label": "Max. Netzbezug (W, optional)",
-					"min": 0,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"global_policy_grid_import_allowed": {
-					"type": "checkbox",
-					"label": "Netzbezug grundsätzlich erlaubt (optional)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"global_policy_energy_priority_json": {
-					"type": "text",
-					"label": "Energie-Priorität (JSON-Array, optional)",
-					"default": "",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"global_policy_mutual_exclusions_json": {
-					"type": "text",
-					"label": "Mutual Exclusions (JSON-Array, optional)",
-					"default": "",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				}
-			}
-		},
-		"emsLightIntentTab": {
-			"type": "panel",
-			"label": "Intent",
-			"items": {
-				"intentIntro": {
+				"retentionExplanation": {
 					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Phase 3B: Benutzeraufträge erfassen und normalisieren (read-only). Keine Planner- oder Geräteentscheidungen. Laufzeit-Eingabe: user_intent.inputs.iobroker.wallbox.request_json. Ausgabe: user_intent.wallbox.* (read-only)."
-				},
-				"intentEvccHint": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "EVCC-Datenpunkt-Mappings für Wallbox und Intent: Tab „Wallbox“. Dieser Tab enthält nur Intent-Defaults und ioBroker-Request-Einstellungen."
-				},
-				"hIntentDefaults": {
-					"type": "header",
-					"size": 2,
-					"text": "Intent-Defaults (nur wenn keine höherwertige Quelle)",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12
-				},
-				"intent_default_charge_strategy": {
-					"type": "select",
-					"label": "Default Ladestrategie (optional)",
-					"options": [
-						{
-							"label": "(kein Default)",
-							"value": ""
-						},
-						{
-							"label": "Off",
-							"value": "off"
-						},
-						{
-							"label": "Min+PV",
-							"value": "min_pv"
-						},
-						{
-							"label": "PV",
-							"value": "pv"
-						},
-						{
-							"label": "Sofort",
-							"value": "immediate"
-						}
-					],
-					"default": "",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"intent_default_target_soc_pct": {
-					"type": "text",
-					"label": "Default Ziel-SOC % (optional, leer = kein Default)",
-					"placeholder": "z. B. 80",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"intent_timezone": {
-					"type": "text",
-					"label": "Zeitzone für Deadlines",
-					"default": "Europe/Berlin",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				},
-				"intent_manual_override_max_minutes": {
-					"type": "text",
-					"label": "Max. Manual-Override-Dauer (Min., optional, leer = unbegrenzt)",
-					"placeholder": "z. B. 120",
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
-				}
-			}
-		},
-		"compareTab": {
-			"type": "panel",
-			"label": "Plan-Vergleich",
-			"items": {
-				"compareIntro": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Plan A ist der tatsächlich ausgeführte EMS-Plan. Plan B ist eine reine Vergleichsrechnung mit alternativen Zeitfenstern. Die Vergleichsrechnung löst keine Geräteaktion aus."
-				},
-				"compareStates": {
-					"type": "staticText",
-					"xs": 12,
-					"sm": 12,
-					"md": 12,
-					"lg": 12,
-					"xl": 12,
-					"text": "Für VIS/Grafiken: compare.plan_a.chart_json und compare.plan_b.chart_json (je [{t,pv_w,grid_w,ih_w,ac_w,price_ct}, …], gleiche Zeitachse — zwei Kurven im History-/Flot-Widget). compare.active_plan (a/b) und compare.delta_summary_json enthalten die Zusammenfassung (Kosten/PV/Netz/unallokiert je Plan). Hinweis: ih_w/ac_w zeigen nur die flexible, verschiebbare Leistung — sicherheitsrelevante Pflicht-Zyklen (z. B. Anti-Legionellen) sind bewusst ausgeklammert und laufen unverändert wie geplant."
-				},
-				"getPlanCompareStatusBtn": {
-					"type": "sendTo",
-					"command": "getPlanCompareStatus",
-					"jsonData": "{}",
-					"label": "Status prüfen",
-					"help": "Zeigt, welcher Plan rechnerisch günstiger wäre — löst keine Neuberechnung aus (die läuft automatisch bei jedem neuen Tagesplan).",
-					"showProcess": true,
-					"timeout": 15000,
-					"variant": "outlined",
-					"icon": "info",
-					"result": {
-						"ok": "Status gelesen — Details unter compare.* im Objektbaum",
-						"error": "Status nicht lesbar"
-					},
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
+					"text": "Richtwerte: Tages-Telemetrie meist 90 Tage, Lern-/Rollup-Daten je nach Zweck 120 Tage, Energietageswerte bis 730 Tage; Backups und Supportpakete sind mengenbegrenzt. Die Hochrechnung ist anfangs nur eine Tendenz.",
+					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
 				}
 			}
 		},

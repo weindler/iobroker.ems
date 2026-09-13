@@ -24,6 +24,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-lage{display:flex;align-items:baseline;gap:8px;background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 8px;margin-bottom:4px;flex:0 0 auto;min-width:0}
 .ems-lage-k{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;flex:0 0 auto}
 .ems-lage-v{font-size:10px;color:#c9d1d9;line-height:1.25;flex:1 1 auto;min-width:0}
+.ems-pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1}.ems-pv-day{background:#0d1117;border-radius:6px;padding:6px 8px}.ems-pv-day b{display:block;color:#58a6ff;margin-bottom:2px}.ems-pv-detail{color:#c9d1d9;font-size:10px;line-height:1.4}.ems-pv-foot{color:#8b949e;font-size:9px}
 .ems-assess{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px;margin-bottom:4px;flex:0 0 auto;min-width:0}
 .ems-assess-h{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
 .ems-assess-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
@@ -198,12 +199,12 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	<div id="ems-alerts" class="ems-alerts" style="display:none"></div>
 	<div class="ems-view-tabs" id="ems-view-tabs">
 		<button type="button" class="ems-view-tab on" data-ems-view="ops">Betrieb</button>
-		<button type="button" class="ems-view-tab" data-ems-view="stats">Statistik</button>
+		<button type="button" class="ems-view-tab" data-ems-view="planning">Planung / 72 Stunden</button>
 		<button type="button" class="ems-view-tab" data-ems-view="battery">Batterie</button>
 		<button type="button" class="ems-view-tab" data-ems-view="thermal">Heizstab / Wärme</button>
 		<button type="button" class="ems-view-tab" data-ems-view="climate">Klima</button>
 		<button type="button" class="ems-view-tab" data-ems-view="wallbox">Auto / Wallbox</button>
-		<button type="button" class="ems-view-tab" data-ems-view="grid">Grid Balance</button>
+		<button type="button" class="ems-view-tab" data-ems-view="stats">Statistik</button>
 	</div>
 	<div id="ems-view-ops" class="ems-view-page on">
 	<div class="ems-live" id="ems-now"></div>
@@ -211,6 +212,9 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	<div class="ems-assess" id="ems-assessment" style="display:none"></div>
 	<div class="ems-lage" id="ems-lage" style="display:none"></div>
 	<div class="ems-price" id="ems-price"></div>
+	</div>
+	<div id="ems-view-planning" class="ems-view-page ems-device-view">
+	<div class="ems-page-head"><div><div class="ems-page-title">Planung / 72 Stunden</div><div class="ems-page-sub">Was heute und in den kommenden drei Tagen voraussichtlich geschieht.</div></div></div>
 	<div class="ems-main">
 		<div class="ems-tiles" id="ems-stack"></div>
 		<aside class="ems-timeline" id="ems-next"></aside>
@@ -232,7 +236,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 		<div class="ems-note" id="ems-stats-reason" style="margin-top:4px"></div>
 	</div>
 	<div id="ems-view-battery" class="ems-view-page ems-device-view">
-		<div class="ems-page-head"><div><div class="ems-page-title">Batterie</div><div class="ems-page-sub">Zustand, Nachtreserve, Learning, Energiehistorie und nächste Planner-Aktion.</div></div></div>
+		<div class="ems-page-head"><div><div class="ems-page-title">Batterie</div><div class="ems-page-sub">Aktuelles Template: SonnenBatterie 10 mit Netzausgleich · Zustand, Nachtreserve und heutiger Plan.</div></div></div>
 		<div id="ems-battery-page" class="ems-device-grid"></div>
 	</div>
 	<div id="ems-view-thermal" class="ems-view-page ems-device-view">
@@ -246,10 +250,6 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 	<div id="ems-view-wallbox" class="ems-view-page ems-device-view">
 		<div class="ems-page-head"><div><div class="ems-page-title">Auto / Wallbox</div><div class="ems-page-sub">Fahrzeug-SOC, Zielenergie, PV-/Tibber-Fenster, Grid Rewards und Ladehistorie.</div></div></div>
 		<div id="ems-wallbox-page" class="ems-device-grid"></div>
-	</div>
-	<div id="ems-view-grid" class="ems-view-page ems-device-view">
-		<div class="ems-page-head"><div><div class="ems-page-title">Grid Balance</div><div class="ems-page-sub">Zustand, Freigabe, Sperrgrund, α/β-Learning, Episoden und belastbare Wirtschaftlichkeit.</div></div></div>
-		<div id="ems-grid-page" class="ems-device-grid"></div>
 	</div>
 </div>
 <script>
@@ -2498,10 +2498,15 @@ function visLageSnap(){
 function renderLage(){
 	var el=document.getElementById("ems-lage");
 	if(!el)return;
-	var line=visLageLine(visLageSnap());
+	var snap=visLageSnap(),line=visLageLine(snap);
 	if(!line){el.style.display="none";el.innerHTML="";return;}
 	el.style.display="";
-	el.innerHTML='<div class="ems-lage-k">PV-Lage</div><div class="ems-lage-v">'+esc(line)+"</div>";
+	var bias=snap.biasTodayPct===null?snap.bias7dPct:snap.biasTodayPct;
+	var biasTxt=bias===null?'Korrektur noch in Lernphase':('Bias '+(bias>0?'+':'')+Math.round(bias)+' % · '+(Math.abs(bias)<=8?'ähnlich wie zuletzt':(bias<0?'Prognose zuletzt eher zu hoch':'Prognose zuletzt eher zu niedrig')));
+	el.innerHTML='<div class="ems-lage-k">PV-Prognose</div><div class="ems-pv-grid">'
+		+'<div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTodayKwh,1,'kWh')+' → erwartet '+fmtDec(snap.todayKwh,1,'kWh')+'<br>'+esc(biasTxt)+'</div></div>'
+		+'<div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">Rohwert '+fmtDec(g("learning.pv_horizon.day2.raw_kwh"),1,'kWh')+' → erwartet '+fmtDec(snap.tomorrowKwh,1,'kWh')+'<br>gleiche gelernte Korrekturbasis</div></div>'
+		+'</div><div class="ems-pv-foot">'+esc(line)+'</div>';
 }
 
 function renderLiveStrip(){
@@ -2789,19 +2794,19 @@ function renderHorizon(){
 		var oi,od,olines,oa,kindLabels={battery_charge:"Batterie laden",battery_discharge:"Batterie entladen",immersion_heater:"Heizstab",wallbox:"Wallbox",climate:"Klima",other:"Flexverbrauch"};
 		for(oi=0;oi<outlook.days.length;oi++){
 			od=outlook.days[oi];olines=[];
-			olines.push("PV "+(od.expectedPvKwh==null?"unbekannt":Number(od.expectedPvKwh).toFixed(1).replace(".",",")+" kWh")+" · Haus "+(od.expectedHouseLoadKwh==null?"unbekannt":Number(od.expectedHouseLoadKwh).toFixed(1).replace(".",",")+" kWh"));
+			olines.push("PV "+(od.expectedPvKwh==null?"Prognose wird noch aufgebaut":Number(od.expectedPvKwh).toFixed(1).replace(".",",")+" kWh erwartet")+" · Haus "+(od.expectedHouseLoadKwh==null?"Lernwert wird noch aufgebaut":Number(od.expectedHouseLoadKwh).toFixed(1).replace(".",",")+" kWh erwartet"));
 			if(od.priceCtPerKwh&&od.priceCtPerKwh.min!=null&&od.priceCtPerKwh.max!=null)olines.push("Preis "+Number(od.priceCtPerKwh.min).toFixed(1).replace(".",",")+"–"+Number(od.priceCtPerKwh.max).toFixed(1).replace(".",",")+" ct/kWh"+(od.priceCtPerKwh.complete?"":" · teilweise"));
-			if(od.battery&&od.battery.projectedFirstSocPct!=null&&od.battery.projectedLastSocPct!=null)olines.push("Batterie "+Math.round(od.battery.projectedFirstSocPct)+" → "+Math.round(od.battery.projectedLastSocPct)+" % · min "+Math.round(od.battery.projectedMinSocPct)+" %");
+			if(od.battery&&od.battery.projectedFirstSocPct!=null&&od.battery.projectedLastSocPct!=null)olines.push("Batterie voraussichtlich "+Math.round(od.battery.projectedFirstSocPct)+" % morgens, "+Math.round(od.battery.projectedLastSocPct)+" % abends · niedrigster Stand "+Math.round(od.battery.projectedMinSocPct)+" %");
 			if(od.allocations&&od.allocations.length){
 				var abits=[];
 				for(oa=0;oa<od.allocations.length;oa++)abits.push((kindLabels[od.allocations[oa].kind]||"Flexverbrauch")+" "+Number(od.allocations[oa].energyKwh).toFixed(1).replace(".",",")+" kWh");
 				olines.push("Plan: "+abits.join(", "));
-			}else olines.push("keine Flex-Allokation");
+			}else olines.push("Keine verschiebbare Geräteaktion eingeplant");
 			var dk=String(od.dateKey||"").split("-");
 			var dayLabel=od.dayLabelDe||(dk.length===3?dk[2]+"."+dk[1]+".":String(od.dateKey||"Tag"));
 			outlookHtml+=storyBlock(dayLabel,olines);
 		}
-		if(outlook.complete!==true)outlookHtml+='<div class="ems-next-idle"><div>Prognose deckt aktuell '+esc(String(outlook.coveredHours||0).replace(".",","))+' von 72 Stunden ab.</div></div>';
+		if(outlook.complete!==true)outlookHtml+='<div class="ems-next-idle"><div>Für '+esc(String(outlook.coveredHours||0).replace(".",","))+' Stunden liegen bereits ausreichend Eingangsdaten vor; der restliche Zeitraum wird ergänzt, sobald neue Preis- und Wetterwerte verfügbar sind.</div></div>';
 		outlookHtml+="</div>";
 		paintEl(el,"horizon",outlookHtml);
 		return;
@@ -3014,6 +3019,14 @@ function fmtConfidence(v){
 	return Math.round(n)+" %";
 }
 function fmtDateTimeOrDash(v){return v?fmtDayTime(v):"—";}
+function batteryModeDe(v){
+	var s=txt(v,"").toLowerCase();
+	if(s==="self_consumption")return"Eigenverbrauch";
+	if(s==="charge")return"Laden";
+	if(s==="discharge")return"Entladen";
+	if(s==="idle"||s==="none")return"Bereit";
+	return s||"—";
+}
 function energyStats(scope){return parseObj(g("statistics.energy."+scope+"_json"));}
 function energyShare(kwh,pct){
 	return fmtKwhStats(kwh)+" · "+(num(pct)===null?"Anteil —":Math.round(Number(pct))+" %");
@@ -3125,15 +3138,16 @@ function rewardsScenario(){
 	var charged=num(e.evFastChargedKwh);if(charged===null)charged=num(e.evChargedKwh);
 	var gridK=num(e.evFastGridKwh),batK=num(e.evFastBatteryKwh),pvK=num(e.evFastLocalKwh),gridCost=num(m.homeGridCostEur),reward=num(m.gridRewardsCreditEur);
 	var feed=num(cfg.feedInCtPerKwh);if(feed===null)feed=9.3;
+	var wear=num(cfg.batteryWearCostCtPerKwh);if(wear===null||wear<0)wear=0;
 	var eta=num(g("learning.grid_balance_economics.eta_pv_path"));if(eta===null||eta<0.5||eta>1)eta=0.92;
 	if(charged===null||charged<=0)return null;
 	var avg=gridK&&gridCost!==null?gridCost/gridK:null;
-	var actual=gridCost===null?null:Math.max(0,gridCost-(reward||0))+(pvK||0)*feed/100+(batK||0)*feed/100/eta;
+	var actual=gridCost===null?null:Math.max(0,gridCost-(reward||0))+(pvK||0)*feed/100+(batK||0)*(feed/100/eta+wear/100);
 	var pvOnly=charged*feed/100;
-	var pvBattery=Math.max(0,charged-(batK||0))*feed/100+(batK||0)*feed/100/eta;
+	var pvBattery=Math.max(0,charged-(batK||0))*feed/100+(batK||0)*(feed/100/eta+wear/100);
 	var tibber=avg===null?null:charged*avg;
 	var vals=[actual,pvOnly,pvBattery,tibber].filter(function(v){return v!==null&&isFinite(v);});var best=vals.length?Math.min.apply(null,vals):null;
-	return{actual:actual,pvOnly:pvOnly,pvBattery:pvBattery,tibber:tibber,best:best,reward:reward,feed:feed,eta:eta};
+	return{actual:actual,pvOnly:pvOnly,pvBattery:pvBattery,tibber:tibber,best:best,reward:reward,feed:feed,eta:eta,wear:wear};
 }
 function scenarioLine(label,value,best){return[label,value===null?'nicht berechenbar':fmtEur(value)+(best!==null&&Math.abs(value-best)<0.005?' · günstigste Variante':'')];}
 function evScenarioCard(){
@@ -3141,7 +3155,7 @@ function evScenarioCard(){
 	var actualBest=s.best!==null&&s.actual!==null&&Math.abs(s.actual-s.best)<0.005;
 	return questionCard('Ladevergleich heute',actualBest?'GRID REWARDS WAR SINNVOLL':'ALTERNATIVE WAR GÜNSTIGER',[
 		scenarioLine('Tatsächlich inkl. Rewards',s.actual,s.best),scenarioLine('Nur PV-Überschuss',s.pvOnly,s.best),scenarioLine('PV + Sonnen-Batterie',s.pvBattery,s.best),scenarioLine('Normaler Tibber-Strom',s.tibber,s.best),['Rewards berücksichtigt',s.reward===null?'noch nicht abgerechnet':fmtEur(s.reward)],['Einspeisewert',fmtDec(s.feed,1,'ct/kWh')],
-		['Batterie-Wirkungsgrad',fmtDec(s.eta*100,0,'%')]
+		['Batterie-Wirkungsgrad',fmtDec(s.eta*100,0,'%')],['Batterieverschleiß',s.wear>0?fmtDec(s.wear,1,'ct/kWh'):'nicht bewertet']
 	], 'PV wird mit entgangener Einspeisevergütung bewertet; Batterie mit gelerntem Wirkungsgrad (Fallback 92 %). Unvollständige Messwerte bleiben offen.','#d2a8ff');
 }
 function evRecoveryCard(){
@@ -3151,6 +3165,9 @@ function evRecoveryCard(){
 	if(p!==null&&l!==null)available=Math.max(0,p-l-flex);
 	var eta=num(g("learning.grid_balance_economics.eta_pv_path"));if(eta===null||eta<0.5||eta>1)eta=0.92;
 	var e=energyStats('today'),used=num(e.evFastBatteryKwh),ok=used!==null&&available>=used/eta;
+	if(used!==null&&used<=0.05)return questionCard('Batterie fürs Auto','NACHTRESERVE UNVERÄNDERT',[
+		['Für das Auto entnommen','0,0 kWh'],['Batterieschutz','aktiv']
+	],'Die Hausbatterie wurde für diese Autoladung nicht verwendet.','#3fb950');
 	return questionCard('Batterie fürs Auto',used===null?'NOCH NICHT BEWERTBAR':(ok?'BIS PV-ENDE WIEDER AUFFÜLLBAR':'RESERVE SCHÜTZEN'),[
 		['Für Auto entnommen',fmtKwhStats(used)],['Bis heute Abend frei erwartet',fmtDec(available,1,'kWh')],['Mit Ladeverlust benötigt',used===null?'—':fmtDec(used/eta,1,'kWh')]
 	],used===null?'Für eine Aussage fehlt die gemessene Batterieentnahme während der Autoladung.':(ok?'Die Vorschau reicht rechnerisch zum Wiederauffüllen; Nachtreserve und Pflichtverbraucher bleiben vorrangig.':'Die Vorschau reicht nicht sicher zum Wiederauffüllen. EMS soll die Batterie nicht zusätzlich fürs Auto leeren.'),'#58a6ff');
@@ -3165,14 +3182,16 @@ function evRecommendationCard(){
 	],why,'#d2a8ff');
 }
 function sevenDayForecastCard(){
-	var out=operatorOutlook(),known=out&&Array.isArray(out.days)?out.days:[],html='<div class="ems-q-card" style="grid-column:1/-1"><div class="ems-q-k">7-Tage-Energieausblick</div><div class="ems-q-v">Planen, ohne Preise zu erfinden</div>';
+	var out=operatorOutlook(),known=out&&Array.isArray(out.days)?out.days:[],html='<div class="ems-q-card" style="grid-column:1/-1"><div class="ems-q-k">PV- und Preis-Ausblick · 7 Tage</div><div class="ems-q-v">Veröffentlichte Preise und vorsichtige Tendenz</div>';
 	for(var d=1;d<=7;d++){
 		var day=known[d-1]||{},pv=num(day.expectedPvKwh);if(pv===null)pv=num(g('learning.pv_horizon.day'+d+'.corrected_kwh'));
-		var lo=num(day.priceCtPerKwh&&day.priceCtPerKwh.min),hi=num(day.priceCtPerKwh&&day.priceCtPerKwh.max),price=lo!==null&&hi!==null?fmtDec(lo,1,'')+'–'+fmtDec(hi,1,' ct/kWh'):(d<=2?'Preis noch nicht vollständig':'Tendenz unsicher · Börsenpreis offen');
-		var conf=d<=2?'hoch/mittel':'niedrig';
-		html+='<div class="ems-forecast-row"><b>Tag '+d+'</b><span>PV '+fmtDec(pv,1,'kWh')+'</span><span>'+esc(price)+'</span><span>Preis-Sicherheit: '+conf+'</span></div>';
+		var lo=num(day.priceCtPerKwh&&day.priceCtPerKwh.min),hi=num(day.priceCtPerKwh&&day.priceCtPerKwh.max),published=lo!==null&&hi!==null;
+		var price=published?fmtDec(lo,1,'')+'–'+fmtDec(hi,1,' ct/kWh'):(d<=2?'noch nicht vollständig':'normal bis eher günstig');
+		var status=published?(day.priceCtPerKwh.complete?'vollständig veröffentlicht':'teilweise veröffentlicht'):'nur geschätzt';
+		var trust=published?'—':'gering · Lernphase';
+		html+='<div class="ems-forecast-row"><b>Tag '+d+'</b><span>PV '+fmtDec(pv,1,'kWh')+'</span><span>'+esc(price)+'</span><span>'+esc(status)+(published?'':' · Vertrauen '+trust)+'</span></div>';
 	}
-	return html+'<div class="ems-q-note">Verbindliche Tibberpreise werden nur angezeigt, wenn sie wirklich vorliegen. Tag 3–7 nutzt PV-/Lastprognosen; die Preisangabe bleibt bewusst eine unsichere Tendenz.</div></div>';
+	return html+'<div class="ems-q-note">Veröffentlichte Preise sind verbindliche Tibberwerte. Tendenzen ab Tag 3 sind gelernte Schätzungen und können deutlich abweichen.</div></div>';
 }
 function pageSection(title){return'<div class="ems-device-section">'+esc(title)+'</div>';}
 function decisionExplanation(decision,fallback){
@@ -3219,7 +3238,7 @@ function renderBatteryPage(){
 	html+=questionCard("1 · Was ist der aktuelle Zustand?",fault?"Störung / Lockout":motion.label,[
 		["SOC",soc===null?"—":Math.round(soc)+" %"],
 		["Leistung",power===null?"—":Math.round(Math.abs(power))+" W"],
-		["Betriebsart",txt(g("addons.battery.telemetry.operating_mode"),"—")],
+		["Betriebsart",batteryModeDe(g("addons.battery.telemetry.operating_mode"))],
 		["Setpoint-Owner",txt(g("addons.battery.runtime.battery_setpoint_owner"),"—")],
 		["Telemetrie",isOn(g("addons.battery.telemetry.stale"))?"veraltet":"aktuell"]
 	],txt(g("addons.battery.runtime.reason_de"),""),"#58a6ff");
@@ -3240,7 +3259,7 @@ function renderBatteryPage(){
 		["Plan-Ziel",target===null?"—":Math.round(target)+" %"],
 		["Nächstes Fenster",next?fmtSmartTime(next.t)+" · "+Math.round(next.w)+" W":"keines"],
 		["Geplante Energie",decision?fmtDec(decision.plannedEnergyKwh,2,"kWh"):"—"],
-		["Reserve bei PV-Ende",fmtPct(g("planner.battery_reserve.required_soc_at_pv_end_pct"))]
+		["Benötigter Reserve-SOC am Abend",fmtPct(g("planner.battery_reserve.required_soc_at_pv_end_pct"))]
 	],decisionExplanation(decision,txt(g("operator.plan.battery_strategy_de"),"")),"#58a6ff");
 	html+=questionCard("4 · Warum?",fault?"Die Störung hat Vorrang":batteryWhy,[
 		["Planentscheidung",batteryWhy],
@@ -3249,6 +3268,14 @@ function renderBatteryPage(){
 		["Top-Off",isOn(g("learning.battery_runtime.topoff_due"))?"fällig":"nicht fällig"],
 		["Netzausgleich",gbStatus().label+(gbStatus().reason?" · "+gbStatus().reason:"")]
 	],"SOC-Grenzen, Nachtreserve, Geräteschutz und eine laufende Autoladung haben immer Vorrang vor der Preisoptimierung.","#58a6ff");
+	var gb=gbStatus(),gbActive=isOn(g("addons.battery.grid_balance.active"));
+	html+=questionCard("Netzausgleich",gbActive?"AKTIV":"DERZEIT "+gb.label,[
+		["Aktuelle Leistung",fmtW(g("addons.battery.grid_balance.effective_discharge_w"))],
+		["Netzleistung",fmtW(g("addons.battery.grid_balance.grid_power_w"))],
+		["Preis jetzt",fmtDec(g("addons.battery.grid_balance.current_price_ct_kwh"),1,"ct/kWh")],
+		["Freigabe ab",fmtDec(g("addons.battery.grid_balance.price_min_ct_kwh"),1,"ct/kWh")],
+		["Heute ausgeglichen",fmtDec(energyToday.gridBalanceDischargeKwh,2,"kWh")]
+	],gb.reason||"Der Netzausgleich reagiert nur auf echten Netzbezug. Beim Netzladen der Batterie und beim tatsächlichen Schnellladen des Autos bleibt er gesperrt.","#3fb950");
 	paintEl(el,"battery-page",html);
 }
 
@@ -3867,43 +3894,30 @@ function renderStatistics(){
 	var evalKey=txt(g("learning.daily_evaluator.last_evaluated_date_key"),"");
 	var shadowKey=txt(g("learning.shadow_engine.last_evaluated_date_key"),"");
 	var evalFindings=txt(g("learning.daily_evaluator.last_day_findings_count"),"—");
-	grid.innerHTML=
-		statsCard("Energiebilanz heute",pctHero(energyT.autonomyPct,"Autarkie"),energeticRows(energyT),energeticNote(energyT))
-		+statsCard("Energiebilanz · "+(energyP.periodLabelDe||periodLabel),pctHero(energyP.autonomyPct,"Autarkie"),energeticRows(energyP),joinNotes(
+	var todaySelected=periodId==="today";
+	var energyCards=todaySelected
+		? statsCard("Energiebilanz heute",pctHero(energyT.autonomyPct,"Autarkie"),energeticRows(energyT),energeticNote(energyT))
+		: statsCard("Energiebilanz · "+(energyP.periodLabelDe||periodLabel),pctHero(energyP.autonomyPct,"Autarkie"),energeticRows(energyP),joinNotes(
 			energyP.daysWithTelemetry==null?"":String(energyP.daysWithTelemetry)+" von "+String(energyP.daysTotal||0)+" Tagen mit Telemetrie.",
 			energeticNote(energyP)
-		))
-		+statsCard("PV-Nutzung der Geräte · "+(energyP.periodLabelDe||periodLabel),pctHero(energyP.selfConsumptionPct,"Eigenverbrauch"),energeticDeviceRows(energyP),"PV-Anteile werden nur bei vollständiger zeitgleicher Messung ausgewiesen. Schnell/now: Netz und Sonnen-Batterie proportional zur Hausversorgung; der Rest ist PV/lokal.")
-		+statsCard("Nutzen ohne Eurobewertung · "+(energyP.periodLabelDe||periodLabel),{cls:"neu",txt:"energetisch ausgewiesen"},nonMonetizedRows(energyP),(function(){
-			var n=energyP&&energyP.nonMonetized;
+		));
+	var shownEnergy=todaySelected?energyT:energyP;
+	var scopeLabel=todaySelected?"Heute":(energyP.periodLabelDe||periodLabel);
+	grid.innerHTML=energyCards
+		+statsCard("PV-Nutzung der Geräte · "+scopeLabel,pctHero(shownEnergy.selfConsumptionPct,"Eigenverbrauch"),energeticDeviceRows(shownEnergy),"PV-Anteile werden nur bei vollständiger zeitgleicher Messung ausgewiesen. Schnellladen: Netz und Sonnen-Batterie werden proportional zur gemessenen Hausversorgung aufgeteilt; der Rest ist PV/lokal.")
+		+statsCard("Nutzen ohne Eurobewertung · "+scopeLabel,{cls:"neu",txt:"energetisch ausgewiesen"},nonMonetizedRows(shownEnergy),(function(){
+			var n=shownEnergy&&shownEnergy.nonMonetized;
 			return n&&Array.isArray(n.notesDe)?n.notesDe.join(" "):"Pelletentlastung, vermiedene Kesselstarts und Verschleiß bleiben ohne belastbare Messquelle unbewertet.";
 		})())
-		+statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),homeTodayNote)
-		+statsCard(periodCardTitle("Haus",homeP,"Dieser Monat")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote)
-		+statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,""))
-		+statsCard(periodCardTitle("Mobilität",mobP,"Dieser Monat")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,""))
+		+(todaySelected?statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),homeTodayNote):statsCard(periodCardTitle("Haus",homeP,"Zeitraum")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote))
+		+(todaySelected?statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,"")):statsCard(periodCardTitle("Mobilität",mobP,"Zeitraum")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,"")))
 		+evScenarioCard()
 		+evRecoveryCard()
 		+sevenDayForecastCard()
-		+statsCard("Schnellader",{cls:pending.length?"warn":"neu",txt:pending.length?String(pending.length)+" offen":"keine"},[
+		+(pending.length?statsCard("Schnellader",{cls:"warn",txt:String(pending.length)+" offen"},[
 			["Pending kWh",fmtKwhStats(mobT.publicPendingKwh)],
 			["Ack",txt(g("statistics.public_charge.submit_ack_de"),"—")]
-		],pendingNote,"ems-stats-pending")
-		+statsCard("Wirtschaftlichkeit heute",emsAdvantageHero(num(g("economics.today.ems_vorteil_eur"))),econAdvantageRows("economics.today.tarifvorteil_eur","economics.today.ems_vorteil_eur","economics.today.ki_mehrwert_eur","economics.today.grid_rewards_eur"),joinNotes(txt(g("economics.reason_de"),""),gridRewardsPendingHint(homeT.gridRewardsSource,homeT.gridRewardsCreditEur)))
-		+statsCard("Wirtschaftlichkeit "+(txt(g("economics.period.label_de"),"Zeitraum")||"Zeitraum"),emsAdvantageHero(num(g("economics.period.ems_vorteil_eur"))),econAdvantageRows("economics.period.tarifvorteil_eur","economics.period.ems_vorteil_eur","economics.period.ki_mehrwert_eur","economics.period.grid_rewards_eur"),"Grid Rewards getrennt, nur Abrechnung in der Euro-Zeile.")
-		+statsCard("Wirtschaftlichkeit kumuliert",emsAdvantageHero(num(g("economics.cumulative.ems_vorteil_eur"))),econAdvantageRows("economics.cumulative.tarifvorteil_eur","economics.cumulative.ems_vorteil_eur","economics.cumulative.ki_mehrwert_eur","economics.cumulative.grid_rewards_eur"),"Seit Statistik-Start. Grid Rewards werden erst nach der Abrechnung als Eurobetrag gewertet.")
-		+statsCard(retrospectiveCardTitle("Tagesbewertung",evalKey),{cls:"neu",txt:fmtScoreStats(num(g("learning.daily_evaluator.last_day_global_score")))},[
-			["Gefundene Hinweise",evalFindings]
-		],txt(g("learning.daily_evaluator.last_day_top_finding_de"),""))
-		+statsCard(retrospectiveCardTitle("Vergleich mit Betrieb ohne EMS",shadowKey),emsAdvantageHero((function(){
-			var real=num(g("learning.shadow_engine.yesterday_real_net_cost_eur"));
-			var noEms=num(g("learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur"));
-			if(real==null||noEms==null)return null;
-			return Math.round((noEms-real)*100)/100;
-		})()),[
-			["Tatsächlicher Betrieb",formatNetCostPhrase(num(g("learning.shadow_engine.yesterday_real_net_cost_eur")),"Netto").replace(/^Netto:\s*/,"")],
-			["Rechnerisch ohne EMS",formatNetCostPhrase(num(g("learning.shadow_engine.yesterday_reference_no_ems_net_cost_eur")),"Netto").replace(/^Netto:\s*/,"")]
-		],"Vergleich des letzten vollständig abgeschlossenen Tages. Bei unvollständigen Messwerten bleibt das Ergebnis offen.");
+		],pendingNote,"ems-stats-pending"):"");
 	var reasonBase=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
 	var pendingHint=gridRewardsPendingHint(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)||gridRewardsPendingHint(homeT.gridRewardsSource,homeT.gridRewardsCreditEur);
 	if(pendingHint)reasonBase=joinNotes(reasonBase,pendingHint);
@@ -3912,7 +3926,7 @@ function renderStatistics(){
 
 var emsViewMode="ops";
 function setEmsView(mode){
-	var allowed=["ops","stats","battery","thermal","climate","wallbox","grid"];
+	var allowed=["ops","planning","battery","thermal","climate","wallbox","stats"];
 	emsViewMode=allowed.indexOf(mode)>=0?mode:"ops";
 	var tabs=document.getElementById("ems-view-tabs");
 	var pages=document.querySelectorAll(".ems-view-page");
@@ -3932,7 +3946,7 @@ function setEmsView(mode){
 	else if(emsViewMode==="thermal")renderThermalPage();
 	else if(emsViewMode==="climate")renderClimatePage();
 	else if(emsViewMode==="wallbox")renderWallboxPage();
-	else if(emsViewMode==="grid")renderGridPage();
+	else if(emsViewMode==="planning"){renderStack();renderNext();renderHorizon();}
 	else renderOperations();
 }
 
@@ -3965,7 +3979,7 @@ function render(){
 	else if(emsViewMode==="thermal")renderThermalPage();
 	else if(emsViewMode==="climate")renderClimatePage();
 	else if(emsViewMode==="wallbox")renderWallboxPage();
-	else if(emsViewMode==="grid")renderGridPage();
+	else if(emsViewMode==="planning"){renderStack();renderNext();renderHorizon();}
 	else renderOperations();
 }
 

@@ -167,20 +167,21 @@ describe("VIS operations dashboard", () => {
 		assert.doesNotThrow(() => new Function(extractScript(visHtml)));
 	});
 
-	it("offers all seven planned areas and generic page navigation", () => {
+	it("offers the user-facing areas in morning workflow order", () => {
 		for (const [id, label] of [
 			["ops", "Betrieb"],
-			["stats", "Statistik"],
+			["planning", "Planung / 72 Stunden"],
 			["battery", "Batterie"],
 			["thermal", "Heizstab / Wärme"],
 			["climate", "Klima"],
 			["wallbox", "Auto / Wallbox"],
-			["grid", "Grid Balance"],
+			["stats", "Statistik"],
 		]) {
 			assert.match(visHtml, new RegExp(`data-ems-view="${id}"[^>]*>${label.replace("/", "\\/")}`));
 			assert.match(visHtml, new RegExp(`id="ems-view-${id}"`));
 		}
-		assert.match(visHtml, /var allowed=\["ops","stats","battery","thermal","climate","wallbox","grid"\]/);
+		assert.match(visHtml, /var allowed=\["ops","planning","battery","thermal","climate","wallbox","stats"\]/);
+		assert.doesNotMatch(visHtml, /data-ems-view="grid"/);
 		assert.match(visHtml, /querySelectorAll\("\.ems-view-page"\)/);
 		assert.match(visHtml, /data-ems-open-view/);
 	});
@@ -242,8 +243,8 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /Batterie-Wirkungsgrad/);
 		assert.match(visHtml, /Bis heute Abend frei erwartet/);
 		assert.match(visHtml, /Ladeempfehlung/);
-		assert.match(visHtml, /7-Tage-Energieausblick/);
-		assert.match(visHtml, /Tag 3–7 nutzt PV-\/Lastprognosen/);
+		assert.match(visHtml, /PV- und Preis-Ausblick · 7 Tage/);
+		assert.match(visHtml, /Tendenzen ab Tag 3 sind gelernte Schätzungen/);
 	});
 
 	it("shows the configured Tibber plug-in handoff separately from the current Rewards signal", () => {
@@ -984,15 +985,15 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(visHtml.includes("forecast_plan.days_json"), true);
 	});
 
-	it("hides Grid Rewards euro unless settled and presents deterministic retrospective in plain language", () => {
+	it("hides unsettled Grid Rewards and removes obsolete retrospective cards", () => {
 		assert.match(visHtml, /function gridRewardsPresent/);
 		assert.match(visHtml, /function gridRewardsShowEuro/);
 		assert.match(visHtml, /function econAdvantageRows/);
-		assert.match(visHtml, /Vergleich mit Betrieb ohne EMS/);
+		assert.doesNotMatch(visHtml, /statsCard\(retrospectiveCardTitle\("Vergleich mit Betrieb ohne EMS"/);
 		assert.match(visHtml, /economics\.today\.grid_rewards_eur/);
 		assert.match(visHtml, /economics\.cumulative\.grid_rewards_eur/);
 		assert.match(visHtml, /Grid Rewards: noch nicht abgerechnet/);
-		assert.match(visHtml, /Gefundene Hinweise/);
+		assert.doesNotMatch(visHtml, /statsCard\(retrospectiveCardTitle\("Tagesbewertung"/);
 		assert.equal(visHtml.includes('retrospectiveCardTitle("KI Analyst"'), false);
 		assert.match(visHtml, /function retrospectiveCardTitle/);
 		assert.match(visHtml, /function fmtDateKeyDe/);

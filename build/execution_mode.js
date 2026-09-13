@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.setAddonModeReplanHook = exports.isExecutionModeStateRelativeId = exports.persistExecutionModeToAdminConfig = exports.executionModeConfigKeyForRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.clampNativeExecutionModesDryrun = exports.NATIVE_EXECUTION_MODE_KEYS = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.isAddonExecutionOff = exports.parseMode = exports.parseAddonMode = exports.parseGlobalMode = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.ADDON_EXECUTION_MODE_STATES = exports.GLOBAL_EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.ADDON_EXECUTION_MODE_STATE_LABELS = exports.GLOBAL_EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = exports.ADDON_EXECUTION_MODES = exports.GLOBAL_EXECUTION_MODES = void 0;
 const tree_paths_1 = require("./tree_paths");
+const season_control_1 = require("./season_control");
 exports.GLOBAL_EXECUTION_MODES = ["dryrun", "live"];
 exports.ADDON_EXECUTION_MODES = ["off", "dryrun", "live"];
 /** @deprecated use ADDON_EXECUTION_MODES / GLOBAL_EXECUTION_MODES */
@@ -90,6 +91,8 @@ function executionModeCommon(name, def = "dryrun", kind = "addon") {
 }
 exports.executionModeCommon = executionModeCommon;
 async function isLiveWriteAllowed(getState, addonId) {
+    if ((0, season_control_1.isSeasonallyPausedAddon)(addonId))
+        return false;
     const global = await getState(tree_paths_1.GLOBAL.executionMode);
     if (parseGlobalMode(global?.val) !== "live") {
         return false;
@@ -384,10 +387,11 @@ async function handleExecutionModeStateChange(adapter, id, state) {
     if (isGlobal) {
         await adapter.setStateAsync("execution.safety.global_execution_mode", { val: mode, ack: true });
     }
-    const adminUpdated = await persistExecutionModeToAdminConfig(adapter, relativeId, mode);
-    adapter.log.info(adminUpdated
-        ? `${relativeId} → ${mode} (Objektbaum, Admin übernommen)`
-        : `${relativeId} → ${mode} (Objektbaum)`);
+    // Runtime modes are deliberately persisted in ioBroker states. Writing the
+    // native instance config here via updateConfig restarts the adapter and can
+    // interrupt an active safe transition. Native mode fields are migration
+    // inputs only; normal mode changes never touch the instance configuration.
+    adapter.log.info(`${relativeId} → ${mode} (Laufzeit, ohne Neustart)`);
     if (addonModeReplanHook) {
         const addonId = isGlobal
             ? "global"

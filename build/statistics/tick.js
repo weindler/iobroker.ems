@@ -731,6 +731,7 @@ async function tickStatistics(host, now = new Date()) {
         iceLPer100Km: cfg.iceLPer100Km,
         gridRewardsEnabled: cfg.gridRewardsEnabled,
         feedInCtPerKwh: cfg.feedInCtPerKwh,
+        batteryWearCostCtPerKwh: cfg.batteryWearCostCtPerKwh,
         statisticsStartDate: cfg.statisticsStartDate,
     };
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.enabled, true);

@@ -54,6 +54,8 @@ const policy_1 = require("./policy");
 const intent_1 = require("./intent");
 const pipeline_1 = require("./pipeline");
 const states_1 = require("./states");
+const season_control_1 = require("./season_control");
+const tick_1 = require("./operator/daily_plan/tick");
 class Ems extends utils.Adapter {
     processingInbox = false;
     constructor(options = {}) {
@@ -75,6 +77,98 @@ class Ems extends utils.Adapter {
             if (obj.callback) {
                 this.sendTo(obj.from, obj.command, (0, mapping_config_1.goeWallboxTemplateFlat)(), obj.callback);
             }
+            return;
+        }
+        if (obj.command === "getExecutionModeOptions") {
+            const msg = (obj.message && typeof obj.message === "object" ? obj.message : {});
+            const target = String(msg.target ?? "global");
+            const relativeId = target === "global" ? tree_paths_1.GLOBAL.executionMode : (0, tree_paths_1.addonMode)(target);
+            void this.getStateAsync(relativeId).then((st) => {
+                const addon = target !== "global";
+                const values = addon ? ["off", "dryrun", "live"] : ["dryrun", "live"];
+                const labels = { off: "Aus", dryrun: "Dry-run", live: "Live" };
+                const current = String(st?.val ?? "dryrun");
+                if (obj.callback)
+                    this.sendTo(obj.from, obj.command, values.map((value) => ({ label: `${labels[value]}${value === current ? " (aktiv)" : ""}`, value })), obj.callback);
+            });
+            return;
+        }
+        if (obj.command === "getStorageReport") {
+            void (async () => {
+                const fs = await import("node:fs/promises");
+                const path = await import("node:path");
+                const { resolveEmsPaths } = await import("./backup_integration/paths.js");
+                const root = resolveEmsPaths(this).runtimeDataDir;
+                let bytes = 0, files = 0;
+                async function walk(dir) {
+                    for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+                        const full = path.join(dir, entry.name);
+                        if (entry.isSymbolicLink())
+                            continue;
+                        if (entry.isDirectory())
+                            await walk(full);
+                        else if (entry.isFile()) {
+                            const stat = await fs.stat(full);
+                            bytes += stat.size;
+                            files++;
+                        }
+                    }
+                }
+                await walk(root);
+                const disk = await fs.statfs(root);
+                const free = Number(disk.bavail) * Number(disk.bsize);
+                const mb = (value) => Math.round(value / 1024 / 1024 * 10) / 10;
+                const projected90 = bytes > 0 ? bytes * 1.5 : 0;
+                if (obj.callback)
+                    this.sendTo(obj.from, obj.command, {
+                        result: "ok", bytes, files, freeBytes: free,
+                        hint: `EMS-Dateien: ${mb(bytes)} MB in ${files} Dateien · Datenträger frei: ${mb(free)} MB · grobe 90-Tage-Tendenz: ${mb(projected90)} MB (bis genügend Wachstumstage vorliegen)`,
+                    }, obj.callback);
+            })().catch((e) => {
+                if (obj.callback)
+                    this.sendTo(obj.from, obj.command, { result: "error", error: e instanceof Error ? e.message : String(e) }, obj.callback);
+            });
+            return;
+        }
+        if (obj.command === "setExecutionMode") {
+            void (async () => {
+                const msg = (obj.message && typeof obj.message === "object" ? obj.message : {});
+                const targets = {
+                    global: tree_paths_1.GLOBAL.executionMode,
+                    wallbox: (0, tree_paths_1.addonMode)("wallbox"),
+                    battery: (0, tree_paths_1.addonMode)("battery"),
+                    immersion_heater: (0, tree_paths_1.addonMode)("immersion_heater"),
+                    air_conditioning: (0, tree_paths_1.addonMode)("air_conditioning"),
+                };
+                const relativeId = targets[String(msg.target ?? "")];
+                const requested = String(msg.mode ?? "").toLowerCase();
+                const valid = relativeId && (relativeId === tree_paths_1.GLOBAL.executionMode
+                    ? requested === "dryrun" || requested === "live"
+                    : requested === "off" || requested === "dryrun" || requested === "live");
+                if (!valid) {
+                    if (obj.callback)
+                        this.sendTo(obj.from, obj.command, { result: "error", error: "Ungültiger Modus" }, obj.callback);
+                    return;
+                }
+                await (0, execution_mode_1.handleExecutionModeStateChange)(this, `${this.namespace}.${relativeId}`, {
+                    val: requested,
+                    ack: false,
+                    ts: Date.now(),
+                });
+                const confirmed = await this.getStateAsync(relativeId);
+                if (obj.callback) {
+                    this.sendTo(obj.from, obj.command, {
+                        result: "ok",
+                        target: msg.target,
+                        mode: confirmed?.val,
+                        hint: `Modus ${String(confirmed?.val ?? requested)} ist ohne Neustart aktiv.`,
+                    }, obj.callback);
+                }
+            })().catch((e) => {
+                const error = e instanceof Error ? e.message : String(e);
+                if (obj.callback)
+                    this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+            });
             return;
         }
         if (obj.command === "requestBackupExport") {
@@ -551,6 +645,7 @@ class Ems extends utils.Adapter {
             this.log.error(`Restore startup recovery failed: ${recovery.error}`);
             return;
         }
+        await (0, season_control_1.initSeasonControl)(this);
         await (0, startup_1.runAdapterBootstrap)(this, this.step.bind(this));
         if (!(0, barrier_1.isBootstrapComplete)()) {
             this.log.warn("EMS adapter: Bootstrap unvollständig — Geräte-Runtime bleibt gesperrt");
@@ -601,6 +696,10 @@ class Ems extends utils.Adapter {
             return;
         }
         if (state) {
+            if (await (0, season_control_1.handleSeasonStateChange)(this, id, state)) {
+                (0, tick_1.requestForcedUnifiedReplan)("season_state_change");
+                return;
+            }
             const rel = id.startsWith(`${this.namespace}.`) ? id.slice(this.namespace.length + 1) : id;
             if ((0, export_handler_1.isBackupRelatedState)(rel)) {
                 await (0, export_handler_1.handleBackupStateChange)(this, rel, state.val, state.ack);

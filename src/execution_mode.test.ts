@@ -89,6 +89,31 @@ describe("execution mode", () => {
 		assert.equal(store.get("addons.immersion_heater.mode")?.ack, true);
 	});
 
+	it("runtime mode change never updates native config or restarts the instance", async () => {
+		const store = new Map<string, ioBroker.State>();
+		let updateCalls = 0;
+		const adapter = {
+			namespace: "ems.0",
+			config: { ih_addon_mode: "dryrun" },
+			log: { info: () => {}, warn: () => {} },
+			getStateAsync: async (id: string) => store.get(id) ?? null,
+			setStateAsync: async (id: string, st: ioBroker.SettableState) => {
+				store.set(id, { val: st.val, ack: st.ack ?? false } as ioBroker.State);
+			},
+			setObjectNotExistsAsync: async () => undefined,
+			updateConfig: async () => {
+				updateCalls++;
+			},
+		};
+		await handleExecutionModeStateChange(adapter, "ems.0.addons.immersion_heater.mode", {
+			val: "live",
+			ack: false,
+		} as ioBroker.State);
+		assert.equal(updateCalls, 0);
+		assert.equal(store.get("addons.immersion_heater.mode")?.val, "live");
+		assert.equal(store.get("addons.immersion_heater.mode")?.ack, true);
+	});
+
 	it("syncExecutionModesFromConfig preserves runtime modes when admin unchanged", async () => {
 		const store = new Map<string, ioBroker.State>([
 			["global.execution_mode", { val: "live", ack: true } as ioBroker.State],

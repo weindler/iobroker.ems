@@ -105,6 +105,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-stats-hero.pos{color:#3fb950}.ems-stats-hero.neg{color:#f85149}.ems-stats-hero.neu{color:#8b949e}
 .ems-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}.ems-flow-part{border-radius:5px;padding:5px;text-align:center;background:#161b22}.ems-flow-part b{display:block;font-size:15px}.ems-flow-part span{font-size:9px;color:#8b949e}.ems-flow-part.pv{border-bottom:3px solid #f2cc60}.ems-flow-part.pv b{color:#f2cc60}.ems-flow-part.bat{border-bottom:3px solid #58a6ff}.ems-flow-part.bat b{color:#58a6ff}.ems-flow-part.grid{border-bottom:3px solid #f85149}.ems-flow-part.grid b{color:#f85149}.ems-flow-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#30363d;margin:7px 0 3px}.ems-flow-bar i{display:block;height:100%}.ems-flow-bar .pv{background:#f2cc60}.ems-flow-bar .bat{background:#58a6ff}.ems-flow-bar .grid{background:#f85149}.ems-forecast-row{display:grid;grid-template-columns:70px 1fr 1.25fr 1.5fr;gap:7px;padding:6px 0;border-bottom:1px solid #30363d;font-size:10px;align-items:center}.ems-forecast-row:last-child{border-bottom:0}.ems-trend{height:7px;background:#30363d;border-radius:5px;overflow:hidden;margin-top:3px}.ems-trend i{display:block;height:100%;border-radius:5px}.ems-trend.good i{background:#3fb950}.ems-trend.normal i{background:#d29922}.ems-trend.bad i{background:#f0883e}.ems-trend.published i{background:#58a6ff}.ems-verdict{font-weight:700}.ems-verdict.good{color:#3fb950}.ems-verdict.warn{color:#d29922}.ems-verdict.bad{color:#f85149}
 .ems-gauge-wrap{display:flex;align-items:center;gap:18px;min-height:94px}.ems-gauge{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto}.ems-gauge:after{content:"";width:66px;height:66px;background:#21262d;border-radius:50%;position:absolute}.ems-gauge-value{z-index:1;text-align:center;font-size:18px;font-weight:800}.ems-gauge-value small{display:block;font-size:9px;color:#8b949e;font-weight:600}.ems-gauge-facts{font-size:11px;line-height:1.55}.ems-gauge-facts b{color:#58a6ff}
+.ems-meter{display:flex;gap:14px;align-items:center}.ems-meter-icon{width:72px;height:86px;border:3px solid #8b949e;border-radius:8px;display:grid;place-items:center;font-size:24px;font-weight:800;color:#58a6ff;background:#161b22}.ems-entry{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.ems-entry input,.ems-entry select{background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:4px;padding:5px;font-size:10px}.ems-entry .wide{grid-column:1/-1}.ems-entry-actions{display:flex;gap:6px;grid-column:1/-1}
 .ems-stats-pending{border-color:#f0883e66}
 @media(max-width:900px){.ems-stats-grid{grid-template-columns:1fr}}
 .ems-main{display:grid;grid-template-columns:minmax(310px,410px) minmax(200px,1fr) minmax(220px,28%);gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
@@ -477,6 +478,11 @@ var stateIds=[
 	INST+".statistics.mobility.period.to_key",
 	INST+".statistics.public_charge.pending_json",
 	INST+".statistics.public_charge.submit_ack_de",
+	INST+".statistics.meter.live_power_w",
+	INST+".statistics.meter.import_1_8_0_kwh",
+	INST+".statistics.meter.export_2_8_0_kwh",
+	INST+".statistics.meter.capture_since_iso",
+	INST+".statistics.meter.source_de",
 	INST+".planner.intent.daily_plan.status",
 	INST+".planner.intent.daily_plan.reason_de",
 	INST+".planner.intent.daily_plan.valid_until",
@@ -3760,6 +3766,16 @@ function nonMonetizedRows(energy){
 		["Verschleißwert",num(n.wearValueEur)===null?"nicht bewertet":fmtEur(n.wearValueEur)]
 	];
 }
+function smartMeterCard(energy,scopeLabel){
+	var live=num(g("statistics.meter.live_power_w")),flow=live===null?"Netzleistung unbekannt":(live>10?"Bezug "+Math.round(live)+" W":(live<-10?"Einspeisung "+Math.round(Math.abs(live))+" W":"nahezu ausgeglichen"));
+	var color=live===null?"#8b949e":(live>10?"#f0883e":(live<-10?"#3fb950":"#8b949e"));
+	return '<div class="ems-card"><div class="ems-card-h"><span class="ems-card-title">Smart Meter · '+esc(scopeLabel)+'</span></div><div class="ems-meter"><div class="ems-meter-icon" style="color:'+color+'">↕</div><div><div class="ems-stats-hero neu" style="color:'+color+'">'+esc(flow)+'</div><div class="ems-rows"><div class="l">Netzbezug</div><div class="r">'+esc(fmtKwhStats(energy.gridImportKwh))+'</div><div class="l">Einspeisung</div><div class="r">'+esc(fmtKwhStats(energy.gridExportKwh))+'</div><div class="l">Erfassung seit</div><div class="r">'+esc(fmtDateTimeOrDash(g("statistics.meter.capture_since_iso")))+'</div></div></div></div><div class="ems-note">'+esc(txt(g("statistics.meter.source_de"),"Smart Meter nicht konfiguriert"))+'</div></div>';
+}
+function publicChargeEntryCard(pending){
+	var latest=pending[pending.length-1]||{},estimated=num(latest.estimatedKwh),options="";
+	for(var i=0;i<pending.length;i++){var p=pending[i]||{};options+='<option value="'+esc(p.id||"")+'"'+(p.id===latest.id?' selected':'')+'>'+esc(p.openedAtIso?fmtDayTime(p.openedAtIso):"Offener Vorgang")+(num(p.estimatedKwh)===null?'':' · etwa '+fmtKwhStats(p.estimatedKwh))+'</option>';}
+	return '<div class="ems-card ems-stats-pending"><div class="ems-card-h"><span class="ems-card-title">Schnelllader-Abrechnung ergänzen</span></div><div class="ems-note">EMS hat eine mögliche externe Ladung erkannt. Bitte die Werte der Rechnung bestätigen oder den Hinweis verwerfen.</div><div class="ems-entry"><select id="ems-pc-session" class="wide">'+options+'</select><input id="ems-pc-kwh" type="number" min="0" step="0.01" placeholder="geladene kWh" value="'+(estimated===null?'':esc(estimated))+'"><input id="ems-pc-eur" type="number" min="0" step="0.01" placeholder="Bruttokosten €"><input id="ems-pc-note" class="wide" type="text" maxlength="200" placeholder="Anbieter / Ort / Notiz (optional)"><div class="ems-entry-actions"><button type="button" class="ems-btn" data-ems-action="public-charge-save">Eintrag speichern</button><button type="button" class="ems-device-link" data-ems-action="public-charge-discard">Keine externe Ladung</button></div></div><div class="ems-note">'+esc(txt(g("statistics.public_charge.submit_ack_de"),""))+'</div></div>';
+}
 var lastPeriodOptionsFp="";
 function fillPeriodSelect(){
 	var sel=document.getElementById("ems-stats-period-sel");
@@ -3931,6 +3947,7 @@ function renderStatistics(){
 	var shownEnergy=todaySelected?energyT:energyP;
 	var scopeLabel=todaySelected?"Heute":(energyP.periodLabelDe||periodLabel);
 	grid.innerHTML=energyCards
+		+smartMeterCard(shownEnergy,scopeLabel)
 		+statsCard("PV-Nutzung der Geräte · "+scopeLabel,pctHero(shownEnergy.selfConsumptionPct,"Eigenverbrauch"),energeticDeviceRows(shownEnergy),"PV-Anteile werden nur bei vollständiger zeitgleicher Messung ausgewiesen. Schnellladen: Netz und Sonnen-Batterie werden proportional zur gemessenen Hausversorgung aufgeteilt; der Rest ist PV/lokal.")
 		+statsCard("Nutzen ohne Eurobewertung · "+scopeLabel,{cls:"neu",txt:"energetisch ausgewiesen"},nonMonetizedRows(shownEnergy),(function(){
 			var n=shownEnergy&&shownEnergy.nonMonetized;
@@ -3938,10 +3955,7 @@ function renderStatistics(){
 		})())
 		+(todaySelected?statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),homeTodayNote):statsCard(periodCardTitle("Haus",homeP,"Zeitraum")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote))
 		+(todaySelected?statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,"")):statsCard(periodCardTitle("Mobilität",mobP,"Zeitraum")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,"")))
-		+(pending.length?statsCard("Schnellader",{cls:"warn",txt:String(pending.length)+" offen"},[
-			["Pending kWh",fmtKwhStats(mobT.publicPendingKwh)],
-			["Ack",txt(g("statistics.public_charge.submit_ack_de"),"—")]
-		],pendingNote,"ems-stats-pending"):"");
+		+(pending.length?publicChargeEntryCard(pending):"");
 	var reasonBase=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
 	var pendingHint=gridRewardsPendingHint(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)||gridRewardsPendingHint(homeT.gridRewardsSource,homeT.gridRewardsCreditEur);
 	if(pendingHint)reasonBase=joinNotes(reasonBase,pendingHint);
@@ -4039,6 +4053,12 @@ function requestImmersionFaultReset(){
 function setAiUserEnabled(on){
 	setVisState(INST+".ai.user_enabled",!!on);
 }
+function submitPublicCharge(discard){
+	var session=document.getElementById("ems-pc-session"),kwh=document.getElementById("ems-pc-kwh"),eur=document.getElementById("ems-pc-eur"),note=document.getElementById("ems-pc-note");
+	var payload={sessionId:session?session.value:"",discard:!!discard,noteDe:note?note.value:""};
+	if(!discard){payload.kwh=kwh&&kwh.value!==""?Number(kwh.value):null;payload.eur=eur&&eur.value!==""?Number(eur.value):null;if(payload.kwh===null||payload.eur===null)return;}
+	setVisState(INST+".statistics.public_charge.submit_request",JSON.stringify(payload));
+}
 
 function bindUiActions(){
 	var tabs=document.getElementById("ems-view-tabs");
@@ -4071,6 +4091,12 @@ function bindUiActions(){
 					ev.preventDefault();
 					requestImmersionFaultReset();
 					return;
+				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="public-charge-save"){
+					ev.preventDefault();submitPublicCharge(false);return;
+				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="public-charge-discard"){
+					ev.preventDefault();submitPublicCharge(true);return;
 				}
 				t=t.parentNode;
 			}

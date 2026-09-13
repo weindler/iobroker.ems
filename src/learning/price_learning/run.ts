@@ -45,6 +45,9 @@ async function writePriceLearningResult(
 	await setNumIfValid(host, "learning.price_learning.sample_days", result.sampleDays);
 	await setNumIfValid(host, "learning.price_learning.avg_price_7d", result.avgPrice7d);
 	await setNumIfValid(host, "learning.price_learning.avg_price_30d", result.avgPrice30d);
+	await setNumIfValid(host, "learning.price_learning.avg_price_90d", result.avgPrice90d);
+	await setNumIfValid(host, "learning.price_learning.volatility_30d", result.volatility30d);
+	await setNumIfValid(host, "learning.price_learning.coverage_pct", result.coveragePct);
 	await host.setStateAsync("learning.price_learning.status", { val: result.status, ack: true });
 	await host.setStateAsync("learning.price_learning.health", { val: result.health, ack: true });
 	await host.setStateAsync("learning.price_learning.error", { val: result.error, ack: true });

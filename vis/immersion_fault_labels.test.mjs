@@ -42,16 +42,16 @@ describe("VIS immersion fault/lockout display", () => {
 		}
 	});
 
-	it("prioritizes FEHLER/LOCKOUT badges over Aus", () => {
+	it("prioritizes FEHLER/SICHERHEITSSPERRE badges over Aus", () => {
 		assert.match(visHtml, /function immersionFaultOpBadge/);
-		assert.match(visHtml, /label:"LOCKOUT"/);
+		assert.match(visHtml, /label:"SICHERHEITSSPERRE"/);
 		assert.match(visHtml, /label:"FEHLER"/);
 		assert.match(visHtml, /ems-badge\.fault/);
 		assert.match(visHtml, /ems-badge\.lockout/);
 	});
 
 	it("NOW line distinguishes fault from planmäßig aus", () => {
-		assert.match(visHtml, /Heizstab gesperrt \(Lockout\)/);
+		assert.match(visHtml, /Heizstab durch Sicherheit gesperrt/);
 		assert.match(visHtml, /Heizstab FEHLER/);
 		assert.match(visHtml, /immersionFaultActive\(\).*Heizstab/s);
 	});
@@ -101,6 +101,6 @@ describe("VIS immersion fault/lockout display", () => {
 
 	it("G-G) no_power_when_on product label preserved", () => {
 		assert.match(visHtml, /no_power_when_on:"Keine Leistung nach Einschaltbefehl"/);
-		assert.match(visHtml, /Sicherheits-Lockout aktiv/);
+		assert.match(visHtml, /Sicherheitssperre aktiv/);
 	});
 });

@@ -34,6 +34,9 @@ export async function ensurePriceLearningStates(host: StateHost): Promise<void> 
 		numState("learning.price_learning.sample_days", "Price-Learning gültige Tage"),
 		numState("learning.price_learning.avg_price_7d", "Price-Learning Ø 7d", "€/kWh"),
 		numState("learning.price_learning.avg_price_30d", "Price-Learning Ø 30d", "€/kWh"),
+		numState("learning.price_learning.avg_price_90d", "Gelernter Durchschnittspreis 90 Tage", "€/kWh"),
+		numState("learning.price_learning.volatility_30d", "Gelernte Preisschwankung 30 Tage", "€/kWh"),
+		numState("learning.price_learning.coverage_pct", "Abdeckung der Preishistorie", "%"),
 		strState("learning.price_learning.error", "Price-Learning Fehler"),
 	];
 

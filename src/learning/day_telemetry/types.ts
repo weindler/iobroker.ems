@@ -368,6 +368,8 @@ export type DayTelemetryDayRecord = {
 	 * Unabhängig von complete (Kalender).
 	 */
 	evaluable: boolean;
+	/** Kennzeichnet, dass der GB-Bucket nur den zusätzlichen Netzausgleichs-Offset enthält. */
+	gridBalanceEnergyKind?: "additional_offset";
 	buckets: DayTelemetryBuckets;
 	plannedConsumers: FrozenPlannedConsumer[][];
 	forecastSnapshots: PlannerKnowledgeSnapshot[];
@@ -452,6 +454,7 @@ export function emptyDayRecord(
 		observedSlotCount: 0,
 		coveragePct: 0,
 		evaluable: false,
+		gridBalanceEnergyKind: "additional_offset",
 		buckets: emptyBuckets(slotCount),
 		plannedConsumers: [],
 		forecastSnapshots: [],

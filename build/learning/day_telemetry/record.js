@@ -232,6 +232,7 @@ async function tickDayTelemetryInner(host, now) {
     const ensured = ensureDay(store, dateKey, timezone);
     store = ensured.store;
     const day = ensured.day;
+    day.gridBalanceEnergyKind = "additional_offset";
     const layout = ensured.layout;
     if (yesterdayJustCompleted && store.days[yesterday] && mem.openClimate) {
         store.days[yesterday].climateRunSegments = (0, climate_segments_1.closeClimateSegment)(mem.openClimate, store.days[yesterday].endMs, store.days[yesterday].climateRunSegments);

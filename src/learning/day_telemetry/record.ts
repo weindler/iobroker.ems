@@ -360,6 +360,7 @@ async function tickDayTelemetryInner(host: DayTelemetryHost, now: Date): Promise
 	const ensured = ensureDay(store, dateKey, timezone);
 	store = ensured.store;
 	const day = ensured.day;
+	day.gridBalanceEnergyKind = "additional_offset";
 	const layout = ensured.layout;
 
 	if (yesterdayJustCompleted && store.days[yesterday] && mem.openClimate) {

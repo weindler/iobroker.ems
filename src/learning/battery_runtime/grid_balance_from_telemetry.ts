@@ -30,8 +30,14 @@ export function powerPointsFromGridBalanceDay(day: DayTelemetryDayRecord): Power
 	const slotMs = day.slotWidthMs > 0 ? day.slotWidthMs : DAY_TELEMETRY_SLOT_MS;
 	const points: PowerPoint[] = [];
 	for (let i = 0; i < bucket.length; i++) {
-		const kwh = bucket[i];
+		let kwh = bucket[i];
 		if (kwh == null || !Number.isFinite(kwh) || kwh < 0) continue;
+		if (day.gridBalanceEnergyKind !== "additional_offset") {
+			const house = day.buckets.houseTotalKwh?.[i];
+			const pv = day.buckets.pvKwh?.[i];
+			if (house == null || pv == null || !Number.isFinite(house) || !Number.isFinite(pv)) continue;
+			kwh = Math.max(0, kwh - Math.max(0, house - pv));
+		}
 		const slotStart = day.startMs + i * slotMs;
 		points.push({
 			ts: slotStart + slotMs / 2,

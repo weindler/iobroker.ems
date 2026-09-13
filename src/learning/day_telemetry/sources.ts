@@ -110,6 +110,26 @@ export type ClimateUnitLiveSample = {
 	sharedPowerGroupId: string | null;
 };
 
+/**
+ * Nur die durch den Netzausgleich zusätzlich angeforderte Batterieentladung.
+ * Der normale Hausbedarf würde im Eigenverbrauch ohnehin aus der Batterie kommen
+ * und darf den gelernten Nachtbedarf nicht verkleinern.
+ */
+export function additionalGridBalancePowerW(input: {
+	active: boolean | null;
+	setpointOwner: string | null;
+	batteryDischargeW: number | null;
+	houseW: number | null;
+	pvW: number | null;
+	effectiveSetpointW: number | null;
+}): number | null {
+	if (!input.active || String(input.setpointOwner ?? "").toLowerCase() !== "grid_balance") return 0;
+	if (input.batteryDischargeW == null || input.houseW == null || input.pvW == null || input.effectiveSetpointW == null) return null;
+	if (![input.batteryDischargeW, input.houseW, input.pvW, input.effectiveSetpointW].every(Number.isFinite)) return null;
+	const ordinaryHouseDeficitW = Math.max(0, input.houseW - input.pvW);
+	return Math.max(0, Math.min(input.batteryDischargeW, input.effectiveSetpointW) - ordinaryHouseDeficitW);
+}
+
 async function readNum(host: TelemetrySampleHost, id: string): Promise<number | null> {
 	if (!id) return null;
 	let st = await host.getStateAsync(id);
@@ -295,18 +315,29 @@ export async function readLiveTelemetrySample(
 		(await readStr(host, WALLBOX_EVCC_STATES.loadpointMode)) ??
 		(await readStr(host, WALLBOX_EV_FOUNDATION_STATES.evccMode));
 
+	const houseTotalPowerW = houseSrc.stateId ? await readNum(host, houseSrc.stateId) : null;
+	const gbEffectivePowerW = await readNum(host, BAT.gridBalance.effectivePowerW);
+	const gridBalanceActive = await readBool(host, BAT.gridBalance.active);
+	const batterySetpointOwner = await readStr(host, BAT.runtime.batterySetpointOwner);
 	return {
 		tsMs: nowMs,
 		pvPowerW: pvLive,
-		houseTotalPowerW: houseSrc.stateId ? await readNum(host, houseSrc.stateId) : null,
+		houseTotalPowerW,
 		immersionPowerW: await readNum(host, IMMERSION_RUNTIME_STATES.measuredPowerW),
 		wallboxChargePowerW: evChargePowerW,
 		batteryChargePowerW: chargeW,
 		batteryDischargePowerW: dischargeW,
-		gridBalanceDischargePowerW: await readNum(host, BAT.gridBalance.effectivePowerW),
+		gridBalanceDischargePowerW: additionalGridBalancePowerW({
+			active: gridBalanceActive,
+			setpointOwner: batterySetpointOwner,
+			batteryDischargeW: dischargeW,
+			houseW: houseTotalPowerW,
+			pvW: pvLive,
+			effectiveSetpointW: gbEffectivePowerW,
+		}),
 		gridBalanceRequestedPowerW: await readNum(host, BAT.gridBalance.requestedPowerW),
-		gridBalanceActive: await readBool(host, BAT.gridBalance.active),
-		batterySetpointOwner: await readStr(host, BAT.runtime.batterySetpointOwner),
+		gridBalanceActive,
+		batterySetpointOwner,
 		climateSystemPowerW: systemPower,
 		climateSharedPowerUsed: sharedUsed,
 		climateUnitActive,

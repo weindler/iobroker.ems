@@ -39,6 +39,7 @@ const types_1 = require("../day_telemetry/types");
 const slots_1 = require("../day_telemetry/slots");
 const math_1 = require("./math");
 const grid_balance_from_telemetry_1 = require("./grid_balance_from_telemetry");
+const sources_1 = require("../day_telemetry/sources");
 class FakeTelHost {
     states = new Map();
     dir;
@@ -63,6 +64,10 @@ class FakeTelHost {
     }
 }
 (0, node_test_1.describe)("grid balance from day telemetry", () => {
+    (0, node_test_1.it)("trennt 25 W Zusatzoffset vom normalen Hausdefizit", () => {
+        strict_1.default.equal((0, sources_1.additionalGridBalancePowerW)({ active: true, setpointOwner: "grid_balance", batteryDischargeW: 325, houseW: 300, pvW: 0, effectiveSetpointW: 325 }), 25);
+        strict_1.default.equal((0, sources_1.additionalGridBalancePowerW)({ active: false, setpointOwner: "grid_balance", batteryDischargeW: 325, houseW: 300, pvW: 0, effectiveSetpointW: 325 }), 0);
+    });
     (0, node_test_1.it)("rekonstruiert energieerhaltende Leistung aus Slot-kWh (inkl. gemessener 0)", () => {
         const layout = (0, slots_1.buildDaySlotLayout)("2026-08-30", "Europe/Berlin");
         const day = (0, types_1.emptyDayRecord)("2026-08-30", "Europe/Berlin", layout.startMs, layout.endMs, layout.slotCount);
@@ -90,12 +95,29 @@ class FakeTelHost {
             await fs.rm(dir, { recursive: true, force: true });
         }
     });
+    (0, node_test_1.it)("migriert alte volle Entladesollwerte zum zusätzlichen Offset", () => {
+        const layout = (0, slots_1.buildDaySlotLayout)("2026-09-11", "Europe/Berlin");
+        const day = (0, types_1.emptyDayRecord)("2026-09-11", "Europe/Berlin", layout.startMs, layout.endMs, layout.slotCount);
+        delete day.gridBalanceEnergyKind;
+        day.buckets.gridBalanceDischargeKwh[0] = 0.08125;
+        day.buckets.houseTotalKwh[0] = 0.075;
+        day.buckets.pvKwh[0] = 0;
+        const points = (0, grid_balance_from_telemetry_1.powerPointsFromGridBalanceDay)(day);
+        strict_1.default.equal(points.length, 1);
+        strict_1.default.ok(Math.abs(points[0].powerW - 25) < 1e-9);
+    });
     (0, node_test_1.it)("Tick schreibt GB-Leistung in Day-Telemetry; SOC minus gemessene GB-kWh", async () => {
         const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gb-tick-"));
         (0, record_1.__resetDayTelemetryRuntimeForTest)();
         try {
             const host = new FakeTelHost(dir);
             host.set(ensure_states_1.BAT.gridBalance.effectivePowerW, 400);
+            host.set(ensure_states_1.BAT.gridBalance.active, true);
+            host.set(ensure_states_1.BAT.runtime.batterySetpointOwner, "grid_balance");
+            host.set(ensure_states_1.BAT.telemetry.dischargingPowerW, 400);
+            host.set("live.battery.pv_ac_power_w", 0);
+            host.config = { ...host.config, learning_house_load_power_state: "house.power" };
+            host.set("house.power", 375);
             const t0 = new Date("2026-08-30T22:00:00+02:00");
             await (0, record_1.tickDayTelemetry)(host, t0);
             const t1 = new Date("2026-08-30T22:01:00+02:00");
@@ -139,5 +161,20 @@ class FakeTelHost {
             (0, record_1.__resetDayTelemetryRuntimeForTest)();
             await fs.rm(dir, { recursive: true, force: true });
         }
+    });
+    (0, node_test_1.it)("Realabnahme: 3,6 kWh brutto minus 25 W über 12 h ergibt rund 3,3 kWh", () => {
+        const start = new Date(2026, 8, 11, 20, 30).getTime();
+        const end = new Date(2026, 8, 12, 8, 30).getTime();
+        const socPoints = [
+            { ts: start, socPct: 97 },
+            { ts: end, socPct: 61 },
+        ];
+        const gridBalancePowerPoints = [];
+        for (let i = 0; i <= 48; i++)
+            gridBalancePowerPoints.push({ ts: start + i * 15 * 60_000, powerW: 25 });
+        const result = (0, math_1.computeNightDischarges)({ socPoints, nightStart: "20:30", nightEnd: "08:30", capacityKwh: 10, gridBalancePowerPoints, nowMs: end + 4 * 60 * 60_000 });
+        strict_1.default.ok(result.avgKwh !== null);
+        strict_1.default.ok(Math.abs(result.avgKwh - 3.3) < 0.06, `got ${result.avgKwh}`);
+        strict_1.default.ok(Math.abs((result.nightSamples[0]?.gridBalanceKwh ?? 0) - 0.3) < 0.03);
     });
 });

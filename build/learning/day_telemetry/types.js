@@ -51,6 +51,7 @@ function emptyDayRecord(dateKey, timezone, startMs, endMs, slotCount) {
         observedSlotCount: 0,
         coveragePct: 0,
         evaluable: false,
+        gridBalanceEnergyKind: "additional_offset",
         buckets: emptyBuckets(slotCount),
         plannedConsumers: [],
         forecastSnapshots: [],

@@ -4,7 +4,7 @@
  * Keine neuen Mappings; fehlende Werte bleiben null.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.activeUnitCombinationKey = exports.immersionOnFromPowers = exports.readLiveTelemetrySample = exports.resolveActiveSharedPowerGroupId = exports.resolveTelemetryPriceCtPerKwh = void 0;
+exports.activeUnitCombinationKey = exports.immersionOnFromPowers = exports.readLiveTelemetrySample = exports.resolveActiveSharedPowerGroupId = exports.resolveTelemetryPriceCtPerKwh = exports.additionalGridBalancePowerW = void 0;
 const ensure_states_1 = require("../../addons/battery/ensure_states");
 const types_1 = require("../../addons/immersion_heater/runtime/types");
 /** Live-PV (gepflegt vom Live-Cache) — nicht grid_balance.pv_power_w (ungeschrieben). */
@@ -25,6 +25,22 @@ const constants_2 = require("../price_learning/constants");
 const grid_states_1 = require("../../operator/supply/grid_states");
 const contribution_ids_1 = require("../../operator/contribution_ids");
 const climate_unit_slots_1 = require("./climate_unit_slots");
+/**
+ * Nur die durch den Netzausgleich zusätzlich angeforderte Batterieentladung.
+ * Der normale Hausbedarf würde im Eigenverbrauch ohnehin aus der Batterie kommen
+ * und darf den gelernten Nachtbedarf nicht verkleinern.
+ */
+function additionalGridBalancePowerW(input) {
+    if (!input.active || String(input.setpointOwner ?? "").toLowerCase() !== "grid_balance")
+        return 0;
+    if (input.batteryDischargeW == null || input.houseW == null || input.pvW == null || input.effectiveSetpointW == null)
+        return null;
+    if (![input.batteryDischargeW, input.houseW, input.pvW, input.effectiveSetpointW].every(Number.isFinite))
+        return null;
+    const ordinaryHouseDeficitW = Math.max(0, input.houseW - input.pvW);
+    return Math.max(0, Math.min(input.batteryDischargeW, input.effectiveSetpointW) - ordinaryHouseDeficitW);
+}
+exports.additionalGridBalancePowerW = additionalGridBalancePowerW;
 async function readNum(host, id) {
     if (!id)
         return null;
@@ -196,18 +212,29 @@ async function readLiveTelemetrySample(host, nowMs = Date.now()) {
         (await readNum(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.chargePowerW));
     const evMode = (await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode)) ??
         (await readStr(host, ensure_states_3.WALLBOX_EV_FOUNDATION_STATES.evccMode));
+    const houseTotalPowerW = houseSrc.stateId ? await readNum(host, houseSrc.stateId) : null;
+    const gbEffectivePowerW = await readNum(host, ensure_states_1.BAT.gridBalance.effectivePowerW);
+    const gridBalanceActive = await readBool(host, ensure_states_1.BAT.gridBalance.active);
+    const batterySetpointOwner = await readStr(host, ensure_states_1.BAT.runtime.batterySetpointOwner);
     return {
         tsMs: nowMs,
         pvPowerW: pvLive,
-        houseTotalPowerW: houseSrc.stateId ? await readNum(host, houseSrc.stateId) : null,
+        houseTotalPowerW,
         immersionPowerW: await readNum(host, types_1.IMMERSION_RUNTIME_STATES.measuredPowerW),
         wallboxChargePowerW: evChargePowerW,
         batteryChargePowerW: chargeW,
         batteryDischargePowerW: dischargeW,
-        gridBalanceDischargePowerW: await readNum(host, ensure_states_1.BAT.gridBalance.effectivePowerW),
+        gridBalanceDischargePowerW: additionalGridBalancePowerW({
+            active: gridBalanceActive,
+            setpointOwner: batterySetpointOwner,
+            batteryDischargeW: dischargeW,
+            houseW: houseTotalPowerW,
+            pvW: pvLive,
+            effectiveSetpointW: gbEffectivePowerW,
+        }),
         gridBalanceRequestedPowerW: await readNum(host, ensure_states_1.BAT.gridBalance.requestedPowerW),
-        gridBalanceActive: await readBool(host, ensure_states_1.BAT.gridBalance.active),
-        batterySetpointOwner: await readStr(host, ensure_states_1.BAT.runtime.batterySetpointOwner),
+        gridBalanceActive,
+        batterySetpointOwner,
         climateSystemPowerW: systemPower,
         climateSharedPowerUsed: sharedUsed,
         climateUnitActive,

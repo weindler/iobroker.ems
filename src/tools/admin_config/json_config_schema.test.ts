@@ -45,7 +45,7 @@ describe("admin jsonConfig vs ioBroker schema", () => {
 		assert.equal(serialized.includes("KI-Optimierung"), false);
 	});
 
-	it("zeigt jeden Laufzeitmodus genau einmal als direkten Zustandsschalter", () => {
+	it("zeigt jeden Laufzeitmodus als großen Ist-Status und direkte Sofort-Schaltflächen", () => {
 		const all = config.items ?? {};
 		const expected: Array<[string, string, string]> = [
 			["globalTab", "global_execution_mode", "global.execution_mode"],
@@ -56,8 +56,17 @@ describe("admin jsonConfig vs ioBroker schema", () => {
 		];
 		for (const [tab, key, oid] of expected) {
 			const item = (all as Record<string, { items?: Record<string, Record<string, unknown>> }>)[tab]?.items?.[key];
-			assert.equal(item?.type, "state", `${key} muss ohne Speichern direkt den Zustand schalten`);
-			assert.equal(item?.oid, oid);
+			assert.equal(item?.type, "panel", `${key} muss als eindeutiger Modusblock erscheinen`);
+			const modeItems = item?.items as Record<string, Record<string, unknown>> | undefined;
+			assert.equal(modeItems?.current?.type, "state");
+			assert.equal(modeItems?.current?.oid, oid);
+			assert.equal(modeItems?.current?.control, "text");
+			for (const mode of key === "global_execution_mode" ? ["dryrun", "live"] : ["off", "dryrun", "live"]) {
+				assert.equal(modeItems?.[mode]?.type, "state");
+				assert.equal(modeItems?.[mode]?.oid, oid);
+				assert.equal(modeItems?.[mode]?.control, "button");
+				assert.equal(modeItems?.[mode]?.buttonValue, mode);
+			}
 		}
 		const serialized = JSON.stringify(config);
 		assert.equal(serialized.includes("runtime_global_mode_apply"), false);

@@ -41,7 +41,7 @@ describe("admin_config climate generator", () => {
 		const existing: Record<string, unknown> = {
 			introAc: { type: "staticText" },
 			climateGovernanceHint: { type: "staticText" },
-			ac_addon_mode: { type: "select" },
+			ac_addon_mode: { type: "panel", items: {} },
 			ac_outdoor_max_power_w: { type: "number" },
 			ac_planner_outdoor_likely_temp_c: { type: "number" },
 			ac_default_profile: { type: "select" },

@@ -102,6 +102,39 @@ const LIVE_IH_FP = (0, execution_mode_js_1.executionModesConfigFingerprint)({
         strict_1.default.equal(store.get("addons.immersion_heater.mode")?.val, "live");
         strict_1.default.equal(store.get("addons.immersion_heater.mode")?.ack, true);
     });
+    (0, node_test_1.it)("rejects invalid values and keeps the last confirmed mode", async () => {
+        const store = new Map();
+        const adapter = {
+            namespace: "ems.0",
+            log: { info: () => { }, warn: () => { } },
+            getStateAsync: async (id) => store.get(id) ?? null,
+            setStateAsync: async (id, st) => { store.set(id, { val: st.val, ack: st.ack ?? false }); },
+            setObjectNotExistsAsync: async () => undefined,
+        };
+        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, "ems.0.addons.wallbox.mode", { val: "live", ack: false });
+        await (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, "ems.0.addons.wallbox.mode", { val: "kaputt", ack: false });
+        strict_1.default.equal(store.get("addons.wallbox.mode")?.val, "live");
+        strict_1.default.equal(store.get("addons.wallbox.mode")?.ack, true);
+    });
+    (0, node_test_1.it)("serializes rapid clicks so the last requested mode wins", async () => {
+        const store = new Map();
+        const adapter = {
+            namespace: "ems.0",
+            log: { info: () => { }, warn: () => { } },
+            getStateAsync: async (id) => store.get(id) ?? null,
+            setStateAsync: async (id, st) => {
+                await new Promise((resolve) => setTimeout(resolve, st.val === "live" ? 5 : 1));
+                store.set(id, { val: st.val, ack: st.ack ?? false });
+            },
+            setObjectNotExistsAsync: async () => undefined,
+        };
+        await Promise.all([
+            (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, "ems.0.addons.battery.mode", { val: "live", ack: false }),
+            (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, "ems.0.addons.battery.mode", { val: "dryrun", ack: false }),
+            (0, execution_mode_js_1.handleExecutionModeStateChange)(adapter, "ems.0.addons.battery.mode", { val: "off", ack: false }),
+        ]);
+        strict_1.default.equal(store.get("addons.battery.mode")?.val, "off");
+    });
     (0, node_test_1.it)("syncExecutionModesFromConfig preserves runtime modes when admin unchanged", async () => {
         const store = new Map([
             ["global.execution_mode", { val: "live", ack: true }],

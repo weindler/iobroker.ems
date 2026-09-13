@@ -440,7 +440,9 @@ async function runAcRuntimeTickBody(host) {
     const executionOff = (0, execution_mode_1.isAddonExecutionOff)((await host.getStateAsync((0, tree_paths_1.addonMode)(constants_1.AC_ADDON_ID)))?.val);
     /** Off: keine EMS-Start/Stop-Writes; Telemetrie bleibt. */
     const writeLive = live && !executionOff;
-    const liveEdge = writeLive && !prevAcLiveWriteAllowed;
+    const wasWriteLive = prevAcLiveWriteAllowed;
+    const liveEdge = writeLive && !wasWriteLive;
+    const liveReleaseEdge = wasWriteLive && !writeLive;
     prevAcLiveWriteAllowed = writeLive;
     const allowNewCleaning = governanceEnabled && addonEnabledVal && !executionOff;
     // Disabled units that still have objects (e.g. just turned off): close sticky stats / optional stop.
@@ -500,6 +502,13 @@ async function runAcRuntimeTickBody(host) {
         const up = unitPersist(unit.index);
         if (feedbackOn)
             runningCount += 1;
+        if (liveReleaseEdge && feedbackOn && up.ownership.owner === "ems") {
+            host.log.info(`ac unit ${unit.index}: Live-Freigabe beendet — EMS schaltet das eigene Gerät sicher aus`);
+            await stopUnit(host, unit, mappingTable, true, up);
+            powered = await readUnitDevicePowered(host, unit, mappingTable);
+            fb = { value: powered.value, num: null };
+            feedbackOn = powered.on;
+        }
         // Dryrun darf lastStartAtMs/running setzen ohne Hardware —
         // effective live false→true gibt Start sofort frei (kein 120s-Retry-Stau).
         if (liveEdge && !feedbackOn && (up.running || up.lastStartAtMs != null)) {

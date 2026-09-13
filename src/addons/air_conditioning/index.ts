@@ -1,7 +1,7 @@
 import { touchEmsActivity } from "../../ems_activity";
 import { withLearningDataPath } from "../../learning/data_dir";
 import { AC_ADDON_ID } from "./constants";
-import { addonAvailable, addonEnabled } from "../../tree_paths";
+import { addonAvailable, addonEnabled, addonMode } from "../../tree_paths";
 import { DAILY_PLAN_STATE_IDS, ALLOCATION_ADDON_STATE_IDS } from "../../operator/daily_plan/states";
 import { ensureAcRuntimeStates } from "./runtime/ensure_states";
 import {
@@ -75,6 +75,8 @@ export function handleAirConditioningStateChange(adapter: ioBroker.Adapter, stat
 	if (
 		stateId === `${ns}${addonEnabled(AC_ADDON_ID)}` ||
 		stateId === `${ns}${addonAvailable(AC_ADDON_ID)}` ||
+		stateId === `${ns}${addonMode(AC_ADDON_ID)}` ||
+		stateId === `${ns}global.execution_mode` ||
 		planWake ||
 		acRuntimeWatchedForeignIds(adapter.config).includes(stateId)
 	) {

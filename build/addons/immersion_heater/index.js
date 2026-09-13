@@ -9,6 +9,7 @@ const ensure_states_1 = require("./runtime/ensure_states");
 const engine_1 = require("./runtime/engine");
 const device_config_1 = require("./device_config");
 const types_1 = require("./runtime/types");
+const tree_paths_1 = require("../../tree_paths");
 exports.IMMERSION_ADDON_ID = "immersion_heater";
 function runtimeHost(adapter) {
     const base = {
@@ -64,6 +65,10 @@ function handleImmersionHeaterStateChange(adapter, stateId) {
         void adapter.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.faultReset).then((st) => {
             void (0, engine_1.handleImmersionFaultReset)(host, st);
         });
+        return;
+    }
+    if (stateId === `${ns}${(0, tree_paths_1.addonMode)(exports.IMMERSION_ADDON_ID)}` || stateId === `${ns}global.execution_mode`) {
+        void (0, engine_1.runImmersionRuntimeTick)(host).catch((e) => adapter.log.warn(`immersion runtime tick: ${e}`));
         return;
     }
     if (stateId === `${ns}user_intent.thermal.resolved_json` ||

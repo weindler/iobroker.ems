@@ -129,6 +129,15 @@ const ALL_DRYRUN_MODES = {
     immersion_heater: "dryrun",
     air_conditioning: "dryrun",
 };
+/** Zuletzt vom Adapter bestätigte Werte; schützt ungültige unbestätigte Writes. */
+const confirmedExecutionModes = new Map();
+function rememberConfirmedModes(modes) {
+    confirmedExecutionModes.set(tree_paths_1.GLOBAL.executionMode, modes.global);
+    confirmedExecutionModes.set((0, tree_paths_1.addonMode)("wallbox"), modes.wallbox);
+    confirmedExecutionModes.set((0, tree_paths_1.addonMode)("battery"), modes.battery);
+    confirmedExecutionModes.set((0, tree_paths_1.addonMode)("immersion_heater"), modes.immersion_heater);
+    confirmedExecutionModes.set((0, tree_paths_1.addonMode)("air_conditioning"), modes.air_conditioning);
+}
 exports.NATIVE_EXECUTION_MODE_KEYS = [
     "global_execution_mode",
     "wb_addon_mode",
@@ -154,6 +163,7 @@ async function applyExecutionModesFromConfig(host, modes) {
     await host.setStateAsync((0, tree_paths_1.addonMode)("battery"), { val: modes.battery, ack: true });
     await host.setStateAsync((0, tree_paths_1.addonMode)("immersion_heater"), { val: modes.immersion_heater, ack: true });
     await host.setStateAsync((0, tree_paths_1.addonMode)("air_conditioning"), { val: modes.air_conditioning, ack: true });
+    rememberConfirmedModes(modes);
 }
 async function anyExecutionModeEmpty(host) {
     const global = await host.getStateAsync(tree_paths_1.GLOBAL.executionMode);
@@ -172,6 +182,12 @@ async function mirrorGlobalExecutionSafety(host) {
         val: parseGlobalMode(global?.val),
         ack: true,
     });
+}
+async function rememberRuntimeModes(host) {
+    confirmedExecutionModes.set(tree_paths_1.GLOBAL.executionMode, parseGlobalMode((await host.getStateAsync(tree_paths_1.GLOBAL.executionMode))?.val));
+    for (const addonId of exports.EXECUTION_MODE_ADDON_IDS) {
+        confirmedExecutionModes.set((0, tree_paths_1.addonMode)(addonId), parseAddonMode((await host.getStateAsync((0, tree_paths_1.addonMode)(addonId)))?.val));
+    }
 }
 async function ensureGlobalExecutionStates(host) {
     await ensureExecutionModeObject(host, tree_paths_1.GLOBAL.executionMode, executionModeCommon("Global: Ausführung (dryrun|live)", "dryrun", "global"));
@@ -273,6 +289,7 @@ async function syncExecutionModesFromConfig(host, config, options = {}) {
         await host.setStateAsync(exports.EXECUTION_MODE_CONFIG_FINGERPRINT, { val: fingerprint, ack: true });
         await alignAdminConfigWithRuntimeStates(host, config);
         await mirrorGlobalExecutionSafety(host);
+        await rememberRuntimeModes(host);
         host.log?.debug?.("Ausführungsmodi: Laufzeitwerte beibehalten (Admin-Fingerprint initialisiert)");
         return;
     }
@@ -288,6 +305,7 @@ async function syncExecutionModesFromConfig(host, config, options = {}) {
         await alignAdminConfigWithRuntimeStates(host, config);
     }
     await mirrorGlobalExecutionSafety(host);
+    await rememberRuntimeModes(host);
 }
 exports.syncExecutionModesFromConfig = syncExecutionModesFromConfig;
 function executionModeConfigKeyForRelativeId(relativeId) {
@@ -348,7 +366,7 @@ function setAddonModeReplanHook(hook) {
     addonModeReplanHook = hook;
 }
 exports.setAddonModeReplanHook = setAddonModeReplanHook;
-async function handleExecutionModeStateChange(adapter, id, state) {
+async function processExecutionModeStateChange(adapter, id, state) {
     if (!state || state.ack) {
         return;
     }
@@ -362,28 +380,30 @@ async function handleExecutionModeStateChange(adapter, id, state) {
     }
     const requested = String(state.val ?? "").trim().toLowerCase();
     const isGlobal = relativeId === tree_paths_1.GLOBAL.executionMode;
+    const valid = isGlobal
+        ? requested === "dryrun" || requested === "live"
+        : requested === "off" || requested === "dryrun" || requested === "live";
+    if (!valid) {
+        const previousState = await adapter.getStateAsync(relativeId);
+        const previousValid = isGlobal
+            ? (hasGlobalExecutionModeValue(previousState?.val) ? parseGlobalMode(previousState?.val) : null)
+            : (hasAddonExecutionModeValue(previousState?.val) ? parseAddonMode(previousState?.val) : null);
+        const keep = confirmedExecutionModes.get(relativeId) ?? previousValid ?? "dryrun";
+        adapter.log.warn?.(`${relativeId}: ungültiger Wert „${state.val}“ — letzter gültiger Modus ${keep} bleibt aktiv`);
+        await adapter.setStateAsync(relativeId, { val: keep, ack: true });
+        return;
+    }
     let mode;
     if (isGlobal) {
-        if (requested === "off") {
-            adapter.log.warn?.(`${relativeId}: „off“ ist nur für Add-ons gültig — Global bleibt dryrun|live (Fallback dryrun)`);
-            mode = "dryrun";
-        }
-        else {
-            mode = parseGlobalMode(state.val);
-            if (requested !== "" && requested !== "dryrun" && requested !== "live") {
-                adapter.log.warn?.(`${relativeId}: ungültiger Wert „${state.val}“ — Fallback auf ${mode}`);
-            }
-        }
+        mode = parseGlobalMode(state.val);
     }
     else {
         mode = parseAddonMode(state.val);
-        if (requested !== "" && requested !== "off" && requested !== "dryrun" && requested !== "live") {
-            adapter.log.warn?.(`${relativeId}: ungültiger Wert „${state.val}“ — Fallback auf ${mode}`);
-        }
     }
     const prevRaw = await adapter.getStateAsync(relativeId);
     const previous = prevRaw?.val != null ? String(prevRaw.val) : null;
     await adapter.setStateAsync(relativeId, { val: mode, ack: true });
+    confirmedExecutionModes.set(relativeId, mode);
     if (isGlobal) {
         await adapter.setStateAsync("execution.safety.global_execution_mode", { val: mode, ack: true });
     }
@@ -403,6 +423,18 @@ async function handleExecutionModeStateChange(adapter, id, state) {
             // best-effort
         }
     }
+}
+const executionModeQueues = new Map();
+/** Serialisiert schnelle Umschaltungen pro State; der zuletzt eingegangene Auftrag gewinnt. */
+function handleExecutionModeStateChange(adapter, id, state) {
+    const previous = executionModeQueues.get(id) ?? Promise.resolve();
+    const next = previous.catch(() => undefined).then(() => processExecutionModeStateChange(adapter, id, state));
+    executionModeQueues.set(id, next);
+    void next.finally(() => {
+        if (executionModeQueues.get(id) === next)
+            executionModeQueues.delete(id);
+    });
+    return next;
 }
 exports.handleExecutionModeStateChange = handleExecutionModeStateChange;
 async function ensureChannelTree(setObjectNotExistsAsync) {

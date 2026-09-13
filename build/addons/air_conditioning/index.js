@@ -62,6 +62,8 @@ function handleAirConditioningStateChange(adapter, stateId) {
         stateId === `${ns}${states_1.ALLOCATION_ADDON_STATE_IDS.air_conditioning.planJson}`;
     if (stateId === `${ns}${(0, tree_paths_1.addonEnabled)(constants_1.AC_ADDON_ID)}` ||
         stateId === `${ns}${(0, tree_paths_1.addonAvailable)(constants_1.AC_ADDON_ID)}` ||
+        stateId === `${ns}${(0, tree_paths_1.addonMode)(constants_1.AC_ADDON_ID)}` ||
+        stateId === `${ns}global.execution_mode` ||
         planWake ||
         (0, engine_1.acRuntimeWatchedForeignIds)(adapter.config).includes(stateId)) {
         void (0, engine_1.runAcRuntimeTick)(runtimeHost(adapter)).catch((e) => adapter.log.warn(`ac runtime tick: ${e}`));

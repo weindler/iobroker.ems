@@ -685,7 +685,9 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 	const executionOff = isAddonExecutionOff((await host.getStateAsync(addonMode(AC_ADDON_ID)))?.val);
 	/** Off: keine EMS-Start/Stop-Writes; Telemetrie bleibt. */
 	const writeLive = live && !executionOff;
-	const liveEdge = writeLive && !prevAcLiveWriteAllowed;
+	const wasWriteLive = prevAcLiveWriteAllowed;
+	const liveEdge = writeLive && !wasWriteLive;
+	const liveReleaseEdge = wasWriteLive && !writeLive;
 	prevAcLiveWriteAllowed = writeLive;
 	const allowNewCleaning = governanceEnabled && addonEnabledVal && !executionOff;
 
@@ -747,6 +749,14 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 		const cleaningProgress = await readForeign(host, cleaningProgressId);
 		const up = unitPersist(unit.index);
 		if (feedbackOn) runningCount += 1;
+
+		if (liveReleaseEdge && feedbackOn && up.ownership.owner === "ems") {
+			host.log.info(`ac unit ${unit.index}: Live-Freigabe beendet — EMS schaltet das eigene Gerät sicher aus`);
+			await stopUnit(host, unit, mappingTable, true, up);
+			powered = await readUnitDevicePowered(host, unit, mappingTable);
+			fb = { value: powered.value, num: null };
+			feedbackOn = powered.on;
+		}
 
 		// Dryrun darf lastStartAtMs/running setzen ohne Hardware —
 		// effective live false→true gibt Start sofort frei (kein 120s-Retry-Stau).

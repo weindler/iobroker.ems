@@ -303,7 +303,7 @@ async function decisionState(host, id) {
         strict_1.default.equal(liveWrites.length, 1);
         strict_1.default.equal(liveWrites[0].val, true);
     });
-    (0, node_test_1.it)("live→dryrun (global) blocks subsequent hardware writes", async () => {
+    (0, node_test_1.it)("live→dryrun beendet die EMS-Aktion einmalig und blockiert danach weitere Writes", async () => {
         const host = baseHost(40);
         host.set("global.execution_mode", "live");
         host.set("addons.immersion_heater.mode", "live");
@@ -315,7 +315,10 @@ async function decisionState(host, id) {
         host.set(states_js_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater.planJson, JSON.stringify([allocationEntry(slotStartIso, slotEndIso, 0)]));
         const n = foreignWrites.length;
         await (0, engine_js_1.runImmersionRuntimeTick)(host);
-        strict_1.default.equal(foreignWrites.length, n, "global dryrun must block further writes");
+        strict_1.default.equal(foreignWrites.length, n + 1, "genau ein sicherer OFF-Write erwartet");
+        strict_1.default.equal(foreignWrites.at(-1)?.val, false);
+        await (0, engine_js_1.runImmersionRuntimeTick)(host);
+        strict_1.default.equal(foreignWrites.length, n + 1, "nach der Freigabe keine weiteren Writes");
     });
 });
 (0, node_test_1.describe)("immersion runtime — Root Cause A write apply confirmation", () => {

@@ -364,7 +364,7 @@ describe("immersion runtime — BETA-GATE-003 effective live reconcile", () => {
 		assert.equal(liveWrites[0]!.val, true);
 	});
 
-	it("live→dryrun (global) blocks subsequent hardware writes", async () => {
+	it("live→dryrun beendet die EMS-Aktion einmalig und blockiert danach weitere Writes", async () => {
 		const host = baseHost(40);
 		host.set("global.execution_mode", "live");
 		host.set("addons.immersion_heater.mode", "live");
@@ -381,7 +381,10 @@ describe("immersion runtime — BETA-GATE-003 effective live reconcile", () => {
 		);
 		const n = foreignWrites.length;
 		await runImmersionRuntimeTick(host);
-		assert.equal(foreignWrites.length, n, "global dryrun must block further writes");
+		assert.equal(foreignWrites.length, n + 1, "genau ein sicherer OFF-Write erwartet");
+		assert.equal(foreignWrites.at(-1)?.val, false);
+		await runImmersionRuntimeTick(host);
+		assert.equal(foreignWrites.length, n + 1, "nach der Freigabe keine weiteren Writes");
 	});
 });
 

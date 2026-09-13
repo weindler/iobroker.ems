@@ -307,7 +307,9 @@ async function runImmersionRuntimeTick(host) {
     /** Off = keine EMS-Steuerung (auch kein Fallback); Telemetrie bleibt. */
     const controlEnabled = enabled && !executionOff;
     const live = await (0, execution_mode_1.isLiveWriteAllowed)((id) => host.getStateAsync(id), "immersion_heater");
-    const liveEdge = live && !prevImmersionLiveWriteAllowed;
+    const wasLive = prevImmersionLiveWriteAllowed;
+    const liveEdge = live && !wasLive;
+    const releaseOwnedStage = wasLive && !live && lastCommandedStage > 0 && persist.ownership.owner === "ems";
     prevImmersionLiveWriteAllowed = live;
     const failsafeActive = await readBool(host, status_1.IMMERSION_STATUS_STATES.failsafeActive);
     const intentRaw = await host.getStateAsync("user_intent.thermal.resolved_json");
@@ -505,17 +507,18 @@ async function runImmersionRuntimeTick(host) {
     // Solange nicht (global∧addon) live, besitzt EMS keine Hardware-Authority.
     // lastCommandedStage / emsOnWriteAtMs nur nach bestätigtem Apply (Write oder Readback),
     // sonst Retry im nächsten normalen Runtime-Tick (kein Spam-Loop).
-    const stageChanged = effectiveStage !== lastCommandedStage;
+    const stageToApply = releaseOwnedStage ? 0 : effectiveStage;
+    const stageChanged = stageToApply !== lastCommandedStage;
     /** Admin-Mindestpause (`ih_minimum_pause_sec`) — nicht vom FSM-Persist-Altzustand überschreiben. */
     let pauseSetOnOffMs = null;
     if (!ownershipOverrideActive && (stageChanged || liveEdge || overrideJustExpired)) {
         if (liveEdge && !stageChanged && !overrideJustExpired) {
             host.log.info?.(`immersion: effective live authority gained — reconcile stage ${effectiveStage} (desired unchanged)`);
         }
-        const applyResult = await applyStageWrites(host, effectiveStage, live);
+        const applyResult = await applyStageWrites(host, stageToApply, live || releaseOwnedStage);
         if (applyResult.applied) {
             if (stageChanged) {
-                if (effectiveStage === 0) {
+                if (stageToApply === 0) {
                     persist.lastOffAtMs = nowMs;
                     if (!liveSurplusHoldActive) {
                         pauseSetOnOffMs = nowMs + Math.max(0, config.minimumPauseSec) * 1000;
@@ -536,13 +539,13 @@ async function runImmersionRuntimeTick(host) {
                 else
                     persist.lastSwitchAtMs = nowMs;
             }
-            if (effectiveStage === 0) {
+            if (stageToApply === 0) {
                 emsOffWriteAtMs = nowMs;
             }
             else if (applyResult.confirmedOn) {
                 emsOnWriteAtMs = nowMs;
             }
-            lastCommandedStage = effectiveStage;
+            lastCommandedStage = stageToApply;
         }
         else if (live) {
             host.log.debug?.(`immersion: stage ${effectiveStage} apply not confirmed — retry next tick (lastApplied=${lastCommandedStage})`);

@@ -13,6 +13,7 @@ import {
 } from "./runtime/engine";
 import { immersionDeviceConfigFromAdapter } from "./device_config";
 import { IMMERSION_RUNTIME_STATES } from "./runtime/types";
+import { addonMode } from "../../tree_paths";
 
 export const IMMERSION_ADDON_ID = "immersion_heater";
 
@@ -72,6 +73,10 @@ export function handleImmersionHeaterStateChange(adapter: ioBroker.Adapter, stat
 		void adapter.getStateAsync(IMMERSION_RUNTIME_STATES.faultReset).then((st) => {
 			void handleImmersionFaultReset(host, st);
 		});
+		return;
+	}
+	if (stateId === `${ns}${addonMode(IMMERSION_ADDON_ID)}` || stateId === `${ns}global.execution_mode`) {
+		void runImmersionRuntimeTick(host).catch((e) => adapter.log.warn(`immersion runtime tick: ${e}`));
 		return;
 	}
 	if (

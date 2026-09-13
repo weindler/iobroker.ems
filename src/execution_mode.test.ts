@@ -114,6 +114,41 @@ describe("execution mode", () => {
 		assert.equal(store.get("addons.immersion_heater.mode")?.ack, true);
 	});
 
+	it("rejects invalid values and keeps the last confirmed mode", async () => {
+		const store = new Map<string, ioBroker.State>();
+		const adapter = {
+			namespace: "ems.0",
+			log: { info: () => {}, warn: () => {} },
+			getStateAsync: async (id: string) => store.get(id) ?? null,
+			setStateAsync: async (id: string, st: ioBroker.SettableState) => { store.set(id, { val: st.val, ack: st.ack ?? false } as ioBroker.State); },
+			setObjectNotExistsAsync: async () => undefined,
+		};
+		await handleExecutionModeStateChange(adapter, "ems.0.addons.wallbox.mode", { val: "live", ack: false } as ioBroker.State);
+		await handleExecutionModeStateChange(adapter, "ems.0.addons.wallbox.mode", { val: "kaputt", ack: false } as ioBroker.State);
+		assert.equal(store.get("addons.wallbox.mode")?.val, "live");
+		assert.equal(store.get("addons.wallbox.mode")?.ack, true);
+	});
+
+	it("serializes rapid clicks so the last requested mode wins", async () => {
+		const store = new Map<string, ioBroker.State>();
+		const adapter = {
+			namespace: "ems.0",
+			log: { info: () => {}, warn: () => {} },
+			getStateAsync: async (id: string) => store.get(id) ?? null,
+			setStateAsync: async (id: string, st: ioBroker.SettableState) => {
+				await new Promise((resolve) => setTimeout(resolve, st.val === "live" ? 5 : 1));
+				store.set(id, { val: st.val, ack: st.ack ?? false } as ioBroker.State);
+			},
+			setObjectNotExistsAsync: async () => undefined,
+		};
+		await Promise.all([
+			handleExecutionModeStateChange(adapter, "ems.0.addons.battery.mode", { val: "live", ack: false } as ioBroker.State),
+			handleExecutionModeStateChange(adapter, "ems.0.addons.battery.mode", { val: "dryrun", ack: false } as ioBroker.State),
+			handleExecutionModeStateChange(adapter, "ems.0.addons.battery.mode", { val: "off", ack: false } as ioBroker.State),
+		]);
+		assert.equal(store.get("addons.battery.mode")?.val, "off");
+	});
+
 	it("syncExecutionModesFromConfig preserves runtime modes when admin unchanged", async () => {
 		const store = new Map<string, ioBroker.State>([
 			["global.execution_mode", { val: "live", ack: true } as ioBroker.State],

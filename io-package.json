@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.3.0",
+		"version": "0.3.1",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.3.1": {
+				"en": "Admin cleanup: removed the duplicate runtime-mode control block from Global. Existing global and add-on mode selectors remain the only configuration controls; writable runtime states continue to support switching without an adapter restart.",
+				"de": "Admin-Bereinigung: Der doppelte Laufzeitmodus-Block wurde aus Global entfernt. Die vorhandenen globalen und Add-on-Modusschalter bleiben die einzigen Konfigurationsfelder; die beschreibbaren Laufzeit-States unterstützen weiterhin das Umschalten ohne Adapterneustart."
+			},
 			"0.3.0": {
 				"en": "Major usability release: runtime mode switching without adapter restart, optional winter-state pause for climate/immersion planning, clearer planning and device pages, Grid Balance integrated into Battery, coherent period statistics, corrected Grid Rewards comparison, optional battery-wear cost and storage/retention overview.",
 				"de": "Großes Bedienungsupdate: Laufzeitmodi ohne Adapterneustart, optionale Winter-Sperre für Klima-/Heizstabplanung, klarere Planungs- und Geräteseiten, Netzausgleich in Batterie integriert, konsistente Zeitraumstatistik, korrigierter Grid-Rewards-Vergleich, optionaler Batterieverschleiß und Speicher-/Aufbewahrungsübersicht."

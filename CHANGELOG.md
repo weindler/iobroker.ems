@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.3.1] – 2026-09-13
+
+### Fixed
+
+- Doppelten Block „Laufzeitmodi – ohne Adapterneustart“ aus dem Global-Tab entfernt. Die vorhandenen globalen und Add-on-Modusschalter bleiben die einzigen Konfigurationsfelder; die Laufzeit-States können weiterhin ohne Adapterneustart umgeschaltet werden.
+
 ## [0.3.0] – 2026-09-13
 
 ### Added

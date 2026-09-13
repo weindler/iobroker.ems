@@ -97,27 +97,14 @@ class Ems extends utils.Adapter {
 		}
 		if (obj.command === "getStorageReport") {
 			void (async () => {
-				const fs = await import("node:fs/promises");
-				const path = await import("node:path");
 				const { resolveEmsPaths } = await import("./backup_integration/paths.js");
+				const { buildStorageReport, storageReportText, storageReportHtml, STORAGE_REPORT_HTML_STATE } = await import("./storage_report.js");
 				const root = resolveEmsPaths(this).runtimeDataDir;
-				let bytes = 0, files = 0;
-				async function walk(dir: string): Promise<void> {
-					for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
-						const full = path.join(dir, entry.name);
-						if (entry.isSymbolicLink()) continue;
-						if (entry.isDirectory()) await walk(full);
-						else if (entry.isFile()) { const stat = await fs.stat(full); bytes += stat.size; files++; }
-					}
-				}
-				await walk(root);
-				const disk = await fs.statfs(root);
-				const free = Number(disk.bavail) * Number(disk.bsize);
-				const mb = (value: number) => Math.round(value / 1024 / 1024 * 10) / 10;
-				const projected90 = bytes > 0 ? bytes * 1.5 : 0;
+				const report = await buildStorageReport(root);
+				const hint = storageReportText(report);
+				await this.setStateAsync(STORAGE_REPORT_HTML_STATE, { val: storageReportHtml(report), ack: true });
 				if (obj.callback) this.sendTo(obj.from, obj.command, {
-					result: "ok", bytes, files, freeBytes: free,
-					hint: `EMS-Dateien: ${mb(bytes)} MB in ${files} Dateien · Datenträger frei: ${mb(free)} MB · grobe 90-Tage-Tendenz: ${mb(projected90)} MB (bis genügend Wachstumstage vorliegen)`,
+					result: hint, ...report, hint,
 				}, obj.callback);
 			})().catch((e) => {
 				if (obj.callback) this.sendTo(obj.from, obj.command, { result: "error", error: e instanceof Error ? e.message : String(e) }, obj.callback);

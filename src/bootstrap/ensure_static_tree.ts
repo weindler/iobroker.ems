@@ -15,6 +15,7 @@ import { ensureWallboxStatusStates } from "../status_wallbox";
 import { ensureCommandBaseStates, ensureAddonBasisStates } from "./base_ensure";
 import { ensureBackupStates } from "../backup/ensure_states";
 import { runDynamicSurfaceCleanup, type SurfaceCleanupHost } from "../surface_cleanup/cleanup";
+import { ensureStorageReportStates } from "../storage_report";
 
 export type StaticStateTreeHost = ioBroker.Adapter & {
 	config: unknown;
@@ -31,6 +32,7 @@ export async function ensureStaticStateTree(host: StaticStateTreeHost): Promise<
 	await ensureAddonRuntimeSurfaceStates(host);
 	await ensureEmsLightStateTree(host);
 	await ensureBackupStates(host);
+	await ensureStorageReportStates(host);
 	await ensureWallboxStatusStates(host);
 	await ensureWallboxStaticStateTree(host);
 	await ensureBatteryStateTree(host);

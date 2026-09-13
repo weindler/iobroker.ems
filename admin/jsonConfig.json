@@ -12033,6 +12033,15 @@
 					"result": {"ok": "Speicherbelegung ermittelt", "error": "Speicherbelegung nicht ermittelbar"},
 					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
 				},
+				"_storageReportResult": {
+					"type": "state",
+					"oid": "storage.report_html",
+					"control": "html",
+					"readOnly": true,
+					"label": "Auswertung",
+					"newLine": true,
+					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+				},
 				"retentionExplanation": {
 					"type": "staticText",
 					"text": "Richtwerte: Tages-Telemetrie meist 90 Tage, Lern-/Rollup-Daten je nach Zweck 120 Tage, Energietageswerte bis 730 Tage; Backups und Supportpakete sind mengenbegrenzt. Die Hochrechnung ist anfangs nur eine Tendenz.",

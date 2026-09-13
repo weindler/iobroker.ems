@@ -14,6 +14,7 @@ const status_wallbox_1 = require("../status_wallbox");
 const base_ensure_1 = require("./base_ensure");
 const ensure_states_1 = require("../backup/ensure_states");
 const cleanup_1 = require("../surface_cleanup/cleanup");
+const storage_report_1 = require("../storage_report");
 /** Phase B — statischer EMS-State-Tree ohne dynamische Fahrzeugprofile. */
 async function ensureStaticStateTree(host) {
     await (0, execution_mode_1.ensureChannelTree)(host.setObjectNotExistsAsync.bind(host));
@@ -25,6 +26,7 @@ async function ensureStaticStateTree(host) {
     await (0, runtime_surface_1.ensureAddonRuntimeSurfaceStates)(host);
     await (0, ems_light_1.ensureEmsLightStateTree)(host);
     await (0, ensure_states_1.ensureBackupStates)(host);
+    await (0, storage_report_1.ensureStorageReportStates)(host);
     await (0, status_wallbox_1.ensureWallboxStatusStates)(host);
     await (0, wallbox_1.ensureWallboxStaticStateTree)(host);
     await (0, battery_1.ensureBatteryStateTree)(host);

@@ -268,7 +268,7 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /tibberRewardsBannerHtml/);
 	});
 
-	it("highlights active Rewards and distinguishes ready, waiting and hidden states", () => {
+	it("highlights active Rewards and distinguishes ready, waiting and idle states", () => {
 		const display = loadOpsDisplay(visHtml);
 		const active = display.visTibberRewardsView({
 			active: true,
@@ -294,9 +294,11 @@ describe("VIS operations dashboard", () => {
 		assert.match(waiting.side, /12:05/);
 
 		const ready = display.visTibberRewardsView({ active: false, configured: true, connected: false });
-		assert.equal(ready.cls, "ready");
-		assert.match(ready.title, /EINGERICHTET/);
-		assert.equal(display.visTibberRewardsView({ active: false, configured: false }).show, false);
+		assert.equal(ready.cls, "neutral");
+		assert.match(ready.title, /NICHT ANGESTECKT/);
+		const idle = display.visTibberRewardsView({ active: false, configured: false, connected: true });
+		assert.equal(idle.show, true);
+		assert.match(idle.title, /KEINE LADUNG AKTIV/);
 	});
 
 	it("explains the Auto tab in plain German without fake target SOC or confirmed Rewards", () => {
@@ -364,10 +366,10 @@ describe("VIS operations dashboard", () => {
 	it("shows climate HVAC badges only while the device is running", () => {
 		assert.match(visHtml, /function climateHvacBadge/);
 		assert.match(visHtml, /function visClimateHvacBadge/);
-		assert.match(visHtml, /label:"DRY"/);
-		assert.match(visHtml, /label:"COOL"/);
-		assert.match(visHtml, /label:"HEAT"/);
-		assert.match(visHtml, /label:"FAN"/);
+		assert.match(visHtml, /label:"ENTFEUCHTEN"/);
+		assert.match(visHtml, /label:"KÜHLEN"/);
+		assert.match(visHtml, /label:"HEIZEN"/);
+		assert.match(visHtml, /label:"LÜFTEN"/);
 		assert.match(visHtml, /label:"LÄUFT"/);
 		assert.match(visHtml, /mode_purpose/);
 		assert.match(visHtml, /badge\.hvac/);
@@ -392,9 +394,8 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /function visPriceBand/);
 		assert.match(visHtml, /grid-template-columns:minmax\(310px,410px\) minmax\(200px,1fr\) minmax\(220px,28%\)/);
 		assert.match(visHtml, /html,body\{height:100%;overflow:hidden\}/);
-		assert.match(visHtml, /\.ems-price-svg\{width:100%;height:84px/);
-		assert.match(visHtml, /var W=640,H=84/);
-		assert.equal(visHtml.includes("H=108"), false);
+		assert.match(visHtml, /\.ems-price-svg\{width:100%;height:150px/);
+		assert.match(visHtml, /var W=1000,H=150/);
 		assert.match(visHtml, /display="flex"/);
 		assert.match(visHtml, /ems-tiles-dense/);
 	});
@@ -631,7 +632,8 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.match(visHtml, /visPriceBandFill\(visPriceBand\(ct,bandLo,bandHi\)\)/);
 		assert.match(visHtml, /s\.current&&s\.gbPriceOk/);
 		assert.equal(visHtml.includes('if(s.current)fill="#f0b429"'), false);
-		assert.match(visHtml, /stroke="#f0b429"/);
+		assert.match(visHtml, /stroke="#79c0ff"/);
+		assert.match(visHtml, /fill="#f0b429"/);
 	});
 
 	it("scales Tibber bars against the configured GB min price, not a hardcoded 30 ct", () => {
@@ -771,10 +773,10 @@ describe("VIS battery / grid / GB presentation", () => {
 	it("hides HVAC mode badges when climate is off; shows them only while running", () => {
 		assert.equal(ops.visClimateHvacBadge("cooling", false), null);
 		assert.equal(ops.visClimateHvacBadge("dehumidify", false), null);
-		assert.deepEqual(ops.visClimateHvacBadge("cooling", true), { cls: "hvac-cool", label: "COOL" });
-		assert.deepEqual(ops.visClimateHvacBadge("dehumidify", true), { cls: "hvac-dry", label: "DRY" });
-		assert.deepEqual(ops.visClimateHvacBadge("heating", true), { cls: "hvac-heat", label: "HEAT" });
-		assert.equal(ops.visHvacPurposeLabel("cooling"), "COOL");
+		assert.deepEqual(ops.visClimateHvacBadge("cooling", true), { cls: "hvac-cool", label: "KÜHLEN" });
+		assert.deepEqual(ops.visClimateHvacBadge("dehumidify", true), { cls: "hvac-dry", label: "ENTFEUCHTEN" });
+		assert.deepEqual(ops.visClimateHvacBadge("heating", true), { cls: "hvac-heat", label: "HEIZEN" });
+		assert.equal(ops.visHvacPurposeLabel("cooling"), "KÜHLEN");
 		assert.match(visHtml, /visHvacPurposeLabel\(g\(base\+"\.mode_purpose"\)\)/);
 		assert.match(visHtml, /execAuthorityBadge\("air_conditioning"\)/);
 		assert.match(visHtml, /climateDeviceBadge\(running\)/);
@@ -920,7 +922,7 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(buckets.current[0].name, "Heizstab");
 		assert.equal(buckets.today[0].name, "Klima");
 		assert.equal(buckets.later[0].name, "Morgen");
-		assert.equal(visHtml.includes('["Restzeit"'), false);
+		assert.equal(visHtml.includes('["Restzeit"'), true);
 		assert.equal(visHtml.includes('["Leer ca."'), false);
 	});
 

@@ -33,6 +33,7 @@ import {
 import type { BatteryRuntimeComputeResult } from "./types";
 import { pvBiasConfigFromAdapter } from "../pv_bias/config";
 import { BAT } from "../../addons/battery/ensure_states";
+import { batteryConfigFromAdapter } from "../../addons/battery/config";
 import { intentAdminConfigFromAdapter } from "../../intent/config";
 import {
 	dayTelemetryDirFromHost,
@@ -272,6 +273,11 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			: null;
 
 		const sampleDays = distinctSocSampleDays(socHist.points);
+		const batteryConfig = batteryConfigFromAdapter(host.config);
+		const gridBalanceMaxAdditionalPowerW = Math.max(
+			batteryConfig.gridBalance.offsetHighSocW,
+			batteryConfig.gridBalance.offsetLowSocW,
+		);
 		const result = withPowerDiagnostics(
 			computeBatteryRuntimeLearning({
 				socPoints: socHist.points,
@@ -281,6 +287,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 				pvPowerPoints,
 				housePowerPoints,
 				gridBalancePowerPoints,
+				gridBalanceMaxAdditionalPowerW,
 				capacityKwh,
 				currentSocPct,
 				cfg,

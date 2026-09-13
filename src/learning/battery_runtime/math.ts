@@ -151,6 +151,12 @@ export function computeNightDischarges(params: {
 	 * keine Netzausgleichs-Historie verfügbar → Verhalten unverändert (keine Attribution nötig).
 	 */
 	gridBalancePowerPoints?: PowerPoint[] | null;
+	/**
+	 * Maximaler echter Zusatz-Offset des Netzausgleichs. Alte Historien enthielten teils
+	 * den gesamten Batterie-Sollwert. Die Attribution darf deshalb niemals mehr Energie
+	 * abziehen als der konfigurierte Zusatz-Offset über das jeweilige Nachtfenster.
+	 */
+	gridBalanceMaxAdditionalPowerW?: number | null;
 	flutterMs?: number;
 	nowMs?: number;
 }): {
@@ -316,13 +322,25 @@ export function computeNightDischarges(params: {
 			 */
 			if (gridBalancePoints.length > 0 && nightKwh !== null) {
 				if (gridBalanceHasSamplesInWindow(gridBalancePoints, obs.startTs, obs.endTs)) {
-					const gbKwh = integratePowerKwh(gridBalancePoints, obs.startTs, obs.endTs);
-					if (gbKwh === null) {
+					const integratedGbKwh = integratePowerKwh(gridBalancePoints, obs.startTs, obs.endTs);
+					if (integratedGbKwh === null) {
 						gridBalanceExcludedNights++;
 						diagnostic.exclusionReason = "grid_balance_coverage";
 						nightSamples.push(diagnostic);
 						continue;
 					}
+					const configuredOffsetW = params.gridBalanceMaxAdditionalPowerW;
+					const maxAdditionalKwh =
+						configuredOffsetW !== null &&
+						configuredOffsetW !== undefined &&
+						Number.isFinite(configuredOffsetW) &&
+						configuredOffsetW >= 0
+							? (configuredOffsetW * (obs.endTs - obs.startTs)) / 3_600_000_000
+							: null;
+					const gbKwh =
+						maxAdditionalKwh === null
+							? integratedGbKwh
+							: Math.min(integratedGbKwh, maxAdditionalKwh);
 					diagnostic.gridBalanceKwh = round3(gbKwh);
 					if (gbKwh > 0.01) {
 						const netKwh = Math.max(0, nightKwh - gbKwh);
@@ -710,6 +728,7 @@ export function computeBatteryRuntimeLearning(params: {
 	housePowerPoints?: PowerPoint[] | null;
 	/** PFLICHT-FIX 1 Korrektur — siehe `computeNightDischarges`. */
 	gridBalancePowerPoints?: PowerPoint[] | null;
+	gridBalanceMaxAdditionalPowerW?: number | null;
 	capacityKwh: number | null;
 	currentSocPct: number | null;
 	cfg: BatteryRuntimeConfig;
@@ -729,6 +748,7 @@ export function computeBatteryRuntimeLearning(params: {
 		housePowerPoints: params.housePowerPoints,
 		batteryPowerPoints: params.powerPoints,
 		gridBalancePowerPoints: params.gridBalancePowerPoints,
+		gridBalanceMaxAdditionalPowerW: params.gridBalanceMaxAdditionalPowerW,
 		nowMs: params.now.getTime(),
 	});
 	const houseLoad = computeNightHouseLoadDiagnostic({

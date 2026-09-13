@@ -172,7 +172,30 @@ class FakeTelHost {
         const gridBalancePowerPoints = [];
         for (let i = 0; i <= 48; i++)
             gridBalancePowerPoints.push({ ts: start + i * 15 * 60_000, powerW: 25 });
-        const result = (0, math_1.computeNightDischarges)({ socPoints, nightStart: "20:30", nightEnd: "08:30", capacityKwh: 10, gridBalancePowerPoints, nowMs: end + 4 * 60 * 60_000 });
+        const result = (0, math_1.computeNightDischarges)({ socPoints, nightStart: "20:30", nightEnd: "08:30", capacityKwh: 10, gridBalancePowerPoints, gridBalanceMaxAdditionalPowerW: 25, nowMs: end + 4 * 60 * 60_000 });
+        strict_1.default.ok(result.avgKwh !== null);
+        strict_1.default.ok(Math.abs(result.avgKwh - 3.3) < 0.06, `got ${result.avgKwh}`);
+        strict_1.default.ok(Math.abs((result.nightSamples[0]?.gridBalanceKwh ?? 0) - 0.3) < 0.03);
+    });
+    (0, node_test_1.it)("begrenzt alten Gesamt-Sollwert auf den konfigurierten 25-W-Zusatzoffset", () => {
+        const start = new Date(2026, 8, 11, 20, 30).getTime();
+        const end = new Date(2026, 8, 12, 8, 30).getTime();
+        const socPoints = [
+            { ts: start, socPct: 97 },
+            { ts: end, socPct: 61 },
+        ];
+        const legacyFullSetpoint = [];
+        for (let i = 0; i <= 48; i++)
+            legacyFullSetpoint.push({ ts: start + i * 15 * 60_000, powerW: 270 });
+        const result = (0, math_1.computeNightDischarges)({
+            socPoints,
+            nightStart: "20:30",
+            nightEnd: "08:30",
+            capacityKwh: 10,
+            gridBalancePowerPoints: legacyFullSetpoint,
+            gridBalanceMaxAdditionalPowerW: 25,
+            nowMs: end + 4 * 60 * 60_000,
+        });
         strict_1.default.ok(result.avgKwh !== null);
         strict_1.default.ok(Math.abs(result.avgKwh - 3.3) < 0.06, `got ${result.avgKwh}`);
         strict_1.default.ok(Math.abs((result.nightSamples[0]?.gridBalanceKwh ?? 0) - 0.3) < 0.03);

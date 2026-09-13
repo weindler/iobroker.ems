@@ -209,13 +209,23 @@ function computeNightDischarges(params) {
              */
             if (gridBalancePoints.length > 0 && nightKwh !== null) {
                 if ((0, night_bridge_1.gridBalanceHasSamplesInWindow)(gridBalancePoints, obs.startTs, obs.endTs)) {
-                    const gbKwh = (0, night_bridge_1.integratePowerKwh)(gridBalancePoints, obs.startTs, obs.endTs);
-                    if (gbKwh === null) {
+                    const integratedGbKwh = (0, night_bridge_1.integratePowerKwh)(gridBalancePoints, obs.startTs, obs.endTs);
+                    if (integratedGbKwh === null) {
                         gridBalanceExcludedNights++;
                         diagnostic.exclusionReason = "grid_balance_coverage";
                         nightSamples.push(diagnostic);
                         continue;
                     }
+                    const configuredOffsetW = params.gridBalanceMaxAdditionalPowerW;
+                    const maxAdditionalKwh = configuredOffsetW !== null &&
+                        configuredOffsetW !== undefined &&
+                        Number.isFinite(configuredOffsetW) &&
+                        configuredOffsetW >= 0
+                        ? (configuredOffsetW * (obs.endTs - obs.startTs)) / 3_600_000_000
+                        : null;
+                    const gbKwh = maxAdditionalKwh === null
+                        ? integratedGbKwh
+                        : Math.min(integratedGbKwh, maxAdditionalKwh);
                     diagnostic.gridBalanceKwh = round3(gbKwh);
                     if (gbKwh > 0.01) {
                         const netKwh = Math.max(0, nightKwh - gbKwh);
@@ -540,6 +550,7 @@ function computeBatteryRuntimeLearning(params) {
         housePowerPoints: params.housePowerPoints,
         batteryPowerPoints: params.powerPoints,
         gridBalancePowerPoints: params.gridBalancePowerPoints,
+        gridBalanceMaxAdditionalPowerW: params.gridBalanceMaxAdditionalPowerW,
         nowMs: params.now.getTime(),
     });
     const houseLoad = computeNightHouseLoadDiagnostic({

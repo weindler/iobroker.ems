@@ -8,7 +8,8 @@ const math_1 = require("./math");
 const persist_1 = require("./persist");
 const config_2 = require("../pv_bias/config");
 const ensure_states_1 = require("../../addons/battery/ensure_states");
-const config_3 = require("../../intent/config");
+const config_3 = require("../../addons/battery/config");
+const config_4 = require("../../intent/config");
 const grid_balance_from_telemetry_1 = require("./grid_balance_from_telemetry");
 async function setNumIfValid(host, id, value) {
     if (value !== null && Number.isFinite(value)) {
@@ -110,7 +111,7 @@ async function runBatteryRuntimeLearning(host) {
          * Netzausgleich-Attribution: zuerst EMS-Day-Telemetry, History nur Legacy-Fallback
          * mit begrenzter Probe (kein 90×2-Leer-Sturm).
          */
-        const timezone = (0, config_3.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
+        const timezone = (0, config_4.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
         const fromTelemetry = await (0, grid_balance_from_telemetry_1.loadGridBalancePowerFromDayTelemetry)((0, grid_balance_from_telemetry_1.dayTelemetryDirFromHost)(host.getAbsolutePath), cfg.lookbackDays, now, timezone);
         let gridBalancePowerPoints = fromTelemetry.points;
         if (fromTelemetry.observedDayCount === 0) {
@@ -148,6 +149,8 @@ async function runBatteryRuntimeLearning(host) {
             ? (0, history_1.mergeDailyAstroTimes)(await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightStartStateId, cfg.lookbackDays), await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightEndStateId, cfg.lookbackDays))
             : null;
         const sampleDays = (0, history_1.distinctSocSampleDays)(socHist.points);
+        const batteryConfig = (0, config_3.batteryConfigFromAdapter)(host.config);
+        const gridBalanceMaxAdditionalPowerW = Math.max(batteryConfig.gridBalance.offsetHighSocW, batteryConfig.gridBalance.offsetLowSocW);
         const result = (0, math_1.withPowerDiagnostics)((0, math_1.computeBatteryRuntimeLearning)({
             socPoints: socHist.points,
             socPointsForFullCharge: socRaw,
@@ -156,6 +159,7 @@ async function runBatteryRuntimeLearning(host) {
             pvPowerPoints,
             housePowerPoints,
             gridBalancePowerPoints,
+            gridBalanceMaxAdditionalPowerW,
             capacityKwh,
             currentSocPct,
             cfg,

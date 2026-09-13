@@ -3926,9 +3926,6 @@ function renderStatistics(){
 	var mP=mobReady
 		?savingsHero(num(g("statistics.mobility.period.savings_eur"))!=null?num(g("statistics.mobility.period.savings_eur")):(num(g("statistics.mobility.period_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.period_savings_vs_ice_eur")):num(mobP.savingsVsIceEur)))
 		:savingsHero(mobP&&mobP.savingsVsIceEur!=null?mobP.savingsVsIceEur:null);
-	var pendingNote=pending.length
-		? (pending.length+" offene Schnellader-Session(s) — Rechnung unter statistics.public_charge.submit_request (JSON: kwh, eur).")
-		: "Keine offenen Schnellader-Sessions.";
 	var homePeriodNote=joinNotes(txt(homeP.reasonDe,""),gridRewardsPendingHint(homeP.gridRewardsSource,homeP.gridRewardsCreditEur));
 	if(gridRewardsShowEuro(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)){
 		homePeriodNote=joinNotes(homePeriodNote,"Grid Rewards aus Tibber-Abrechnung.");

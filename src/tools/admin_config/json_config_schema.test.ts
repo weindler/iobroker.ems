@@ -44,4 +44,23 @@ describe("admin jsonConfig vs ioBroker schema", () => {
 		assert.equal(serialized.includes("aiDailyAnalystNow"), false);
 		assert.equal(serialized.includes("KI-Optimierung"), false);
 	});
+
+	it("zeigt jeden Laufzeitmodus genau einmal als direkten Zustandsschalter", () => {
+		const all = config.items ?? {};
+		const expected: Array<[string, string, string]> = [
+			["globalTab", "global_execution_mode", "global.execution_mode"],
+			["wallboxTab", "wb_addon_mode", "addons.wallbox.mode"],
+			["batteryTab", "bat_addon_mode", "addons.battery.mode"],
+			["immersionHeaterTab", "ih_addon_mode", "addons.immersion_heater.mode"],
+			["climateTab", "ac_addon_mode", "addons.air_conditioning.mode"],
+		];
+		for (const [tab, key, oid] of expected) {
+			const item = (all as Record<string, { items?: Record<string, Record<string, unknown>> }>)[tab]?.items?.[key];
+			assert.equal(item?.type, "state", `${key} muss ohne Speichern direkt den Zustand schalten`);
+			assert.equal(item?.oid, oid);
+		}
+		const serialized = JSON.stringify(config);
+		assert.equal(serialized.includes("runtime_global_mode_apply"), false);
+		assert.equal(serialized.includes("runtime_wallbox_mode_apply"), false);
+	});
 });

@@ -247,6 +247,16 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /Tendenzen ab Tag 3 sind gelernte Schätzungen/);
 	});
 
+	it("shows the real smart meter and a guided external charge form without user JSON", () => {
+		assert.match(visHtml, /Smart Meter/);
+		assert.match(visHtml, /statistics\.meter\.import_1_8_0_kwh/);
+		assert.match(visHtml, /statistics\.meter\.export_2_8_0_kwh/);
+		assert.match(visHtml, /Schnelllader-Abrechnung ergänzen/);
+		assert.match(visHtml, /data-ems-action="public-charge-save"/);
+		assert.match(visHtml, /function submitPublicCharge/);
+		assert.doesNotMatch(visHtml, /Rechnung unter statistics\.public_charge\.submit_request/);
+	});
+
 	it("shows the configured Tibber plug-in handoff separately from the current Rewards signal", () => {
 		assert.match(visHtml, /Übergabe erlaubt/);
 		assert.match(visHtml, /Tibber-Übergabe/);

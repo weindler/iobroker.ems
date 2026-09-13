@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.3.1",
+		"version": "0.4.0",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.0": {
+				"en": "Corrected night-reserve attribution, real smart-meter statistics, restart-free runtime modes and completed the user-facing dashboard overhaul.",
+				"de": "Nachtreserve-Zuordnung korrigiert, reale Smart-Meter-Statistik, Laufzeitmodi ohne Neustart und die benutzerfreundliche Dashboard-Überarbeitung vervollständigt."
+			},
 			"0.3.1": {
 				"en": "Admin cleanup: removed the duplicate runtime-mode control block from Global. Existing global and add-on mode selectors remain the only configuration controls; writable runtime states continue to support switching without an adapter restart.",
 				"de": "Admin-Bereinigung: Der doppelte Laufzeitmodus-Block wurde aus Global entfernt. Die vorhandenen globalen und Add-on-Modusschalter bleiben die einzigen Konfigurationsfelder; die beschreibbaren Laufzeit-States unterstützen weiterhin das Umschalten ohne Adapterneustart."

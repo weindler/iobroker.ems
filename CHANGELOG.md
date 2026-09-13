@@ -8,6 +8,26 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.0] – 2026-09-13
+
+### Added
+
+- Reale Smart-Meter-Kachel und Zählerabgleich über Netzbezug 1.8.0, Einspeisung 2.8.0 und Live-Netzleistung.
+- Sichtbarer Speicherbericht mit Datenarten, Haltezeiten, freiem Speicher, Wachstumsrate und belastbarer Hochrechnung erst nach drei Messtagen.
+- Direkte Schnelllader-Eingabemaske sowie Batterieanzeige und grafischer Sieben-Tage-Preis-/PV-Ausblick.
+
+### Changed
+
+- Pro Add-on gibt es nur noch einen unmittelbaren Laufzeit-Umschalter; `Aus`, `Dry-run` und `Live` werden ohne Speichern der Native-Konfiguration und ohne Adapterneustart übernommen.
+- Planung zeigt die 72-Stunden-Abdeckung getrennt für Zeitachse, PV, Hausverbrauch und Preise; unbekannte Werte bleiben unbekannt.
+- Statistik verwendet genau den gewählten Zeitraum und wiederholt Auto-Ladevergleich, Reserveprüfung und Sieben-Tage-Ausblick nicht mehr.
+- Klima weist die Leistung eines gemeinsamen Außengeräts nur einmal aus; sichtbare technische Begriffe wurden weiter ins Deutsche übersetzt.
+
+### Fixed
+
+- Nachtverbrauch zieht beim Netzausgleich nur dessen zusätzliche Ausgleichsenergie ab. Historische Telemetrie wird beim Lesen korrigiert; 25 W über 12 Stunden ergeben 0,3 kWh statt mehrerer kWh.
+- Ungültige oder schnell aufeinanderfolgende Moduswechsel werden sicher serialisiert; beim Wechsel von Live auf Dry-run werden EMS-Aktionen kontrolliert beendet.
+
 ## [0.3.1] – 2026-09-13
 
 ### Fixed

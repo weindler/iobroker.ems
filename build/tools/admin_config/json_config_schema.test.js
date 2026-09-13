@@ -56,4 +56,22 @@ function loadJson(filePath) {
         strict_1.default.equal(serialized.includes("aiDailyAnalystNow"), false);
         strict_1.default.equal(serialized.includes("KI-Optimierung"), false);
     });
+    (0, node_test_1.it)("zeigt jeden Laufzeitmodus genau einmal als direkten Zustandsschalter", () => {
+        const all = config.items ?? {};
+        const expected = [
+            ["globalTab", "global_execution_mode", "global.execution_mode"],
+            ["wallboxTab", "wb_addon_mode", "addons.wallbox.mode"],
+            ["batteryTab", "bat_addon_mode", "addons.battery.mode"],
+            ["immersionHeaterTab", "ih_addon_mode", "addons.immersion_heater.mode"],
+            ["climateTab", "ac_addon_mode", "addons.air_conditioning.mode"],
+        ];
+        for (const [tab, key, oid] of expected) {
+            const item = all[tab]?.items?.[key];
+            strict_1.default.equal(item?.type, "state", `${key} muss ohne Speichern direkt den Zustand schalten`);
+            strict_1.default.equal(item?.oid, oid);
+        }
+        const serialized = JSON.stringify(config);
+        strict_1.default.equal(serialized.includes("runtime_global_mode_apply"), false);
+        strict_1.default.equal(serialized.includes("runtime_wallbox_mode_apply"), false);
+    });
 });

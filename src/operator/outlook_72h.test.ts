@@ -138,6 +138,7 @@ describe("operator rolling 72 h outlook", () => {
 		assert.equal(outlook.status, "ready");
 		assert.equal(outlook.complete, true);
 		assert.equal(outlook.coveredHours, 72);
+		assert.deepEqual(outlook.coverageHours, { timeline: 72, pv: 72, houseLoad: 72, price: 72 });
 		assert.equal(outlook.horizonEndIso, "2026-09-06T00:00:00.000Z");
 		assert.deepEqual(outlook.days.map((day) => day.dateKey), ["2026-09-03", "2026-09-04", "2026-09-05"]);
 		assert.equal(outlook.days[0].expectedPvKwh, 24);
@@ -153,6 +154,7 @@ describe("operator rolling 72 h outlook", () => {
 
 		assert.equal(outlook.days[1].expectedPvKwh, null);
 		assert.equal(outlook.days[1].pvKnownSlots, 95);
+		assert.equal(outlook.coverageHours.pv, 71.75);
 		assert.equal(outlook.status, "partial");
 		assert.equal(outlook.complete, false);
 		assert.ok(outlook.reasonCodes.includes("forecast_values_incomplete"));
@@ -177,6 +179,7 @@ describe("operator rolling 72 h outlook", () => {
 		});
 		assert.equal(outlook.status, "unavailable");
 		assert.equal(outlook.coveredHours, 0);
+		assert.deepEqual(outlook.coverageHours, { timeline: 0, pv: 0, houseLoad: 0, price: 0 });
 		assert.deepEqual(outlook.days, []);
 		assert.deepEqual(outlook.decisions, []);
 	});

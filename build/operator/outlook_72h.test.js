@@ -132,6 +132,7 @@ function multiDayThermalInput(args) {
         strict_1.default.equal(outlook.status, "ready");
         strict_1.default.equal(outlook.complete, true);
         strict_1.default.equal(outlook.coveredHours, 72);
+        strict_1.default.deepEqual(outlook.coverageHours, { timeline: 72, pv: 72, houseLoad: 72, price: 72 });
         strict_1.default.equal(outlook.horizonEndIso, "2026-09-06T00:00:00.000Z");
         strict_1.default.deepEqual(outlook.days.map((day) => day.dateKey), ["2026-09-03", "2026-09-04", "2026-09-05"]);
         strict_1.default.equal(outlook.days[0].expectedPvKwh, 24);
@@ -145,6 +146,7 @@ function multiDayThermalInput(args) {
         const outlook = (0, outlook_72h_1.buildOperatorOutlook72h)({ now: NOW, timezone: "UTC", plan, plannerInput: input });
         strict_1.default.equal(outlook.days[1].expectedPvKwh, null);
         strict_1.default.equal(outlook.days[1].pvKnownSlots, 95);
+        strict_1.default.equal(outlook.coverageHours.pv, 71.75);
         strict_1.default.equal(outlook.status, "partial");
         strict_1.default.equal(outlook.complete, false);
         strict_1.default.ok(outlook.reasonCodes.includes("forecast_values_incomplete"));
@@ -167,6 +169,7 @@ function multiDayThermalInput(args) {
         });
         strict_1.default.equal(outlook.status, "unavailable");
         strict_1.default.equal(outlook.coveredHours, 0);
+        strict_1.default.deepEqual(outlook.coverageHours, { timeline: 0, pv: 0, houseLoad: 0, price: 0 });
         strict_1.default.deepEqual(outlook.days, []);
         strict_1.default.deepEqual(outlook.decisions, []);
     });

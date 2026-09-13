@@ -95,6 +95,12 @@ export type OperatorOutlook72h = {
 	horizonStartIso: string;
 	horizonEndIso: string;
 	coveredHours: number;
+	coverageHours: {
+		timeline: number;
+		pv: number;
+		houseLoad: number;
+		price: number;
+	};
 	complete: boolean;
 	status: "ready" | "partial" | "unavailable";
 	confidence: UnifiedDayPlan["confidence"] | null;
@@ -503,6 +509,7 @@ export function buildOperatorOutlook72h(args: {
 		horizonStartIso: args.now.toISOString(),
 		horizonEndIso: args.now.toISOString(),
 		coveredHours: 0,
+		coverageHours: { timeline: 0, pv: 0, houseLoad: 0, price: 0 },
 		complete: false,
 		status: "unavailable",
 		confidence: args.plan?.confidence ?? null,
@@ -549,6 +556,19 @@ export function buildOperatorOutlook72h(args: {
 	const pvByStart = new Map(args.plannerInput.pv.slots.map((s) => [s.slot.startIso, s.energyKwh]));
 	const loadByStart = new Map(args.plannerInput.houseLoad.slots.map((s) => [s.slot.startIso, s.energyKwh]));
 	const priceByStart = new Map(args.plannerInput.prices.slots.map((s) => [s.slot.startIso, s.importCtPerKwh]));
+	const knownHours = (values: Map<string, number | null | undefined>): number => round(slots.reduce((sum, slot) => {
+		const value = values.get(slot.startIso);
+		if (typeof value !== "number" || !Number.isFinite(value)) return sum;
+		const start = finiteMs(slot.startIso);
+		const end = finiteMs(slot.endIso);
+		return start === null || end === null ? sum : sum + Math.max(0, Math.min(end, requestedEndMs) - Math.max(start, nowMs));
+	}, 0) / 3_600_000, 2);
+	const coverageHours = {
+		timeline: round(coveredHours, 2),
+		pv: knownHours(pvByStart),
+		houseLoad: knownHours(loadByStart),
+		price: knownHours(priceByStart),
+	};
 	const allocationsInWindow = args.plan.allocations.filter((allocation) =>
 		inWindow(allocation.slot.startIso, allocation.slot.endIso),
 	);
@@ -635,6 +655,7 @@ export function buildOperatorOutlook72h(args: {
 		horizonStartIso: new Date(actualStartMs).toISOString(),
 		horizonEndIso,
 		coveredHours: round(coveredHours, 2),
+		coverageHours,
 		complete,
 		status: complete ? "ready" : "partial",
 		confidence: args.plan.confidence,
@@ -661,8 +682,8 @@ function allocationLabel(kind: UnifiedFlexConsumerKind): string {
 
 export function formatOperatorOutlook72hDe(outlook: OperatorOutlook72h): string {
 	if (outlook.status === "unavailable") return "72-h-Ausblick nicht verfügbar.";
-	const coverage = `${outlook.coveredHours.toFixed(1).replace(".", ",")} h`;
-	const header = `Rollender 72-h-Ausblick: ${coverage} ${outlook.complete ? "vollständig" : "abgedeckt (unvollständig)"}.`;
+	const coverage = outlook.coverageHours;
+	const header = `Rollender 72-h-Ausblick: Zeitachse ${coverage.timeline.toFixed(1).replace(".", ",")} h, PV ${coverage.pv.toFixed(1).replace(".", ",")} h, Hausverbrauch ${coverage.houseLoad.toFixed(1).replace(".", ",")} h, Preise ${coverage.price.toFixed(1).replace(".", ",")} h.`;
 	const lines = outlook.days.map((day) => {
 		const price =
 			day.priceCtPerKwh.min === null || day.priceCtPerKwh.max === null
@@ -670,7 +691,7 @@ export function formatOperatorOutlook72hDe(outlook: OperatorOutlook72h): string 
 				: `Preis ${day.priceCtPerKwh.min.toFixed(1).replace(".", ",")}–${day.priceCtPerKwh.max.toFixed(1).replace(".", ",")} ct/kWh${day.priceCtPerKwh.complete ? "" : " (teilweise)"}`;
 		const flex = day.allocations.length
 			? day.allocations.map((a) => `${allocationLabel(a.kind)} ${kwh(a.energyKwh)}`).join(", ")
-			: "keine Flex-Allokation";
+			: "keine verschiebbare Geräteaktion eingeplant";
 		const battery = day.battery
 			? `Batterie ${day.battery.projectedFirstSocPct?.toFixed(0) ?? "?"}→${day.battery.projectedLastSocPct?.toFixed(0) ?? "?"} %`
 			: "Batterieprognose unbekannt";

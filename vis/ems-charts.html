@@ -2806,7 +2806,10 @@ function renderHorizon(){
 			var dayLabel=od.dayLabelDe||(dk.length===3?dk[2]+"."+dk[1]+".":String(od.dateKey||"Tag"));
 			outlookHtml+=storyBlock(dayLabel,olines);
 		}
-		if(outlook.complete!==true)outlookHtml+='<div class="ems-next-idle"><div>Für '+esc(String(outlook.coveredHours||0).replace(".",","))+' Stunden liegen bereits ausreichend Eingangsdaten vor; der restliche Zeitraum wird ergänzt, sobald neue Preis- und Wetterwerte verfügbar sind.</div></div>';
+		if(outlook.complete!==true){
+			var cov=outlook.coverageHours||{timeline:outlook.coveredHours||0,pv:0,houseLoad:0,price:0};
+			outlookHtml+='<div class="ems-next-idle"><div><b>Datenabdeckung der nächsten 72 Stunden:</b> Zeitachse '+esc(String(cov.timeline||0).replace(".",","))+' h · PV '+esc(String(cov.pv||0).replace(".",","))+' h · Hausverbrauch '+esc(String(cov.houseLoad||0).replace(".",","))+' h · Preise '+esc(String(cov.price||0).replace(".",","))+' h. Fehlende Werte werden nicht als bekannt ausgegeben.</div></div>';
+		}
 		outlookHtml+="</div>";
 		paintEl(el,"horizon",outlookHtml);
 		return;

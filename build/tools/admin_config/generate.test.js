@@ -41,7 +41,7 @@ const climate_unit_defaults_1 = require("./climate_unit_defaults");
         const existing = {
             introAc: { type: "staticText" },
             climateGovernanceHint: { type: "staticText" },
-            ac_addon_mode: { type: "select" },
+            ac_addon_mode: { type: "panel", items: {} },
             ac_outdoor_max_power_w: { type: "number" },
             ac_planner_outdoor_likely_temp_c: { type: "number" },
             ac_default_profile: { type: "select" },

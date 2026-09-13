@@ -56,7 +56,7 @@ function loadJson(filePath) {
         strict_1.default.equal(serialized.includes("aiDailyAnalystNow"), false);
         strict_1.default.equal(serialized.includes("KI-Optimierung"), false);
     });
-    (0, node_test_1.it)("zeigt jeden Laufzeitmodus genau einmal als direkten Zustandsschalter", () => {
+    (0, node_test_1.it)("zeigt jeden Laufzeitmodus als großen Ist-Status und direkte Sofort-Schaltflächen", () => {
         const all = config.items ?? {};
         const expected = [
             ["globalTab", "global_execution_mode", "global.execution_mode"],
@@ -67,8 +67,17 @@ function loadJson(filePath) {
         ];
         for (const [tab, key, oid] of expected) {
             const item = all[tab]?.items?.[key];
-            strict_1.default.equal(item?.type, "state", `${key} muss ohne Speichern direkt den Zustand schalten`);
-            strict_1.default.equal(item?.oid, oid);
+            strict_1.default.equal(item?.type, "panel", `${key} muss als eindeutiger Modusblock erscheinen`);
+            const modeItems = item?.items;
+            strict_1.default.equal(modeItems?.current?.type, "state");
+            strict_1.default.equal(modeItems?.current?.oid, oid);
+            strict_1.default.equal(modeItems?.current?.control, "text");
+            for (const mode of key === "global_execution_mode" ? ["dryrun", "live"] : ["off", "dryrun", "live"]) {
+                strict_1.default.equal(modeItems?.[mode]?.type, "state");
+                strict_1.default.equal(modeItems?.[mode]?.oid, oid);
+                strict_1.default.equal(modeItems?.[mode]?.control, "button");
+                strict_1.default.equal(modeItems?.[mode]?.buttonValue, mode);
+            }
         }
         const serialized = JSON.stringify(config);
         strict_1.default.equal(serialized.includes("runtime_global_mode_apply"), false);

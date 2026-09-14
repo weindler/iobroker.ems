@@ -106,22 +106,22 @@ function assertStrictFifteenMinuteSeries(starts) {
         const pvNow = input.pv.slots.find((s) => s.slot.startIso === slot730 && s.slot.endIso === slot745);
         strict_1.default.ok(pvNow);
         strict_1.default.equal(pvNow.observedPowerW, livePv);
-        const morningPv = input.pv.slots.find((s) => s.slot.startIso === morningStart && s.slot.endIso === morningEnd);
-        strict_1.default.ok(morningPv);
-        strict_1.default.equal(morningPv.observedPowerW, null);
-        strict_1.default.equal(morningPv.forecastPowerW, null);
-        strict_1.default.equal(morningPv.energyKwh, null);
+        strict_1.default.ok(input.time.slots.every((s) => Date.parse(s.endIso) - Date.parse(s.startIso) === time_1.OPERATOR_MS_PER_15MIN), "Planner-Zeitachse enthält nur kanonische Viertelstunden");
+        strict_1.default.equal(input.time.slots.some((s) => s.startIso === morningStart && s.endIso === morningEnd), false, "Mehrstunden-Haussegment darf kein zusätzlicher Planner-Slot sein");
         const slot600 = (0, time_1.isoAtTimezoneLocal)(dateKey, 6, 0, TZ);
         const slot615 = (0, time_1.isoAtTimezoneLocal)(dateKey, 6, 15, TZ);
         const pv600 = input.pv.slots.find((s) => s.slot.startIso === slot600 && s.slot.endIso === slot615);
         strict_1.default.ok(pv600);
         strict_1.default.equal(pv600.observedPowerW, null);
-        const hlMorning = input.houseLoad.slots.find((s) => s.slot.startIso === morningStart && s.slot.endIso === morningEnd);
-        strict_1.default.ok(hlMorning);
-        strict_1.default.equal(hlMorning.observedPowerW, liveHl);
-        const hlOnPvSlot = input.houseLoad.slots.find((s) => s.slot.startIso === slot730 && s.slot.endIso === slot745);
-        strict_1.default.ok(hlOnPvSlot);
-        strict_1.default.equal(hlOnPvSlot.observedPowerW, null);
+        const hlNow = input.houseLoad.slots.find((s) => s.slot.startIso === slot730 && s.slot.endIso === slot745);
+        strict_1.default.ok(hlNow);
+        strict_1.default.equal(hlNow.forecastPowerW, 900);
+        strict_1.default.equal(hlNow.observedPowerW, liveHl);
+        const slot745End = (0, time_1.isoAtTimezoneLocal)(dateKey, 8, 0, TZ);
+        const hlNext = input.houseLoad.slots.find((s) => s.slot.startIso === slot745 && s.slot.endIso === slot745End);
+        strict_1.default.ok(hlNext);
+        strict_1.default.equal(hlNext.forecastPowerW, 900);
+        strict_1.default.equal(hlNext.observedPowerW, null);
         const snap = (0, knowledge_snapshot_1.withSnapshotId)((0, knowledge_snapshot_1.buildPlannerKnowledgeSnapshot)(input, now.toISOString()));
         const starts = snap.pvSlotKwh.map(([t]) => t);
         assertStrictFifteenMinuteSeries(starts);
@@ -133,6 +133,23 @@ function assertStrictFifteenMinuteSeries(starts) {
         }
         const priceStarts = snap.priceSlots.map(([t]) => t);
         strict_1.default.equal(new Set(priceStarts).size, priceStarts.length, "priceSlots eindeutig");
+    });
+    (0, node_test_1.it)("vereinigt 15-Minuten-PV mit stündlichem Haus- und Preisfenster ohne Doppelzählung", () => {
+        const startMs = Date.parse("2026-09-14T08:00:00.000Z");
+        const quarterSlots = Array.from({ length: 4 }, (_, index) => planSlot(new Date(startMs + index * time_1.OPERATOR_MS_PER_15MIN).toISOString(), new Date(startMs + (index + 1) * time_1.OPERATOR_MS_PER_15MIN).toISOString(), { pvPowerW: 1200 + index * 100 }));
+        const hourSlot = planSlot(new Date(startMs).toISOString(), new Date(startMs + 4 * time_1.OPERATOR_MS_PER_15MIN).toISOString(), { houseLoadPowerW: 900, gridPriceCtPerKwh: 42 });
+        const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
+            now: new Date(startMs + 60_000),
+            timezone: TZ,
+            globalMode: "balanced",
+            forecastPlan: { slots: [...quarterSlots, hourSlot], days: [], contributions: [] },
+        });
+        strict_1.default.equal(input.time.slots.length, 4);
+        strict_1.default.equal(new Set(input.time.slots.map((slot) => slot.startIso)).size, 4);
+        strict_1.default.ok(input.time.slots.every((slot) => Date.parse(slot.endIso) - Date.parse(slot.startIso) === time_1.OPERATOR_MS_PER_15MIN));
+        strict_1.default.deepEqual(input.pv.slots.map((slot) => slot.forecastPowerW), [1200, 1300, 1400, 1500]);
+        strict_1.default.ok(input.houseLoad.slots.every((slot) => slot.forecastPowerW === 900));
+        strict_1.default.ok(input.prices.slots.every((slot) => slot.importCtPerKwh === 42));
     });
     (0, node_test_1.it)("ohne Live-Telemetrie: kein observed*, Forecast unverändert", () => {
         const dateKey = "2026-08-30";

@@ -8,6 +8,15 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.4] – 2026-09-14
+
+### Fixed
+
+- Gemischte PV-, Hauslast- und Tarifintervalle werden für den gemeinsamen Planner auf genau ein lückenloses 15-Minuten-Raster projiziert; überlappende Mehrstunden-Segmente zählen nicht mehr als zusätzliche Planzeit oder Energie.
+- Live-PV und Live-Hauslast überschreiben weiterhin ausschließlich den aktuellen Viertelstunden-Slot.
+- 72-Stunden-Abdeckung, Planner-Bilanz, Batterieprojektion und Geräteallokation verwenden dieselbe korrigierte Zeitachse.
+
+
 ## [0.4.3] – 2026-09-14
 
 ### Changed

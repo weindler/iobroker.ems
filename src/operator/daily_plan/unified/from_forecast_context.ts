@@ -8,7 +8,7 @@
  * Wallbox/Battery: Planung/Simulation — kein Unified-Live-Takeover.
  */
 
-import type { ForecastPlan } from "../../forecast/types";
+import type { ForecastPlan, ForecastPlanSlot } from "../../forecast/types";
 import type { OperatorDataQuality, PlanContribution } from "../../types";
 import { CONTRIBUTION_IDS } from "../../contribution_ids";
 import { operatorQuality } from "../../quality";
@@ -76,6 +76,73 @@ export function findCurrentHouseLoadSlot(
 
 function slotWindowsEqual(a: SlotWindow, b: SlotWindow): boolean {
 	return a.startIso === b.startIso && a.endIso === b.endIso;
+}
+
+function validBounds(slot: SlotWindow): { start: number; end: number } | null {
+	const start = Date.parse(slot.startIso);
+	const end = Date.parse(slot.endIso);
+	if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+	return { start, end };
+}
+
+/** Mischt Forecast-Auflösungen nicht als parallele Planner-Zeiten, sondern bildet ein Viertelstunden-Raster. */
+export function buildCanonicalQuarterSlots(sourceSlots: ForecastPlanSlot[]): SlotWindow[] {
+	const bounds = sourceSlots.map((source) => validBounds(source.slot))
+		.filter((value): value is { start: number; end: number } => value !== null);
+	if (bounds.length === 0) return [];
+	const minStart = Math.min(...bounds.map((value) => value.start));
+	const maxEnd = Math.max(...bounds.map((value) => value.end));
+	const start = Math.floor(minStart / OPERATOR_MS_PER_15MIN) * OPERATOR_MS_PER_15MIN;
+	const end = Math.ceil(maxEnd / OPERATOR_MS_PER_15MIN) * OPERATOR_MS_PER_15MIN;
+	const slots: SlotWindow[] = [];
+	for (let cursor = start; cursor < end; cursor += OPERATOR_MS_PER_15MIN) {
+		slots.push({ startIso: new Date(cursor).toISOString(), endIso: new Date(cursor + OPERATOR_MS_PER_15MIN).toISOString() });
+	}
+	return slots;
+}
+
+/** Pro Viertelstunde gewinnt der zeitlich genaueste bekannte Quellwert. */
+function sourceValueForQuarter<T>(
+	sourceSlots: ForecastPlanSlot[],
+	quarter: SlotWindow,
+	read: (source: ForecastPlanSlot) => T | null | undefined,
+): T | null {
+	const quarterBounds = validBounds(quarter);
+	if (!quarterBounds) return null;
+	let selected: T | null = null;
+	let selectedDuration = Number.POSITIVE_INFINITY;
+	for (const source of sourceSlots) {
+		const sourceBounds = validBounds(source.slot);
+		if (!sourceBounds || sourceBounds.start > quarterBounds.start || sourceBounds.end < quarterBounds.end) continue;
+		const value = read(source);
+		if (value === null || value === undefined) continue;
+		const duration = sourceBounds.end - sourceBounds.start;
+		if (duration < selectedDuration) {
+			selected = value;
+			selectedDuration = duration;
+		}
+	}
+	return selected;
+}
+
+function gridImportAllowedForQuarter(sourceSlots: ForecastPlanSlot[], quarter: SlotWindow): boolean {
+	const quarterBounds = validBounds(quarter);
+	if (!quarterBounds) return true;
+	let selected: boolean | null = null;
+	let selectedDuration = Number.POSITIVE_INFINITY;
+	for (const source of sourceSlots) {
+		const sourceBounds = validBounds(source.slot);
+		if (!sourceBounds || sourceBounds.start > quarterBounds.start || sourceBounds.end < quarterBounds.end) continue;
+		const carriesGridPolicy = source.gridPriceCtPerKwh !== null ||
+			source.gridMaxImportPowerW !== null || source.gridImportAllowed === false;
+		if (!carriesGridPolicy) continue;
+		const duration = sourceBounds.end - sourceBounds.start;
+		if (duration < selectedDuration) {
+			selected = source.gridImportAllowed;
+			selectedDuration = duration;
+		}
+	}
+	return selected ?? true;
 }
 
 function num(d: Record<string, unknown> | null | undefined, key: string): number | null {
@@ -226,7 +293,8 @@ export function normalizeFeedInCtPerKwh(raw: unknown): number | null {
 export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext): UnifiedDayPlannerInput {
 	const nowMs = ctx.now.getTime();
 	const nowIso = ctx.now.toISOString();
-	const slots = ctx.forecastPlan.slots.map((s) => s.slot);
+	const forecastSlots = ctx.forecastPlan.slots;
+	const slots = buildCanonicalQuarterSlots(forecastSlots);
 	const contribById = new Map(ctx.forecastPlan.contributions.map((c) => [c.contributionId, c]));
 
 	const pvC = contribById.get(CONTRIBUTION_IDS.PV_SUPPLY);
@@ -253,48 +321,29 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		pvAgeSec: ctx.observedPvAgeSec,
 		houseAgeSec: ctx.observedHouseAgeSec,
 	});
-	const currentPvSlot = liveNowUsable ? findCurrentFifteenMinuteSlot(slots, nowMs) : null;
-	const currentHouseLoadSlot = liveNowUsable
-		? findCurrentHouseLoadSlot(ctx.forecastPlan.slots, nowMs)
-		: null;
+	const currentQuarter = liveNowUsable ? findCurrentFifteenMinuteSlot(slots, nowMs) : null;
 
-	const pvSlots = ctx.forecastPlan.slots.map((s) => {
-		const power = s.pvPowerW;
-		const observed =
-			liveNowUsable && currentPvSlot && slotWindowsEqual(s.slot, currentPvSlot)
-				? (ctx.observedPvPowerW ?? null)
-				: null;
+	const pvSlots = slots.map((slot) => {
+		const power = sourceValueForQuarter(forecastSlots, slot, (source) => source.pvPowerW);
+		const observed = liveNowUsable && currentQuarter && slotWindowsEqual(slot, currentQuarter)
+			? (ctx.observedPvPowerW ?? null) : null;
 		const effective = observed ?? power;
-		return {
-			slot: s.slot,
-			forecastPowerW: power,
-			observedPowerW: observed,
-			energyKwh: slotEnergyKwh(effective),
-		};
+		return { slot, forecastPowerW: power, observedPowerW: observed, energyKwh: slotEnergyKwh(effective) };
 	});
-	const loadSlots = ctx.forecastPlan.slots.map((s) => {
-		const power = s.houseLoadPowerW;
-		const observed =
-			liveNowUsable &&
-			currentHouseLoadSlot &&
-			slotWindowsEqual(s.slot, currentHouseLoadSlot)
-				? (ctx.observedHouseLoadPowerW ?? null)
-				: null;
+	const loadSlots = slots.map((slot) => {
+		const power = sourceValueForQuarter(forecastSlots, slot, (source) => source.houseLoadPowerW);
+		const observed = liveNowUsable && currentQuarter && slotWindowsEqual(slot, currentQuarter)
+			? (ctx.observedHouseLoadPowerW ?? null) : null;
 		const effective = observed ?? power;
-		return {
-			slot: s.slot,
-			forecastPowerW: power,
-			observedPowerW: observed,
-			energyKwh: slotEnergyKwh(effective),
-		};
+		return { slot, forecastPowerW: power, observedPowerW: observed, energyKwh: slotEnergyKwh(effective) };
 	});
 	const exportCtPerKwh = normalizeFeedInCtPerKwh(ctx.feedInCtPerKwh ?? null);
-	const priceSlots = ctx.forecastPlan.slots.map((s) => ({
-		slot: s.slot,
-		importCtPerKwh: s.gridPriceCtPerKwh,
+	const priceSlots = slots.map((slot) => ({
+		slot,
+		importCtPerKwh: sourceValueForQuarter(forecastSlots, slot, (source) => source.gridPriceCtPerKwh),
 		/** ct/kWh — gleiche Einheit wie importCt; Scorer: exportCt * 0.01 → €/kWh. */
 		exportCtPerKwh,
-		gridImportAllowed: s.gridImportAllowed,
+		gridImportAllowed: gridImportAllowedForQuarter(forecastSlots, slot),
 	}));
 
 	const rawToday = num(pvD, "rawTodayKwh");

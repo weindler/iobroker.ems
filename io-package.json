@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.3",
+		"version": "0.4.4",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.4": {
+				"en": "Fixed the authoritative planner timeline: mixed PV, house-load and tariff intervals are projected onto one unique 15-minute grid. Check that 72-hour coverage never exceeds 72 hours and learned house load appears in the plan.",
+				"de": "Autoritative Planner-Zeitachse korrigiert: Gemischte PV-, Hauslast- und Tarifintervalle werden auf ein eindeutiges 15-Minuten-Raster projiziert. Prüfen: Die 72-Stunden-Abdeckung überschreitet nie 72 Stunden und der gelernte Hausverbrauch erscheint im Plan."
+			},
 			"0.4.3": {
 				"en": "Automatic battery support now uses the measured whole-house load, dynamic reserve and price forecast. The former per-consumer battery switches and fixed SOC floors are replaced by one automatic-support switch.",
 				"de": "Die automatische Batterieunterstützung verwendet jetzt die gemessene Ganzhauslast, die dynamische Reserve und die Preisprognose. Die bisherigen Batterie-Haken und festen SOC-Böden je Verbraucher wurden durch einen Automatik-Schalter ersetzt."

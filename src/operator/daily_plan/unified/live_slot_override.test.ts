@@ -128,34 +128,29 @@ describe("live slot override (PV/HL)", () => {
 		assert.ok(pvNow);
 		assert.equal(pvNow!.observedPowerW, livePv);
 
-		const morningPv = input.pv.slots.find(
-			(s) => s.slot.startIso === morningStart && s.slot.endIso === morningEnd,
+		assert.ok(
+			input.time.slots.every((s) => Date.parse(s.endIso) - Date.parse(s.startIso) === OPERATOR_MS_PER_15MIN),
+			"Planner-Zeitachse enthält nur kanonische Viertelstunden",
 		);
-		assert.ok(morningPv);
-		assert.equal(morningPv!.observedPowerW, null);
-		assert.equal(morningPv!.forecastPowerW, null);
-		assert.equal(morningPv!.energyKwh, null);
-
+		assert.equal(
+			input.time.slots.some((s) => s.startIso === morningStart && s.endIso === morningEnd),
+			false,
+			"Mehrstunden-Haussegment darf kein zusätzlicher Planner-Slot sein",
+		);
 		const slot600 = isoAtTimezoneLocal(dateKey, 6, 0, TZ);
 		const slot615 = isoAtTimezoneLocal(dateKey, 6, 15, TZ);
-		const pv600 = input.pv.slots.find(
-			(s) => s.slot.startIso === slot600 && s.slot.endIso === slot615,
-		);
+		const pv600 = input.pv.slots.find((s) => s.slot.startIso === slot600 && s.slot.endIso === slot615);
 		assert.ok(pv600);
 		assert.equal(pv600!.observedPowerW, null);
-
-		const hlMorning = input.houseLoad.slots.find(
-			(s) => s.slot.startIso === morningStart && s.slot.endIso === morningEnd,
-		);
-		assert.ok(hlMorning);
-		assert.equal(hlMorning!.observedPowerW, liveHl);
-
-		const hlOnPvSlot = input.houseLoad.slots.find(
-			(s) => s.slot.startIso === slot730 && s.slot.endIso === slot745,
-		);
-		assert.ok(hlOnPvSlot);
-		assert.equal(hlOnPvSlot!.observedPowerW, null);
-
+		const hlNow = input.houseLoad.slots.find((s) => s.slot.startIso === slot730 && s.slot.endIso === slot745);
+		assert.ok(hlNow);
+		assert.equal(hlNow!.forecastPowerW, 900);
+		assert.equal(hlNow!.observedPowerW, liveHl);
+		const slot745End = isoAtTimezoneLocal(dateKey, 8, 0, TZ);
+		const hlNext = input.houseLoad.slots.find((s) => s.slot.startIso === slot745 && s.slot.endIso === slot745End);
+		assert.ok(hlNext);
+		assert.equal(hlNext!.forecastPowerW, 900);
+		assert.equal(hlNext!.observedPowerW, null);
 		const snap = withSnapshotId(buildPlannerKnowledgeSnapshot(input, now.toISOString()));
 		const starts = snap.pvSlotKwh.map(([t]) => t);
 		assertStrictFifteenMinuteSeries(starts);

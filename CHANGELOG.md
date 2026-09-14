@@ -8,6 +8,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.2] – 2026-09-14
+
+### Fixed
+
+- Gültiges ioBroker-`confirm`-Objekt für die LIVE-Schaltfläche in der Admin-jsonConfig.
+- Price-Learning-States `avg_price_90d`, `volatility_30d` und `coverage_pct` bleiben bei der Oberflächenbereinigung erhalten und erzeugen keine Warnungen wegen fehlender Objekte mehr.
+
 ## [0.4.1] – 2026-09-13
 
 ### Changed

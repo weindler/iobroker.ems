@@ -68,6 +68,12 @@ describe("admin jsonConfig vs ioBroker schema", () => {
 				assert.equal(modeItems?.[mode]?.buttonValue, mode);
 			}
 		}
+		const liveConfirm = (
+			(all as Record<string, { items?: Record<string, Record<string, unknown>> }>).globalTab?.items
+				?.global_execution_mode?.items as Record<string, Record<string, unknown>> | undefined
+		)?.live?.confirm;
+		assert.equal(typeof liveConfirm, "object", "LIVE-Bestätigung muss ein ioBroker-confirm-Objekt sein");
+		assert.equal(Array.isArray(liveConfirm), false);
 		const serialized = JSON.stringify(config);
 		assert.equal(serialized.includes("runtime_global_mode_apply"), false);
 		assert.equal(serialized.includes("runtime_wallbox_mode_apply"), false);

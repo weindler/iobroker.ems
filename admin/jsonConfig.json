@@ -21,7 +21,7 @@
 					"items": {
 						"current": {"type":"state","oid":"global.execution_mode","control":"text","label":"Aktueller Modus","size":"large","blinkOnUpdate":true,"xs":12,"sm":4,"md":4,"lg":4,"xl":4},
 						"dryrun": {"type":"state","oid":"global.execution_mode","control":"button","controlled":true,"buttonValue":"dryrun","label":"DRY-RUN","variant":"contained","xs":6,"sm":4,"md":4,"lg":4,"xl":4},
-						"live": {"type":"state","oid":"global.execution_mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","confirm":"Live erlaubt reale Gerätebefehle für Add-ons, die ebenfalls auf Live stehen.","xs":6,"sm":4,"md":4,"lg":4,"xl":4}
+						"live": {"type":"state","oid":"global.execution_mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","confirm":{"condition":"true","title":"Live aktivieren?","text":"Live erlaubt reale Gerätebefehle für Add-ons, die ebenfalls auf Live stehen.","ok":"Ja, Live","cancel":"Abbrechen","type":"warning"},"xs":6,"sm":4,"md":4,"lg":4,"xl":4}
 					},
 					"xs": 12,
 					"sm": 12,

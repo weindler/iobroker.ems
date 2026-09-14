@@ -108,7 +108,7 @@ const WEATHER_KPI_BALLAST_RE =
 const PRICE_FORECAST_BALLAST_RE =
 	/^learning\.price_forecast\.(coverage_pct|missing_days|forecast_accuracy_90d|avg_error_ct_90d|freeze_time|today_freeze_time|tomorrow_freeze_time|actual_source|stability|forecast_source|freeze_reason|freeze_today_reason|frozen_target_date|frozen_today_target_date)$/;
 const PRICE_LEARNING_BALLAST_RE =
-	/^learning\.price_learning\.(cheap_hours|expensive_hours|avg_price_90d|volatility_30d|coverage_pct|missing_days|price_source)$/;
+	/^learning\.price_learning\.(cheap_hours|expensive_hours|missing_days|price_source)$/;
 const HOUSE_LOAD_BALLAST_RE =
 	/^learning\.house_load\.(current_segment|current_season|current_weekday|source_state|history_mode|sample_count)$/;
 const THERMAL_BOILER_BALLAST_RE =

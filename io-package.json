@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.1",
+		"version": "0.4.2",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.2": {
+				"en": "Fixed invalid Admin jsonConfig confirmation and preserved published price-learning metric objects during surface cleanup.",
+				"de": "Ungültige Admin-jsonConfig-Bestätigung korrigiert und veröffentlichte Price-Learning-Messobjekte vor der Oberflächenbereinigung geschützt."
+			},
 			"0.4.1": {
 				"en": "Completed the dashboard acceptance fixes: corrected legacy night demand, clear add-on modes and charging authority, larger 12-hour Tibber chart, compact planning, and user-focused heater and climate status displays.",
 				"de": "Dashboard-Abnahmepunkte vervollständigt: historische Nachtbedarfswerte korrigiert, eindeutige Add-on-Modi und Ladehoheit, größerer 12-Stunden-Tibber-Graph, kompaktere Planung sowie verständliche Heizstab- und Klimastatusanzeigen."

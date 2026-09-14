@@ -79,6 +79,9 @@ function loadJson(filePath) {
                 strict_1.default.equal(modeItems?.[mode]?.buttonValue, mode);
             }
         }
+        const liveConfirm = all.globalTab?.items?.global_execution_mode?.items?.live?.confirm;
+        strict_1.default.equal(typeof liveConfirm, "object", "LIVE-Bestätigung muss ein ioBroker-confirm-Objekt sein");
+        strict_1.default.equal(Array.isArray(liveConfirm), false);
         const serialized = JSON.stringify(config);
         strict_1.default.equal(serialized.includes("runtime_global_mode_apply"), false);
         strict_1.default.equal(serialized.includes("runtime_wallbox_mode_apply"), false);

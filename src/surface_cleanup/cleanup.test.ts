@@ -109,6 +109,17 @@ describe("surface cleanup allowlist", () => {
 		);
 	});
 
+	it("keeps published price-learning metrics (not cleanup ballast)", () => {
+		for (const id of [
+			"learning.price_learning.avg_price_90d",
+			"learning.price_learning.volatility_30d",
+			"learning.price_learning.coverage_pct",
+		]) {
+			assert.equal(isAllowlistedCleanupRelativeId(id), false, `${id} must survive cleanup`);
+		}
+		assert.equal(isAllowlistedCleanupRelativeId("learning.price_learning.missing_days"), true);
+	});
+
 	it("allows AC/vehicle roots and lean planner purge roots", () => {
 		assert.equal(isAllowlistedCleanupRelativeId("addons.air_conditioning.units.unit_3"), true);
 		assert.equal(

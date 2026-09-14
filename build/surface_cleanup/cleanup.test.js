@@ -83,6 +83,17 @@ class FakeCleanupHost {
         // Ballast sibling under grid_balance remains purgeable.
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.battery.grid_balance.mirror_follows_admin"), true);
     });
+    (0, node_test_1.it)("keeps published price-learning metrics (not cleanup ballast)", () => {
+        for (const id of [
+            "learning.price_learning.avg_price_90d",
+            "learning.price_learning.volatility_30d",
+            "learning.price_learning.coverage_pct",
+        ]) {
+            strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)(id), false, `${id} must survive cleanup`);
+        }
+        strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.price_learning.missing_days"), true);
+    });
+
     (0, node_test_1.it)("allows AC/vehicle roots and lean planner purge roots", () => {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.units.unit_3"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.mapping.unit_2_cmd_switch_on"), true);

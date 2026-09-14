@@ -134,6 +134,23 @@ function assertStrictFifteenMinuteSeries(starts) {
         const priceStarts = snap.priceSlots.map(([t]) => t);
         strict_1.default.equal(new Set(priceStarts).size, priceStarts.length, "priceSlots eindeutig");
     });
+    (0, node_test_1.it)("vereinigt 15-Minuten-PV mit stündlichem Haus- und Preisfenster ohne Doppelzählung", () => {
+        const startMs = Date.parse("2026-09-14T08:00:00.000Z");
+        const quarterSlots = Array.from({ length: 4 }, (_, index) => planSlot(new Date(startMs + index * time_1.OPERATOR_MS_PER_15MIN).toISOString(), new Date(startMs + (index + 1) * time_1.OPERATOR_MS_PER_15MIN).toISOString(), { pvPowerW: 1200 + index * 100 }));
+        const hourSlot = planSlot(new Date(startMs).toISOString(), new Date(startMs + 4 * time_1.OPERATOR_MS_PER_15MIN).toISOString(), { houseLoadPowerW: 900, gridPriceCtPerKwh: 42 });
+        const input = (0, from_forecast_context_1.buildUnifiedInputFromForecastContext)({
+            now: new Date(startMs + 60_000),
+            timezone: TZ,
+            globalMode: "balanced",
+            forecastPlan: { slots: [...quarterSlots, hourSlot], days: [], contributions: [] },
+        });
+        strict_1.default.equal(input.time.slots.length, 4);
+        strict_1.default.equal(new Set(input.time.slots.map((slot) => slot.startIso)).size, 4);
+        strict_1.default.ok(input.time.slots.every((slot) => Date.parse(slot.endIso) - Date.parse(slot.startIso) === time_1.OPERATOR_MS_PER_15MIN));
+        strict_1.default.deepEqual(input.pv.slots.map((slot) => slot.forecastPowerW), [1200, 1300, 1400, 1500]);
+        strict_1.default.ok(input.houseLoad.slots.every((slot) => slot.forecastPowerW === 900));
+        strict_1.default.ok(input.prices.slots.every((slot) => slot.importCtPerKwh === 42));
+    });
     (0, node_test_1.it)("ohne Live-Telemetrie: kein observed*, Forecast unverändert", () => {
         const dateKey = "2026-08-30";
         const now = new Date(Date.parse((0, time_1.isoAtTimezoneLocal)(dateKey, 7, 30, TZ)) + 60_000);

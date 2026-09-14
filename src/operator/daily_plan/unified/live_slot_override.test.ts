@@ -166,6 +166,37 @@ describe("live slot override (PV/HL)", () => {
 		assert.equal(new Set(priceStarts).size, priceStarts.length, "priceSlots eindeutig");
 	});
 
+	it("vereinigt 15-Minuten-PV mit stündlichem Haus- und Preisfenster ohne Doppelzählung", () => {
+		const startMs = Date.parse("2026-09-14T08:00:00.000Z");
+		const quarterSlots = Array.from({ length: 4 }, (_, index) =>
+			planSlot(
+				new Date(startMs + index * OPERATOR_MS_PER_15MIN).toISOString(),
+				new Date(startMs + (index + 1) * OPERATOR_MS_PER_15MIN).toISOString(),
+				{ pvPowerW: 1200 + index * 100 },
+			),
+		);
+		const hourSlot = planSlot(
+			new Date(startMs).toISOString(),
+			new Date(startMs + 4 * OPERATOR_MS_PER_15MIN).toISOString(),
+			{ houseLoadPowerW: 900, gridPriceCtPerKwh: 42 },
+		);
+		const input = buildUnifiedInputFromForecastContext({
+			now: new Date(startMs + 60_000),
+			timezone: TZ,
+			globalMode: "balanced",
+			forecastPlan: { slots: [...quarterSlots, hourSlot], days: [], contributions: [] },
+		});
+
+		assert.equal(input.time.slots.length, 4);
+		assert.equal(new Set(input.time.slots.map((slot) => slot.startIso)).size, 4);
+		assert.ok(input.time.slots.every(
+			(slot) => Date.parse(slot.endIso) - Date.parse(slot.startIso) === OPERATOR_MS_PER_15MIN,
+		));
+		assert.deepEqual(input.pv.slots.map((slot) => slot.forecastPowerW), [1200, 1300, 1400, 1500]);
+		assert.ok(input.houseLoad.slots.every((slot) => slot.forecastPowerW === 900));
+		assert.ok(input.prices.slots.every((slot) => slot.importCtPerKwh === 42));
+	});
+
 	it("ohne Live-Telemetrie: kein observed*, Forecast unverändert", () => {
 		const dateKey = "2026-08-30";
 		const now = new Date(Date.parse(isoAtTimezoneLocal(dateKey, 7, 30, TZ)) + 60_000);

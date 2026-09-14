@@ -21,6 +21,15 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 		assert.match(r.reasonDe, /SOC 60 % > dynamische Reserve 30 %/);
 	});
 
+	it("preserves battery at 15 ct and allows whole-house support at 40 ct above dynamic reserve", () => {
+		const cheap = resolveBatteryDischargeAuthorization({ ...base, priceNowCt: 15 });
+		const expensive = resolveBatteryDischargeAuthorization({ ...base, priceNowCt: 40 });
+		assert.equal(cheap.allowed, false);
+		assert.equal(cheap.maxDischargeW, 0);
+		assert.equal(expensive.allowed, true);
+		assert.equal(expensive.maxDischargeW, base.configuredMaxDischargeW);
+	});
+
 	it("blocks below the minimum price (reuses evaluateGridBalanceMinPrice, not a second rule)", () => {
 		const r = resolveBatteryDischargeAuthorization({ ...base, priceNowCt: 16.5 });
 		assert.equal(r.allowed, false);

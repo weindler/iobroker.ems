@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.2",
+		"version": "0.4.3",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.3": {
+				"en": "Automatic battery support now uses the measured whole-house load, dynamic reserve and price forecast. The former per-consumer battery switches and fixed SOC floors are replaced by one automatic-support switch.",
+				"de": "Die automatische Batterieunterstützung verwendet jetzt die gemessene Ganzhauslast, die dynamische Reserve und die Preisprognose. Die bisherigen Batterie-Haken und festen SOC-Böden je Verbraucher wurden durch einen Automatik-Schalter ersetzt."
+			},
 			"0.4.2": {
 				"en": "Fixed invalid Admin jsonConfig confirmation and preserved published price-learning metric objects during surface cleanup.",
 				"de": "Ungültige Admin-jsonConfig-Bestätigung korrigiert und veröffentlichte Price-Learning-Messobjekte vor der Oberflächenbereinigung geschützt."

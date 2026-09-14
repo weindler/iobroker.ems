@@ -16,8 +16,6 @@ const grid_balance_1 = require("./grid_balance");
 const grid_balance_contract_1 = require("./grid_balance_contract");
 const grid_balance_power_1 = require("./grid_balance_power");
 const grid_balance_policy_1 = require("./grid_balance_policy");
-const battery_consumers_1 = require("../../policy/battery_consumers");
-const types_1 = require("../immersion_heater/runtime/types");
 const state_util_1 = require("../../ems_light/state_util");
 const hold_freshness_1 = require("./hold_freshness");
 const barrier_1 = require("../../restore/barrier");
@@ -716,27 +714,9 @@ async function controlTickInner(host) {
     // Grid balance: safety + EV-Abzug + Deadband; Writes bei Dauerbetrieb oder Rest-One-Shot.
     const consumption = (await readMappedNumber(host, table, "consumption_w")).val ?? 0;
     const pv = (await readMappedNumber(host, table, "pv_ac_power_w")).val ?? 0;
-    /*
-     * Phase 1 — Batterie-Entladung trifft keine eigene wirtschaftliche Entscheidung mehr:
-     * Verbraucher, dem der Unified-Planner-Tick (`policy/battery_consumers`) die Batterie
-     * aktuell NICHT erlaubt (z. B. Heizstab bei mayUseBattery=false), darf nicht indirekt über
-     * den Netzausgleichs-Restlast-Bezug Batterieleistung erhalten. Die Erlaubnis selbst wird
-     * hier nicht neu entschieden — nur die bereits vom Planner veröffentlichte Entscheidung
-     * (`planner.constraints.battery_consumer_immersion_allowed`) umgesetzt.
-     */
-    const ihBatteryAllowedSt = await host.getStateAsync(battery_consumers_1.BATTERY_CONSUMER_CONSTRAINT_STATES.immersion_heater.allowed);
-    const ihCommandedPowerSt = await host.getStateAsync(types_1.IMMERSION_RUNTIME_STATES.commandedPowerW);
     const gridBalancePolicyAdjustment = (0, grid_balance_policy_1.resolveGridBalancePolicyLoadAdjustment)({
         rawConsumptionW: consumption,
-        excludedConsumers: [
-            {
-                id: "immersion_heater",
-                // Unbekannt bleibt unbekannt und wird in der Lastkorrektur sicher geschlossen.
-                // Nur die ausdrückliche Planner-Freigabe `true` darf Batterieeinsatz zulassen.
-                allowedOnBattery: (0, grid_balance_policy_1.parseExplicitBatteryPermission)(ihBatteryAllowedSt?.val),
-                commandedPowerW: (0, state_util_1.asNum)(ihCommandedPowerSt?.val),
-            },
-        ],
+        excludedConsumers: [],
     });
     const evPower = await readRelNumberTs(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW, nowMs);
     const armedSt = await host.getStateAsync(ensure_states_1.BAT.gridBalance.liveTestArmed);

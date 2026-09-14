@@ -1,4 +1,3 @@
-import { asNum } from "../../ems_light/state_util";
 import type { BatteryConsumerId, BatteryConsumerRule, BatteryConsumersConfig } from "./types";
 
 function boolField(c: Record<string, unknown>, key: string, def: boolean): boolean {
@@ -9,58 +8,37 @@ function boolField(c: Record<string, unknown>, key: string, def: boolean): boole
 	return def;
 }
 
-function numOrNull(c: Record<string, unknown>, key: string): number | null {
-	const n = asNum(c[key]);
-	return n === null || !Number.isFinite(n) ? null : n;
-}
+/**
+ * Legacy export kept for source compatibility. Consumer-specific fixed SOC floors are no
+ * longer used: the central reserve planner determines the dynamic discharge floor.
+ */
+export const DEFAULT_MIN_SOC = 50;
 
-function clampSoc(n: number | null, def: number): number {
-	if (n === null) return def;
-	return Math.max(0, Math.min(100, n));
-}
-
-function ruleFromConfig(
-	c: Record<string, unknown>,
-	prefix: string,
-	defaults: { mayUse: boolean; onlyCritical: boolean; minSoc: number; marginK: number | null },
-): BatteryConsumerRule {
+function automaticRule(enabled: boolean, criticalMarginK: number | null): BatteryConsumerRule {
 	return {
-		mayUseBattery: boolField(c, `${prefix}_may_use_battery`, defaults.mayUse),
-		onlyWhenCritical: boolField(c, `${prefix}_only_when_critical`, defaults.onlyCritical),
-		minSocPct: clampSoc(numOrNull(c, `${prefix}_min_soc_pct`), defaults.minSoc),
-		criticalMarginK: defaults.marginK === null ? null : (numOrNull(c, `${prefix}_critical_margin_k`) ?? defaults.marginK),
+		mayUseBattery: enabled,
+		onlyWhenCritical: false,
+		minSocPct: null,
+		criticalMarginK,
 	};
 }
 
 /**
- * Geteilter Policy-Reserve-Boden (auch für Netzausgleich-Entladung wiederverwendet,
- * siehe `operator/daily_plan/battery_discharge_authority.ts`) — kein zweiter, separat
- * gepflegter Schwellwert.
+ * A single operator consent replaces the former per-consumer switches and fixed SOC floors.
+ *
+ * The consent only enables automatic planning. Price, forecast, central dynamic reserve,
+ * battery hold and hardware limits remain authoritative. Legacy bat_consumer_* settings are
+ * deliberately ignored so an old saved checkbox cannot silently reintroduce grid import.
  */
-export const DEFAULT_MIN_SOC = 50;
-
 export function batteryConsumersConfigFromAdapter(config: unknown): BatteryConsumersConfig {
 	const c = (config && typeof config === "object" ? config : {}) as Record<string, unknown>;
+	const automaticSupport = boolField(c, "bat_consumer_auto_support", true);
 	return {
-		immersion_heater: ruleFromConfig(c, "bat_consumer_immersion", {
-			mayUse: false,
-			onlyCritical: true,
-			minSoc: DEFAULT_MIN_SOC,
-			marginK: 2,
-		}),
-		air_conditioning: ruleFromConfig(c, "bat_consumer_climate", {
-			mayUse: false,
-			onlyCritical: true,
-			minSoc: DEFAULT_MIN_SOC,
-			marginK: null,
-		}),
-		wallbox: ruleFromConfig(c, "bat_consumer_wallbox", {
-			mayUse: false,
-			onlyCritical: false,
-			minSoc: DEFAULT_MIN_SOC,
-			marginK: null,
-		}),
-		maxDischargePowerW: numOrNull(c, "bat_consumer_max_discharge_w"),
+		immersion_heater: automaticRule(automaticSupport, 2),
+		air_conditioning: automaticRule(automaticSupport, null),
+		wallbox: automaticRule(automaticSupport, null),
+		// The central battery/grid-balance limit is the only power budget.
+		maxDischargePowerW: null,
 	};
 }
 

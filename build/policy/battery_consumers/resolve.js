@@ -18,7 +18,7 @@ function resolveBatteryConsumerAccess(input) {
         batteryHoldActive,
     };
     if (!rule.mayUseBattery) {
-        return { ...base, allowed: false, reasonDe: "Policy: Batterie für diesen Verbraucher nicht erlaubt." };
+        return { ...base, allowed: false, reasonDe: "Automatische Batterieunterstützung für flexible Verbraucher deaktiviert." };
     }
     if (batteryHoldActive) {
         return {
@@ -60,7 +60,7 @@ function resolveBatteryConsumerAccess(input) {
         allowed: true,
         reasonDe: rule.onlyWhenCritical
             ? "Batterie für kritischen Verbraucherbedarf freigegeben."
-            : "Batterie für Verbraucher freigegeben.",
+            : "Automatik aktiv — finale Entladung nach Preis, dynamischer Reserve und Hardwarelimit.",
     };
 }
 exports.resolveBatteryConsumerAccess = resolveBatteryConsumerAccess;

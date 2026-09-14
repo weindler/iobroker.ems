@@ -37,12 +37,7 @@ import {
 	type GridBalanceLiveTestState,
 	type GridBalanceTickDecision,
 } from "./grid_balance_power";
-import {
-	parseExplicitBatteryPermission,
-	resolveGridBalancePolicyLoadAdjustment,
-} from "./grid_balance_policy";
-import { BATTERY_CONSUMER_CONSTRAINT_STATES } from "../../policy/battery_consumers";
-import { IMMERSION_RUNTIME_STATES } from "../immersion_heater/runtime/types";
+import { resolveGridBalancePolicyLoadAdjustment } from "./grid_balance_policy";
 import { asNum } from "../../ems_light/state_util";
 import { resolveGridBalanceHoldSignals } from "./hold_freshness";
 import { isRestoreInProgress } from "../../restore/barrier";
@@ -895,29 +890,9 @@ async function controlTickInner(host: Host): Promise<void> {
 	const consumption = (await readMappedNumber(host, table, "consumption_w")).val ?? 0;
 	const pv = (await readMappedNumber(host, table, "pv_ac_power_w")).val ?? 0;
 
-	/*
-	 * Phase 1 — Batterie-Entladung trifft keine eigene wirtschaftliche Entscheidung mehr:
-	 * Verbraucher, dem der Unified-Planner-Tick (`policy/battery_consumers`) die Batterie
-	 * aktuell NICHT erlaubt (z. B. Heizstab bei mayUseBattery=false), darf nicht indirekt über
-	 * den Netzausgleichs-Restlast-Bezug Batterieleistung erhalten. Die Erlaubnis selbst wird
-	 * hier nicht neu entschieden — nur die bereits vom Planner veröffentlichte Entscheidung
-	 * (`planner.constraints.battery_consumer_immersion_allowed`) umgesetzt.
-	 */
-	const ihBatteryAllowedSt = await host.getStateAsync(
-		BATTERY_CONSUMER_CONSTRAINT_STATES.immersion_heater.allowed,
-	);
-	const ihCommandedPowerSt = await host.getStateAsync(IMMERSION_RUNTIME_STATES.commandedPowerW);
 	const gridBalancePolicyAdjustment = resolveGridBalancePolicyLoadAdjustment({
 		rawConsumptionW: consumption,
-		excludedConsumers: [
-			{
-				id: "immersion_heater",
-				// Unbekannt bleibt unbekannt und wird in der Lastkorrektur sicher geschlossen.
-				// Nur die ausdrückliche Planner-Freigabe `true` darf Batterieeinsatz zulassen.
-				allowedOnBattery: parseExplicitBatteryPermission(ihBatteryAllowedSt?.val),
-				commandedPowerW: asNum(ihCommandedPowerSt?.val),
-			},
-		],
+		excludedConsumers: [],
 	});
 
 	const evPower = await readRelNumberTs(host, WALLBOX_EVCC_STATES.chargePowerW, nowMs);

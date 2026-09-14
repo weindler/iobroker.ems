@@ -23,6 +23,14 @@ const battery_opportunity_cost_js_1 = require("./battery_opportunity_cost.js");
         strict_1.default.equal(r.socAllowed, true);
         strict_1.default.match(r.reasonDe, /SOC 60 % > dynamische Reserve 30 %/);
     });
+    (0, node_test_1.it)("preserves battery at 15 ct and allows whole-house support at 40 ct above dynamic reserve", () => {
+        const cheap = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, priceNowCt: 15 });
+        const expensive = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, priceNowCt: 40 });
+        strict_1.default.equal(cheap.allowed, false);
+        strict_1.default.equal(cheap.maxDischargeW, 0);
+        strict_1.default.equal(expensive.allowed, true);
+        strict_1.default.equal(expensive.maxDischargeW, base.configuredMaxDischargeW);
+    });
     (0, node_test_1.it)("blocks below the minimum price (reuses evaluateGridBalanceMinPrice, not a second rule)", () => {
         const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, priceNowCt: 16.5 });
         strict_1.default.equal(r.allowed, false);

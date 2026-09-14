@@ -8,6 +8,19 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.3] – 2026-09-14
+
+### Changed
+
+- Der Netzausgleich regelt wieder die tatsächlich gemessene gesamte Hauslast bis zur zentral wirtschaftlich und technisch erlaubten Entladegrenze; laufende Verbraucher werden nicht mehr künstlich herausgerechnet.
+- Die einzelnen Batterie-Freigaben und festen SOC-Böden für Heizstab, Klima und Wallbox wurden durch einen gemeinsamen Automatik-Schalter ersetzt.
+- Die Verbraucherplanung verwendet die zentrale Netzausgleichs-Leistungsgrenze; SOC-Schutz und Entladefreigabe kommen aus der dynamischen Nachtreserve, Preis-/Opportunity-Bewertung und dem Hardware-Minimum.
+
+### Fixed
+
+- Ein mit PV gestarteter Heizstab verursacht bei kurzen PV-Einbrüchen nicht mehr deshalb Netzbezug, weil seine Leistung aus der Netzausgleichslast entfernt wird.
+- Alte gespeicherte Verbraucher-Haken, SOC-Böden und das separate 2-kW-Verbraucherbudget können die neue Automatik nicht unbemerkt wieder überschreiben.
+
 ## [0.4.2] – 2026-09-14
 
 ### Fixed

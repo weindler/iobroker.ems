@@ -5,8 +5,8 @@ import {
 	resolveGridBalancePolicyLoadAdjustment,
 } from "./grid_balance_policy.js";
 
-describe("grid balance policy load adjustment (Phase 1)", () => {
-	it("preserves an explicit planner permission and keeps every missing/invalid value null", () => {
+describe("grid balance uses the physical whole-house load", () => {
+	it("preserves explicit permission parsing for compatibility", () => {
 		assert.equal(parseExplicitBatteryPermission(true), true);
 		assert.equal(parseExplicitBatteryPermission(false), false);
 		for (const raw of [null, undefined, 0, 1, "true", "false", ""]) {
@@ -14,10 +14,10 @@ describe("grid balance policy load adjustment (Phase 1)", () => {
 		}
 	});
 
-	it("leaves load unchanged when no consumer is excluded", () => {
+	it("does not subtract a running heater when battery support is denied", () => {
 		const r = resolveGridBalancePolicyLoadAdjustment({
 			rawConsumptionW: 2000,
-			excludedConsumers: [{ id: "immersion_heater", allowedOnBattery: true, commandedPowerW: 1700 }],
+			excludedConsumers: [{ id: "immersion_heater", allowedOnBattery: false, commandedPowerW: 1700 }],
 		});
 		assert.equal(r.policyAdjustedConsumptionW, 2000);
 		assert.equal(r.excludedLoadW, 0);
@@ -25,56 +25,16 @@ describe("grid balance policy load adjustment (Phase 1)", () => {
 		assert.equal(r.reasonDe, "");
 	});
 
-	it("subtracts commanded power of a policy-disallowed consumer (Heizstab-Fall)", () => {
-		const r = resolveGridBalancePolicyLoadAdjustment({
-			rawConsumptionW: 2000,
-			excludedConsumers: [{ id: "immersion_heater", allowedOnBattery: false, commandedPowerW: 1700 }],
-		});
-		assert.equal(r.policyAdjustedConsumptionW, 300);
-		assert.equal(r.excludedLoadW, 1700);
-		assert.deepEqual(r.excludedConsumerIds, ["immersion_heater"]);
-		assert.match(r.reasonDe, /immersion_heater \(1700 W\)/);
-		assert.match(r.reasonDe, /Policy: Batterie für diesen Verbraucher nicht erlaubt/);
-	});
-
-	it("missing battery permission stays unknown and fails closed", () => {
+	it("does not subtract a running heater when permission is temporarily unknown", () => {
 		const r = resolveGridBalancePolicyLoadAdjustment({
 			rawConsumptionW: 2000,
 			excludedConsumers: [{ id: "immersion_heater", allowedOnBattery: null, commandedPowerW: 1700 }],
 		});
-		assert.equal(r.policyAdjustedConsumptionW, 300);
-		assert.equal(r.excludedLoadW, 1700);
-		assert.deepEqual(r.excludedConsumerIds, ["immersion_heater"]);
-		assert.match(r.reasonDe, /Policy-Freigabe fehlt/);
-		assert.match(r.reasonDe, /Batterie bleibt .* gesperrt/);
+		assert.equal(r.policyAdjustedConsumptionW, 2000);
+		assert.equal(r.excludedLoadW, 0);
 	});
 
-	it("clamps to zero instead of going negative", () => {
-		const r = resolveGridBalancePolicyLoadAdjustment({
-			rawConsumptionW: 500,
-			excludedConsumers: [{ id: "immersion_heater", allowedOnBattery: false, commandedPowerW: 1700 }],
-		});
-		assert.equal(r.policyAdjustedConsumptionW, 0);
-		assert.equal(r.excludedLoadW, 1700);
-	});
-
-	it("ignores disallowed consumer with zero/null commanded power", () => {
-		const r1 = resolveGridBalancePolicyLoadAdjustment({
-			rawConsumptionW: 2000,
-			excludedConsumers: [{ id: "immersion_heater", allowedOnBattery: false, commandedPowerW: 0 }],
-		});
-		assert.equal(r1.policyAdjustedConsumptionW, 2000);
-		assert.equal(r1.excludedLoadW, 0);
-
-		const r2 = resolveGridBalancePolicyLoadAdjustment({
-			rawConsumptionW: 2000,
-			excludedConsumers: [{ id: "immersion_heater", allowedOnBattery: false, commandedPowerW: null }],
-		});
-		assert.equal(r2.policyAdjustedConsumptionW, 2000);
-		assert.equal(r2.excludedLoadW, 0);
-	});
-
-	it("sums multiple excluded consumers (Erweiterbarkeit für spätere Add-ons)", () => {
+	it("keeps all simultaneous household consumers in the control load", () => {
 		const r = resolveGridBalancePolicyLoadAdjustment({
 			rawConsumptionW: 5000,
 			excludedConsumers: [
@@ -83,17 +43,18 @@ describe("grid balance policy load adjustment (Phase 1)", () => {
 				{ id: "wallbox", allowedOnBattery: true, commandedPowerW: 3000 },
 			],
 		});
-		assert.equal(r.excludedLoadW, 2500);
-		assert.equal(r.policyAdjustedConsumptionW, 2500);
-		assert.deepEqual(r.excludedConsumerIds, ["immersion_heater", "air_conditioning.unit_1"]);
+		assert.equal(r.policyAdjustedConsumptionW, 5000);
+		assert.equal(r.excludedLoadW, 0);
 	});
 
-	it("treats non-finite raw consumption as zero", () => {
-		const r = resolveGridBalancePolicyLoadAdjustment({
-			rawConsumptionW: Number.NaN,
-			excludedConsumers: [],
-		});
-		assert.equal(r.policyAdjustedConsumptionW, 0);
-		assert.equal(r.excludedLoadW, 0);
+	it("clamps invalid or negative raw consumption to zero", () => {
+		for (const rawConsumptionW of [Number.NaN, -500]) {
+			const r = resolveGridBalancePolicyLoadAdjustment({
+				rawConsumptionW,
+				excludedConsumers: [],
+			});
+			assert.equal(r.policyAdjustedConsumptionW, 0);
+			assert.equal(r.excludedLoadW, 0);
+		}
 	});
 });

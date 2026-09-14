@@ -754,7 +754,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         configuredHouseFuseLimitW: policyNumber(effectivePolicy, "houseFuseLimitW") ?? adminPolicy.houseFuseLimitW,
         modePolicy,
         batteryConsumerAccess: consumerAccess,
-        batteryDischargeBudgetW: batConsumers.maxDischargePowerW,
+        batteryDischargeBudgetW: batCfgModes.gridBalance.maxTargetW,
         liveNow: {
             pvPowerW: livePvPowerW,
             houseLoadW: liveHouseLoadW,

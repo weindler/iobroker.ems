@@ -2601,13 +2601,15 @@ function visLageSnap(){
 function renderLage(){
 	var el=document.getElementById("ems-lage");
 	if(!el)return;
+	var existingDetails=el.querySelector("details.ems-q-note");
+	var detailsOpen=!!(existingDetails&&existingDetails.open);
 	var snap=visLageSnap(),line=visLageLine(snap);
 	if(!line){el.style.display="none";el.innerHTML="";return;}
 	el.style.display="";
 	var bias=snap.appliedBiasPct;
 	var biasTxt=bias===null?'Korrektur noch in Lernphase':('angewendete Korrektur '+(bias>0?'+':'')+bias.toFixed(1).replace('.',',')+' % · Confidence '+(snap.confidencePct===null?'—':Math.round(snap.confidencePct)+' %'));
 	var todayDelta=snap.biasTodayPct===null?'':('<br>Abweichung heute bisher '+(snap.biasTodayPct>0?'+':'')+snap.biasTodayPct.toFixed(1).replace('.',',')+' % · nicht für die Korrektur verwendet');
-	var details='<details class="ems-q-note"><summary>Berechnungsdetails</summary>Modell-Bias '+fmtDec(snap.modelBiasPct,1,'%')+' · 14-Tage-Trend '+fmtDec(snap.bias14dPct,1,'%')+' · Langzeitbasis '+fmtDec(snap.bias90dPct,1,'%')+'<br>Gültige Tage '+(snap.sampleDays90d===null?'—':Math.round(snap.sampleDays90d))+' · Abdeckung '+fmtDec(snap.coveragePct,0,'%')+' · Stabilität '+fmtDec(snap.stabilityPct,0,'%')+todayDelta+'</details>';
+	var details='<details class="ems-q-note"'+(detailsOpen?' open':'')+'><summary>Berechnungsdetails</summary>Modell-Bias '+fmtDec(snap.modelBiasPct,1,'%')+' · 14-Tage-Trend '+fmtDec(snap.bias14dPct,1,'%')+' · Langzeitbasis '+fmtDec(snap.bias90dPct,1,'%')+'<br>Gültige Tage '+(snap.sampleDays90d===null?'—':Math.round(snap.sampleDays90d))+' · Abdeckung '+fmtDec(snap.coveragePct,0,'%')+' · Stabilität '+fmtDec(snap.stabilityPct,0,'%')+todayDelta+'</details>';
 	el.innerHTML='<div class="ems-lage-k">PV-Prognose</div><div class="ems-pv-grid">'
 		+'<div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTodayKwh,1,'kWh')+' → erwartet '+fmtDec(snap.todayKwh,1,'kWh')+'<br>'+esc(biasTxt)+'</div></div>'
 		+'<div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTomorrowKwh,1,'kWh')+' → erwartet '+fmtDec(snap.tomorrowKwh,1,'kWh')+'<br>'+esc(biasTxt)+'</div></div>'

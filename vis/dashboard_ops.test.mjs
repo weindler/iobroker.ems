@@ -167,6 +167,12 @@ describe("VIS operations dashboard", () => {
 		assert.doesNotThrow(() => new Function(extractScript(visHtml)));
 	});
 
+	it("keeps PV calculation details open across live refreshes", () => {
+		assert.match(visHtml, /existingDetails=el\.querySelector\("details\.ems-q-note"\)/);
+		assert.match(visHtml, /detailsOpen=!!\(existingDetails&&existingDetails\.open\)/);
+		assert.match(visHtml, /class="ems-q-note"'\+\(detailsOpen\?' open':''\)/);
+	});
+
 	it("offers the user-facing areas in morning workflow order", () => {
 		for (const [id, label] of [
 			["ops", "Betrieb"],

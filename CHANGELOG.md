@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.11] – 2026-09-19
+
+### Fixed
+
+- Der geöffnete Bereich `Berechnungsdetails` auf der Betriebsseite bleibt bei der regelmäßigen Live-Aktualisierung geöffnet und klappt nicht mehr nach etwa fünf Sekunden selbstständig zu.
+
 ## [0.4.10] – 2026-09-19
 
 ### Fixed

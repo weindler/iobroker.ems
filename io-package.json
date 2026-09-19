@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.10",
+		"version": "0.4.11",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.11": {
+				"en": "Keeps the PV calculation details expanded during the dashboard's periodic live refresh.",
+				"de": "Hält die PV-Berechnungsdetails bei der regelmäßigen Live-Aktualisierung des Dashboards geöffnet."
+			},
 			"0.4.10": {
 				"en": "Fixes the remaining flat 100% battery forecast by distinguishing transient EVCC hold telemetry from an explicit persistent user hold.",
 				"de": "Behebt die verbleibende flache 100-%-Batterieprognose, indem ein vorübergehender EVCC-Hold von einem ausdrücklichen dauerhaften Benutzer-Hold unterschieden wird."

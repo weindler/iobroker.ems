@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.13",
+		"version": "0.4.14",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.14": {
+				"en": "Adds user-friendly VIS forms for Grid Rewards billing, manual public charging invoices, recalculation, and protected statistics resets without raw JSON or admin access.",
+				"de": "Ergänzt verständliche VIS-Formulare für Grid-Rewards-Abrechnungen, manuelle Schnelllader-Rechnungen, Neuberechnung und geschützte Statistik-Resets ohne JSON oder Admin-Zugriff."
+			},
 			"0.4.13": {
 				"en": "Connects the seven-day outlook to configured Tibber JSON states, persistently learns the Tibber-to-SMARD retail spread, and backs up the learned comparison pairs.",
 				"de": "Verbindet den Sieben-Tage-Ausblick mit den konfigurierten Tibber-JSON-States, lernt den Tibber-Endpreisaufschlag gegenüber SMARD dauerhaft und sichert die gelernten Vergleichspaare im Backup."

@@ -269,7 +269,7 @@ async function handlePublicSubmit(host: StatisticsHost, persist: StatisticsPersi
 		await setIfChanged(host, STATISTICS_STATES.publicSubmitAckDe, "Ungültiges JSON.");
 		return;
 	}
-	const dateKey = localDateKey(now);
+	const dateKey = submit.date ?? localDateKey(now);
 	const day = ensureDay(persist, dateKey);
 	const result = applyPublicInvoice(day.publicSessions, submit, now.toISOString());
 	day.publicSessions = result.sessions;

@@ -123,9 +123,9 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-mode-strip b{font-size:12px;letter-spacing:.04em}.ems-mode-strip.live{border-left-color:#3fb950}.ems-mode-strip.live b{color:#7ee787}.ems-mode-strip.dryrun{border-left-color:#a371f7}.ems-mode-strip.dryrun b{color:#d2a8ff}.ems-mode-strip.off{border-left-color:#6e7681}.ems-mode-strip.off b{color:#8b949e}.ems-mode-strip.blocked{border-left-color:#f0883e}.ems-mode-strip.blocked b{color:#ffa657}
 .ems-system-gauge{grid-column:1/-1;display:grid;grid-template-columns:minmax(230px,.8fr) minmax(280px,1.2fr);gap:6px}
 .ems-climate-now{display:flex;align-items:center;gap:16px}.ems-climate-ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;position:relative}.ems-climate-ring:after{content:"";position:absolute;width:76px;height:76px;border-radius:50%;background:#21262d}.ems-climate-ring-value{position:relative;z-index:1;text-align:center;font-size:17px;font-weight:800}.ems-climate-ring-value small{display:block;font-size:9px;color:#8b949e}.ems-climate-values{font-size:12px;line-height:1.55}.ems-climate-values b{font-size:14px;color:#79c0ff}
-.ems-meter{display:flex;gap:14px;align-items:center}.ems-meter-icon{width:72px;height:86px;border:3px solid #8b949e;border-radius:8px;display:grid;place-items:center;font-size:24px;font-weight:800;color:#58a6ff;background:#161b22}.ems-entry{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.ems-entry input,.ems-entry select{background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:4px;padding:5px;font-size:10px}.ems-entry .wide{grid-column:1/-1}.ems-entry-actions{display:flex;gap:6px;grid-column:1/-1}
+.ems-meter{display:flex;gap:14px;align-items:center}.ems-meter-icon{width:72px;height:86px;border:3px solid #8b949e;border-radius:8px;display:grid;place-items:center;font-size:24px;font-weight:800;color:#58a6ff;background:#161b22}.ems-entry{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.ems-entry input,.ems-entry select{background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:4px;padding:5px;font-size:10px}.ems-entry .wide{grid-column:1/-1}.ems-entry-actions{display:flex;gap:6px;grid-column:1/-1;flex-wrap:wrap}.ems-btn-primary{font-size:9px;font-weight:700;color:#fff;background:#1f6feb;border:1px solid #58a6ff;border-radius:5px;padding:4px 8px;cursor:pointer}.ems-btn-danger{font-size:9px;font-weight:700;color:#ffb4ad;background:#f8514922;border:1px solid #f8514966;border-radius:5px;padding:4px 8px;cursor:pointer}.ems-stats-entry{grid-column:1/-1}.ems-entry-sections{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ems-entry-section{border:1px solid #30363d;border-radius:5px;padding:7px}.ems-entry-section h4{font-size:10px;margin:0 0 3px;color:#58a6ff}.ems-entry label{font-size:9px;color:#8b949e;display:flex;flex-direction:column;gap:2px}.ems-entry label.wide{grid-column:1/-1}.ems-entry-status{font-size:9px;color:#c9d1d9;min-height:13px;margin-top:5px;white-space:pre-wrap}
 .ems-stats-pending{border-color:#f0883e66}
-@media(max-width:900px){.ems-stats-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.ems-stats-grid{grid-template-columns:1fr}.ems-entry-sections{grid-template-columns:1fr}}
 .ems-main{display:grid;grid-template-columns:minmax(310px,410px) minmax(200px,1fr) minmax(220px,28%);gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
 .ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(min-content,1fr);align-content:stretch;gap:4px;min-height:0;height:100%;overflow:auto}
 .ems-tiles.ems-tiles-dense{grid-template-columns:1fr 1fr}
@@ -499,6 +499,7 @@ var stateIds=[
 	INST+".statistics.mobility.period.to_key",
 	INST+".statistics.public_charge.pending_json",
 	INST+".statistics.public_charge.submit_ack_de",
+	INST+".statistics.adjust_ack_de",
 	INST+".statistics.meter.live_power_w",
 	INST+".statistics.meter.import_1_8_0_kwh",
 	INST+".statistics.meter.export_2_8_0_kwh",
@@ -3896,7 +3897,34 @@ function smartMeterCard(energy,scopeLabel){
 function publicChargeEntryCard(pending){
 	var latest=pending[pending.length-1]||{},estimated=num(latest.estimatedKwh),options="";
 	for(var i=0;i<pending.length;i++){var p=pending[i]||{};options+='<option value="'+esc(p.id||"")+'"'+(p.id===latest.id?' selected':'')+'>'+esc(p.openedAtIso?fmtDayTime(p.openedAtIso):"Offener Vorgang")+(num(p.estimatedKwh)===null?'':' · etwa '+fmtKwhStats(p.estimatedKwh))+'</option>';}
-	return '<div class="ems-card ems-stats-pending"><div class="ems-card-h"><span class="ems-card-title">Schnelllader-Abrechnung ergänzen</span></div><div class="ems-note">EMS hat eine mögliche externe Ladung erkannt. Bitte die Werte der Rechnung bestätigen oder den Hinweis verwerfen.</div><div class="ems-entry"><select id="ems-pc-session" class="wide">'+options+'</select><input id="ems-pc-kwh" type="number" min="0" step="0.01" placeholder="geladene kWh" value="'+(estimated===null?'':esc(estimated))+'"><input id="ems-pc-eur" type="number" min="0" step="0.01" placeholder="Bruttokosten €"><input id="ems-pc-note" class="wide" type="text" maxlength="200" placeholder="Anbieter / Ort / Notiz (optional)"><div class="ems-entry-actions"><button type="button" class="ems-btn" data-ems-action="public-charge-save">Eintrag speichern</button><button type="button" class="ems-device-link" data-ems-action="public-charge-discard">Keine externe Ladung</button></div></div><div class="ems-note">'+esc(txt(g("statistics.public_charge.submit_ack_de"),""))+'</div></div>';
+	return '<div class="ems-card ems-stats-pending"><div class="ems-card-h"><span class="ems-card-title">Schnelllader-Abrechnung ergänzen</span></div><div class="ems-note">EMS hat eine mögliche externe Ladung erkannt. Bitte die Werte der Rechnung bestätigen oder den Hinweis verwerfen.</div><div class="ems-entry"><select id="ems-pc-session" class="wide">'+options+'</select><input id="ems-pc-kwh" type="number" min="0" step="0.01" placeholder="geladene kWh" value="'+(estimated===null?'':esc(estimated))+'"><input id="ems-pc-eur" type="number" min="0" step="0.01" placeholder="Bruttokosten €"><input id="ems-pc-note" class="wide" type="text" maxlength="200" placeholder="Anbieter / Ort / Notiz (optional)"><div class="ems-entry-actions"><button type="button" class="ems-btn-primary" data-ems-action="public-charge-save">Eintrag speichern</button><button type="button" class="ems-device-link" data-ems-action="public-charge-discard">Keine externe Ladung</button></div></div><div class="ems-note">'+esc(txt(g("statistics.public_charge.submit_ack_de"),""))+'</div></div>';
+}
+var statsEntryDraft={};
+var statsEntryIds=["ems-rewards-month","ems-rewards-eur","ems-rewards-note","ems-manual-charge-date","ems-manual-charge-kwh","ems-manual-charge-eur","ems-manual-charge-note","ems-reset-month"];
+function localDateInputValue(){
+	var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function captureStatsEntryDraft(){
+	for(var i=0;i<statsEntryIds.length;i++){var el=document.getElementById(statsEntryIds[i]);if(el)statsEntryDraft[statsEntryIds[i]]=el.value;}
+}
+function statsDraft(id,fallback){return Object.prototype.hasOwnProperty.call(statsEntryDraft,id)?statsEntryDraft[id]:fallback;}
+function monthLastDate(month){
+	if(!/^\d{4}-\d{2}$/.test(month||""))return "";
+	var parts=month.split("-"),last=new Date(Number(parts[0]),Number(parts[1]),0).getDate();
+	return month+"-"+String(last).padStart(2,"0");
+}
+function manualChargePrice(){
+	var k=Number(statsDraft("ems-manual-charge-kwh","")),e=Number(statsDraft("ems-manual-charge-eur",""));
+	return k>0&&e>=0?(e/k).toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2})+" €/kWh":"— €/kWh";
+}
+function statisticsEntryCard(){
+	var today=localDateInputValue(),month=today.slice(0,7);
+	return '<div class="ems-card ems-stats-entry"><div class="ems-card-h"><span class="ems-card-title">Abrechnungen und Nachträge</span><span class="ems-note">Eingabe direkt hier – kein Admin nötig</span></div><div class="ems-entry-sections">'
+		+'<div class="ems-entry-section"><h4>Tibber Grid Rewards · Monatsabrechnung</h4><div class="ems-note">Den Gutschriftbetrag aus der Tibber-Abrechnung eintragen. Die Schätzung wird für diesen Monat ersetzt.</div><div class="ems-entry"><label>Abrechnungsmonat<input id="ems-rewards-month" type="month" value="'+esc(statsDraft("ems-rewards-month",month))+'"></label><label>Gutschrift gesamt (€)<input id="ems-rewards-eur" type="number" min="0" step="0.01" placeholder="z. B. 2,47" value="'+esc(statsDraft("ems-rewards-eur",""))+'"></label><label class="wide">Notiz (optional)<input id="ems-rewards-note" type="text" maxlength="200" placeholder="z. B. Tibber-Abrechnung August" value="'+esc(statsDraft("ems-rewards-note",""))+'"></label><div class="ems-entry-actions"><button type="button" class="ems-btn-primary" data-ems-action="rewards-save">Abrechnung speichern</button></div></div></div>'
+		+'<div class="ems-entry-section"><h4>Schnelllader / externe Ladung nachtragen</h4><div class="ems-note">Für Rechnungen, die nicht automatisch als offene Ladung erkannt wurden.</div><div class="ems-entry"><label>Datum<input id="ems-manual-charge-date" type="date" max="'+today+'" value="'+esc(statsDraft("ems-manual-charge-date",today))+'"></label><label>Geladene Energie (kWh)<input id="ems-manual-charge-kwh" type="number" min="0.01" step="0.01" placeholder="z. B. 52,40" value="'+esc(statsDraft("ems-manual-charge-kwh",""))+'"></label><label>Gesamtbetrag (€)<input id="ems-manual-charge-eur" type="number" min="0" step="0.01" placeholder="z. B. 31,44" value="'+esc(statsDraft("ems-manual-charge-eur",""))+'"></label><label>Errechneter Preis<span id="ems-manual-charge-price" style="padding:6px 0;color:#e6edf3">'+esc(manualChargePrice())+'</span></label><label class="wide">Anbieter / Ort / Notiz (optional)<input id="ems-manual-charge-note" type="text" maxlength="200" placeholder="z. B. EnBW · Raststätte" value="'+esc(statsDraft("ems-manual-charge-note",""))+'"></label><div class="ems-entry-actions"><button type="button" class="ems-btn-primary" data-ems-action="manual-charge-save">Ladung speichern</button></div></div></div>'
+		+'<div class="ems-entry-section"><h4>Statistik aktualisieren</h4><div class="ems-note">Berechnet die gespeicherten Werte erneut, ohne Einträge zu löschen.</div><div class="ems-entry-actions" style="margin-top:7px"><button type="button" class="ems-device-link" data-ems-action="statistics-refresh">Jetzt neu berechnen</button></div></div>'
+		+'<div class="ems-entry-section"><h4>Statistik zurücksetzen</h4><div class="ems-note">Löscht Statistikdaten erst nach einer Sicherheitsabfrage.</div><div class="ems-entry"><label>Monat<input id="ems-reset-month" type="month" value="'+esc(statsDraft("ems-reset-month",month))+'"></label><div></div><div class="ems-entry-actions"><button type="button" class="ems-btn-danger" data-ems-action="statistics-reset-today">Heute zurücksetzen</button><button type="button" class="ems-btn-danger" data-ems-action="statistics-reset-month">Gewählten Monat zurücksetzen</button></div></div></div>'
+		+'</div><div id="ems-stats-entry-local" class="ems-entry-status"></div><div class="ems-entry-status">Grid Rewards: '+esc(txt(g("statistics.adjust_ack_de"),"Noch keine Eingabe"))+'<br>Schnelllader: '+esc(txt(g("statistics.public_charge.submit_ack_de"),"Noch keine Eingabe"))+'</div></div>';
 }
 var lastPeriodOptionsFp="";
 function fillPeriodSelect(){
@@ -3997,6 +4025,7 @@ function renderStatistics(){
 	var grid=document.getElementById("ems-stats-grid");
 	var reasonEl=document.getElementById("ems-stats-reason");
 	if(!grid)return;
+	captureStatsEntryDraft();
 	fillPeriodSelect();
 	bindStatsPeriodSelect();
 	var homeT=mergeHomeFlat("today",parseObj(g("statistics.home.today_json")));
@@ -4074,7 +4103,8 @@ function renderStatistics(){
 		})())
 		+(todaySelected?statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),homeTodayNote):statsCard(periodCardTitle("Haus",homeP,"Zeitraum")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote))
 		+(todaySelected?statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,"")):statsCard(periodCardTitle("Mobilität",mobP,"Zeitraum")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,"")))
-		+(pending.length?publicChargeEntryCard(pending):"");
+		+(pending.length?publicChargeEntryCard(pending):"")
+		+statisticsEntryCard();
 	var reasonBase=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");
 	var pendingHint=gridRewardsPendingHint(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)||gridRewardsPendingHint(homeT.gridRewardsSource,homeT.gridRewardsCreditEur);
 	if(pendingHint)reasonBase=joinNotes(reasonBase,pendingHint);
@@ -4178,6 +4208,43 @@ function submitPublicCharge(discard){
 	if(!discard){payload.kwh=kwh&&kwh.value!==""?Number(kwh.value):null;payload.eur=eur&&eur.value!==""?Number(eur.value):null;if(payload.kwh===null||payload.eur===null)return;}
 	setVisState(INST+".statistics.public_charge.submit_request",JSON.stringify(payload));
 }
+function statsEntryMessage(message,isError){
+	var el=document.getElementById("ems-stats-entry-local");if(!el)return;el.textContent=message||"";el.style.color=isError?"#ff7b72":"#7ee787";
+}
+function inputValue(id){var el=document.getElementById(id);return el?String(el.value||"").trim():"";}
+function submitManualPublicCharge(){
+	captureStatsEntryDraft();
+	var date=inputValue("ems-manual-charge-date"),kwh=Number(inputValue("ems-manual-charge-kwh")),eur=Number(inputValue("ems-manual-charge-eur"));
+	if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!(kwh>0)||!(eur>=0)||inputValue("ems-manual-charge-eur")===""){
+		statsEntryMessage("Bitte Datum, geladene kWh und Gesamtbetrag vollständig eingeben.",true);return;
+	}
+	var payload={manual:true,date:date,kwh:kwh,eur:eur,noteDe:inputValue("ems-manual-charge-note")};
+	if(setVisState(INST+".statistics.public_charge.submit_request",JSON.stringify(payload)))statsEntryMessage("Schnelllader-Rechnung wurde zur Speicherung übermittelt.",false);
+}
+function submitGridRewards(){
+	captureStatsEntryDraft();
+	var month=inputValue("ems-rewards-month"),amountRaw=inputValue("ems-rewards-eur"),amount=Number(amountRaw),date=monthLastDate(month);
+	if(!date||amountRaw===""||!(amount>=0)){statsEntryMessage("Bitte Abrechnungsmonat und Gutschriftbetrag eingeben.",true);return;}
+	var note=inputValue("ems-rewards-note")||("Tibber Grid-Rewards-Abrechnung "+month);
+	var payload={date:date,home:{gridRewardsCreditEur:amount},noteDe:note};
+	if(setVisState(INST+".statistics.adjust_request",JSON.stringify(payload)))statsEntryMessage("Grid-Rewards-Abrechnung wurde zur Speicherung übermittelt.",false);
+}
+function submitStatisticsAdjust(action){
+	captureStatsEntryDraft();
+	var payload={};
+	if(action==="refresh")payload.refresh=true;
+	if(action==="resetToday"){
+		if(!window.confirm("Statistikdaten für heute wirklich zurücksetzen?"))return;
+		payload.resetToday=true;
+	}
+	if(action==="resetMonth"){
+		var month=inputValue("ems-reset-month"),date=monthLastDate(month);
+		if(!date){statsEntryMessage("Bitte den zurückzusetzenden Monat auswählen.",true);return;}
+		if(!window.confirm("Statistikdaten für "+month+" wirklich zurücksetzen?"))return;
+		payload.date=date;payload.resetMonth=true;
+	}
+	if(setVisState(INST+".statistics.adjust_request",JSON.stringify(payload)))statsEntryMessage(action==="refresh"?"Neuberechnung wurde gestartet.":"Zurücksetzen wurde übermittelt.",false);
+}
 
 function bindUiActions(){
 	var tabs=document.getElementById("ems-view-tabs");
@@ -4217,6 +4284,21 @@ function bindUiActions(){
 				if(t.getAttribute&&t.getAttribute("data-ems-action")==="public-charge-discard"){
 					ev.preventDefault();submitPublicCharge(true);return;
 				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="manual-charge-save"){
+					ev.preventDefault();submitManualPublicCharge();return;
+				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="rewards-save"){
+					ev.preventDefault();submitGridRewards();return;
+				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="statistics-refresh"){
+					ev.preventDefault();submitStatisticsAdjust("refresh");return;
+				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="statistics-reset-today"){
+					ev.preventDefault();submitStatisticsAdjust("resetToday");return;
+				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="statistics-reset-month"){
+					ev.preventDefault();submitStatisticsAdjust("resetMonth");return;
+				}
 				if(t.getAttribute&&t.getAttribute("data-ems-action")==="price-focus"){
 					ev.preventDefault();priceWindowMode="focus";renderPriceBoard();return;
 				}
@@ -4224,6 +4306,12 @@ function bindUiActions(){
 					ev.preventDefault();priceWindowMode="all";renderPriceBoard();return;
 				}
 				t=t.parentNode;
+			}
+		});
+		content.addEventListener("input",function(ev){
+			var t=ev.target;if(!t||!t.id||statsEntryIds.indexOf(t.id)<0)return;statsEntryDraft[t.id]=t.value;
+			if(t.id==="ems-manual-charge-kwh"||t.id==="ems-manual-charge-eur"){
+				var price=document.getElementById("ems-manual-charge-price");if(price)price.textContent=manualChargePrice();
 			}
 		});
 	}

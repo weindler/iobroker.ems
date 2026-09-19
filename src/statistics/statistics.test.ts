@@ -787,6 +787,27 @@ describe("statistics public charge", () => {
 		assert.match(out.ackDe, /unvollständig/);
 		assert.equal(out.sessions[0]!.status, "pending_invoice");
 	});
+
+	it("stores a manually entered public invoice without a pending session", () => {
+		const parsed = parsePublicInvoiceSubmit({
+			manual: true,
+			date: "2026-08-18",
+			kwh: 52.4,
+			eur: 31.44,
+			noteDe: "EnBW Schnelllader",
+		});
+		assert.ok(parsed);
+		const out = applyPublicInvoice([], parsed!, "2026-08-18T18:30:00.000Z");
+		assert.equal(out.sessions.length, 1);
+		assert.equal(out.sessions[0]?.status, "invoiced");
+		assert.equal(out.sessions[0]?.invoiceKwh, 52.4);
+		assert.equal(out.sessions[0]?.invoiceEur, 31.44);
+		assert.match(out.ackDe, /2026-08-18/);
+	});
+
+	it("rejects an invalid manual public-charge date", () => {
+		assert.equal(parsePublicInvoiceSubmit({ manual: true, date: "2026-02-31", kwh: 10, eur: 5 }), null);
+	});
 });
 
 describe("statistics adjust", () => {

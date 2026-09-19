@@ -2,6 +2,18 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.invoicedPublicTotals = exports.pendingPublicKwh = exports.applyPublicInvoice = exports.openPublicChargeSession = exports.parsePublicInvoiceSubmit = void 0;
 const state_util_1 = require("../ems_light/state_util");
+function parseDateKey(raw) {
+    if (typeof raw !== "string")
+        return null;
+    const value = raw.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value))
+        return null;
+    const [year, month, day] = value.split("-").map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day
+        ? value
+        : null;
+}
 function parsePublicInvoiceSubmit(raw) {
     if (raw == null || raw === "")
         return null;
@@ -10,12 +22,17 @@ function parsePublicInvoiceSubmit(raw) {
         if (!obj || typeof obj !== "object")
             return null;
         const o = obj;
+        const date = parseDateKey(o.date);
+        if (o.date !== undefined && date === null)
+            return null;
         return {
             sessionId: typeof o.sessionId === "string" ? o.sessionId.trim() : undefined,
+            date: date ?? undefined,
             kwh: (0, state_util_1.asNum)(o.kwh) ?? undefined,
             eur: (0, state_util_1.asNum)(o.eur) ?? undefined,
             noteDe: typeof o.noteDe === "string" ? o.noteDe.trim().slice(0, 200) : undefined,
             discard: o.discard === true,
+            manual: o.manual === true,
         };
     }
     catch {
@@ -39,6 +56,29 @@ function openPublicChargeSession(input) {
 }
 exports.openPublicChargeSession = openPublicChargeSession;
 function applyPublicInvoice(sessions, submit, nowIso) {
+    if (submit.manual) {
+        const kwh = submit.kwh;
+        const eur = submit.eur;
+        if (kwh === null || kwh === undefined || !(kwh > 0) || eur === null || eur === undefined || !(eur >= 0)) {
+            return { sessions, ackDe: "Rechnung unvollständig — bitte kWh und Gesamtbetrag angeben." };
+        }
+        const id = `pc_manual_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+        const entry = {
+            id,
+            openedAtIso: nowIso,
+            closedAtIso: nowIso,
+            estimatedKwh: null,
+            invoiceKwh: kwh,
+            invoiceEur: eur,
+            fuelPriceEurPerLSnapshot: null,
+            status: "invoiced",
+            noteDe: submit.noteDe || "Schnelllader-Rechnung manuell erfasst.",
+        };
+        return {
+            sessions: [...sessions, entry],
+            ackDe: `Rechnung erfasst: ${kwh} kWh / ${eur} €${submit.date ? ` am ${submit.date}` : ""}.`,
+        };
+    }
     const pending = sessions.filter((s) => s.status === "pending_invoice");
     const target = (submit.sessionId
         ? sessions.find((s) => s.id === submit.sessionId)

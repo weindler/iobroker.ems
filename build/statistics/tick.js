@@ -181,7 +181,7 @@ async function handlePublicSubmit(host, persist, now) {
         await setIfChanged(host, ensure_states_1.STATISTICS_STATES.publicSubmitAckDe, "Ungültiges JSON.");
         return;
     }
-    const dateKey = (0, compute_1.localDateKey)(now);
+    const dateKey = submit.date ?? (0, compute_1.localDateKey)(now);
     const day = ensureDay(persist, dateKey);
     const result = (0, public_charge_1.applyPublicInvoice)(day.publicSessions, submit, now.toISOString());
     day.publicSessions = result.sessions;

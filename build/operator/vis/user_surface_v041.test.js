@@ -95,4 +95,13 @@ function functionBody(name, nextName) {
         strict_1.default.match(climate, /if\(running&&purpose\)bits\.push\(purpose\)/);
         strict_1.default.doesNotMatch(climate, /if\(purpose\)bits\.push\(purpose\)/);
     });
+    (0, node_test_1.it)("bietet Abrechnungen und Nachträge als Formulare direkt in der VIS an", () => {
+        strict_1.default.match(html, /Tibber Grid Rewards · Monatsabrechnung/);
+        strict_1.default.match(html, /Schnelllader \/ externe Ladung nachtragen/);
+        strict_1.default.match(html, /id="ems-rewards-month" type="month"/);
+        strict_1.default.match(html, /id="ems-manual-charge-date" type="date"/);
+        strict_1.default.match(html, /data-ems-action="statistics-refresh"/);
+        strict_1.default.match(html, /data-ems-action="statistics-reset-month"/);
+        strict_1.default.match(html, /manual:true,date:date,kwh:kwh,eur:eur/);
+    });
 });

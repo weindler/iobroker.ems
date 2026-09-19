@@ -76,4 +76,14 @@ describe("VIS Benutzeroberfläche v0.4.1", () => {
 		assert.match(climate, /if\(running&&purpose\)bits\.push\(purpose\)/);
 		assert.doesNotMatch(climate, /if\(purpose\)bits\.push\(purpose\)/);
 	});
+
+	it("bietet Abrechnungen und Nachträge als Formulare direkt in der VIS an", () => {
+		assert.match(html, /Tibber Grid Rewards · Monatsabrechnung/);
+		assert.match(html, /Schnelllader \/ externe Ladung nachtragen/);
+		assert.match(html, /id="ems-rewards-month" type="month"/);
+		assert.match(html, /id="ems-manual-charge-date" type="date"/);
+		assert.match(html, /data-ems-action="statistics-refresh"/);
+		assert.match(html, /data-ems-action="statistics-reset-month"/);
+		assert.match(html, /manual:true,date:date,kwh:kwh,eur:eur/);
+	});
 });

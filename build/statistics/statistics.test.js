@@ -659,6 +659,25 @@ const public_charge_js_1 = require("./public_charge.js");
         strict_1.default.match(out.ackDe, /unvollständig/);
         strict_1.default.equal(out.sessions[0].status, "pending_invoice");
     });
+    (0, node_test_1.it)("stores a manually entered public invoice without a pending session", () => {
+        const parsed = (0, public_charge_js_1.parsePublicInvoiceSubmit)({
+            manual: true,
+            date: "2026-08-18",
+            kwh: 52.4,
+            eur: 31.44,
+            noteDe: "EnBW Schnelllader",
+        });
+        strict_1.default.ok(parsed);
+        const out = (0, public_charge_js_1.applyPublicInvoice)([], parsed, "2026-08-18T18:30:00.000Z");
+        strict_1.default.equal(out.sessions.length, 1);
+        strict_1.default.equal(out.sessions[0]?.status, "invoiced");
+        strict_1.default.equal(out.sessions[0]?.invoiceKwh, 52.4);
+        strict_1.default.equal(out.sessions[0]?.invoiceEur, 31.44);
+        strict_1.default.match(out.ackDe, /2026-08-18/);
+    });
+    (0, node_test_1.it)("rejects an invalid manual public-charge date", () => {
+        strict_1.default.equal((0, public_charge_js_1.parsePublicInvoiceSubmit)({ manual: true, date: "2026-02-31", kwh: 10, eur: 5 }), null);
+    });
 });
 (0, node_test_1.describe)("statistics adjust", () => {
     (0, node_test_1.it)("resetToday clears day and runtime", () => {

@@ -8,6 +8,17 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.14] – 2026-09-19
+
+### Added
+
+- Grid-Rewards-Monatsabrechnungen und manuelle Schnelllader-Rechnungen können nun über verständliche Formulare direkt im VIS-Tab „Statistik“ erfasst werden; der errechnete Schnellladepreis je kWh wird sofort angezeigt.
+- Neuberechnung sowie das Zurücksetzen des heutigen Tages oder eines ausgewählten Monats sind ebenfalls in der VIS verfügbar. Löschende Aktionen verlangen eine Sicherheitsbestätigung.
+
+### Changed
+
+- Die bisherigen JSON-Anweisungen im Admin-Bereich wurden durch einen Verweis auf die VIS ersetzt. Für Abrechnungen und Nachträge ist kein Admin-Zugriff mehr nötig.
+
 ## [0.4.13] – 2026-09-19
 
 ### Fixed

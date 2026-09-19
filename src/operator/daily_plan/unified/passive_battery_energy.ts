@@ -76,3 +76,22 @@ export function resolvePassiveBatteryEnergyAvailable(
 		reasonCode: "passive_battery_mode_other",
 	};
 }
+
+/**
+ * Reine Zukunftsannahme nach einem flüchtigen EMS-/EV-Hold. Die reale aktuelle
+ * Verfügbarkeit bleibt davon unberührt. Nach eigener EMS-Ownership wird die von
+ * EMS wiederhergestellte Self-Consumption-Betriebsart angenommen; ein ausdrücklicher
+ * Benutzer-Hold bleibt dagegen auch im Forecast gesperrt.
+ */
+export function resolvePassiveBatteryEnergyForecastAvailable(
+	input: PassiveBatteryEnergyInput & { userHoldActive?: boolean },
+): PassiveBatteryEnergyDecision {
+	return resolvePassiveBatteryEnergyAvailable({
+		...input,
+		operatingMode: input.ownershipActive
+			? input.selfConsumptionModeValue
+			: input.operatingMode,
+		ownershipActive: false,
+		batteryHoldActive: input.userHoldActive === true,
+	});
+}

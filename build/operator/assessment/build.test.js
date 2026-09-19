@@ -485,9 +485,12 @@ function base(over = {}) {
         const idle = (0, build_1.buildOperationalAssessment)(base());
         strict_1.default.match(idle.ev.text, /kein Laden/);
         const planned = (0, build_1.buildOperationalAssessment)(base({
-            plan: emptyPlan([cell("wallbox", "2026-09-03T15:00:00.000Z", "2026-09-03T15:15:00.000Z")]),
+            plan: emptyPlan([cell("wallbox", "2026-09-03T11:00:00.000Z", "2026-09-03T11:15:00.000Z")]),
         }));
         strict_1.default.doesNotMatch(planned.ev.text, /kein Laden nötig/);
+        strict_1.default.equal(planned.ev.status, "planned");
+        strict_1.default.match(planned.ev.text, /EVCC meldet noch keine Ladung/);
+        strict_1.default.doesNotMatch(planned.ev.text, /Fahrzeug wird geladen/);
     });
     (0, node_test_1.it)("meldet eine reale EVCC-Ladung auch bei verzögertem Plan-Snapshot als aktiv", () => {
         const active = (0, build_1.buildOperationalAssessment)(base({

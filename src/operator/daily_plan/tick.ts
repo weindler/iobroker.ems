@@ -132,7 +132,10 @@ import * as path from "node:path";
 import type { ExecutionModeAddonId } from "../../execution_mode";
 import { stripAddonFromDailyPlan, stripAddonFromUnifiedPlan } from "./invalidate_addon_off";
 import { batteryConfigFromAdapter } from "../../addons/battery/config";
-import { resolvePassiveBatteryEnergyAvailable } from "./unified/passive_battery_energy";
+import {
+	resolvePassiveBatteryEnergyAvailable,
+	resolvePassiveBatteryEnergyForecastAvailable,
+} from "./unified/passive_battery_energy";
 import { loadBlockALearningSnapshot } from "./block_a_learning_bridge";
 
 let lastRevisionPayload = "";
@@ -508,15 +511,16 @@ export async function runDailyPlanTick(
 		ownershipActive: batOwnershipActive,
 		batteryHoldActive: hold.battery_hold_active,
 	});
-	// Ein aktueller Wallbox/Grid-Rewards-Hold gilt für Live und den angebrochenen Slot.
-	// Die restliche 72-h-Projektion bewertet den normalen Batteriemodus ohne diesen
-	// flüchtigen Hold; Manual-/Ownership-/Mode-Sperren bleiben dabei erhalten.
-	const passiveBatteryEnergyForecast = resolvePassiveBatteryEnergyAvailable({
+	// Ein aktueller Wallbox/Grid-Rewards-Hold und eigene EMS-Ownership gelten für
+	// Live und den angebrochenen Slot. Die restliche 72-h-Projektion nimmt danach
+	// wieder Self-Consumption an; ein ausdrücklicher Benutzer-Hold bleibt gesperrt.
+	const passiveBatteryEnergyForecast = resolvePassiveBatteryEnergyForecastAvailable({
 		operatingMode: batOperatingMode,
 		selfConsumptionModeValue: batCfgModes.sonnenModeValues.selfConsumption,
 		manualModeValue: batCfgModes.sonnenModeValues.manual,
 		ownershipActive: batOwnershipActive,
-		batteryHoldActive: false,
+		batteryHoldActive: hold.battery_hold_active,
+		userHoldActive: userHold,
 	});
 
 	const consumerAccess = resolveAllBatteryConsumerAccess({

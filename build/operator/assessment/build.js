@@ -196,11 +196,11 @@ function assessEv(input) {
     }
     if (currentAlloc) {
         return {
-            status: "active",
+            status: "planned",
             text: hard
-                ? `Pflichtladung läuft. ${socBit}`.trim()
-                : `Fahrzeug wird geladen. ${socBit}`.trim(),
-            next: null,
+                ? `Das aktuelle Pflicht-Ladefenster ist freigegeben. EVCC meldet noch keine Ladung. ${socBit}`.trim()
+                : `Das aktuelle Ladefenster ist freigegeben. EVCC meldet noch keine Ladung. ${socBit}`.trim(),
+            next: "Sobald EVCC den Ladestart bestätigt, zeigt EMS die Ladung als aktiv.",
         };
     }
     if (todayAlloc) {

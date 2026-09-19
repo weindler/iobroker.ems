@@ -560,10 +560,13 @@ describe("buildOperationalAssessment", () => {
 		assert.match(idle.ev.text, /kein Laden/);
 		const planned = buildOperationalAssessment(
 			base({
-				plan: emptyPlan([cell("wallbox", "2026-09-03T15:00:00.000Z", "2026-09-03T15:15:00.000Z")]),
+				plan: emptyPlan([cell("wallbox", "2026-09-03T11:00:00.000Z", "2026-09-03T11:15:00.000Z")]),
 			}),
 		);
 		assert.doesNotMatch(planned.ev.text, /kein Laden nötig/);
+		assert.equal(planned.ev.status, "planned");
+		assert.match(planned.ev.text, /EVCC meldet noch keine Ladung/);
+		assert.doesNotMatch(planned.ev.text, /Fahrzeug wird geladen/);
 	});
 
 	it("meldet eine reale EVCC-Ladung auch bei verzögertem Plan-Snapshot als aktiv", () => {

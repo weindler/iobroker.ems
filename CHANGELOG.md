@@ -8,6 +8,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.9] – 2026-09-19
+
+### Fixed
+
+- Vorübergehende eigene EMS-Batteriehoheit beziehungsweise ein aktueller EV-Hold sperren nicht mehr die passive Eigenverbrauchsprojektion aller zukünftigen 72-Stunden-Slots; ein ausdrücklicher Benutzer-Hold bleibt weiterhin gesperrt.
+- Ein zeitlich aktuelles Wallbox-Planfenster wird ohne bestätigte EVCC-Ladung als freigegeben/geplant und nicht mehr fälschlich als laufende Fahrzeugladung bezeichnet.
+
 ## [0.4.8] – 2026-09-19
 
 ### Fixed

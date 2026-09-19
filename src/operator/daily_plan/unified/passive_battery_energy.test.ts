@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resolvePassiveBatteryEnergyAvailable } from "./passive_battery_energy.js";
+import {
+	resolvePassiveBatteryEnergyAvailable,
+	resolvePassiveBatteryEnergyForecastAvailable,
+} from "./passive_battery_energy.js";
 import { allocateUnifiedDayPlan } from "./allocate.js";
 import { buildSlots, golden001Input } from "./fixtures.js";
 import { REASON } from "./reason_codes.js";
@@ -132,6 +135,30 @@ describe("passive battery energy availability", () => {
 		});
 		assert.equal(d.available, true);
 		assert.equal(d.reasonCode, "passive_battery_self_consumption");
+	});
+
+	it("Forecast löst flüchtige EMS-Ownership, aber keinen Benutzer-Hold", () => {
+		const afterOwnership = resolvePassiveBatteryEnergyForecastAvailable({
+			operatingMode: 1,
+			selfConsumptionModeValue: 2,
+			manualModeValue: 1,
+			ownershipActive: true,
+			batteryHoldActive: true,
+			userHoldActive: false,
+		});
+		assert.equal(afterOwnership.available, true);
+		assert.equal(afterOwnership.reasonCode, "passive_battery_self_consumption");
+
+		const explicitHold = resolvePassiveBatteryEnergyForecastAvailable({
+			operatingMode: 2,
+			selfConsumptionModeValue: 2,
+			manualModeValue: 1,
+			ownershipActive: true,
+			batteryHoldActive: true,
+			userHoldActive: true,
+		});
+		assert.equal(explicitHold.available, false);
+		assert.equal(explicitHold.reasonCode, "passive_battery_hold");
 	});
 
 	it("manual/hold → unavailable", () => {

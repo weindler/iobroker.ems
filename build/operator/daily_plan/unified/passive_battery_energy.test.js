@@ -133,6 +133,28 @@ function sumClimateBattery(plan) {
         strict_1.default.equal(d.available, true);
         strict_1.default.equal(d.reasonCode, "passive_battery_self_consumption");
     });
+    (0, node_test_1.it)("Forecast löst flüchtige EMS-Ownership, aber keinen Benutzer-Hold", () => {
+        const afterOwnership = (0, passive_battery_energy_js_1.resolvePassiveBatteryEnergyForecastAvailable)({
+            operatingMode: 1,
+            selfConsumptionModeValue: 2,
+            manualModeValue: 1,
+            ownershipActive: true,
+            batteryHoldActive: true,
+            userHoldActive: false,
+        });
+        strict_1.default.equal(afterOwnership.available, true);
+        strict_1.default.equal(afterOwnership.reasonCode, "passive_battery_self_consumption");
+        const explicitHold = (0, passive_battery_energy_js_1.resolvePassiveBatteryEnergyForecastAvailable)({
+            operatingMode: 2,
+            selfConsumptionModeValue: 2,
+            manualModeValue: 1,
+            ownershipActive: true,
+            batteryHoldActive: true,
+            userHoldActive: true,
+        });
+        strict_1.default.equal(explicitHold.available, false);
+        strict_1.default.equal(explicitHold.reasonCode, "passive_battery_hold");
+    });
     (0, node_test_1.it)("manual/hold → unavailable", () => {
         const d = (0, passive_battery_energy_js_1.resolvePassiveBatteryEnergyAvailable)({
             operatingMode: 1,

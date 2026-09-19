@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.8",
+		"version": "0.4.9",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.9": {
+				"en": "Restores realistic future battery self-consumption after temporary EMS/EV ownership while preserving explicit user holds, and distinguishes a released EV plan window from confirmed charging.",
+				"de": "Stellt nach vorübergehender EMS-/EV-Batteriehoheit den realistischen zukünftigen Eigenverbrauch wieder her, erhält ausdrückliche Benutzer-Holds und unterscheidet ein freigegebenes Auto-Planfenster von bestätigter Ladung."
+			},
 			"0.4.8": {
 				"en": "Corrects the 72-hour battery trajectory during a temporary EV/Grid Rewards hold, reports real EVCC charging consistently, displays positive human-readable charging power, and hides inactive climate-purpose labels.",
 				"de": "Korrigiert die 72-Stunden-Batterietrajektorie bei einem vorübergehenden EV-/Grid-Rewards-Hold, meldet reale EVCC-Ladung konsistent, zeigt positive verständliche Ladeleistung und blendet inaktive Klima-Zweckangaben aus."

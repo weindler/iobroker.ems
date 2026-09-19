@@ -161,6 +161,19 @@ describe("passive battery energy availability", () => {
 		assert.equal(explicitHold.reasonCode, "passive_battery_hold");
 	});
 
+	it("Forecast löst einen flüchtigen EVCC-Hold auch ohne EMS-Ownership", () => {
+		const afterEvccHold = resolvePassiveBatteryEnergyForecastAvailable({
+			operatingMode: 1,
+			selfConsumptionModeValue: 2,
+			manualModeValue: 1,
+			ownershipActive: false,
+			batteryHoldActive: true,
+			userHoldActive: false,
+		});
+		assert.equal(afterEvccHold.available, true);
+		assert.equal(afterEvccHold.reasonCode, "passive_battery_self_consumption");
+	});
+
 	it("manual/hold → unavailable", () => {
 		const d = resolvePassiveBatteryEnergyAvailable({
 			operatingMode: 1,

@@ -112,10 +112,8 @@ async function readPlannerInputs(host) {
     const thermalMode = (0, intent_read_1.resolvedModeFromIntent)(thermalIntent);
     const batteryRaw = await host.getStateAsync("user_intent.battery.resolved_json");
     const batteryIntent = (0, intent_read_2.parseResolvedBatteryIntentJson)(batteryRaw?.val);
-    const userIntentBatteryHold = batteryIntent?.operating_request.status === "valid" &&
-        batteryIntent.operating_request.value === "hold";
-    const userIntentBatteryCharge = batteryIntent?.operating_request.status === "valid" &&
-        batteryIntent.operating_request.value === "charge";
+    const userIntentBatteryHold = (0, intent_read_2.resolvedIntentHasExplicitOperatingRequest)(batteryIntent, "hold");
+    const userIntentBatteryCharge = (0, intent_read_2.resolvedIntentHasExplicitOperatingRequest)(batteryIntent, "charge");
     const globalModeRaw = await readStr(host, "global_modes.active");
     const modePolicy = (0, mode_policy_1.plannerModePolicyFromGlobalMode)(globalModeRaw);
     const immersionConfig = (0, device_config_1.immersionDeviceConfigFromAdapter)(host.config);

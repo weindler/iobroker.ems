@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deviceIntentFromResolvedBattery = exports.resolvedIntentHasConstraint = exports.resolvedIntentHasManualPriority = exports.parseResolvedBatteryIntentJson = void 0;
+exports.deviceIntentFromResolvedBattery = exports.resolvedIntentHasConstraint = exports.resolvedIntentHasManualPriority = exports.resolvedIntentHasExplicitOperatingRequest = exports.parseResolvedBatteryIntentJson = void 0;
 const intent_1 = require("../core/intent");
 function parseResolvedBatteryIntentJson(raw) {
     if (!raw)
@@ -17,6 +17,17 @@ function parseResolvedBatteryIntentJson(raw) {
     return null;
 }
 exports.parseResolvedBatteryIntentJson = parseResolvedBatteryIntentJson;
+/**
+ * True only for an operating request that did not originate from EVCC telemetry.
+ * EVCC batteryMode=hold is a transient device constraint, not a persistent user hold.
+ */
+function resolvedIntentHasExplicitOperatingRequest(intent, request) {
+    const field = intent?.operating_request;
+    if (!field || field.status !== "valid" || field.value !== request)
+        return false;
+    return field.origin?.source !== "evcc" && field.origin?.owner !== "evcc";
+}
+exports.resolvedIntentHasExplicitOperatingRequest = resolvedIntentHasExplicitOperatingRequest;
 function resolvedIntentHasManualPriority(intent) {
     if (intent.intent_state === "disabled" || intent.intent_state === "not_configured")
         return false;

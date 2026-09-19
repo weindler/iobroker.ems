@@ -8,6 +8,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.10] – 2026-09-19
+
+### Fixed
+
+- Ein aus EVCC-Telemetrie zusammengeführter `batteryMode=hold` wird nicht mehr fälschlich als ausdrücklicher, dauerhafter Benutzer-Hold behandelt.
+- Die 72-Stunden-SOC-Projektion nimmt nach einem vorübergehenden EVCC-Hold wieder Eigenverbrauch an und sinkt bei nächtlichem Hausbedarf realistisch unter 100 %, während echte Benutzer-Holds weiterhin respektiert werden.
+
 ## [0.4.9] – 2026-09-19
 
 ### Fixed

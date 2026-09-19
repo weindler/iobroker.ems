@@ -86,9 +86,12 @@ export function resolvePassiveBatteryEnergyAvailable(
 export function resolvePassiveBatteryEnergyForecastAvailable(
 	input: PassiveBatteryEnergyInput & { userHoldActive?: boolean },
 ): PassiveBatteryEnergyDecision {
+	const transientControl =
+		input.ownershipActive ||
+		(input.batteryHoldActive === true && input.userHoldActive !== true);
 	return resolvePassiveBatteryEnergyAvailable({
 		...input,
-		operatingMode: input.ownershipActive
+		operatingMode: transientControl
 			? input.selfConsumptionModeValue
 			: input.operatingMode,
 		ownershipActive: false,

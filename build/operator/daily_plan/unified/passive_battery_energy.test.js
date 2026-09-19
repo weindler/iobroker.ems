@@ -155,6 +155,18 @@ function sumClimateBattery(plan) {
         strict_1.default.equal(explicitHold.available, false);
         strict_1.default.equal(explicitHold.reasonCode, "passive_battery_hold");
     });
+    (0, node_test_1.it)("Forecast löst einen flüchtigen EVCC-Hold auch ohne EMS-Ownership", () => {
+        const afterEvccHold = (0, passive_battery_energy_js_1.resolvePassiveBatteryEnergyForecastAvailable)({
+            operatingMode: 1,
+            selfConsumptionModeValue: 2,
+            manualModeValue: 1,
+            ownershipActive: false,
+            batteryHoldActive: true,
+            userHoldActive: false,
+        });
+        strict_1.default.equal(afterEvccHold.available, true);
+        strict_1.default.equal(afterEvccHold.reasonCode, "passive_battery_self_consumption");
+    });
     (0, node_test_1.it)("manual/hold → unavailable", () => {
         const d = (0, passive_battery_energy_js_1.resolvePassiveBatteryEnergyAvailable)({
             operatingMode: 1,

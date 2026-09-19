@@ -61,9 +61,11 @@ exports.resolvePassiveBatteryEnergyAvailable = resolvePassiveBatteryEnergyAvaila
  * Benutzer-Hold bleibt dagegen auch im Forecast gesperrt.
  */
 function resolvePassiveBatteryEnergyForecastAvailable(input) {
+    const transientControl = input.ownershipActive ||
+        (input.batteryHoldActive === true && input.userHoldActive !== true);
     return resolvePassiveBatteryEnergyAvailable({
         ...input,
-        operatingMode: input.ownershipActive
+        operatingMode: transientControl
             ? input.selfConsumptionModeValue
             : input.operatingMode,
         ownershipActive: false,

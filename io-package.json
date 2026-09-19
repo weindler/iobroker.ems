@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.9",
+		"version": "0.4.10",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.10": {
+				"en": "Fixes the remaining flat 100% battery forecast by distinguishing transient EVCC hold telemetry from an explicit persistent user hold.",
+				"de": "Behebt die verbleibende flache 100-%-Batterieprognose, indem ein vorübergehender EVCC-Hold von einem ausdrücklichen dauerhaften Benutzer-Hold unterschieden wird."
+			},
 			"0.4.9": {
 				"en": "Restores realistic future battery self-consumption after temporary EMS/EV ownership while preserving explicit user holds, and distinguishes a released EV plan window from confirmed charging.",
 				"de": "Stellt nach vorübergehender EMS-/EV-Batteriehoheit den realistischen zukünftigen Eigenverbrauch wieder her, erhält ausdrückliche Benutzer-Holds und unterscheidet ein freigegebenes Auto-Planfenster von bestätigter Ladung."

@@ -110,6 +110,7 @@ const atomic_write_1 = require("../../persistence/atomic_write");
 const path = __importStar(require("node:path"));
 const invalidate_addon_off_1 = require("./invalidate_addon_off");
 const config_4 = require("../../addons/battery/config");
+const intent_read_1 = require("../../addons/battery/runtime/intent_read");
 const passive_battery_energy_1 = require("./unified/passive_battery_energy");
 const block_a_learning_bridge_1 = require("./block_a_learning_bridge");
 let lastRevisionPayload = "";
@@ -429,16 +430,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         // hold publish best-effort
     }
     const batteryIntentRaw = await readStr(host, "user_intent.battery.resolved_json");
-    let userHold = false;
-    if (batteryIntentRaw) {
-        try {
-            const parsed = JSON.parse(batteryIntentRaw);
-            userHold = parsed.operating_request?.value === "hold";
-        }
-        catch {
-            userHold = false;
-        }
-    }
+    const userHold = (0, intent_read_1.resolvedIntentHasExplicitOperatingRequest)((0, intent_read_1.parseResolvedBatteryIntentJson)(batteryIntentRaw), "hold");
     const hold = (0, battery_1.buildPlannerConstraints)({
         evccBatteryMode: evccMode,
         evccBatteryDischargeControl: evccDischarge,

@@ -11,7 +11,10 @@ import type { Price15MinSlot } from "../learning/price_forecast/tibber_parse";
 import { readTibber15MinPriceSlots } from "./battery_winter_price_inputs";
 import { batteryWinterPlanConfigFromAdapter } from "./battery_winter_config";
 import { readBatteryWinterDays } from "./battery_winter_inputs";
-import { parseResolvedBatteryIntentJson } from "../addons/battery/runtime/intent_read";
+import {
+	parseResolvedBatteryIntentJson,
+	resolvedIntentHasExplicitOperatingRequest,
+} from "../addons/battery/runtime/intent_read";
 import type { ImmersionDeviceConfig } from "../addons/immersion_heater/runtime/types";
 import { readConsumerStatsPersist } from "../learning/consumer_stats/persist";
 import { PERSIST_CATEGORY as CONSUMER_STATS_PERSIST } from "../learning/consumer_stats";
@@ -169,12 +172,8 @@ export async function readPlannerInputs(host: PlannerHost): Promise<PlannerInput
 
 	const batteryRaw = await host.getStateAsync("user_intent.battery.resolved_json");
 	const batteryIntent = parseResolvedBatteryIntentJson(batteryRaw?.val);
-	const userIntentBatteryHold =
-		batteryIntent?.operating_request.status === "valid" &&
-		batteryIntent.operating_request.value === "hold";
-	const userIntentBatteryCharge =
-		batteryIntent?.operating_request.status === "valid" &&
-		batteryIntent.operating_request.value === "charge";
+	const userIntentBatteryHold = resolvedIntentHasExplicitOperatingRequest(batteryIntent, "hold");
+	const userIntentBatteryCharge = resolvedIntentHasExplicitOperatingRequest(batteryIntent, "charge");
 
 	const globalModeRaw = await readStr(host, "global_modes.active");
 	const modePolicy = plannerModePolicyFromGlobalMode(globalModeRaw);

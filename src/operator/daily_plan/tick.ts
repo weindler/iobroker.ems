@@ -133,6 +133,10 @@ import type { ExecutionModeAddonId } from "../../execution_mode";
 import { stripAddonFromDailyPlan, stripAddonFromUnifiedPlan } from "./invalidate_addon_off";
 import { batteryConfigFromAdapter } from "../../addons/battery/config";
 import {
+	parseResolvedBatteryIntentJson,
+	resolvedIntentHasExplicitOperatingRequest,
+} from "../../addons/battery/runtime/intent_read";
+import {
 	resolvePassiveBatteryEnergyAvailable,
 	resolvePassiveBatteryEnergyForecastAvailable,
 } from "./unified/passive_battery_energy";
@@ -485,15 +489,10 @@ export async function runDailyPlanTick(
 		// hold publish best-effort
 	}
 	const batteryIntentRaw = await readStr(host, "user_intent.battery.resolved_json");
-	let userHold = false;
-	if (batteryIntentRaw) {
-		try {
-			const parsed = JSON.parse(batteryIntentRaw) as { operating_request?: { value?: string } };
-			userHold = parsed.operating_request?.value === "hold";
-		} catch {
-			userHold = false;
-		}
-	}
+	const userHold = resolvedIntentHasExplicitOperatingRequest(
+		parseResolvedBatteryIntentJson(batteryIntentRaw),
+		"hold",
+	);
 	const hold = buildPlannerConstraints({
 		evccBatteryMode: evccMode,
 		evccBatteryDischargeControl: evccDischarge,

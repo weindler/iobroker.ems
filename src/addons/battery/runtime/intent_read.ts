@@ -15,6 +15,19 @@ export function parseResolvedBatteryIntentJson(raw: unknown): ResolvedBatteryInt
 	return null;
 }
 
+/**
+ * True only for an operating request that did not originate from EVCC telemetry.
+ * EVCC batteryMode=hold is a transient device constraint, not a persistent user hold.
+ */
+export function resolvedIntentHasExplicitOperatingRequest(
+	intent: ResolvedBatteryIntent | null,
+	request: "hold" | "charge",
+): boolean {
+	const field = intent?.operating_request;
+	if (!field || field.status !== "valid" || field.value !== request) return false;
+	return field.origin?.source !== "evcc" && field.origin?.owner !== "evcc";
+}
+
 export function resolvedIntentHasManualPriority(intent: ResolvedBatteryIntent): boolean {
 	if (intent.intent_state === "disabled" || intent.intent_state === "not_configured") return false;
 	if (intent.manual_override.active) {

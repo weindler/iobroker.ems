@@ -37,6 +37,7 @@ import { isWinterOperationActive } from "../../season_control";
 
 let pvBiasTimer: NodeJS.Timeout | null = null;
 let learningTickInFlight = false;
+let priceOutlookRunInFlight: Promise<void> | null = null;
 
 export type LearningStateTreeHost = PvBiasRunHost & StateHost & PersistenceMirrorHost;
 
@@ -74,6 +75,15 @@ export async function startPvBiasLearningRuntime(
 	const cfg = pvBiasConfigFromAdapter(adapter.config);
 	stopPvBiasLearning();
 
+	await host.setStateAsync("learning.price_outlook.status", { val: "starting", ack: true });
+	await host.setStateAsync("learning.price_outlook.status_de", {
+		val: "Erster Preis- und PV-Prognoselauf wird aufgebaut.",
+		ack: true,
+	});
+	void runPriceOutlookImmediately(host).catch((e) => {
+		adapter.log.error(`price_outlook initial run: ${e instanceof Error ? e.message : String(e)}`);
+	});
+
 	void runLearningTick(host, "startup").catch((e) => {
 		adapter.log.error(`PV-Bias/Horizon initial run: ${e}`);
 	});
@@ -87,6 +97,28 @@ export async function startPvBiasLearningRuntime(
 	adapter.log.debug?.(
 		`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`,
 	);
+}
+
+/**
+ * Der externe Preis-/PV-Ausblick darf beim Start nicht hinter dem langen History-Backfill warten.
+ * Ein gemeinsam genutztes Promise verhindert dabei parallele SMARD-/Bright-Sky-Abrufe.
+ */
+function runPriceOutlookImmediately(host: PriceOutlookHost): Promise<void> {
+	if (priceOutlookRunInFlight) return priceOutlookRunInFlight;
+	const run = runPriceOutlook(host).catch(async (error) => {
+		const message = error instanceof Error ? error.message : String(error);
+		await host.setStateAsync("learning.price_outlook.status", { val: "error", ack: true });
+		await host.setStateAsync("learning.price_outlook.status_de", {
+			val: `Preisprognose konnte nicht aufgebaut werden: ${message}`,
+			ack: true,
+		});
+		await host.setStateAsync("learning.price_outlook.error", { val: message, ack: true });
+		throw error;
+	}).finally(() => {
+		if (priceOutlookRunInFlight === run) priceOutlookRunInFlight = null;
+	});
+	priceOutlookRunInFlight = run;
+	return run;
 }
 
 async function runLearningTick(
@@ -125,7 +157,7 @@ async function runLearningTick(
 		}
 		await runPriceForecastLearning(host);
 		try {
-			await runPriceOutlook(host as unknown as PriceOutlookHost);
+			await runPriceOutlookImmediately(host as unknown as PriceOutlookHost);
 		} catch (e) {
 			host.log.error(`price_outlook: ${e instanceof Error ? e.message : String(e)}`);
 		}
@@ -212,6 +244,7 @@ export function stopPvBiasLearning(): void {
 export function __resetLearningRuntimeForTest(): void {
 	stopPvBiasLearning();
 	learningTickInFlight = false;
+	priceOutlookRunInFlight = null;
 }
 
 export function __hasPvBiasLearningTimerForTest(): boolean {

@@ -24,6 +24,7 @@ function stubHost() {
     return {
         config: {
             learning_pv_bias_enabled: false,
+            price_outlook_enabled: false,
             learning_thermal_runtime_enabled: true,
             learning_thermal_runtime_lookback_days: 7,
             learning_house_load_enabled: false,
@@ -94,6 +95,15 @@ async function waitUntil(predicate, timeoutMs) {
         await waitUntil(() => states["learning.thermal_boiler.current_temperature_c"] === 59, 2_000);
         strict_1.default.equal(states["learning.thermal_boiler.current_temperature_c"], 59);
         strict_1.default.match(String(states["learning.thermal_boiler.reason_de"] ?? ""), /59\.0/);
+        await waitUntil(() => !(0, index_1.__isLearningTickInFlightForTest)(), 2_000);
+        (0, index_1.stopPvBiasLearning)();
+    });
+    (0, node_test_1.it)("T32: Preis-Ausblick veröffentlicht beim Start sofort einen Status", async () => {
+        const host = stubHost();
+        const states = host.states;
+        await (0, index_1.startPvBiasLearningRuntime)(stubAdapter(host), host);
+        strict_1.default.ok(["starting", "disabled"].includes(String(states["learning.price_outlook.status"])), "Preis-Ausblick darf nicht null bleiben, während das übrige History-Learning läuft");
+        strict_1.default.ok(String(states["learning.price_outlook.status_de"] ?? "").length > 0);
         await waitUntil(() => !(0, index_1.__isLearningTickInFlightForTest)(), 2_000);
         (0, index_1.stopPvBiasLearning)();
     });

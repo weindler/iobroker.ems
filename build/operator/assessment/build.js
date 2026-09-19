@@ -187,6 +187,13 @@ function assessEv(input) {
             next: "EMS plant keine konkurrierende Ladung; EVCC beziehungsweise der externe Dienst bleibt zuständig.",
         };
     }
+    if (input.ev?.charging === true) {
+        return {
+            status: "active",
+            text: `Das Auto lädt aktuell. ${socBit}`.trim(),
+            next: currentAlloc || todayAlloc ? "Die Ladung folgt dem aktuellen Planfenster." : null,
+        };
+    }
     if (currentAlloc) {
         return {
             status: "active",

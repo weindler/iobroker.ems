@@ -484,6 +484,9 @@ function buildUnifiedInputFromForecastContext(ctx) {
             // Produktiv: Discharge Live unsupported (Sonnen EM discharge_unverified) — nie erfinden
             dischargeLiveSupported: false,
             passiveBatteryEnergyAvailable: ctx.passiveBatteryEnergyAvailable === true,
+            passiveBatteryEnergyForecastAvailable: ctx.passiveBatteryEnergyForecastAvailable == null
+                ? ctx.passiveBatteryEnergyAvailable === true
+                : ctx.passiveBatteryEnergyForecastAvailable === true,
             requiredChargeEnergyKwh: num(batD, "requiredEnergyKwh") ?? num(batD, "socGapEnergyKwh"),
             endSocTargetPct: num(batD, "targetSocPct"),
             chargeDeadlineIso: batCharge?.deadlineIso ?? str(batD, "chargeLogicBridgeUntilIso"),

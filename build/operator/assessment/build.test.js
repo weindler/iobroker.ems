@@ -489,6 +489,15 @@ function base(over = {}) {
         }));
         strict_1.default.doesNotMatch(planned.ev.text, /kein Laden nötig/);
     });
+    (0, node_test_1.it)("meldet eine reale EVCC-Ladung auch bei verzögertem Plan-Snapshot als aktiv", () => {
+        const active = (0, build_1.buildOperationalAssessment)(base({
+            plan: emptyPlan(),
+            ev: { gridRewardsActive: false, charging: true },
+        }));
+        strict_1.default.equal(active.ev.status, "active");
+        strict_1.default.match(active.ev.text, /lädt aktuell/);
+        strict_1.default.doesNotMatch(active.ev.text, /kein Laden/);
+    });
     (0, node_test_1.it)("Nutzersprache ohne Entwicklerfelder", () => {
         const de = (0, build_1.formatOperationalAssessmentDe)((0, build_1.buildOperationalAssessment)(base()));
         strict_1.default.match(de, /EMS-Einschätzung/);

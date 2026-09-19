@@ -115,6 +115,12 @@ export type UnifiedBatteryInput = {
 	 */
 	passiveBatteryEnergyAvailable: boolean;
 	/**
+	 * Prognose-Verfügbarkeit nach dem laufenden Viertelstunden-Slot. Ein nur aktuell
+	 * aktiver EV-/Grid-Rewards-Hold darf die 72-h-SOC-Projektion nicht einfrieren.
+	 * Fehlt der Wert, gilt konservativ `passiveBatteryEnergyAvailable`.
+	 */
+	passiveBatteryEnergyForecastAvailable?: boolean;
+	/**
 	 * Ladebedarf aus Contribution (Policy/Top-Off/PV-Defizit-Logik) — kWh AC-Seite.
 	 * null = kein expliziter Bedarf / unknown (nicht als 0 erfinden).
 	 */

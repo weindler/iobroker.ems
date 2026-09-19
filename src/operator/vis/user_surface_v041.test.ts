@@ -64,4 +64,16 @@ describe("VIS Benutzeroberfläche v0.4.1", () => {
 		assert.match(view, /TIBBER GRID REWARDS AKTIV/);
 		assert.doesNotMatch(view, /EVCC AN TIBBER ÜBERGEBEN/);
 	});
+
+	it("zeigt Wallbox-Leistung ohne technisches Vorzeichen als Ladeleistung", () => {
+		const timeline = functionBody("buildTimelineRanges", "visLageLine");
+		assert.match(timeline, /Math\.abs\(Number\(windowW\)\)/);
+		assert.match(timeline, /Ladeleistung/);
+	});
+
+	it("zeigt den Klima-Zweck in der Tagesplanung nur bei laufendem Gerät", () => {
+		const climate = functionBody("climateTodayLines", "paintEl");
+		assert.match(climate, /if\(running&&purpose\)bits\.push\(purpose\)/);
+		assert.doesNotMatch(climate, /if\(purpose\)bits\.push\(purpose\)/);
+	});
 });

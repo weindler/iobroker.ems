@@ -271,6 +271,14 @@ function assessEv(input: AssessmentBuildInput): AssessmentTopic {
 		};
 	}
 
+	if (input.ev?.charging === true) {
+		return {
+			status: "active",
+			text: `Das Auto lädt aktuell. ${socBit}`.trim(),
+			next: currentAlloc || todayAlloc ? "Die Ladung folgt dem aktuellen Planfenster." : null,
+		};
+	}
+
 	if (currentAlloc) {
 		return {
 			status: "active",

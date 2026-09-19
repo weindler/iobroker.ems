@@ -8,6 +8,15 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.8] – 2026-09-19
+
+### Fixed
+
+- Ein nur aktuell aktiver EV-/Grid-Rewards-Batterie-Hold friert die SOC-Projektion nicht mehr für den gesamten 72-Stunden-Horizont ein; der laufende Slot bleibt weiterhin sicher gesperrt.
+- Reale EVCC-Ladung wird in der EMS-Einschätzung auch bei einem kurz verzögerten Plan-Snapshot als aktiv gemeldet.
+- Wallbox-Planfenster zeigen die Ladeleistung positiv und verständlich statt als signierten Rohwert.
+- Die Klima-Tagesübersicht zeigt `KÜHLEN`, `HEIZEN` oder `ENTFEUCHTEN` nur bei tatsächlich laufendem Gerät.
+
 ## [0.4.4] – 2026-09-14
 
 ### Fixed

@@ -49,6 +49,7 @@ function buildBatteryTrajectory(
 	const effD = input.battery.dischargeEfficiency ?? 1;
 	let soc = startSocKwh;
 	const traj: UnifiedBatteryTrajectoryPoint[] = [];
+	const nowMs = Date.parse(input.time.nowIso);
 	for (const s of slots) {
 		let chargeAc = 0;
 		let dischargeAc = 0;
@@ -77,7 +78,14 @@ function buildBatteryTrajectory(
 		 * 99/100 % blieb. PV-Rest nach allen Allokationen lädt passiv; Hausdefizit
 		 * entlädt nur im plausiblen Self-Consumption-Betrieb bis zum Reserveboden.
 		 */
-		if (input.battery.passiveBatteryEnergyAvailable) {
+		const futurePassiveAvailable =
+			input.battery.passiveBatteryEnergyForecastAvailable ??
+			input.battery.passiveBatteryEnergyAvailable;
+		const passiveAvailable =
+			Number.isFinite(nowMs) && s.startMs > nowMs
+				? futurePassiveAvailable
+				: input.battery.passiveBatteryEnergyAvailable;
+		if (passiveAvailable) {
 			dischargeAc += Math.max(0, s.houseKwh - s.pvKwh);
 		}
 		chargeAc += Math.max(0, s.remainPvKwh);

@@ -88,6 +88,41 @@ function sumClimateBattery(plan: ReturnType<typeof allocateUnifiedDayPlan>): num
 }
 
 describe("passive battery energy availability", () => {
+	it("wendet einen flüchtigen Hold nur auf den aktuellen Slot der SOC-Projektion an", () => {
+		const input = golden001Input();
+		const slots = buildSlots("2026-08-04T00:00:00.000Z", 1);
+		input.time = {
+			...input.time,
+			nowIso: "2026-08-04T00:05:00.000Z",
+			slots,
+			horizonStartIso: slots[0]!.startIso,
+			horizonEndIso: slots[slots.length - 1]!.endIso,
+		};
+		input.pv.slots = slots.map((s) => ({ slot: s, forecastPowerW: 0, observedPowerW: null, energyKwh: 0 }));
+		input.houseLoad.slots = slots.map((s) => ({
+			slot: s,
+			forecastPowerW: 1000,
+			observedPowerW: null,
+			energyKwh: 0.25,
+		}));
+		input.battery = {
+			...input.battery,
+			socPct: 80,
+			usableCapacityKwh: 10,
+			reserveSocPct: 10,
+			passiveBatteryEnergyAvailable: false,
+			passiveBatteryEnergyForecastAvailable: true,
+		};
+		input.thermal = null;
+		input.climate = null;
+		input.wallbox = null;
+		input.otherFlex = [];
+
+		const plan = allocateUnifiedDayPlan(input);
+		assert.equal(plan.batteryTrajectory[0]!.socPct, 80);
+		assert.ok((plan.batteryTrajectory[1]!.socPct ?? 80) < 80);
+	});
+
 	it("self-consumption → available", () => {
 		const d = resolvePassiveBatteryEnergyAvailable({
 			operatingMode: 2,

@@ -456,6 +456,16 @@ async function runDailyPlanTick(host, forecastPlan) {
         ownershipActive: batOwnershipActive,
         batteryHoldActive: hold.battery_hold_active,
     });
+    // Ein aktueller Wallbox/Grid-Rewards-Hold gilt für Live und den angebrochenen Slot.
+    // Die restliche 72-h-Projektion bewertet den normalen Batteriemodus ohne diesen
+    // flüchtigen Hold; Manual-/Ownership-/Mode-Sperren bleiben dabei erhalten.
+    const passiveBatteryEnergyForecast = (0, passive_battery_energy_1.resolvePassiveBatteryEnergyAvailable)({
+        operatingMode: batOperatingMode,
+        selfConsumptionModeValue: batCfgModes.sonnenModeValues.selfConsumption,
+        manualModeValue: batCfgModes.sonnenModeValues.manual,
+        ownershipActive: batOwnershipActive,
+        batteryHoldActive: false,
+    });
     const consumerAccess = (0, battery_consumers_1.resolveAllBatteryConsumerAccess)({
         config: batConsumers,
         batteryHoldActive: hold.battery_hold_active,
@@ -851,6 +861,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         vehiclePresenceVehicleKey: presenceVehicleKey,
         connectedNowOverride: wbConnected,
         passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
+        passiveBatteryEnergyForecastAvailable: passiveBatteryEnergyForecast.available,
         feedInCtPerKwh,
         boilerEstimatedEmptyAtOverride: learningEmptyAtIso,
         preferImmersionLiveSurplusNow: false,
@@ -1039,6 +1050,7 @@ async function runDailyPlanTick(host, forecastPlan) {
                 vehiclePresenceVehicleKey: presenceVehicleKey,
                 connectedNowOverride: wbConnected,
                 passiveBatteryEnergyAvailable: passiveBatteryEnergy.available,
+                passiveBatteryEnergyForecastAvailable: passiveBatteryEnergyForecast.available,
                 preferImmersionLiveSurplusNow: preferLiveIh,
                 continueImmersionSoftCurrentSlot: continueSoftIh,
                 boilerEstimatedEmptyAtOverride: learningEmptyAtIso,

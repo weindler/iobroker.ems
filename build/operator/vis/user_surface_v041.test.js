@@ -85,4 +85,14 @@ function functionBody(name, nextName) {
         strict_1.default.match(view, /TIBBER GRID REWARDS AKTIV/);
         strict_1.default.doesNotMatch(view, /EVCC AN TIBBER ÜBERGEBEN/);
     });
+    (0, node_test_1.it)("zeigt Wallbox-Leistung ohne technisches Vorzeichen als Ladeleistung", () => {
+        const timeline = functionBody("buildTimelineRanges", "visLageLine");
+        strict_1.default.match(timeline, /Math\.abs\(Number\(windowW\)\)/);
+        strict_1.default.match(timeline, /Ladeleistung/);
+    });
+    (0, node_test_1.it)("zeigt den Klima-Zweck in der Tagesplanung nur bei laufendem Gerät", () => {
+        const climate = functionBody("climateTodayLines", "paintEl");
+        strict_1.default.match(climate, /if\(running&&purpose\)bits\.push\(purpose\)/);
+        strict_1.default.doesNotMatch(climate, /if\(purpose\)bits\.push\(purpose\)/);
+    });
 });

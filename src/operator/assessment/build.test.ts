@@ -566,6 +566,18 @@ describe("buildOperationalAssessment", () => {
 		assert.doesNotMatch(planned.ev.text, /kein Laden nötig/);
 	});
 
+	it("meldet eine reale EVCC-Ladung auch bei verzögertem Plan-Snapshot als aktiv", () => {
+		const active = buildOperationalAssessment(
+			base({
+				plan: emptyPlan(),
+				ev: { gridRewardsActive: false, charging: true },
+			}),
+		);
+		assert.equal(active.ev.status, "active");
+		assert.match(active.ev.text, /lädt aktuell/);
+		assert.doesNotMatch(active.ev.text, /kein Laden/);
+	});
+
 	it("Nutzersprache ohne Entwicklerfelder", () => {
 		const de = formatOperationalAssessmentDe(buildOperationalAssessment(base()));
 		assert.match(de, /EMS-Einschätzung/);

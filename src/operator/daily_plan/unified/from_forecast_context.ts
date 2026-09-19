@@ -253,6 +253,8 @@ export type UnifiedForecastContext = {
 	 * Wenn nicht gesetzt → konservativ false.
 	 */
 	passiveBatteryEnergyAvailable?: boolean | null;
+	/** Passive Batterieenergie nach einem lediglich aktuellen Lade-Hold. */
+	passiveBatteryEnergyForecastAvailable?: boolean | null;
 	/** B1: IH-NOW bei stabilem Live-Überschuss bevorzugen. */
 	preferImmersionLiveSurplusNow?: boolean | null;
 	/** Soft-IH im angebrochenen Slot fortsetzen (Anti-Relais-Takten). */
@@ -606,6 +608,10 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			// Produktiv: Discharge Live unsupported (Sonnen EM discharge_unverified) — nie erfinden
 			dischargeLiveSupported: false,
 			passiveBatteryEnergyAvailable: ctx.passiveBatteryEnergyAvailable === true,
+			passiveBatteryEnergyForecastAvailable:
+				ctx.passiveBatteryEnergyForecastAvailable == null
+					? ctx.passiveBatteryEnergyAvailable === true
+					: ctx.passiveBatteryEnergyForecastAvailable === true,
 			requiredChargeEnergyKwh: num(batD, "requiredEnergyKwh") ?? num(batD, "socGapEnergyKwh"),
 			endSocTargetPct: num(batD, "targetSocPct"),
 			chargeDeadlineIso: batCharge?.deadlineIso ?? str(batD, "chargeLogicBridgeUntilIso"),

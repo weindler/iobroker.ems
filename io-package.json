@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.7",
+		"version": "0.4.8",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.8": {
+				"en": "Corrects the 72-hour battery trajectory during a temporary EV/Grid Rewards hold, reports real EVCC charging consistently, displays positive human-readable charging power, and hides inactive climate-purpose labels.",
+				"de": "Korrigiert die 72-Stunden-Batterietrajektorie bei einem vorübergehenden EV-/Grid-Rewards-Hold, meldet reale EVCC-Ladung konsistent, zeigt positive verständliche Ladeleistung und blendet inaktive Klima-Zweckangaben aus."
+			},
 			"0.4.7": {
 				"en": "Preserves the newly published PV-horizon raw-value objects during startup surface cleanup, preventing missing-object warnings for day 1–7 and the seven-day total.",
 				"de": "Erhält die neu veröffentlichten PV-Horizon-Rohwertobjekte bei der Startbereinigung und verhindert Missing-Object-Warnungen für Tag 1–7 sowie die Sieben-Tage-Summe."

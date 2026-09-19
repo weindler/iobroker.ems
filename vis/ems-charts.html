@@ -1269,6 +1269,7 @@ function buildTimelineRanges(horizonMs){
 	function wbMeta(status,phase,win){
 		var bits=[];
 		var windowW=win&&win.powerW;
+		if(windowW!=null&&isFinite(windowW))windowW=Math.abs(Number(windowW));
 		if(status==="dryrun"){
 			var dm=execAgendaMeta(phase,isPowerOn(wbAlloc)?wbAlloc:windowW);
 			if(dm)bits.push(dm);
@@ -1278,7 +1279,7 @@ function buildTimelineRanges(horizonMs){
 		if(remKwh!==null&&remKwh>0)bits.push("noch ~"+remKwh.toFixed(1).replace(".",",")+" kWh");
 		if(limSoc!==null)bits.push("bis "+Math.round(limSoc)+" % SOC");
 		else if(vehSoc!==null)bits.push("Auto "+Math.round(vehSoc)+" %");
-		if(windowW)bits.push(Math.round(windowW)+" W");
+		if(windowW)bits.push("Ladeleistung "+(windowW>=1000?(windowW/1000).toFixed(1).replace(".",",")+" kW":Math.round(windowW)+" W"));
 		if(win)bits=bits.concat(visPlanWindowExtras(windowW,win.startMs,win.endMs,win.isGrid));
 		return bits.length?bits.join(" · "):null;
 	}
@@ -2775,8 +2776,9 @@ function climateTodayLines(){
 		var purpose=visHvacPurposeLabel(g(base+".mode_purpose"));
 		var note=climateCardNote(u);
 		var bits=[name];
-		if(isOn(g(base+".running"))){bits.push("läuft");anyRunning=true;}
-		if(purpose)bits.push(purpose);
+		var running=isOn(g(base+".running"));
+		if(running){bits.push("läuft");anyRunning=true;}
+		if(running&&purpose)bits.push(purpose);
 		if(hum!=null)bits.push(Math.round(hum)+" % Feuchte");
 		if(d.nextLine&&d.nextLine!=="keines")bits.push(d.nextLine.replace(/^nächstes /,""));
 		var line=bits.join(" · ");

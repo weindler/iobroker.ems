@@ -13,6 +13,7 @@ import {
 	ensureWallboxEvFoundationStates,
 	WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS,
 } from "../addons/wallbox/ev_foundation/ensure_states.js";
+import { ensurePvHorizonStates } from "../learning/pv_horizon/ensure_states.js";
 // ensure/normalize kept only to plant legacy fat trees for purge assertions
 
 class FakeCleanupHost implements SurfaceCleanupHost {
@@ -69,6 +70,24 @@ class FakeCleanupHost implements SurfaceCleanupHost {
 }
 
 describe("surface cleanup allowlist", () => {
+	it("keeps published PV-horizon raw values after ensure and cleanup", async () => {
+		const host = new FakeCleanupHost({});
+		await ensurePvHorizonStates(host);
+		const publicRawIds = [
+			"learning.pv_horizon.total_7d_raw_kwh",
+			...Array.from({ length: 7 }, (_, index) => `learning.pv_horizon.day${index + 1}.raw_kwh`),
+		];
+		for (const id of publicRawIds) {
+			assert.equal(host.objects.has(id), true, `${id} must be ensured`);
+			assert.equal(isAllowlistedCleanupRelativeId(id), false, `${id} must not be cleanup ballast`);
+		}
+
+		await runDynamicSurfaceCleanup(host);
+		for (const id of publicRawIds) {
+			assert.equal(host.objects.has(id), true, `${id} must survive cleanup`);
+		}
+	});
+
 	it("keeps every public EV-foundation state after ensure and cleanup", async () => {
 		const host = new FakeCleanupHost({});
 		await ensureWallboxEvFoundationStates(host);

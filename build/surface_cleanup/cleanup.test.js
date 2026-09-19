@@ -15,6 +15,7 @@ const ensure_states_js_2 = require("../addons/wallbox/vehicles/ensure_states.js"
 const normalize_js_1 = require("../addons/wallbox/vehicles/normalize.js");
 const config_js_1 = require("../addons/wallbox/vehicles/config.js");
 const ensure_states_js_3 = require("../addons/wallbox/ev_foundation/ensure_states.js");
+const ensure_states_js_4 = require("../learning/pv_horizon/ensure_states.js");
 // ensure/normalize kept only to plant legacy fat trees for purge assertions
 class FakeCleanupHost {
     namespace = "ems.0";
@@ -61,6 +62,22 @@ class FakeCleanupHost {
     }
 }
 (0, node_test_1.describe)("surface cleanup allowlist", () => {
+    (0, node_test_1.it)("keeps published PV-horizon raw values after ensure and cleanup", async () => {
+        const host = new FakeCleanupHost({});
+        await (0, ensure_states_js_4.ensurePvHorizonStates)(host);
+        const publicRawIds = [
+            "learning.pv_horizon.total_7d_raw_kwh",
+            ...Array.from({ length: 7 }, (_, index) => `learning.pv_horizon.day${index + 1}.raw_kwh`),
+        ];
+        for (const id of publicRawIds) {
+            strict_1.default.equal(host.objects.has(id), true, `${id} must be ensured`);
+            strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)(id), false, `${id} must not be cleanup ballast`);
+        }
+        await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
+        for (const id of publicRawIds) {
+            strict_1.default.equal(host.objects.has(id), true, `${id} must survive cleanup`);
+        }
+    });
     (0, node_test_1.it)("keeps every public EV-foundation state after ensure and cleanup", async () => {
         const host = new FakeCleanupHost({});
         await (0, ensure_states_js_3.ensureWallboxEvFoundationStates)(host);

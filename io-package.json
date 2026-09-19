@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.6",
+		"version": "0.4.7",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.7": {
+				"en": "Preserves the newly published PV-horizon raw-value objects during startup surface cleanup, preventing missing-object warnings for day 1–7 and the seven-day total.",
+				"de": "Erhält die neu veröffentlichten PV-Horizon-Rohwertobjekte bei der Startbereinigung und verhindert Missing-Object-Warnungen für Tag 1–7 sowie die Sieben-Tage-Summe."
+			},
 			"0.4.6": {
 				"en": "Starts the new SMARD/Bright Sky price and PV outlook immediately instead of waiting behind the full history-learning backfill, and publishes a visible startup or error status from the first moment.",
 				"de": "Startet den neuen SMARD-/Bright-Sky-Preis- und PV-Ausblick sofort statt erst hinter dem vollständigen History-Learning und veröffentlicht vom ersten Moment an einen sichtbaren Start- oder Fehlerstatus."

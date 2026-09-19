@@ -96,7 +96,6 @@ const LIVE_WALLBOX_RE = /^live\.wallbox(\.|$)/;
 const OPERATOR_NOTIFICATION_BALLAST_RE = /^operator\.notification\.(last_kind|last_dedup_key|candidates_json)$/;
 const GLOBAL_MODES_BALLAST_RE = /^global_modes\.(available_json|issues_json)$/;
 const IMMERSION_RUNTIME_BALLAST_RE = /^addons\.immersion_heater\.runtime\.(snapshot_json|planning_min_temp_c|forecast_target_temp_c|daily_plan_slot_start|daily_plan_slot_end|mandatory_allocated_power_w|flexible_allocated_power_w|minimum_runtime_remaining_sec|minimum_pause_remaining_sec|last_switch_at|daily_plan_revision|allocation_status)$/;
-const PV_HORIZON_RAW_RE = /^learning\.pv_horizon\.(total_7d_raw_kwh|days_available|day[1-7]\.raw_kwh)$/;
 const PV_BIAS_BALLAST_RE = /^learning\.pv_bias\.(freeze_time|frozen_source|freeze_reason|sample_days_7d)$/;
 const WEATHER_HORIZON_BALLAST_RE = /^learning\.weather\.horizon\.days_available$/;
 const BACKUP_BALLAST_RE = /^backup\.(last_kind|last_size_bytes|last_sha256|schema_version|restore\.(plan_expires_at|archive_sha256|transaction_id))$/;
@@ -181,7 +180,6 @@ function isAllowlistedCleanupRelativeId(relativeId) {
     if (LEARNING_HISTORY_JSON_RE.test(relativeId) ||
         HOUSE_LOAD_MIRROR_JSON_RE.test(relativeId) ||
         WEATHER_RAW_RE.test(relativeId) ||
-        PV_HORIZON_RAW_RE.test(relativeId) ||
         WEATHER_KPI_BALLAST_RE.test(relativeId) ||
         PRICE_FORECAST_BALLAST_RE.test(relativeId) ||
         PRICE_LEARNING_BALLAST_RE.test(relativeId) ||

@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runPriceOutlook = void 0;
+exports.runPriceOutlook = exports.mergeSpreadPairs = void 0;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
@@ -32,6 +32,8 @@ const tibber_parse_1 = require("../price_forecast/tibber_parse");
 const config_2 = require("./config");
 const math_1 = require("./math");
 const sources_1 = require("./sources");
+const SPREAD_FILE = "price_spread_learning_v1.json";
+const SPREAD_RETENTION_MS = 180 * 86_400_000;
 async function readJson(filePath) {
     try {
         return JSON.parse(await fs.readFile(filePath, "utf8"));
@@ -40,6 +42,48 @@ async function readJson(filePath) {
         return null;
     }
 }
+async function readStateValue(host, id) {
+    if (!id.trim())
+        return null;
+    if (host.getForeignStateAsync) {
+        try {
+            const state = await host.getForeignStateAsync(id);
+            if (state?.val !== null && state?.val !== undefined)
+                return state.val;
+        }
+        catch {
+            // Fallback für relative/eigene IDs.
+        }
+    }
+    try {
+        return (await host.getStateAsync(id))?.val ?? null;
+    }
+    catch {
+        return null;
+    }
+}
+function mergeSpreadPairs(existing, smard, tibber, nowMs) {
+    const cutoff = nowMs - SPREAD_RETENTION_MS;
+    const byTs = new Map();
+    for (const pair of existing) {
+        if (Number.isFinite(pair.ts) && pair.ts >= cutoff && Number.isFinite(pair.tibberCtPerKwh) && Number.isFinite(pair.smardCtPerKwh)) {
+            byTs.set(pair.ts, pair);
+        }
+    }
+    const smardByTs = new Map(smard.map((point) => [point.ts, point.ctPerKwh]));
+    for (const slot of tibber) {
+        const smardCtPerKwh = smardByTs.get(slot.slotStartMs);
+        if (smardCtPerKwh === undefined)
+            continue;
+        byTs.set(slot.slotStartMs, {
+            ts: slot.slotStartMs,
+            tibberCtPerKwh: slot.priceCtPerKwh,
+            smardCtPerKwh,
+        });
+    }
+    return [...byTs.values()].sort((a, b) => a.ts - b.ts);
+}
+exports.mergeSpreadPairs = mergeSpreadPairs;
 async function resolveSystemLocation(host) {
     const cfg = (0, config_2.priceOutlookConfigFromAdapter)(host.config);
     let latitude = cfg.latitude;
@@ -66,10 +110,10 @@ async function writeOutlook(host, outlook, error = "") {
     await host.setStateAsync("learning.price_outlook.last_update", { val: outlook.generatedAtIso, ack: true });
     await host.setStateAsync("learning.price_outlook.horizon_json", { val: JSON.stringify(outlook), ack: true });
     await host.setStateAsync("learning.price_outlook.error", { val: error, ack: true });
-    if (outlook.spread.expectedCtPerKwh !== null) {
-        await host.setStateAsync("learning.price_outlook.spread_ct_per_kwh", { val: outlook.spread.expectedCtPerKwh, ack: true });
-    }
+    await host.setStateAsync("learning.price_outlook.spread_ct_per_kwh", { val: outlook.spread.expectedCtPerKwh, ack: true });
     await host.setStateAsync("learning.price_outlook.spread_confidence_pct", { val: outlook.spread.confidencePct, ack: true });
+    await host.setStateAsync("learning.price_outlook.spread_sample_count", { val: outlook.spread.sampleCount, ack: true });
+    await host.setStateAsync("learning.price_outlook.spread_mad_ct_per_kwh", { val: outlook.spread.madCtPerKwh, ack: true });
 }
 async function persist(baseDir, outlook, smard, weather) {
     await fs.mkdir(baseDir, { recursive: true });
@@ -104,6 +148,7 @@ async function runPriceOutlook(host, now = new Date()) {
     let smard = baseDir ? await readJson(path.join(baseDir, "smard_price_cache_v1.json")) : null;
     let weather = baseDir ? await readJson(path.join(baseDir, "brightsky_forecast_cache_v1.json")) : null;
     let localWeather = baseDir ? await readJson(path.join(baseDir, "brightsky_local_cache_v1.json")) : null;
+    let spreadLearning = baseDir ? await readJson(path.join(baseDir, SPREAD_FILE)) : null;
     let smardAvailable = false;
     let weatherAvailable = false;
     const errors = [];
@@ -131,11 +176,12 @@ async function runPriceOutlook(host, now = new Date()) {
             errors.push(`Bright Sky lokal: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
-    const read = async (id) => id ? (await host.getStateAsync(id))?.val : null;
     const tibber = [
-        ...(0, tibber_parse_1.parseTibberPriceJsonTo15MinSlots)(await read(cfg.todayJsonStateId)),
-        ...(0, tibber_parse_1.parseTibberPriceJsonTo15MinSlots)(await read(cfg.tomorrowJsonStateId)),
+        ...(0, tibber_parse_1.parseTibberPriceJsonTo15MinSlots)(await readStateValue(host, cfg.todayJsonStateId)),
+        ...(0, tibber_parse_1.parseTibberPriceJsonTo15MinSlots)(await readStateValue(host, cfg.tomorrowJsonStateId)),
     ];
+    const spreadPairs = mergeSpreadPairs(spreadLearning?.pairs ?? [], smard?.points ?? [], tibber, now.getTime());
+    spreadLearning = { schemaVersion: 1, generatedAtIso: now.toISOString(), pairs: spreadPairs };
     const outlook = (0, math_1.buildPriceOutlook)({
         now,
         timezone,
@@ -144,6 +190,7 @@ async function runPriceOutlook(host, now = new Date()) {
         weather: weather?.regions ?? [],
         smardAvailable,
         weatherAvailable,
+        spreadPairs,
     });
     let pvKwp = cfg.pvKwp;
     if (pvKwp === null && host.getForeignStateAsync) {
@@ -173,6 +220,8 @@ async function runPriceOutlook(host, now = new Date()) {
     await writeOutlook(host, outlook, errors.join(" | "));
     if (baseDir)
         await persist(baseDir, outlook, smard, weather);
+    if (baseDir)
+        await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, SPREAD_FILE), `${JSON.stringify(spreadLearning, null, 2)}\n`);
     if (baseDir && localWeather)
         await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, "brightsky_local_cache_v1.json"), `${JSON.stringify(localWeather)}\n`);
     host.log.debug?.(`Sieben-Tage-Preisprognose: ${outlook.status}, ${outlook.days.length} Tage`);

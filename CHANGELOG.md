@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.13] – 2026-09-19
+
+### Fixed
+
+- Der Sieben-Tage-Preisausblick liest konfigurierte Tibber-JSON-States nun korrekt als fremde ioBroker-States; veröffentlichte Tibber-Preise erscheinen dadurch wieder verbindlich im Horizont.
+- Zeitgleiche Tibber-Endpreise und SMARD-Börsenpreise werden über 180 Tage als Vergleichspaare gespeichert. Der daraus robust gelernte Endpreisaufschlag wird für Tag 3–7 verwendet und zusammen mit den übrigen Lerndaten gesichert.
+- Anzahl und Schwankung der verwendeten Vergleichswerte werden als Diagnosewerte veröffentlicht; die Benutzerbegründung nennt den tatsächlich gelernten Aufschlag statt nur ein allgemeines SMARD-Muster.
+
 ## [0.4.12] – 2026-09-19
 
 ### Fixed

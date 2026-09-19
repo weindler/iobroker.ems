@@ -49,6 +49,18 @@ export type PriceOutlook = {
 
 export type SmardPoint = { ts: number; ctPerKwh: number };
 
+export type TibberSmardPair = {
+	ts: number;
+	tibberCtPerKwh: number;
+	smardCtPerKwh: number;
+};
+
+export type PriceSpreadLearning = {
+	schemaVersion: 1;
+	generatedAtIso: string;
+	pairs: TibberSmardPair[];
+};
+
 export type WeatherPoint = {
 	ts: number;
 	temperatureC: number | null;

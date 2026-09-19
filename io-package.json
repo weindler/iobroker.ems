@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.12",
+		"version": "0.4.13",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.13": {
+				"en": "Connects the seven-day outlook to configured Tibber JSON states, persistently learns the Tibber-to-SMARD retail spread, and backs up the learned comparison pairs.",
+				"de": "Verbindet den Sieben-Tage-Ausblick mit den konfigurierten Tibber-JSON-States, lernt den Tibber-Endpreisaufschlag gegenüber SMARD dauerhaft und sichert die gelernten Vergleichspaare im Backup."
+			},
 			"0.4.12": {
 				"en": "Prevents current manual or unknown battery telemetry from freezing the 72-hour SOC forecast; only an explicit user hold persists into future slots.",
 				"de": "Verhindert, dass eine aktuell als Manual oder unbekannt gemeldete Batterie die 72-Stunden-SOC-Prognose einfriert; nur ein ausdrücklicher Benutzer-Hold gilt für zukünftige Slots."

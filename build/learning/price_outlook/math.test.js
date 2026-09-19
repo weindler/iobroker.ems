@@ -7,6 +7,7 @@ const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const slots_1 = require("../day_telemetry/slots");
 const math_1 = require("./math");
+const run_1 = require("./run");
 function smardHistory(nowMs) {
     const points = [];
     for (let day = 1; day <= 120; day++) {
@@ -33,6 +34,19 @@ function weatherForLayout(dateKeys, timezone) {
         const spread = (0, math_1.learnTibberSpread)(smard, tibber);
         strict_1.default.equal(spread.expectedCtPerKwh, 20);
         strict_1.default.equal(spread.sampleCount, 4);
+    });
+    (0, node_test_1.it)("behält gelernte Vergleichspaare, ergänzt neue und entfernt veraltete", () => {
+        const nowMs = Date.parse("2026-09-19T12:00:00.000Z");
+        const recentTs = nowMs - 86_400_000;
+        const newTs = nowMs;
+        const pairs = (0, run_1.mergeSpreadPairs)([
+            { ts: nowMs - 181 * 86_400_000, tibberCtPerKwh: 30, smardCtPerKwh: 10 },
+            { ts: recentTs, tibberCtPerKwh: 31, smardCtPerKwh: 11 },
+        ], [{ ts: newTs, ctPerKwh: 12 }], [{ slotStartMs: newTs, priceCtPerKwh: 33 }], nowMs);
+        strict_1.default.deepEqual(pairs, [
+            { ts: recentTs, tibberCtPerKwh: 31, smardCtPerKwh: 11 },
+            { ts: newTs, tibberCtPerKwh: 33, smardCtPerKwh: 12 },
+        ]);
     });
     (0, node_test_1.it)("behält Tibber als echte 15-Minuten-Werte und schätzt danach nur stündlich", () => {
         const timezone = "Europe/Berlin";

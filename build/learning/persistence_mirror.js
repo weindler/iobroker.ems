@@ -65,6 +65,12 @@ exports.LEARNING_PERSISTENCE_ARTIFACTS = [
         nameDe: "Preis-Forecast-Learning (Backup-Spiegel)",
     },
     {
+        key: "price_outlook",
+        category: "learning/price_outlook",
+        fileName: "price_spread_learning_v1.json",
+        nameDe: "Tibber-/SMARD-Aufschlag-Learning (Backup-Spiegel)",
+    },
+    {
         key: "pv_bias_daily",
         category: "learning/pv_bias",
         fileName: "pv_bias_daily_v1.json",

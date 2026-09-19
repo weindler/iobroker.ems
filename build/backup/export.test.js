@@ -373,6 +373,7 @@ class ExportTestHost {
             "thermal_boiler_learning_v1.json",
             "price_learning_v1.json",
             "price_forecast_learning_v1.json",
+            "price_spread_learning_v1.json",
             "pv_bias_daily_v1.json",
             "power_hourly_v1.json",
             "energy_daily_v1.json",

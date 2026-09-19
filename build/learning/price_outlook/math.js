@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildLocalPvRawKwh = exports.buildPriceOutlook = exports.learnTibberSpread = void 0;
+exports.buildLocalPvRawKwh = exports.buildPriceOutlook = exports.learnTibberSpreadFromPairs = exports.learnTibberSpread = void 0;
 const time_1 = require("../../operator/time");
 const slots_1 = require("../day_telemetry/slots");
 const round = (value, digits = 2) => {
@@ -16,10 +16,17 @@ function median(values) {
 }
 function learnTibberSpread(smard, tibber) {
     const byTs = new Map(smard.map((point) => [point.ts, point.ctPerKwh]));
-    const differences = tibber.flatMap((slot) => {
+    return learnTibberSpreadFromDifferences(tibber.flatMap((slot) => {
         const market = byTs.get(slot.slotStartMs);
         return market === undefined ? [] : [slot.priceCtPerKwh - market];
-    });
+    }));
+}
+exports.learnTibberSpread = learnTibberSpread;
+function learnTibberSpreadFromPairs(pairs) {
+    return learnTibberSpreadFromDifferences(pairs.map((pair) => pair.tibberCtPerKwh - pair.smardCtPerKwh));
+}
+exports.learnTibberSpreadFromPairs = learnTibberSpreadFromPairs;
+function learnTibberSpreadFromDifferences(differences) {
     const expected = median(differences);
     const mad = expected === null ? null : median(differences.map((value) => Math.abs(value - expected)));
     const sampleFactor = Math.min(1, differences.length / 48);
@@ -31,7 +38,6 @@ function learnTibberSpread(smard, tibber) {
         confidencePct: Math.round(sampleFactor * stabilityFactor * 100),
     };
 }
-exports.learnTibberSpread = learnTibberSpread;
 const hourFormatters = new Map();
 const weekdayFormatters = new Map();
 function zonedHour(ms, timezone) {
@@ -126,7 +132,9 @@ function tendency(value, center) {
 function buildPriceOutlook(args) {
     const nowMs = args.now.getTime();
     const today = (0, time_1.localDateKeyInTimezone)(args.now, args.timezone);
-    const spread = learnTibberSpread(args.smard, args.tibber);
+    const spread = args.spreadPairs
+        ? learnTibberSpreadFromPairs(args.spreadPairs)
+        : learnTibberSpread(args.smard, args.tibber);
     const historicalPatterns = buildHistoricalPatterns(args.smard, nowMs, args.timezone);
     const tibberByTs = new Map(args.tibber.map((slot) => [slot.slotStartMs, slot.priceCtPerKwh]));
     const globalCenter = median(args.smard.filter((point) => point.ts >= nowMs - 90 * 86_400_000).map((point) => point.ctPerKwh));
@@ -211,7 +219,9 @@ function buildPriceOutlook(args) {
             maxCtPerKwh: maxValues.length ? round(Math.max(...maxValues), 2) : null,
             tendency: tendency(avg, globalCenter === null ? null : globalCenter + (spread.expectedCtPerKwh ?? 0)),
             reasonDe: status === "estimated"
-                ? "SMARD-Preismuster, Wind-, Solar- und Temperaturlage mehrerer deutscher Regionen; rein informativ."
+                ? spread.sampleCount > 0
+                    ? `SMARD-Preismuster, Wetterlage und gelernter Tibber-Aufschlag aus ${spread.sampleCount} Vergleichswerten; rein informativ.`
+                    : "SMARD-Preismuster sowie Wind-, Solar- und Temperaturlage; ein persönlicher Tibber-Aufschlag konnte noch nicht gelernt werden."
                 : status === "unavailable"
                     ? "SMARD- oder Bright-Sky-Daten fehlen; es wird keine Zahl erfunden."
                     : "Veröffentlichte Tibber-Endpreise haben Vorrang vor jeder Schätzung.",

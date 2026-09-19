@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildDaySlotLayout } from "../day_telemetry/slots";
 import { buildLocalPvRawKwh, buildPriceOutlook, learnTibberSpread } from "./math";
+import { mergeSpreadPairs } from "./run";
 import type { RegionalWeather, SmardPoint } from "./types";
 
 function smardHistory(nowMs: number): SmardPoint[] {
@@ -32,6 +33,25 @@ describe("Greenshare-artige Sieben-Tage-Preisprognose", () => {
 		const spread = learnTibberSpread(smard, tibber);
 		assert.equal(spread.expectedCtPerKwh, 20);
 		assert.equal(spread.sampleCount, 4);
+	});
+
+	it("behält gelernte Vergleichspaare, ergänzt neue und entfernt veraltete", () => {
+		const nowMs = Date.parse("2026-09-19T12:00:00.000Z");
+		const recentTs = nowMs - 86_400_000;
+		const newTs = nowMs;
+		const pairs = mergeSpreadPairs(
+			[
+				{ ts: nowMs - 181 * 86_400_000, tibberCtPerKwh: 30, smardCtPerKwh: 10 },
+				{ ts: recentTs, tibberCtPerKwh: 31, smardCtPerKwh: 11 },
+			],
+			[{ ts: newTs, ctPerKwh: 12 }],
+			[{ slotStartMs: newTs, priceCtPerKwh: 33 }],
+			nowMs,
+		);
+		assert.deepEqual(pairs, [
+			{ ts: recentTs, tibberCtPerKwh: 31, smardCtPerKwh: 11 },
+			{ ts: newTs, tibberCtPerKwh: 33, smardCtPerKwh: 12 },
+		]);
 	});
 
 	it("behält Tibber als echte 15-Minuten-Werte und schätzt danach nur stündlich", () => {

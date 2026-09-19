@@ -12,7 +12,10 @@ import {
 	type SmardCache,
 	type WeatherCache,
 } from "./sources";
-import type { PriceOutlook } from "./types";
+import type { PriceOutlook, PriceSpreadLearning, SmardPoint, TibberSmardPair } from "./types";
+
+const SPREAD_FILE = "price_spread_learning_v1.json";
+const SPREAD_RETENTION_MS = 180 * 86_400_000;
 
 export type PriceOutlookHost = {
 	config: unknown;
@@ -26,6 +29,45 @@ export type PriceOutlookHost = {
 
 async function readJson<T>(filePath: string): Promise<T | null> {
 	try { return JSON.parse(await fs.readFile(filePath, "utf8")) as T; } catch { return null; }
+}
+
+async function readStateValue(host: PriceOutlookHost, id: string): Promise<unknown> {
+	if (!id.trim()) return null;
+	if (host.getForeignStateAsync) {
+		try {
+			const state = await host.getForeignStateAsync(id);
+			if (state?.val !== null && state?.val !== undefined) return state.val;
+		} catch {
+			// Fallback für relative/eigene IDs.
+		}
+	}
+	try { return (await host.getStateAsync(id))?.val ?? null; } catch { return null; }
+}
+
+export function mergeSpreadPairs(
+	existing: TibberSmardPair[],
+	smard: SmardPoint[],
+	tibber: ReturnType<typeof parseTibberPriceJsonTo15MinSlots>,
+	nowMs: number,
+): TibberSmardPair[] {
+	const cutoff = nowMs - SPREAD_RETENTION_MS;
+	const byTs = new Map<number, TibberSmardPair>();
+	for (const pair of existing) {
+		if (Number.isFinite(pair.ts) && pair.ts >= cutoff && Number.isFinite(pair.tibberCtPerKwh) && Number.isFinite(pair.smardCtPerKwh)) {
+			byTs.set(pair.ts, pair);
+		}
+	}
+	const smardByTs = new Map(smard.map((point) => [point.ts, point.ctPerKwh]));
+	for (const slot of tibber) {
+		const smardCtPerKwh = smardByTs.get(slot.slotStartMs);
+		if (smardCtPerKwh === undefined) continue;
+		byTs.set(slot.slotStartMs, {
+			ts: slot.slotStartMs,
+			tibberCtPerKwh: slot.priceCtPerKwh,
+			smardCtPerKwh,
+		});
+	}
+	return [...byTs.values()].sort((a, b) => a.ts - b.ts);
 }
 
 async function resolveSystemLocation(host: PriceOutlookHost) {
@@ -54,10 +96,10 @@ async function writeOutlook(host: PriceOutlookHost, outlook: PriceOutlook, error
 	await host.setStateAsync("learning.price_outlook.last_update", { val: outlook.generatedAtIso, ack: true });
 	await host.setStateAsync("learning.price_outlook.horizon_json", { val: JSON.stringify(outlook), ack: true });
 	await host.setStateAsync("learning.price_outlook.error", { val: error, ack: true });
-	if (outlook.spread.expectedCtPerKwh !== null) {
-		await host.setStateAsync("learning.price_outlook.spread_ct_per_kwh", { val: outlook.spread.expectedCtPerKwh, ack: true });
-	}
+	await host.setStateAsync("learning.price_outlook.spread_ct_per_kwh", { val: outlook.spread.expectedCtPerKwh, ack: true });
 	await host.setStateAsync("learning.price_outlook.spread_confidence_pct", { val: outlook.spread.confidencePct, ack: true });
+	await host.setStateAsync("learning.price_outlook.spread_sample_count", { val: outlook.spread.sampleCount, ack: true });
+	await host.setStateAsync("learning.price_outlook.spread_mad_ct_per_kwh", { val: outlook.spread.madCtPerKwh, ack: true });
 }
 
 async function persist(baseDir: string, outlook: PriceOutlook, smard: SmardCache | null, weather: WeatherCache | null) {
@@ -86,6 +128,7 @@ export async function runPriceOutlook(host: PriceOutlookHost, now = new Date()):
 	let smard = baseDir ? await readJson<SmardCache>(path.join(baseDir, "smard_price_cache_v1.json")) : null;
 	let weather = baseDir ? await readJson<WeatherCache>(path.join(baseDir, "brightsky_forecast_cache_v1.json")) : null;
 	let localWeather = baseDir ? await readJson<WeatherCache>(path.join(baseDir, "brightsky_local_cache_v1.json")) : null;
+	let spreadLearning = baseDir ? await readJson<PriceSpreadLearning>(path.join(baseDir, SPREAD_FILE)) : null;
 	let smardAvailable = false;
 	let weatherAvailable = false;
 	const errors: string[] = [];
@@ -94,11 +137,12 @@ export async function runPriceOutlook(host: PriceOutlookHost, now = new Date()):
 	if (latitude !== null && longitude !== null) {
 		try { localWeather = await fetchBrightSkyLocation(latitude, longitude, localWeather, now.getTime()); } catch (error) { errors.push(`Bright Sky lokal: ${error instanceof Error ? error.message : String(error)}`); }
 	}
-	const read = async (id: string): Promise<unknown> => id ? (await host.getStateAsync(id))?.val : null;
 	const tibber = [
-		...parseTibberPriceJsonTo15MinSlots(await read(cfg.todayJsonStateId)),
-		...parseTibberPriceJsonTo15MinSlots(await read(cfg.tomorrowJsonStateId)),
+		...parseTibberPriceJsonTo15MinSlots(await readStateValue(host, cfg.todayJsonStateId)),
+		...parseTibberPriceJsonTo15MinSlots(await readStateValue(host, cfg.tomorrowJsonStateId)),
 	];
+	const spreadPairs = mergeSpreadPairs(spreadLearning?.pairs ?? [], smard?.points ?? [], tibber, now.getTime());
+	spreadLearning = { schemaVersion: 1, generatedAtIso: now.toISOString(), pairs: spreadPairs };
 	const outlook = buildPriceOutlook({
 		now,
 		timezone,
@@ -107,6 +151,7 @@ export async function runPriceOutlook(host: PriceOutlookHost, now = new Date()):
 		weather: weather?.regions ?? [],
 		smardAvailable,
 		weatherAvailable,
+		spreadPairs,
 	});
 	let pvKwp = cfg.pvKwp;
 	if (pvKwp === null && host.getForeignStateAsync) {
@@ -131,6 +176,7 @@ export async function runPriceOutlook(host: PriceOutlookHost, now = new Date()):
 	}
 	await writeOutlook(host, outlook, errors.join(" | "));
 	if (baseDir) await persist(baseDir, outlook, smard, weather);
+	if (baseDir) await atomicWriteFile(path.join(baseDir, SPREAD_FILE), `${JSON.stringify(spreadLearning, null, 2)}\n`);
 	if (baseDir && localWeather) await atomicWriteFile(path.join(baseDir, "brightsky_local_cache_v1.json"), `${JSON.stringify(localWeather)}\n`);
 	host.log.debug?.(`Sieben-Tage-Preisprognose: ${outlook.status}, ${outlook.days.length} Tage`);
 }

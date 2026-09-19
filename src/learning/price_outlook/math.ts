@@ -7,6 +7,7 @@ import type {
 	PriceOutlookHour,
 	RegionalWeather,
 	SmardPoint,
+	TibberSmardPair,
 } from "./types";
 
 const round = (value: number, digits = 2): number => {
@@ -23,10 +24,17 @@ function median(values: number[]): number | null {
 
 export function learnTibberSpread(smard: SmardPoint[], tibber: Price15MinSlot[]): PriceOutlook["spread"] {
 	const byTs = new Map(smard.map((point) => [point.ts, point.ctPerKwh]));
-	const differences = tibber.flatMap((slot) => {
+	return learnTibberSpreadFromDifferences(tibber.flatMap((slot) => {
 		const market = byTs.get(slot.slotStartMs);
 		return market === undefined ? [] : [slot.priceCtPerKwh - market];
-	});
+	}));
+}
+
+export function learnTibberSpreadFromPairs(pairs: TibberSmardPair[]): PriceOutlook["spread"] {
+	return learnTibberSpreadFromDifferences(pairs.map((pair) => pair.tibberCtPerKwh - pair.smardCtPerKwh));
+}
+
+function learnTibberSpreadFromDifferences(differences: number[]): PriceOutlook["spread"] {
 	const expected = median(differences);
 	const mad = expected === null ? null : median(differences.map((value) => Math.abs(value - expected)));
 	const sampleFactor = Math.min(1, differences.length / 48);
@@ -136,10 +144,13 @@ export function buildPriceOutlook(args: {
 	weather: RegionalWeather[];
 	smardAvailable: boolean;
 	weatherAvailable: boolean;
+	spreadPairs?: TibberSmardPair[];
 }): PriceOutlook {
 	const nowMs = args.now.getTime();
 	const today = localDateKeyInTimezone(args.now, args.timezone);
-	const spread = learnTibberSpread(args.smard, args.tibber);
+	const spread = args.spreadPairs
+		? learnTibberSpreadFromPairs(args.spreadPairs)
+		: learnTibberSpread(args.smard, args.tibber);
 	const historicalPatterns = buildHistoricalPatterns(args.smard, nowMs, args.timezone);
 	const tibberByTs = new Map(args.tibber.map((slot) => [slot.slotStartMs, slot.priceCtPerKwh]));
 	const globalCenter = median(args.smard.filter((point) => point.ts >= nowMs - 90 * 86_400_000).map((point) => point.ctPerKwh));
@@ -225,7 +236,9 @@ export function buildPriceOutlook(args: {
 			maxCtPerKwh: maxValues.length ? round(Math.max(...maxValues), 2) : null,
 			tendency: tendency(avg, globalCenter === null ? null : globalCenter + (spread.expectedCtPerKwh ?? 0)),
 			reasonDe: status === "estimated"
-				? "SMARD-Preismuster, Wind-, Solar- und Temperaturlage mehrerer deutscher Regionen; rein informativ."
+				? spread.sampleCount > 0
+					? `SMARD-Preismuster, Wetterlage und gelernter Tibber-Aufschlag aus ${spread.sampleCount} Vergleichswerten; rein informativ.`
+					: "SMARD-Preismuster sowie Wind-, Solar- und Temperaturlage; ein persönlicher Tibber-Aufschlag konnte noch nicht gelernt werden."
 				: status === "unavailable"
 					? "SMARD- oder Bright-Sky-Daten fehlen; es wird keine Zahl erfunden."
 					: "Veröffentlichte Tibber-Endpreise haben Vorrang vor jeder Schätzung.",

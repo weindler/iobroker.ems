@@ -17,7 +17,9 @@ export async function ensurePriceOutlookStates(host: StateHost): Promise<void> {
 		state("learning.price_outlook.last_update", "Preisprognose letzte Aktualisierung", "string"),
 		state("learning.price_outlook.horizon_json", "Preisprognose sieben Tage JSON", "string"),
 		state("learning.price_outlook.spread_ct_per_kwh", "Gelernter Tibber-Aufschlag", "number", "ct/kWh"),
-		state("learning.price_outlook.spread_confidence_pct", "Confidence Tibber-Aufschlag", "number", "%"),
+		state("learning.price_outlook.spread_confidence_pct", "Vertrauen Tibber-Aufschlag", "number", "%"),
+		state("learning.price_outlook.spread_sample_count", "Verglichene Tibber-/SMARD-Viertelstunden", "number"),
+		state("learning.price_outlook.spread_mad_ct_per_kwh", "Schwankung Tibber-Aufschlag", "number", "ct/kWh"),
 		state("learning.price_outlook.error", "Preisprognose Fehler", "string", undefined, ""),
 		state("learning.price_outlook.local_pv_raw_json", "Lokale Bright-Sky-PV-Rohprognose", "string"),
 		...Array.from({ length: 7 }, (_, index) => state(

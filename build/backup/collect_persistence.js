@@ -51,6 +51,7 @@ exports.SELECTED_STATE_DATA_ARTIFACTS = [
     { category: "learning/thermal_boiler", fileName: "thermal_boiler_learning_v1.json" },
     { category: "learning/price_learning", fileName: "price_learning_v1.json" },
     { category: "learning/price_forecast", fileName: "price_forecast_learning_v1.json" },
+    { category: "learning/price_outlook", fileName: "price_spread_learning_v1.json" },
     { category: "learning/pv_bias", fileName: "pv_bias_daily_v1.json" },
     { category: "learning/power_rollup", fileName: "power_hourly_v1.json" },
     { category: "learning/energy_daily_rollup", fileName: "energy_daily_v1.json" },

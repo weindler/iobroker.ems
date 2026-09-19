@@ -174,6 +174,21 @@ describe("passive battery energy availability", () => {
 		assert.equal(afterEvccHold.reasonCode, "passive_battery_self_consumption");
 	});
 
+	it("Forecast nimmt nach aktuell Manual oder unbekannt wieder Eigenverbrauch an", () => {
+		for (const operatingMode of [1, null]) {
+			const future = resolvePassiveBatteryEnergyForecastAvailable({
+				operatingMode,
+				selfConsumptionModeValue: 2,
+				manualModeValue: 1,
+				ownershipActive: false,
+				batteryHoldActive: false,
+				userHoldActive: false,
+			});
+			assert.equal(future.available, true);
+			assert.equal(future.reasonCode, "passive_battery_self_consumption");
+		}
+	});
+
 	it("manual/hold → unavailable", () => {
 		const d = resolvePassiveBatteryEnergyAvailable({
 			operatingMode: 1,

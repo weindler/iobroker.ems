@@ -167,6 +167,20 @@ function sumClimateBattery(plan) {
         strict_1.default.equal(afterEvccHold.available, true);
         strict_1.default.equal(afterEvccHold.reasonCode, "passive_battery_self_consumption");
     });
+    (0, node_test_1.it)("Forecast nimmt nach aktuell Manual oder unbekannt wieder Eigenverbrauch an", () => {
+        for (const operatingMode of [1, null]) {
+            const future = (0, passive_battery_energy_js_1.resolvePassiveBatteryEnergyForecastAvailable)({
+                operatingMode,
+                selfConsumptionModeValue: 2,
+                manualModeValue: 1,
+                ownershipActive: false,
+                batteryHoldActive: false,
+                userHoldActive: false,
+            });
+            strict_1.default.equal(future.available, true);
+            strict_1.default.equal(future.reasonCode, "passive_battery_self_consumption");
+        }
+    });
     (0, node_test_1.it)("manual/hold → unavailable", () => {
         const d = (0, passive_battery_energy_js_1.resolvePassiveBatteryEnergyAvailable)({
             operatingMode: 1,

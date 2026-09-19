@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.12] – 2026-09-19
+
+### Fixed
+
+- Ein aktuell als `Manual` oder unbekannt gemeldeter Sonnen-Betriebsmodus friert die 72-Stunden-SOC-Projektion nicht mehr ein. Nach dem laufenden Slot nimmt die Prognose wieder Eigenverbrauch an; nur ein ausdrücklicher Benutzer-Hold sperrt auch zukünftige Slots.
+
 ## [0.4.11] – 2026-09-19
 
 ### Fixed

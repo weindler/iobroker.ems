@@ -61,13 +61,17 @@ exports.resolvePassiveBatteryEnergyAvailable = resolvePassiveBatteryEnergyAvaila
  * Benutzer-Hold bleibt dagegen auch im Forecast gesperrt.
  */
 function resolvePassiveBatteryEnergyForecastAvailable(input) {
-    const transientControl = input.ownershipActive ||
-        (input.batteryHoldActive === true && input.userHoldActive !== true);
+    /*
+     * Die 72-h-Projektion beschreibt den Zustand nach der aktuellen Live-Steuerung.
+     * Deshalb dürfen weder ein derzeitiges Manual/unknown aus der Gerätetelemetrie
+     * noch Ownership/EVCC-Hold den ganzen Horizont einfrieren. Nur ein ausdrücklicher
+     * Benutzer-Hold ist eine belastbare dauerhafte Zukunftsvorgabe.
+     */
     return resolvePassiveBatteryEnergyAvailable({
         ...input,
-        operatingMode: transientControl
-            ? input.selfConsumptionModeValue
-            : input.operatingMode,
+        operatingMode: input.userHoldActive === true
+            ? input.operatingMode
+            : input.selfConsumptionModeValue,
         ownershipActive: false,
         batteryHoldActive: input.userHoldActive === true,
     });

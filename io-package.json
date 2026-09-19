@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.11",
+		"version": "0.4.12",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.12": {
+				"en": "Prevents current manual or unknown battery telemetry from freezing the 72-hour SOC forecast; only an explicit user hold persists into future slots.",
+				"de": "Verhindert, dass eine aktuell als Manual oder unbekannt gemeldete Batterie die 72-Stunden-SOC-Prognose einfriert; nur ein ausdrücklicher Benutzer-Hold gilt für zukünftige Slots."
+			},
 			"0.4.11": {
 				"en": "Keeps the PV calculation details expanded during the dashboard's periodic live refresh.",
 				"de": "Hält die PV-Berechnungsdetails bei der regelmäßigen Live-Aktualisierung des Dashboards geöffnet."

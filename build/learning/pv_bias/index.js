@@ -6,6 +6,7 @@ const run_1 = require("./run");
 const config_1 = require("./config");
 const price_learning_1 = require("../price_learning");
 const price_forecast_1 = require("../price_forecast");
+const price_outlook_1 = require("../price_outlook");
 const house_load_1 = require("../house_load");
 const thermal_runtime_1 = require("../thermal_runtime");
 const thermal_boiler_1 = require("../thermal_boiler");
@@ -36,6 +37,7 @@ async function ensureLearningStateTree(adapter) {
     await (0, pv_horizon_1.ensurePvHorizonLearningStates)(host);
     await (0, price_learning_1.ensurePriceLearningStates)(host);
     await (0, price_forecast_1.ensurePriceForecastLearningStates)(host);
+    await (0, price_outlook_1.ensurePriceOutlookStates)(host);
     await (0, house_load_1.ensureHouseLoadLearningStates)(host);
     await (0, thermal_runtime_1.ensureThermalRuntimeLearningStates)(host);
     await (0, thermal_boiler_1.ensureThermalBoilerLearningStates)(host);
@@ -86,7 +88,6 @@ async function runLearningTick(host, trigger = "interval") {
         }
         await (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host);
         await (0, run_1.runPvBiasLearning)(host);
-        await (0, pv_horizon_1.runPvHorizon)(host);
         await (0, price_learning_1.runPriceLearning)(host);
         // Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
         await (0, power_rollup_1.ensurePowerRollupForLearning)(host);
@@ -103,6 +104,13 @@ async function runLearningTick(host, trigger = "interval") {
             host.log.error(`grid_balance_economics: ${e instanceof Error ? e.message : String(e)}`);
         }
         await (0, price_forecast_1.runPriceForecastLearning)(host);
+        try {
+            await (0, price_outlook_1.runPriceOutlook)(host);
+        }
+        catch (e) {
+            host.log.error(`price_outlook: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        await (0, pv_horizon_1.runPvHorizon)(host);
         await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
         /*
          * BLOCK A — Daily Evaluator (rein additiv/diagnostisch). Liest nur day_telemetry,

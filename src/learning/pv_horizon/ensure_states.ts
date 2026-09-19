@@ -29,6 +29,7 @@ export async function ensurePvHorizonStates(host: StateHost): Promise<void> {
 
 	const defs: StateDef[] = [
 		numState("learning.pv_horizon.total_7d_corrected_kwh", "PV-Horizon 7d korrigiert gesamt", "kWh"),
+		numState("learning.pv_horizon.total_7d_raw_kwh", "PV-Horizon 7d Rohwert gesamt", "kWh"),
 		strState("learning.pv_horizon.status", "PV-Horizon Status", "no_data"),
 		strState("learning.pv_horizon.last_update", "PV-Horizon letztes Update (ISO)"),
 	];
@@ -36,6 +37,8 @@ export async function ensurePvHorizonStates(host: StateHost): Promise<void> {
 	for (let d = 1; d <= PV_HORIZON_DAY_COUNT; d++) {
 		const prefix = `learning.pv_horizon.day${d}`;
 		defs.push(
+			numState(`${prefix}.raw_kwh`, `PV-Horizon Tag ${d} Rohwert`, "kWh"),
+			numState(`${prefix}.applied_bias_pct`, `PV-Horizon Tag ${d} angewendeter Bias`, "%"),
 			numState(`${prefix}.corrected_kwh`, `PV-Horizon Tag ${d} korrigiert`, "kWh"),
 			numState(`${prefix}.confidence_pct`, `PV-Horizon Tag ${d} Confidence`, "%"),
 		);

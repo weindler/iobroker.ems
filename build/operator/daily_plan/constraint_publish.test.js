@@ -198,9 +198,9 @@ function mockHost(config = {}) {
             strict_1.default.match(publish, new RegExp(id.replace(/\./g, "\\.")));
         }
     });
-    (0, node_test_1.it)("Admin: Heizstab darf Batterie (ohne nur-kritisch) → allowed true on next tick", async () => {
+    (0, node_test_1.it)("Admin: automatische Batterieunterstützung → allowed true on next tick", async () => {
         (0, tick_1.resetDailyPlanRevisionForTest)();
-        const host = mockHost();
+        const host = mockHost({ bat_consumer_auto_support: false });
         host.states.set("live.battery.soc_pct", 80);
         host.states.set("live.thermal.buffer_temp_c", 44);
         host.states.set("global_modes.active", "balanced");
@@ -208,15 +208,11 @@ function mockHost(config = {}) {
         const fp = forecastForTick(now);
         await (0, tick_1.runDailyPlanTick)(host, fp);
         strict_1.default.equal(host.states.get("planner.constraints.battery_consumer_immersion_allowed"), false);
-        strict_1.default.match(String(host.states.get("planner.constraints.battery_consumer_immersion_reason_de")), /nicht erlaubt/);
-        host.config.bat_consumer_immersion_may_use_battery = true;
-        host.config.bat_consumer_immersion_only_when_critical = false;
-        host.config.bat_consumer_climate_may_use_battery = true;
-        host.config.bat_consumer_climate_only_when_critical = false;
-        host.config.bat_consumer_wallbox_may_use_battery = true;
+        strict_1.default.match(String(host.states.get("planner.constraints.battery_consumer_immersion_reason_de")), /deaktiviert/);
+        host.config.bat_consumer_auto_support = true;
         await (0, tick_1.runDailyPlanTick)(host, fp);
         strict_1.default.equal(host.states.get("planner.constraints.battery_consumer_immersion_allowed"), true);
-        strict_1.default.match(String(host.states.get("planner.constraints.battery_consumer_immersion_reason_de")), /freigegeben/);
+        strict_1.default.match(String(host.states.get("planner.constraints.battery_consumer_immersion_reason_de")), /Automatik aktiv/);
         strict_1.default.equal(host.states.get("planner.constraints.battery_consumer_climate_allowed"), true);
         strict_1.default.equal(host.states.get("planner.constraints.battery_consumer_wallbox_allowed"), true);
         strict_1.default.equal(host.states.get("planner.global_mode.active"), "balanced");
@@ -224,19 +220,17 @@ function mockHost(config = {}) {
         strict_1.default.equal(typeof host.states.get("planner.last_run_at"), "string");
         strict_1.default.ok((host.writeCounts.get("planner.constraints.battery_consumer_immersion_allowed") ?? 0) >= 2, "same value must still be rewritten so ts stays current");
     });
-    (0, node_test_1.it)("Admin: nur-kritisch bleibt sichtbar, wenn Puffer nicht kritisch", async () => {
+    (0, node_test_1.it)("Admin: ausgeschaltete automatische Batterieunterstützung bleibt sichtbar", async () => {
         (0, tick_1.resetDailyPlanRevisionForTest)();
         const host = mockHost({
-            bat_consumer_immersion_may_use_battery: true,
-            bat_consumer_immersion_only_when_critical: true,
+            bat_consumer_auto_support: false,
             ih_planning_min_temp_c: 48,
-            bat_consumer_immersion_critical_margin_k: 2,
         });
         host.states.set("live.battery.soc_pct", 80);
         host.states.set("live.thermal.buffer_temp_c", 55);
         const now = new Date("2026-08-19T10:07:00.000Z");
         await (0, tick_1.runDailyPlanTick)(host, forecastForTick(now));
         strict_1.default.equal(host.states.get("planner.constraints.battery_consumer_immersion_allowed"), false);
-        strict_1.default.match(String(host.states.get("planner.constraints.battery_consumer_immersion_reason_de")), /Nur-kritisch/);
+        strict_1.default.match(String(host.states.get("planner.constraints.battery_consumer_immersion_reason_de")), /deaktiviert/);
     });
 });

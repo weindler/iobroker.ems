@@ -8,6 +8,7 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const evaluate_1 = require("./evaluate");
 const fixtures_1 = require("./fixtures");
 const types_1 = require("./types");
+const allocate_1 = require("./allocate");
 (0, node_test_1.describe)("unified day planner contract", () => {
     (0, node_test_1.it)("exposes objective priority order (8 levels)", () => {
         strict_1.default.equal(types_1.UNIFIED_OBJECTIVE_PRIORITY[0], "safety_constraints");
@@ -54,6 +55,27 @@ const types_1 = require("./types");
         const plan = (0, fixtures_1.golden001BadPlan)(input);
         strict_1.default.ok(plan.batteryTrajectory.length >= 1);
         strict_1.default.ok(plan.batteryTrajectory[0].socPct !== null);
+    });
+    (0, node_test_1.it)("projects passive house consumption instead of leaving SOC flat", () => {
+        const input = (0, fixtures_1.golden002Input)();
+        input.battery.socPct = 100;
+        input.battery.usableCapacityKwh = 10;
+        input.battery.reserveSocPct = 20;
+        input.battery.passiveBatteryEnergyAvailable = true;
+        input.battery.dischargeEfficiency = 1;
+        input.pv.slots = input.pv.slots.map((slot) => ({ ...slot, energyKwh: 0 }));
+        input.houseLoad.slots = input.houseLoad.slots.map((slot) => ({ ...slot, energyKwh: 0.2 }));
+        input.wallbox = null;
+        input.thermal = null;
+        input.climate = null;
+        input.otherFlex = [];
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        strict_1.default.ok(plan.batteryTrajectory.length > 1);
+        const first = plan.batteryTrajectory[0].socPct;
+        const last = plan.batteryTrajectory.at(-1).socPct;
+        strict_1.default.ok(first < 100, `first SOC must already include house load, got ${first}`);
+        strict_1.default.ok(last < first, `SOC must fall across zero-PV house load, got ${first} -> ${last}`);
+        strict_1.default.ok(last >= 20, `reserve floor must hold, got ${last}`);
     });
     (0, node_test_1.it)("allocations name consumer, slot and energy source", () => {
         const plan = (0, fixtures_1.golden002GoodPlan)();

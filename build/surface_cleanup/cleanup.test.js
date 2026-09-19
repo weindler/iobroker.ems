@@ -93,7 +93,6 @@ class FakeCleanupHost {
         }
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("learning.price_learning.missing_days"), true);
     });
-
     (0, node_test_1.it)("allows AC/vehicle roots and lean planner purge roots", () => {
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.units.unit_3"), true);
         strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)("addons.air_conditioning.mapping.unit_2_cmd_switch_on"), true);

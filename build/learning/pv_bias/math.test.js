@@ -47,7 +47,7 @@ const math_1 = require("./math");
         const corrected = (0, math_1.correctForecastKwh)(30, -20);
         strict_1.default.equal(corrected, 24);
     });
-    (0, node_test_1.it)("tomorrow correction prefers 7d bias over 30d", () => {
+    (0, node_test_1.it)("combines 14-day trend and up-to-90-day energy basis", () => {
         const pairs = [];
         for (let i = 1; i <= 7; i++) {
             pairs.push({ dayOffset: i, actualKwh: 24, forecastKwh: 30 });
@@ -57,7 +57,10 @@ const math_1 = require("./math");
         }
         const r = (0, math_1.computePvBias)(pairs, null, 100);
         strict_1.default.equal(r.bias7dPct !== null && Math.round(r.bias7dPct), -20);
-        strict_1.default.equal(r.correctedTomorrowKwh, 80);
+        strict_1.default.equal(r.bias14dPct !== null && Math.round(r.bias14dPct), -10);
+        strict_1.default.ok(r.bias90dPct !== null && r.bias90dPct > -5 && r.bias90dPct < -4);
+        strict_1.default.ok(r.modelBiasPct !== null && r.modelBiasPct > -7 && r.modelBiasPct < -6);
+        strict_1.default.ok(r.correctedTomorrowKwh !== null && r.correctedTomorrowKwh > 92 && r.correctedTomorrowKwh < 95);
     });
     (0, node_test_1.it)("corrected today uses 7d bias, not poisoned intraday today pair", () => {
         const pairs = [
@@ -69,7 +72,7 @@ const math_1 = require("./math");
         const r = (0, math_1.computePvBias)(pairs, 13.2, null);
         strict_1.default.equal(r.biasTodayPct !== null && Math.round(r.biasTodayPct), 233);
         strict_1.default.equal(r.bias7dPct !== null && Math.round(r.bias7dPct), -20);
-        strict_1.default.equal(r.correctedTodayKwh, 10.56);
+        strict_1.default.equal(r.correctedTodayKwh, 13.2);
     });
     (0, node_test_1.it)("excludes incomplete today from 7d sample", () => {
         const pairs = [{ dayOffset: 0, actualKwh: 5, forecastKwh: 20 }];
@@ -80,5 +83,25 @@ const math_1 = require("./math");
     (0, node_test_1.it)("confidence scales with sample days", () => {
         strict_1.default.equal((0, math_1.confidencePct)(0, 0, null), 0);
         strict_1.default.ok((0, math_1.confidencePct)(2, 2, 40) < (0, math_1.confidencePct)(20, 7, 10));
+    });
+    (0, node_test_1.it)("uses energy sums so the September production outlier cannot dominate", () => {
+        const pairs = [
+            [28.384, 12.55], [23.96, 29.624], [26.564, 33.631], [10.064, 15.83],
+            [27.294, 21.958], [32.404, 21.958], [23.173, 35.3],
+        ].map(([actualKwh, forecastKwh], idx) => ({ dayOffset: idx + 1, actualKwh: actualKwh, forecastKwh: forecastKwh }));
+        const weighted = (0, math_1.energyBiasPct)(pairs);
+        strict_1.default.ok(weighted.biasPct !== null && Math.abs(weighted.biasPct - 0.581) < 0.01);
+        const r = (0, math_1.computePvBias)(pairs, 33.846, 24.77);
+        strict_1.default.ok(r.modelBiasPct !== null && Math.abs(r.modelBiasPct - 0.581) < 0.01);
+        strict_1.default.ok(r.appliedBiasPct !== null && Math.abs(r.appliedBiasPct) < Math.abs(r.modelBiasPct));
+        strict_1.default.ok(r.confidencePct <= 50);
+    });
+    (0, node_test_1.it)("applies a fully confirmed persistent bias without a fixed cap", () => {
+        const pairs = Array.from({ length: 30 }, (_, idx) => ({ dayOffset: idx + 1, actualKwh: 15, forecastKwh: 30 }));
+        const r = (0, math_1.computePvBias)(pairs, 30, 40);
+        strict_1.default.equal(r.confidencePct, 100);
+        strict_1.default.equal(r.modelBiasPct, -50);
+        strict_1.default.equal(r.appliedBiasPct, -50);
+        strict_1.default.equal(r.correctedTomorrowKwh, 20);
     });
 });

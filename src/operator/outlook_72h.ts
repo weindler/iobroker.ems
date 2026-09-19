@@ -55,6 +55,8 @@ export type OutlookDay72h = {
 		projectedLastSocPct: number | null;
 		projectedMinSocPct: number | null;
 		projectedMaxSocPct: number | null;
+		chargedEnergyKwh: number;
+		dischargedEnergyKwh: number;
 		knownPoints: number;
 	} | null;
 	reasonCodes: string[];
@@ -175,7 +177,11 @@ function dayLabelDe(dateKey: string, todayKey: string): string {
 	if (dateKey === todayKey) return `Heute (${shortDate})`;
 	if (dateKey === addDaysToDateKey(todayKey, 1)) return `Morgen (${shortDate})`;
 	if (dateKey === addDaysToDateKey(todayKey, 2)) return `Übermorgen (${shortDate})`;
-	return shortDate;
+	const noonUtc = new Date(`${dateKey}T12:00:00.000Z`);
+	const weekday = Number.isFinite(noonUtc.getTime())
+		? new Intl.DateTimeFormat("de-DE", { weekday: "long", timeZone: "UTC" }).format(noonUtc)
+		: "Tag";
+	return `${weekday} (${shortDate})`;
 }
 
 type DecisionAllocation = {
@@ -400,17 +406,26 @@ function buildOutlookDecisions(args: {
 			}));
 		} else {
 			const externallyManaged = wallbox.managementMode === "externally_managed";
+			const disconnected = wallbox.connectedNow === false;
+			const socTargetText =
+				wallbox.vehicleSocPct !== null && validTargetSocPct !== null
+					? ` Fahrzeug-SOC ${wallbox.vehicleSocPct.toFixed(0)} %, Ziel ${validTargetSocPct.toFixed(0)} %.`
+					: "";
 			decisions.push(baseDecision({
 				consumerId: "wallbox",
 				kind: "wallbox",
 				labelDe: "Auto / Wallbox",
-				state: externallyManaged
+				state: disconnected
+					? "unallocated"
+					: externallyManaged
 					? "unallocated"
 					: targetReached || wallbox.requiredEnergyKwh === 0
 						? "not_needed"
 						: "unallocated",
 				allocation: emptyAllocation,
-				explanationDe: externallyManaged
+				explanationDe: disconnected
+					? `Auto nicht angesteckt.${socTargetText} Kein Ladeplan verfügbar.`
+					: externallyManaged
 					? "Keine EMS-Wallbox-Allokation; der externe Ladeplan bleibt zuständig."
 					: targetReached
 						? `Keine Wallbox-Ladung nötig; Fahrzeug-SOC ${wallbox.vehicleSocPct!.toFixed(0)} % hat das Ziel ${validTargetSocPct!.toFixed(0)} % erreicht.`
@@ -590,8 +605,9 @@ export function buildOperatorOutlook72h(args: {
 		const allocations = allocationSummaries(
 			allocationsInWindow.filter((allocation) => dayStartKeys.has(allocation.slot.startIso)),
 		);
-		const batteryPoints = args.plan.batteryTrajectory
-			.filter((point) => dayStartKeys.has(point.slotStartIso))
+		const dayBatteryTrajectory = args.plan.batteryTrajectory
+			.filter((point) => dayStartKeys.has(point.slotStartIso));
+		const batteryPoints = dayBatteryTrajectory
 			.map((point) => point.socPct)
 			.filter((soc): soc is number => typeof soc === "number" && Number.isFinite(soc));
 		const reasonCodes = [
@@ -616,6 +632,8 @@ export function buildOperatorOutlook72h(args: {
 							projectedLastSocPct: round(batteryPoints[batteryPoints.length - 1], 1),
 							projectedMinSocPct: round(Math.min(...batteryPoints), 1),
 							projectedMaxSocPct: round(Math.max(...batteryPoints), 1),
+							chargedEnergyKwh: round(dayBatteryTrajectory.reduce((sum, point) => sum + point.chargeEnergyKwh, 0)),
+							dischargedEnergyKwh: round(dayBatteryTrajectory.reduce((sum, point) => sum + point.dischargeEnergyKwh, 0)),
 							knownPoints: batteryPoints.length,
 						}
 					: null,

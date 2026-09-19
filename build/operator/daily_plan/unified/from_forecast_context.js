@@ -67,8 +67,10 @@ function validBounds(slot) {
         return null;
     return { start, end };
 }
+/** Mischt Forecast-Auflösungen nicht als parallele Planner-Zeiten, sondern bildet ein Viertelstunden-Raster. */
 function buildCanonicalQuarterSlots(sourceSlots) {
-    const bounds = sourceSlots.map((source) => validBounds(source.slot)).filter((value) => value !== null);
+    const bounds = sourceSlots.map((source) => validBounds(source.slot))
+        .filter((value) => value !== null);
     if (bounds.length === 0)
         return [];
     const minStart = Math.min(...bounds.map((value) => value.start));
@@ -82,6 +84,7 @@ function buildCanonicalQuarterSlots(sourceSlots) {
     return slots;
 }
 exports.buildCanonicalQuarterSlots = buildCanonicalQuarterSlots;
+/** Pro Viertelstunde gewinnt der zeitlich genaueste bekannte Quellwert. */
 function sourceValueForQuarter(sourceSlots, quarter, read) {
     const quarterBounds = validBounds(quarter);
     if (!quarterBounds)

@@ -66,6 +66,13 @@ function pair(targetDate, hour, forecastCt, actualCt) {
         strict_1.default.equal(slots[0].priceCtPerKwh, 20);
         strict_1.default.equal(slots[1].priceCtPerKwh, 22);
     });
+    (0, node_test_1.it)("behält veröffentlichte negative Tibber-Preise", () => {
+        const slots = (0, tibber_parse_1.parseTibberPriceJsonTo15MinSlots)(JSON.stringify([
+            { startsAt: "2026-09-20T10:00:00.000Z", total: -0.025 },
+        ]));
+        strict_1.default.equal(slots.length, 1);
+        strict_1.default.equal(slots[0].priceCtPerKwh, -2.5);
+    });
     (0, node_test_1.it)("computes absolute error accuracy", () => {
         strict_1.default.equal((0, math_1.accuracyFromAvgErrorCt)(2), 80);
         strict_1.default.equal((0, math_1.accuracyFromAvgErrorCt)(0), 100);

@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.4",
+		"version": "0.4.5",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.5": {
+				"en": "Added learned seven-day price and local PV outlooks based on authoritative Tibber prices, SMARD history and Bright Sky weather. PV bias, device energy origins, rolling-day labels, planning cards and the battery trajectory now use consistent, transparent values.",
+				"de": "Lernenden Sieben-Tage-Preis- und lokalen PV-Ausblick auf Basis verbindlicher Tibber-Preise, SMARD-Historie und Bright-Sky-Wetter ergänzt. PV-Bias, Geräte-Energieherkunft, rollierende Tagesbezeichnungen, Planungskarten und Batterietrajektorie verwenden jetzt konsistente, nachvollziehbare Werte."
+			},
 			"0.4.4": {
 				"en": "Fixed the authoritative planner timeline: mixed PV, house-load and tariff intervals are projected onto one unique 15-minute grid. Check that 72-hour coverage never exceeds 72 hours and learned house load appears in the plan.",
 				"de": "Autoritative Planner-Zeitachse korrigiert: Gemischte PV-, Hauslast- und Tarifintervalle werden auf ein eindeutiges 15-Minuten-Raster projiziert. Prüfen: Die 72-Stunden-Abdeckung überschreitet nie 72 Stunden und der gelernte Hausverbrauch erscheint im Plan."

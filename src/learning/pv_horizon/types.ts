@@ -1,6 +1,7 @@
 export type PvHorizonDayResult = {
 	dayIndex: number;
 	rawKwh: number | null;
+	appliedBiasPct: number | null;
 	correctedKwh: number | null;
 	confidencePct: number | null;
 };

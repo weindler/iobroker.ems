@@ -53,7 +53,7 @@ function parseTibberPriceJsonTo15MinSlots(raw, options = {}) {
     for (const row of parseTibberPriceEntries(raw)) {
         const totalEur = asNum(row.total);
         const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
-        if (totalEur === null || startsMs === null || totalEur < 0 || totalEur > 5) {
+        if (totalEur === null || startsMs === null || totalEur < -5 || totalEur > 5) {
             continue;
         }
         if (options.minStartMs != null && startsMs < options.minStartMs)
@@ -77,7 +77,7 @@ function parseTibberPriceJsonToHourlySlots(raw, targetDateKey) {
     for (const row of parseTibberPriceEntries(raw)) {
         const totalEur = asNum(row.total);
         const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
-        if (totalEur === null || startsMs === null || totalEur < 0 || totalEur > 5) {
+        if (totalEur === null || startsMs === null || totalEur < -5 || totalEur > 5) {
             continue;
         }
         if (dateKeyFromMs(startsMs) !== targetDateKey) {
@@ -114,7 +114,7 @@ function diagnoseTibberPriceJson(raw, targetDateKey) {
             rejectedByStartsAt += 1;
             continue;
         }
-        if (totalEur === null || totalEur < 0 || totalEur > 5) {
+        if (totalEur === null || totalEur < -5 || totalEur > 5) {
             rejectedByRange += 1;
             continue;
         }

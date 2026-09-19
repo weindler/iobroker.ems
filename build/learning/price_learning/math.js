@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.missingMappingResult = exports.disabledResult = exports.errorResult = exports.computePriceLearning = exports.computeConfidence = exports.healthFromMetrics = exports.computeCoverage = exports.buildHourPatterns = exports.volatilityCoefficient = exports.stdDev = exports.meanOrNull = void 0;
+exports.missingMappingResult = exports.disabledResult = exports.errorResult = exports.computePriceLearning = exports.computeConfidence = exports.healthFromMetrics = exports.computeCoverage = exports.buildHourPatterns = exports.robustWeightedMean = exports.volatilityCoefficient = exports.stdDev = exports.meanOrNull = void 0;
 const constants_1 = require("./constants");
 function meanOrNull(values) {
     if (values.length === 0) {
@@ -33,23 +33,61 @@ exports.volatilityCoefficient = volatilityCoefficient;
 function validDaySummaries(days) {
     return days.filter((d) => d.validHours >= constants_1.MIN_VALID_HOURS_PER_DAY && d.avgPriceEur !== null);
 }
-function avgForWindow(validDays, maxDayOffset) {
+function median(values) {
+    if (values.length === 0)
+        return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0
+        ? (sorted[mid - 1] + sorted[mid]) / 2
+        : sorted[mid];
+}
+/**
+ * Robuster Huber-Mittelwert. Jeder technisch gültige Wert bleibt beteiligt;
+ * große Abstände erhalten lediglich weniger Einfluss auf die Modellmitte.
+ */
+function robustWeightedMean(values) {
+    const finite = values.filter((v) => Number.isFinite(v.value) && v.weight > 0);
+    if (finite.length === 0)
+        return null;
+    const center = median(finite.map((v) => v.value));
+    if (center === null)
+        return null;
+    const mad = median(finite.map((v) => Math.abs(v.value - center))) ?? 0;
+    const scale = Math.max(mad * 1.4826, 0.001);
+    const huberLimit = 2.5 * scale;
+    let weightedSum = 0;
+    let weightSum = 0;
+    for (const item of finite) {
+        const distance = Math.abs(item.value - center);
+        const robustWeight = distance > huberLimit ? huberLimit / distance : 1;
+        const weight = item.weight * robustWeight;
+        weightedSum += item.value * weight;
+        weightSum += weight;
+    }
+    return weightSum > 0 ? weightedSum / weightSum : null;
+}
+exports.robustWeightedMean = robustWeightedMean;
+function avgForWindow(validDays, maxDayOffset, doubleRecent = false) {
     const prices = validDays
-        .filter((d) => d.dayOffset <= maxDayOffset)
-        .map((d) => d.avgPriceEur)
-        .filter((v) => v !== null);
-    return meanOrNull(prices);
+        .filter((d) => d.dayOffset <= maxDayOffset && d.avgPriceEur !== null)
+        .map((d) => ({
+        value: d.avgPriceEur,
+        weight: doubleRecent && d.dayOffset < constants_1.RECENT_DOUBLE_WEIGHT_DAYS ? 2 : 1,
+    }));
+    return robustWeightedMean(prices);
 }
 function buildHourPatterns(samples, topN = constants_1.HOUR_PATTERN_TOP_N) {
     const byHour = new Map();
+    const recentCutoff = Date.now() - constants_1.RECENT_DOUBLE_WEIGHT_DAYS * 86_400_000;
     for (const s of samples) {
         const list = byHour.get(s.hourOfDay) ?? [];
-        list.push(s.priceEur);
+        list.push({ value: s.priceEur, weight: s.ts >= recentCutoff ? 2 : 1 });
         byHour.set(s.hourOfDay, list);
     }
     const hourMeans = [];
     for (const [hour, prices] of byHour.entries()) {
-        const mean = meanOrNull(prices);
+        const mean = robustWeightedMean(prices);
         if (mean !== null) {
             hourMeans.push({ hour, mean });
         }
@@ -73,8 +111,12 @@ function buildHourPatterns(samples, topN = constants_1.HOUR_PATTERN_TOP_N) {
         }
         return round((mean - minMean) / span, 2);
     };
-    const sortedCheap = [...hourMeans].sort((a, b) => a.mean - b.mean).slice(0, topN);
-    const sortedExpensive = [...hourMeans].sort((a, b) => b.mean - a.mean).slice(0, topN);
+    const sortedCheap = [...hourMeans]
+        .sort((a, b) => a.mean - b.mean)
+        .slice(0, topN);
+    const sortedExpensive = [...hourMeans]
+        .sort((a, b) => b.mean - a.mean)
+        .slice(0, topN);
     const cheapHours = {};
     for (const h of sortedCheap) {
         cheapHours[String(h.hour)] = cheapnessScore(h.mean);
@@ -130,7 +172,8 @@ function computePriceLearning(samples, daySummaries, lookbackDays, priceSource) 
     const { coveragePct, missingDays } = computeCoverage(validDays, lookbackDays);
     const avgPrice7d = avgForWindow(validDays, 6);
     const avgPrice30d = avgForWindow(validDays, 29);
-    const avgPrice90d = avgForWindow(validDays, lookbackDays - 1);
+    const avgPrice90d = avgForWindow(validDays, 89);
+    const avgPrice24m = avgForWindow(validDays, lookbackDays - 1, true);
     const last30Daily = validDays
         .filter((d) => d.dayOffset <= 29)
         .map((d) => d.avgPriceEur)
@@ -161,6 +204,7 @@ function computePriceLearning(samples, daySummaries, lookbackDays, priceSource) 
         avgPrice7d,
         avgPrice30d,
         avgPrice90d,
+        avgPrice24m,
         volatility30d,
         cheapHours,
         expensiveHours,
@@ -180,6 +224,7 @@ function errorResult(priceSource, message) {
         avgPrice7d: null,
         avgPrice30d: null,
         avgPrice90d: null,
+        avgPrice24m: null,
         volatility30d: null,
         cheapHours: {},
         expensiveHours: {},
@@ -199,6 +244,7 @@ function disabledResult() {
         avgPrice7d: null,
         avgPrice30d: null,
         avgPrice90d: null,
+        avgPrice24m: null,
         volatility30d: null,
         cheapHours: {},
         expensiveHours: {},
@@ -218,6 +264,7 @@ function missingMappingResult() {
         avgPrice7d: null,
         avgPrice30d: null,
         avgPrice90d: null,
+        avgPrice24m: null,
         volatility30d: null,
         cheapHours: {},
         expensiveHours: {},

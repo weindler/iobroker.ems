@@ -43,12 +43,13 @@ export function computePvHorizon(
 	for (let i = 0; i < PV_HORIZON_DAY_COUNT; i++) {
 		const dayIndex = i + 1;
 		if (skipSet.has(dayIndex)) {
-			days.push({ dayIndex, rawKwh: null, correctedKwh: null, confidencePct: null });
+			days.push({ dayIndex, rawKwh: null, appliedBiasPct: null, correctedKwh: null, confidencePct: null });
 			continue;
 		}
 
 		const raw = rawKwhByDay[i] ?? null;
 		let corrected: number | null = null;
+		let appliedBias: number | null = null;
 		let confidence: number | null = null;
 
 		if (raw !== null && Number.isFinite(raw) && raw > 0) {
@@ -56,6 +57,7 @@ export function computePvHorizon(
 			totalRaw += raw;
 			hasRawSum = true;
 			if (biasPct !== null && Number.isFinite(biasPct)) {
+				appliedBias = effectiveBiasPct(biasPct, dayIndex);
 				corrected = correctHorizonKwh(raw, biasPct, dayIndex);
 				totalCorrected += corrected;
 				hasCorrectedSum = true;
@@ -65,7 +67,7 @@ export function computePvHorizon(
 			}
 		}
 
-		days.push({ dayIndex, rawKwh: raw, correctedKwh: corrected, confidencePct: confidence });
+		days.push({ dayIndex, rawKwh: raw, appliedBiasPct: appliedBias, correctedKwh: corrected, confidencePct: confidence });
 	}
 
 	let status: PvHorizonComputeResult["status"] = "no_data";

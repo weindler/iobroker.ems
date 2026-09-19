@@ -7,7 +7,10 @@ const math_1 = require("./math");
 const persist_1 = require("./persist");
 async function setNumIfValid(host, id, value) {
     if (value !== null && Number.isFinite(value)) {
-        await host.setStateAsync(id, { val: Math.round(value * 10000) / 10000, ack: true });
+        await host.setStateAsync(id, {
+            val: Math.round(value * 10000) / 10000,
+            ack: true,
+        });
     }
 }
 async function writePriceLearningResult(host, result, lastRun) {
@@ -16,12 +19,25 @@ async function writePriceLearningResult(host, result, lastRun) {
     await setNumIfValid(host, "learning.price_learning.avg_price_7d", result.avgPrice7d);
     await setNumIfValid(host, "learning.price_learning.avg_price_30d", result.avgPrice30d);
     await setNumIfValid(host, "learning.price_learning.avg_price_90d", result.avgPrice90d);
+    await setNumIfValid(host, "learning.price_learning.avg_price_24m", result.avgPrice24m);
     await setNumIfValid(host, "learning.price_learning.volatility_30d", result.volatility30d);
     await setNumIfValid(host, "learning.price_learning.coverage_pct", result.coveragePct);
-    await host.setStateAsync("learning.price_learning.status", { val: result.status, ack: true });
-    await host.setStateAsync("learning.price_learning.health", { val: result.health, ack: true });
-    await host.setStateAsync("learning.price_learning.error", { val: result.error, ack: true });
-    await host.setStateAsync("learning.price_learning.last_run", { val: lastRun, ack: true });
+    await host.setStateAsync("learning.price_learning.status", {
+        val: result.status,
+        ack: true,
+    });
+    await host.setStateAsync("learning.price_learning.health", {
+        val: result.health,
+        ack: true,
+    });
+    await host.setStateAsync("learning.price_learning.error", {
+        val: result.error,
+        ack: true,
+    });
+    await host.setStateAsync("learning.price_learning.last_run", {
+        val: lastRun,
+        ack: true,
+    });
 }
 async function runPriceLearning(host) {
     const cfg = (0, config_1.priceLearningConfigFromAdapter)(host.config);

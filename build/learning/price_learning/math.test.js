@@ -64,7 +64,28 @@ function daySummary(dayOffset, validHours, avg) {
         strict_1.default.equal((0, history_1.isValidPriceValue)(0, "eur_per_kwh"), true);
         strict_1.default.equal((0, history_1.isValidPriceValue)(0, "ct_per_kwh"), true);
         strict_1.default.equal((0, history_1.isValidPriceValue)(25, "ct_per_kwh"), true);
-        strict_1.default.equal((0, history_1.isValidPriceValue)(600, "ct_per_kwh"), false);
+        strict_1.default.equal((0, history_1.isValidPriceValue)(-80, "ct_per_kwh"), true);
+        strict_1.default.equal((0, history_1.isValidPriceValue)(600, "ct_per_kwh"), true);
+        strict_1.default.equal((0, history_1.isValidPriceValue)(1_100, "ct_per_kwh"), false);
+    });
+    (0, node_test_1.it)("keeps extremes but limits their influence on the learned center", () => {
+        const mean = (0, math_1.robustWeightedMean)([
+            { value: -1, weight: 1 },
+            { value: 0.2, weight: 1 },
+            { value: 0.21, weight: 1 },
+            { value: 0.22, weight: 1 },
+            { value: 8, weight: 1 },
+        ]);
+        strict_1.default.ok(mean !== null && mean > 0.15 && mean < 0.3);
+    });
+    (0, node_test_1.it)("weights the most recent 90 days twice in the 24-month basis", () => {
+        const days = [
+            ...Array.from({ length: 90 }, (_, i) => daySummary(i, 24, 0.4)),
+            ...Array.from({ length: 90 }, (_, i) => daySummary(i + 90, 24, 0.2)),
+        ];
+        const result = (0, math_1.computePriceLearning)([], days, 180, "ems_live_price");
+        strict_1.default.ok(result.avgPrice24m !== null);
+        strict_1.default.ok(result.avgPrice24m > 0.3);
     });
     (0, node_test_1.it)("converts ct/kWh to EUR/kWh", () => {
         strict_1.default.equal((0, history_1.toEurPerKwh)(24.5, "ct_per_kwh"), 0.245);

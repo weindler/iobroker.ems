@@ -28,12 +28,13 @@ async function ensurePvHorizonStates(host) {
     await (0, state_util_1.ensureChannel)(host, "learning.pv_horizon", "EMS-Light Learning PV-Horizon");
     const defs = [
         numState("learning.pv_horizon.total_7d_corrected_kwh", "PV-Horizon 7d korrigiert gesamt", "kWh"),
+        numState("learning.pv_horizon.total_7d_raw_kwh", "PV-Horizon 7d Rohwert gesamt", "kWh"),
         strState("learning.pv_horizon.status", "PV-Horizon Status", "no_data"),
         strState("learning.pv_horizon.last_update", "PV-Horizon letztes Update (ISO)"),
     ];
     for (let d = 1; d <= constants_1.PV_HORIZON_DAY_COUNT; d++) {
         const prefix = `learning.pv_horizon.day${d}`;
-        defs.push(numState(`${prefix}.corrected_kwh`, `PV-Horizon Tag ${d} korrigiert`, "kWh"), numState(`${prefix}.confidence_pct`, `PV-Horizon Tag ${d} Confidence`, "%"));
+        defs.push(numState(`${prefix}.raw_kwh`, `PV-Horizon Tag ${d} Rohwert`, "kWh"), numState(`${prefix}.applied_bias_pct`, `PV-Horizon Tag ${d} angewendeter Bias`, "%"), numState(`${prefix}.corrected_kwh`, `PV-Horizon Tag ${d} korrigiert`, "kWh"), numState(`${prefix}.confidence_pct`, `PV-Horizon Tag ${d} Confidence`, "%"));
     }
     await (0, state_util_1.ensureStates)(host, defs);
 }

@@ -70,7 +70,7 @@ export function parseTibberPriceJsonTo15MinSlots(
 	for (const row of parseTibberPriceEntries(raw)) {
 		const totalEur = asNum(row.total);
 		const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
-		if (totalEur === null || startsMs === null || totalEur < 0 || totalEur > 5) {
+		if (totalEur === null || startsMs === null || totalEur < -5 || totalEur > 5) {
 			continue;
 		}
 		if (options.minStartMs != null && startsMs < options.minStartMs) continue;
@@ -95,7 +95,7 @@ export function parseTibberPriceJsonToHourlySlots(
 	for (const row of parseTibberPriceEntries(raw)) {
 		const totalEur = asNum(row.total);
 		const startsMs = parseStartsAtMs(row.startsAt ?? row.starts_at);
-		if (totalEur === null || startsMs === null || totalEur < 0 || totalEur > 5) {
+		if (totalEur === null || startsMs === null || totalEur < -5 || totalEur > 5) {
 			continue;
 		}
 		if (dateKeyFromMs(startsMs) !== targetDateKey) {
@@ -121,9 +121,9 @@ export interface TibberPriceJsonDiagnosis {
 	rawType: string;
 	/** Rows found after JSON.parse / array check, before any filtering. */
 	totalRows: number;
-	/** Rows with a valid total (0..5 €/kWh) and a parseable startsAt. */
+	/** Rows with a valid total (-5..5 €/kWh) and a parseable startsAt. */
 	validRows: number;
-	/** Rows rejected for a numeric total outside [0, 5] €/kWh (likely unit/negative-price issue). */
+	/** Rows rejected for a numeric total outside [-5, 5] €/kWh (likely unit issue). */
 	rejectedByRange: number;
 	/** Rows rejected because startsAt was missing/unparseable. */
 	rejectedByStartsAt: number;
@@ -152,7 +152,7 @@ export function diagnoseTibberPriceJson(raw: unknown, targetDateKey: string): Ti
 			rejectedByStartsAt += 1;
 			continue;
 		}
-		if (totalEur === null || totalEur < 0 || totalEur > 5) {
+		if (totalEur === null || totalEur < -5 || totalEur > 5) {
 			rejectedByRange += 1;
 			continue;
 		}

@@ -33,17 +33,19 @@ function computePvHorizon(rawKwhByDay, biasPct, baseConfidencePct, options) {
     for (let i = 0; i < constants_1.PV_HORIZON_DAY_COUNT; i++) {
         const dayIndex = i + 1;
         if (skipSet.has(dayIndex)) {
-            days.push({ dayIndex, rawKwh: null, correctedKwh: null, confidencePct: null });
+            days.push({ dayIndex, rawKwh: null, appliedBiasPct: null, correctedKwh: null, confidencePct: null });
             continue;
         }
         const raw = rawKwhByDay[i] ?? null;
         let corrected = null;
+        let appliedBias = null;
         let confidence = null;
         if (raw !== null && Number.isFinite(raw) && raw > 0) {
             daysAvailable++;
             totalRaw += raw;
             hasRawSum = true;
             if (biasPct !== null && Number.isFinite(biasPct)) {
+                appliedBias = effectiveBiasPct(biasPct, dayIndex);
                 corrected = correctHorizonKwh(raw, biasPct, dayIndex);
                 totalCorrected += corrected;
                 hasCorrectedSum = true;
@@ -52,7 +54,7 @@ function computePvHorizon(rawKwhByDay, biasPct, baseConfidencePct, options) {
                 confidence = horizonDayConfidencePct(baseConfidencePct, dayIndex);
             }
         }
-        days.push({ dayIndex, rawKwh: raw, correctedKwh: corrected, confidencePct: confidence });
+        days.push({ dayIndex, rawKwh: raw, appliedBiasPct: appliedBias, correctedKwh: corrected, confidencePct: confidence });
     }
     let status = "no_data";
     if (daysAvailable === 0) {

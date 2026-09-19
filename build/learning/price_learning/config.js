@@ -22,10 +22,16 @@ function boolField(config, key, defaultVal) {
     return defaultVal;
 }
 function priceLearningConfigFromAdapter(config) {
-    const c = config && typeof config === "object" ? config : {};
+    const c = config && typeof config === "object"
+        ? config
+        : {};
     const lookbackRaw = c.learning_price_lookback_days;
-    const lookbackN = typeof lookbackRaw === "number" ? lookbackRaw : parseInt(String(lookbackRaw ?? ""), 10);
-    const lookbackDays = Number.isFinite(lookbackN) && lookbackN >= 7 && lookbackN <= 365
+    const lookbackN = typeof lookbackRaw === "number"
+        ? lookbackRaw
+        : parseInt(String(lookbackRaw ?? ""), 10);
+    const lookbackDays = Number.isFinite(lookbackN) &&
+        lookbackN >= 7 &&
+        lookbackN <= constants_1.MAX_LOOKBACK_DAYS
         ? Math.round(lookbackN)
         : constants_1.DEFAULT_LOOKBACK_DAYS;
     const configuredState = strField(c, "learning_price_source_state");

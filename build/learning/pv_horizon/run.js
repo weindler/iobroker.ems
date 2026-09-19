@@ -6,9 +6,7 @@ const config_1 = require("./config");
 const math_1 = require("./math");
 const constants_1 = require("./constants");
 const BIAS_STATE_IDS = [
-    "learning.pv_bias.bias_7d_pct",
-    "learning.pv_bias.bias_30d_pct",
-    "learning.pv_bias.bias_today_pct",
+    "learning.pv_bias.applied_bias_pct",
 ];
 const DAY1_FALLBACK_STATE_IDS = [
     "learning.pv_bias.raw_today_kwh",
@@ -55,6 +53,9 @@ async function resolveRawKwhByDay(host, rawStateIds, skipTodayTomorrow) {
         if (raw === null && i === 1) {
             raw = await readFirstNum(host, DAY2_FALLBACK_STATE_IDS);
         }
+        if (raw === null && i >= 2) {
+            raw = await (0, history_1.readStateNum)(host, `learning.price_outlook.local_pv_day${i + 1}_raw_kwh`);
+        }
         values.push(raw);
     }
     return values;
@@ -66,7 +67,7 @@ async function setNumIfValid(host, id, value) {
 }
 async function clearHorizonDay(host, dayIndex) {
     const prefix = `learning.pv_horizon.day${dayIndex}`;
-    for (const suffix of ["corrected_kwh", "confidence_pct"]) {
+    for (const suffix of ["raw_kwh", "applied_bias_pct", "corrected_kwh", "confidence_pct"]) {
         await host.setStateAsync(`${prefix}.${suffix}`, { val: null, ack: true });
     }
 }
@@ -79,9 +80,12 @@ async function writePvHorizonResult(host, result) {
             continue;
         }
         await setNumIfValid(host, `${prefix}.corrected_kwh`, day.correctedKwh);
+        await setNumIfValid(host, `${prefix}.raw_kwh`, day.rawKwh);
+        await setNumIfValid(host, `${prefix}.applied_bias_pct`, day.appliedBiasPct);
         await setNumIfValid(host, `${prefix}.confidence_pct`, day.confidencePct);
     }
     await setNumIfValid(host, "learning.pv_horizon.total_7d_corrected_kwh", result.total7dCorrectedKwh);
+    await setNumIfValid(host, "learning.pv_horizon.total_7d_raw_kwh", result.total7dRawKwh);
     await host.setStateAsync("learning.pv_horizon.status", { val: result.status, ack: true });
     await host.setStateAsync("learning.pv_horizon.last_update", {
         val: new Date().toISOString(),

@@ -3,6 +3,7 @@ import { runPvBiasLearning, type PvBiasRunHost } from "./run";
 import { pvBiasConfigFromAdapter } from "./config";
 import { ensurePriceLearningStates, runPriceLearning } from "../price_learning";
 import { ensurePriceForecastLearningStates, runPriceForecastLearning } from "../price_forecast";
+import { ensurePriceOutlookStates, runPriceOutlook, type PriceOutlookHost } from "../price_outlook";
 import { ensureHouseLoadLearningStates, runHouseLoadLearning } from "../house_load";
 import { ensureThermalRuntimeLearningStates, runThermalRuntimeLearning } from "../thermal_runtime";
 import { ensureThermalBoilerLearningStates, runThermalBoilerLearning } from "../thermal_boiler";
@@ -49,6 +50,7 @@ export async function ensureLearningStateTree(adapter: ioBroker.Adapter): Promis
 	await ensurePvHorizonLearningStates(host);
 	await ensurePriceLearningStates(host);
 	await ensurePriceForecastLearningStates(host);
+	await ensurePriceOutlookStates(host);
 	await ensureHouseLoadLearningStates(host);
 	await ensureThermalRuntimeLearningStates(host);
 	await ensureThermalBoilerLearningStates(host);
@@ -108,7 +110,6 @@ async function runLearningTick(
 		}
 		await ensureEnergyDailyRollupForLearning(host);
 		await runPvBiasLearning(host);
-		await runPvHorizon(host);
 		await runPriceLearning(host);
 		// Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
 		await ensurePowerRollupForLearning(host);
@@ -123,6 +124,12 @@ async function runLearningTick(
 			host.log.error(`grid_balance_economics: ${e instanceof Error ? e.message : String(e)}`);
 		}
 		await runPriceForecastLearning(host);
+		try {
+			await runPriceOutlook(host as unknown as PriceOutlookHost);
+		} catch (e) {
+			host.log.error(`price_outlook: ${e instanceof Error ? e.message : String(e)}`);
+		}
+		await runPvHorizon(host);
 		await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
 		/*
 		 * BLOCK A — Daily Evaluator (rein additiv/diagnostisch). Liest nur day_telemetry,

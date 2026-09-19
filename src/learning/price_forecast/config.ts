@@ -30,7 +30,7 @@ export function priceForecastConfigFromAdapter(config: unknown): PriceForecastCo
 	const lookbackN =
 		typeof lookbackRaw === "number" ? lookbackRaw : parseInt(String(lookbackRaw ?? ""), 10);
 	const lookbackDays =
-		Number.isFinite(lookbackN) && lookbackN >= 7 && lookbackN <= 365
+		Number.isFinite(lookbackN) && lookbackN >= 7 && lookbackN <= 730
 			? Math.round(lookbackN)
 			: DEFAULT_LOOKBACK_DAYS;
 

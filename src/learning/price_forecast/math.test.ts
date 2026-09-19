@@ -48,6 +48,14 @@ describe("price forecast learning", () => {
 		assert.equal(slots[1].priceCtPerKwh, 22);
 	});
 
+	it("behält veröffentlichte negative Tibber-Preise", () => {
+		const slots = parseTibberPriceJsonTo15MinSlots(JSON.stringify([
+			{ startsAt: "2026-09-20T10:00:00.000Z", total: -0.025 },
+		]));
+		assert.equal(slots.length, 1);
+		assert.equal(slots[0].priceCtPerKwh, -2.5);
+	});
+
 	it("computes absolute error accuracy", () => {
 		assert.equal(accuracyFromAvgErrorCt(2), 80);
 		assert.equal(accuracyFromAvgErrorCt(0), 100);

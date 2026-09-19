@@ -23,21 +23,21 @@ function round3(n) {
 function energyFromPowerW(powerW) {
     return (powerW / 1000) * 0.25;
 }
-function buildBatteryTrajectory(input, slots, allocations, startSocKwh, capacityKwh) {
+function buildBatteryTrajectory(input, slots, allocations, startSocKwh, capacityKwh, reserveKwh) {
     const effC = input.battery.chargeEfficiency ?? 1;
     const effD = input.battery.dischargeEfficiency ?? 1;
     let soc = startSocKwh;
     const traj = [];
     for (const s of slots) {
-        let charge = 0;
-        let discharge = 0;
+        let chargeAc = 0;
+        let dischargeAc = 0;
         for (const a of allocations) {
             if (a.slot.startIso !== s.startIso)
                 continue;
             if (a.kind === "battery_charge")
-                charge += a.allocatedEnergyKwh * effC;
+                chargeAc += a.allocatedEnergyKwh;
             if (a.kind === "battery_discharge")
-                discharge += a.allocatedEnergyKwh / Math.max(effD, 0.1);
+                dischargeAc += a.allocatedEnergyKwh;
             /*
              * Flex-Verbraucher aus Batterie — kein separates battery_discharge-Kind.
              * "mixed" = Zelle enthält PV+Batterie ohne Split (pushAlloc-Merge) → hier absichtlich
@@ -47,16 +47,36 @@ function buildBatteryTrajectory(input, slots, allocations, startSocKwh, capacity
             if (a.kind !== "battery_charge" &&
                 a.kind !== "battery_discharge" &&
                 a.energySource === "battery") {
-                discharge += a.allocatedEnergyKwh / Math.max(effD, 0.1);
+                dischargeAc += a.allocatedEnergyKwh;
             }
         }
-        soc += charge - discharge;
+        /*
+         * Passive Eigenverbrauchsbilanz: Der normale Hausbedarf wurde bisher nicht
+         * fortgeschrieben, wodurch eine volle Batterie über Nacht unrealistisch bei
+         * 99/100 % blieb. PV-Rest nach allen Allokationen lädt passiv; Hausdefizit
+         * entlädt nur im plausiblen Self-Consumption-Betrieb bis zum Reserveboden.
+         */
+        if (input.battery.passiveBatteryEnergyAvailable) {
+            dischargeAc += Math.max(0, s.houseKwh - s.pvKwh);
+        }
+        chargeAc += Math.max(0, s.remainPvKwh);
+        const maxChargeAc = input.battery.maxChargePowerW != null
+            ? energyFromPowerW(Math.max(0, input.battery.maxChargePowerW))
+            : Number.POSITIVE_INFINITY;
+        const maxDischargeAc = input.battery.maxDischargePowerW != null
+            ? energyFromPowerW(Math.max(0, input.battery.maxDischargePowerW))
+            : Number.POSITIVE_INFINITY;
+        chargeAc = Math.min(chargeAc, maxChargeAc);
+        dischargeAc = Math.min(dischargeAc, maxDischargeAc);
+        const storedCharge = Math.min(chargeAc * effC, Math.max(0, capacityKwh - soc));
+        const storedDischarge = Math.min(dischargeAc / Math.max(effD, 0.1), Math.max(0, soc - reserveKwh));
+        soc += storedCharge - storedDischarge;
         soc = Math.max(0, Math.min(capacityKwh, soc));
         traj.push({
             slotStartIso: s.startIso,
             socPct: capacityKwh > 0 ? round3((soc / capacityKwh) * 100) : null,
-            chargeEnergyKwh: round3(charge),
-            dischargeEnergyKwh: round3(discharge),
+            chargeEnergyKwh: round3(storedCharge),
+            dischargeEnergyKwh: round3(storedDischarge),
         });
     }
     return traj;
@@ -210,7 +230,7 @@ function allocateUnifiedDayPlan(input, opts) {
     if (exportValueUnknown)
         exportValueCt = null;
     const traj = batteryKnown
-        ? buildBatteryTrajectory(trimmed, slots, allocations, startSocKwh, capacity)
+        ? buildBatteryTrajectory(trimmed, slots, allocations, startSocKwh, capacity, reserveKwh)
         : [];
     const confPct = trimmed.pv.uncertainty.confidencePct;
     const degraded = trimmed.pv.uncertainty.status !== "valid" ||

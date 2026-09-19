@@ -40,6 +40,7 @@ async function writePriceLearningPersist(baseDir, result, lastRun) {
         avg_price_7d: result.avgPrice7d,
         avg_price_30d: result.avgPrice30d,
         avg_price_90d: result.avgPrice90d,
+        avg_price_24m: result.avgPrice24m,
         volatility_30d: result.volatility30d,
         cheap_hours: result.cheapHours,
         expensive_hours: result.expensiveHours,

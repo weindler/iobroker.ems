@@ -53,6 +53,10 @@ async function writePvBiasResult(
 	await setNumIfValid(host, "learning.pv_bias.bias_today_pct", result.biasTodayPct);
 	await setNumIfValid(host, "learning.pv_bias.bias_7d_pct", result.bias7dPct);
 	await setNumIfValid(host, "learning.pv_bias.bias_30d_pct", result.bias30dPct);
+	await setNumIfValid(host, "learning.pv_bias.bias_14d_pct", result.bias14dPct);
+	await setNumIfValid(host, "learning.pv_bias.bias_90d_pct", result.bias90dPct);
+	await setNumIfValid(host, "learning.pv_bias.model_bias_pct", result.modelBiasPct);
+	await setNumIfValid(host, "learning.pv_bias.applied_bias_pct", result.appliedBiasPct);
 	await setNumIfValid(host, "learning.pv_bias.corrected_today_kwh", result.correctedTodayKwh);
 	await setNumIfValid(host, "learning.pv_bias.corrected_tomorrow_kwh", result.correctedTomorrowKwh);
 	await setNumIfValid(host, "learning.pv_bias.confidence_pct", result.confidencePct);
@@ -60,6 +64,10 @@ async function writePvBiasResult(
 	await setNumIfValid(host, "learning.pv_bias.raw_tomorrow_kwh", result.rawTomorrowKwh);
 	await setNumIfValid(host, "learning.pv_bias.actual_today_kwh", actualTodayKwh);
 	await setNumIfValid(host, "learning.pv_bias.sample_days_30d", result.sampleDays30d);
+	await setNumIfValid(host, "learning.pv_bias.sample_days_14d", result.sampleDays14d);
+	await setNumIfValid(host, "learning.pv_bias.sample_days_90d", result.sampleDays90d);
+	await setNumIfValid(host, "learning.pv_bias.coverage_pct", result.coveragePct);
+	await setNumIfValid(host, "learning.pv_bias.stability_pct", result.stabilityPct);
 	await host.setStateAsync("learning.pv_bias.last_update_ts", {
 		val: new Date().toISOString(),
 		ack: true,
@@ -116,11 +124,11 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 		const todayForecastOverride = cfg.freezeEnabled ? frozen.today : null;
 
 		host.log.debug?.(
-			`PV-Bias: loading history (30d, actual=${cfg.historyActualStateId || "—"} forecast=${forecastHistoryStateId})…`,
+			`PV-Bias: loading history (90d, actual=${cfg.historyActualStateId || "—"} forecast=${forecastHistoryStateId})…`,
 		);
 		const dailyPersist = await loadDailyPersist(host);
 		const dayPairs = await fetchPvBiasDayPairs(host, cfg.historyActualStateId, forecastHistoryStateId, {
-			maxDays: 30,
+			maxDays: 90,
 			todayForecastOverride,
 			dailyPersist,
 		});
@@ -148,8 +156,6 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			: { today: rawTodayKwh, tomorrow: rawTomorrowKwh };
 
 		const result = computePvBias(pairs, forecastForCorrection.today, forecastForCorrection.tomorrow);
-		result.rawTodayKwh = rawTodayKwh;
-		result.rawTomorrowKwh = rawTomorrowKwh;
 		if (cfg.freezeEnabled && frozen.today === null) {
 			result.status = "insufficient_data";
 			result.reason = "Eingefrorener Forecast fehlt — Bias/Korrektur warten auf Freeze-Snapshot.";
@@ -160,7 +166,7 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			(await readStateNum(host, cfg.historyActualStateId));
 		await writePvBiasResult(host, result, todayActual);
 		host.log.debug?.(
-			`PV-Bias: 7d=${result.bias7dPct ?? "—"}% 30d=${result.bias30dPct ?? "—"}% conf=${result.confidencePct}% samples=${result.sampleDays30d} freeze=${cfg.freezeEnabled}`,
+			`PV-Bias: 14d=${result.bias14dPct ?? "—"}% 90d=${result.bias90dPct ?? "—"}% model=${result.modelBiasPct ?? "—"}% applied=${result.appliedBiasPct ?? "—"}% conf=${result.confidencePct}% samples=${result.sampleDays90d} freeze=${cfg.freezeEnabled}`,
 		);
 	} catch (e) {
 		const msg = e instanceof Error ? e.message : String(e);

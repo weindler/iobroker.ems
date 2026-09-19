@@ -18,7 +18,14 @@ function numState(id, name, unit) {
 function strState(id, name, def) {
     return {
         id,
-        common: { name, type: "string", role: "text", read: true, write: false, def },
+        common: {
+            name,
+            type: "string",
+            role: "text",
+            read: true,
+            write: false,
+            def,
+        },
         defaultVal: def,
         setDefaultIfEmpty: true,
     };
@@ -34,6 +41,7 @@ async function ensurePriceLearningStates(host) {
         numState("learning.price_learning.avg_price_7d", "Price-Learning Ø 7d", "€/kWh"),
         numState("learning.price_learning.avg_price_30d", "Price-Learning Ø 30d", "€/kWh"),
         numState("learning.price_learning.avg_price_90d", "Gelernter Durchschnittspreis 90 Tage", "€/kWh"),
+        numState("learning.price_learning.avg_price_24m", "Robuste Preisbasis 24 Monate (90 Tage doppelt)", "€/kWh"),
         numState("learning.price_learning.volatility_30d", "Gelernte Preisschwankung 30 Tage", "€/kWh"),
         numState("learning.price_learning.coverage_pct", "Abdeckung der Preishistorie", "%"),
         strState("learning.price_learning.error", "Price-Learning Fehler"),

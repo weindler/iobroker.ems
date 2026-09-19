@@ -22,8 +22,16 @@ export type PvBiasComputeResult = {
 	biasTodayPct: number | null;
 	bias7dPct: number | null;
 	bias30dPct: number | null;
+	bias14dPct: number | null;
+	bias90dPct: number | null;
+	modelBiasPct: number | null;
+	appliedBiasPct: number | null;
 	sampleDays7d: number;
 	sampleDays30d: number;
+	sampleDays14d: number;
+	sampleDays90d: number;
+	coveragePct: number;
+	stabilityPct: number;
 	confidencePct: number;
 	correctedTodayKwh: number | null;
 	correctedTomorrowKwh: number | null;

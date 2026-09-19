@@ -232,9 +232,9 @@ describe("Daily Plan publishes planner.constraints from Admin config", () => {
 		}
 	});
 
-	it("Admin: Heizstab darf Batterie (ohne nur-kritisch) → allowed true on next tick", async () => {
+	it("Admin: automatische Batterieunterstützung → allowed true on next tick", async () => {
 		resetDailyPlanRevisionForTest();
-		const host = mockHost();
+		const host = mockHost({ bat_consumer_auto_support: false });
 		host.states.set("live.battery.soc_pct", 80);
 		host.states.set("live.thermal.buffer_temp_c", 44);
 		host.states.set("global_modes.active", "balanced");
@@ -245,21 +245,17 @@ describe("Daily Plan publishes planner.constraints from Admin config", () => {
 		assert.equal(host.states.get("planner.constraints.battery_consumer_immersion_allowed"), false);
 		assert.match(
 			String(host.states.get("planner.constraints.battery_consumer_immersion_reason_de")),
-			/nicht erlaubt/,
+			/deaktiviert/,
 		);
 
-		host.config.bat_consumer_immersion_may_use_battery = true;
-		host.config.bat_consumer_immersion_only_when_critical = false;
-		host.config.bat_consumer_climate_may_use_battery = true;
-		host.config.bat_consumer_climate_only_when_critical = false;
-		host.config.bat_consumer_wallbox_may_use_battery = true;
+		host.config.bat_consumer_auto_support = true;
 
 		await runDailyPlanTick(host as never, fp);
 
 		assert.equal(host.states.get("planner.constraints.battery_consumer_immersion_allowed"), true);
 		assert.match(
 			String(host.states.get("planner.constraints.battery_consumer_immersion_reason_de")),
-			/freigegeben/,
+			/Automatik aktiv/,
 		);
 		assert.equal(host.states.get("planner.constraints.battery_consumer_climate_allowed"), true);
 		assert.equal(host.states.get("planner.constraints.battery_consumer_wallbox_allowed"), true);
@@ -272,13 +268,11 @@ describe("Daily Plan publishes planner.constraints from Admin config", () => {
 		);
 	});
 
-	it("Admin: nur-kritisch bleibt sichtbar, wenn Puffer nicht kritisch", async () => {
+	it("Admin: ausgeschaltete automatische Batterieunterstützung bleibt sichtbar", async () => {
 		resetDailyPlanRevisionForTest();
 		const host = mockHost({
-			bat_consumer_immersion_may_use_battery: true,
-			bat_consumer_immersion_only_when_critical: true,
+			bat_consumer_auto_support: false,
 			ih_planning_min_temp_c: 48,
-			bat_consumer_immersion_critical_margin_k: 2,
 		});
 		host.states.set("live.battery.soc_pct", 80);
 		host.states.set("live.thermal.buffer_temp_c", 55);
@@ -287,7 +281,7 @@ describe("Daily Plan publishes planner.constraints from Admin config", () => {
 		assert.equal(host.states.get("planner.constraints.battery_consumer_immersion_allowed"), false);
 		assert.match(
 			String(host.states.get("planner.constraints.battery_consumer_immersion_reason_de")),
-			/Nur-kritisch/,
+			/deaktiviert/,
 		);
 	});
 });

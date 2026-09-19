@@ -629,10 +629,20 @@ var stateIds=[
 	INST+".learning.pv_bias.corrected_today_kwh",
 	INST+".learning.pv_bias.corrected_tomorrow_kwh",
 	INST+".learning.pv_bias.raw_today_kwh",
+	INST+".learning.pv_bias.raw_tomorrow_kwh",
 	INST+".learning.pv_bias.actual_today_kwh",
 	INST+".learning.pv_bias.frozen_today_kwh",
 	INST+".learning.pv_bias.bias_today_pct",
 	INST+".learning.pv_bias.bias_7d_pct",
+	INST+".learning.pv_bias.bias_14d_pct",
+	INST+".learning.pv_bias.bias_90d_pct",
+	INST+".learning.pv_bias.model_bias_pct",
+	INST+".learning.pv_bias.applied_bias_pct",
+	INST+".learning.pv_bias.confidence_pct",
+	INST+".learning.pv_bias.sample_days_14d",
+	INST+".learning.pv_bias.sample_days_90d",
+	INST+".learning.pv_bias.coverage_pct",
+	INST+".learning.pv_bias.stability_pct",
 	INST+".learning.pv_bias.status",
 	INST+".learning.price_learning.avg_price_30d",
 	INST+".learning.price_learning.volatility_30d",
@@ -641,10 +651,20 @@ var stateIds=[
 	INST+".learning.price_forecast.forecast_confidence",
 	INST+".learning.price_forecast.avg_error_ct_30d",
 	INST+".learning.pv_horizon.day2.corrected_kwh",
+	INST+".learning.pv_horizon.day3.raw_kwh",
+	INST+".learning.pv_horizon.day3.applied_bias_pct",
 	INST+".learning.pv_horizon.day3.corrected_kwh",
+	INST+".learning.pv_horizon.day4.raw_kwh",
+	INST+".learning.pv_horizon.day4.applied_bias_pct",
 	INST+".learning.pv_horizon.day4.corrected_kwh",
+	INST+".learning.pv_horizon.day5.raw_kwh",
+	INST+".learning.pv_horizon.day5.applied_bias_pct",
 	INST+".learning.pv_horizon.day5.corrected_kwh",
+	INST+".learning.pv_horizon.day6.raw_kwh",
+	INST+".learning.pv_horizon.day6.applied_bias_pct",
 	INST+".learning.pv_horizon.day6.corrected_kwh",
+	INST+".learning.pv_horizon.day7.raw_kwh",
+	INST+".learning.pv_horizon.day7.applied_bias_pct",
 	INST+".learning.pv_horizon.day7.corrected_kwh",
 	INST+".learning.weather.horizon.day1.min_temp_c",
 	INST+".learning.weather.horizon.day1.max_temp_c",
@@ -2159,6 +2179,9 @@ function visBatteryDayLines(s){
 		var rk=visFmtKwh(s.nightReserveKwh);
 		if(rk)lines.push("Reserve "+rk);
 	}
+	if(s.todayChargedKwh!=null&&isFinite(s.todayChargedKwh))lines.push("Heute geladen "+visNumberDe(s.todayChargedKwh,2)+" kWh");
+	if(s.expectedEndSocPct!=null&&isFinite(s.expectedEndSocPct))lines.push("Voraussichtlicher End-SOC "+Math.round(s.expectedEndSocPct)+" %");
+	if(s.availableToMinKwh!=null&&isFinite(s.availableToMinKwh)&&s.availableToMinKwh>=0)lines.push("Bis Mindest-SOC verfügbar "+visNumberDe(s.availableToMinKwh,1)+" kWh");
 	return lines;
 }
 function visCarDayLines(s){
@@ -2554,11 +2577,21 @@ function visLageSnap(){
 		todayKwh:num(g("learning.pv_bias.corrected_today_kwh")),
 		tomorrowKwh:num(g("learning.pv_bias.corrected_tomorrow_kwh")),
 		rawTodayKwh:num(g("learning.pv_bias.raw_today_kwh")),
+		rawTomorrowKwh:num(g("learning.pv_bias.raw_tomorrow_kwh")),
 		actualKwh:num(g("learning.pv_bias.actual_today_kwh")),
 		frozenTodayKwh:num(g("learning.pv_bias.frozen_today_kwh")),
 		laterKwhs:later,
 		biasTodayPct:num(g("learning.pv_bias.bias_today_pct")),
 		bias7dPct:num(g("learning.pv_bias.bias_7d_pct")),
+		bias14dPct:num(g("learning.pv_bias.bias_14d_pct")),
+		bias90dPct:num(g("learning.pv_bias.bias_90d_pct")),
+		modelBiasPct:num(g("learning.pv_bias.model_bias_pct")),
+		appliedBiasPct:num(g("learning.pv_bias.applied_bias_pct")),
+		confidencePct:num(g("learning.pv_bias.confidence_pct")),
+		sampleDays14d:num(g("learning.pv_bias.sample_days_14d")),
+		sampleDays90d:num(g("learning.pv_bias.sample_days_90d")),
+		coveragePct:num(g("learning.pv_bias.coverage_pct")),
+		stabilityPct:num(g("learning.pv_bias.stability_pct")),
 		status:txt(g("learning.pv_bias.status"),""),
 		minC:num(g("learning.weather.horizon.day1.min_temp_c")),
 		maxC:num(g("learning.weather.horizon.day1.max_temp_c"))
@@ -2570,12 +2603,14 @@ function renderLage(){
 	var snap=visLageSnap(),line=visLageLine(snap);
 	if(!line){el.style.display="none";el.innerHTML="";return;}
 	el.style.display="";
-	var bias=snap.biasTodayPct===null?snap.bias7dPct:snap.biasTodayPct;
-	var biasTxt=bias===null?'Korrektur noch in Lernphase':('Bias '+(bias>0?'+':'')+Math.round(bias)+' % · '+(Math.abs(bias)<=8?'ähnlich wie zuletzt':(bias<0?'Prognose zuletzt eher zu hoch':'Prognose zuletzt eher zu niedrig')));
+	var bias=snap.appliedBiasPct;
+	var biasTxt=bias===null?'Korrektur noch in Lernphase':('angewendete Korrektur '+(bias>0?'+':'')+bias.toFixed(1).replace('.',',')+' % · Confidence '+(snap.confidencePct===null?'—':Math.round(snap.confidencePct)+' %'));
+	var todayDelta=snap.biasTodayPct===null?'':('<br>Abweichung heute bisher '+(snap.biasTodayPct>0?'+':'')+snap.biasTodayPct.toFixed(1).replace('.',',')+' % · nicht für die Korrektur verwendet');
+	var details='<details class="ems-q-note"><summary>Berechnungsdetails</summary>Modell-Bias '+fmtDec(snap.modelBiasPct,1,'%')+' · 14-Tage-Trend '+fmtDec(snap.bias14dPct,1,'%')+' · Langzeitbasis '+fmtDec(snap.bias90dPct,1,'%')+'<br>Gültige Tage '+(snap.sampleDays90d===null?'—':Math.round(snap.sampleDays90d))+' · Abdeckung '+fmtDec(snap.coveragePct,0,'%')+' · Stabilität '+fmtDec(snap.stabilityPct,0,'%')+todayDelta+'</details>';
 	el.innerHTML='<div class="ems-lage-k">PV-Prognose</div><div class="ems-pv-grid">'
 		+'<div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTodayKwh,1,'kWh')+' → erwartet '+fmtDec(snap.todayKwh,1,'kWh')+'<br>'+esc(biasTxt)+'</div></div>'
-		+'<div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">Rohwert '+fmtDec(g("learning.pv_horizon.day2.raw_kwh"),1,'kWh')+' → erwartet '+fmtDec(snap.tomorrowKwh,1,'kWh')+'<br>gleiche gelernte Korrekturbasis</div></div>'
-		+'</div><div class="ems-pv-foot">'+esc(line)+'</div>';
+		+'<div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTomorrowKwh,1,'kWh')+' → erwartet '+fmtDec(snap.tomorrowKwh,1,'kWh')+'<br>'+esc(biasTxt)+'</div></div>'
+		+'</div>'+details+'<div class="ems-pv-foot">'+esc(line)+'</div>';
 }
 
 function renderLiveStrip(){
@@ -2730,7 +2765,7 @@ function batteryTodayWindowLabel(wantGrid){
 	return parts.length?parts.slice(0,3).join(", "):"";
 }
 function climateTodayLines(){
-	var lines=[],u;
+	var lines=[],u,minC=num(g("learning.weather.horizon.day1.min_temp_c")),maxC=num(g("learning.weather.horizon.day1.max_temp_c")),anyRunning=false;
 	for(u=1;u<=5;u++){
 		var name=visAcConfiguredName(g("addons.air_conditioning.units.unit_"+u+".name"));
 		if(!name)continue;
@@ -2740,7 +2775,7 @@ function climateTodayLines(){
 		var purpose=visHvacPurposeLabel(g(base+".mode_purpose"));
 		var note=climateCardNote(u);
 		var bits=[name];
-		if(isOn(g(base+".running")))bits.push("läuft");
+		if(isOn(g(base+".running"))){bits.push("läuft");anyRunning=true;}
 		if(purpose)bits.push(purpose);
 		if(hum!=null)bits.push(Math.round(hum)+" % Feuchte");
 		if(d.nextLine&&d.nextLine!=="keines")bits.push(d.nextLine.replace(/^nächstes /,""));
@@ -2748,6 +2783,8 @@ function climateTodayLines(){
 		if(note)line+=" — "+note;
 		lines.push(line);
 	}
+	if(!anyRunning&&maxC!=null&&maxC<25)lines.unshift("Außentemperatur zu gering — voraussichtlich keine Kühlung erforderlich; Entfeuchtung wird getrennt nach Raumfeuchte bewertet");
+	if(minC!=null&&maxC!=null)lines.unshift("Außen heute "+Math.round(minC)+"–"+Math.round(maxC)+" °C");
 	return lines;
 }
 var paintedHtml={next:"",horizon:"",stack:""};
@@ -2778,11 +2815,15 @@ function renderNext(){
 		if(!batWins[b].isGrid)hasPv=true;
 	}
 	var emsAct=visEmsAction(snap);
+	var todayEnergy=energyStats("today"),capKwh=batteryCapKwh(),hwMin=num(g("addons.battery.limits.hardware_min_soc_pct"));
+	var reserveKwh=num(g("learning.battery_runtime.required_night_reserve_kwh")),autoMinPct=hwMin;
+	if(capKwh!=null&&capKwh>0&&reserveKwh!=null)autoMinPct=Math.max(hwMin||0,reserveKwh/capKwh*100);
+	var outlookNow=operatorOutlook(),outlookDay=outlookNow&&Array.isArray(outlookNow.days)?outlookNow.days[0]:null;
 	var batLines=visBatteryDayLines({
 		socPct:soc,
 		targetSocPct:tgt,
-		capacityKwh:batteryCapKwh(),
-		minSocPct:num(g("addons.battery.limits.hardware_min_soc_pct")),
+		capacityKwh:capKwh,
+		minSocPct:autoMinPct,
 		strategyDe:txt(g("operator.plan.battery_strategy_de"),""),
 		gridWindowLabel:batteryTodayWindowLabel(true),
 		nightNeedKwh:num(g("learning.battery_runtime.predicted_night_consumption_kwh")),
@@ -2791,7 +2832,10 @@ function renderNext(){
 		nightReserveKwh:num(g("learning.battery_runtime.required_night_reserve_kwh")),
 		hasPvChargeWindow:hasPv,
 		chargingNow:visChargeW(snap)>=ON_W,
-		emsChargeAction:emsAct==="Batterie-Ladung"||emsAct==="Batterie-Netzladung"
+		emsChargeAction:emsAct==="Batterie-Ladung"||emsAct==="Batterie-Netzladung",
+		todayChargedKwh:num(todayEnergy.batteryChargedKwh),
+		expectedEndSocPct:outlookDay&&outlookDay.battery?num(outlookDay.battery.projectedLastSocPct):null,
+		availableToMinKwh:soc!=null&&capKwh!=null&&autoMinPct!=null?Math.max(0,(soc-autoMinPct)*capKwh/100):null
 	});
 	var carSoc=num(g("addons.wallbox.status.evcc.vehicle_soc_pct"));
 	if(carSoc!=null)carSoc=Math.round(carSoc);
@@ -2830,6 +2874,11 @@ function renderNext(){
 		var ihSched=immersionScheduleRow(g("planner.intent.allocation.immersion_heater.plan_json"));
 		if(ihSched.value&&ihSched.value!=="keines")ihLines.push(ihSched.label+" "+ihSched.value);
 	}
+	var ihToday=energyStats("today");
+	if(num(ihToday.immersionEnergyKwh)!==null)ihLines.push("Heute geladen "+visNumberDe(ihToday.immersionEnergyKwh,2)+" kWh elektrisch");
+	var boilerEmpty=fmtEmptyAt(g("learning.thermal_boiler.estimated_empty_at")),bufferEmpty=fmtEmptyAt(g("learning.thermal_runtime.estimated_empty_at"));
+	if(boilerEmpty)ihLines.push("Boiler erreicht Mindesttemperatur voraussichtlich "+boilerEmpty);
+	if(bufferEmpty)ihLines.push("Puffer erreicht Mindesttemperatur voraussichtlich "+bufferEmpty);
 	var html='<div class="ems-k">EMS – Heute</div><div class="ems-next-body" data-scroll="1">';
 	if(current.length){
 		html+='<div class="ems-next-sec">Jetzt</div>'+nextActionListHtml(current);
@@ -2861,9 +2910,12 @@ function renderHorizon(){
 		var oi,od,olines,oa,kindLabels={battery_charge:"Batterie laden",battery_discharge:"Batterie entladen",immersion_heater:"Heizstab",wallbox:"Wallbox",climate:"Klima",other:"Flexverbrauch"};
 		for(oi=0;oi<outlook.days.length;oi++){
 			od=outlook.days[oi];olines=[];
-			olines.push("PV "+(od.expectedPvKwh==null?"Prognose wird noch aufgebaut":Number(od.expectedPvKwh).toFixed(1).replace(".",",")+" kWh erwartet")+" · Haus "+(od.expectedHouseLoadKwh==null?"Lernwert wird noch aufgebaut":Number(od.expectedHouseLoadKwh).toFixed(1).replace(".",",")+" kWh erwartet"));
+			olines.push((oi===0?"PV Rest heute ":"PV ")+(od.expectedPvKwh==null?"Prognose wird noch aufgebaut":Number(od.expectedPvKwh).toFixed(1).replace(".",",")+" kWh erwartet")+" · "+(oi===0?"Haus Rest heute ":"Haus ")+(od.expectedHouseLoadKwh==null?"Lernwert wird noch aufgebaut":Number(od.expectedHouseLoadKwh).toFixed(1).replace(".",",")+" kWh erwartet"));
 			if(od.priceCtPerKwh&&od.priceCtPerKwh.min!=null&&od.priceCtPerKwh.max!=null)olines.push("Preis "+Number(od.priceCtPerKwh.min).toFixed(1).replace(".",",")+"–"+Number(od.priceCtPerKwh.max).toFixed(1).replace(".",",")+" ct/kWh"+(od.priceCtPerKwh.complete?"":" · teilweise"));
-			if(od.battery&&od.battery.projectedFirstSocPct!=null&&od.battery.projectedLastSocPct!=null)olines.push("Batterie voraussichtlich "+Math.round(od.battery.projectedFirstSocPct)+" % morgens, "+Math.round(od.battery.projectedLastSocPct)+" % abends · niedrigster Stand "+Math.round(od.battery.projectedMinSocPct)+" %");
+			if(od.battery&&od.battery.projectedFirstSocPct!=null&&od.battery.projectedLastSocPct!=null){
+				olines.push("Batterie voraussichtlich "+Math.round(od.battery.projectedFirstSocPct)+(oi===0?" % ab jetzt, ":" % morgens, ")+Math.round(od.battery.projectedLastSocPct)+" % abends · niedrigster Stand "+Math.round(od.battery.projectedMinSocPct)+" %");
+				olines.push("Batterie voraussichtlich "+Number(od.battery.chargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh geladen · "+Number(od.battery.dischargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh entladen");
+			}
 			if(od.allocations&&od.allocations.length){
 				var abits=[];
 				for(oa=0;oa<od.allocations.length;oa++)abits.push((kindLabels[od.allocations[oa].kind]||"Flexverbrauch")+" "+Number(od.allocations[oa].energyKwh).toFixed(1).replace(".",",")+" kWh");
@@ -3197,8 +3249,10 @@ function remainingRuntimeLabel(endMs){
 function currentSupplyMix(devicePowerW){
 	var total=Math.max(0,num(devicePowerW)||0),pv=Math.max(0,num(g("live.pv.power_w"))||0);
 	var house=Math.max(0,num(g("live.battery.house_load_w"))||0),bat=Math.max(0,num(g("addons.battery.telemetry.discharging_power_w"))||0);
-	var grid=Math.max(0,num(g("addons.battery.grid_balance.grid_power_w"))||0);
-	var supplied=Math.max(1,Math.min(house,pv)+bat+grid),pvShare=Math.min(house,pv)/supplied,batShare=bat/supplied,gridShare=grid/supplied;
+	var actualGrid=visGridMeterW(visLiveSnap()),grid=actualGrid===null?Math.max(0,house-pv-bat):Math.max(0,actualGrid);
+	var pvForHouse=Math.min(house,pv),afterPv=Math.max(0,house-pvForHouse),batForHouse=Math.min(afterPv,bat),afterBat=Math.max(0,afterPv-batForHouse);
+	grid=Math.min(afterBat,grid);
+	var supplied=Math.max(1,pvForHouse+batForHouse+grid),pvShare=pvForHouse/supplied,batShare=batForHouse/supplied,gridShare=grid/supplied;
 	var sum=pvShare+batShare+gridShare;if(sum<=0)return{power:total,pv:null,bat:null,grid:null};
 	return{power:total,pv:total*pvShare/sum,bat:total*batShare/sum,grid:total*gridShare/sum};
 }
@@ -3264,11 +3318,19 @@ function evRecommendationCard(){
 }
 function sevenDayForecastCard(){
 	var out=operatorOutlook(),known=out&&Array.isArray(out.days)?out.days:[],html='<div class="ems-q-card" style="grid-column:1/-1"><div class="ems-q-k">PV- und Preis-Ausblick · 7 Tage</div><div class="ems-q-v">Veröffentlichte Preise und vorsichtige Tendenz</div>';
+	var snap=visLageSnap(),today=new Date(),dayNames=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
 	var avg=num(g('learning.price_learning.avg_price_30d')),spread=num(g('learning.price_learning.volatility_30d'));
 	var learnedConfidence=num(g('learning.price_learning.confidence')),forecastConfidence=num(g('learning.price_forecast.forecast_confidence'));
 	var samples=num(g('learning.price_learning.sample_days'));if(avg!==null&&Math.abs(avg)<2)avg*=100;if(spread!==null&&Math.abs(spread)<2)spread*=100;
 	for(var d=1;d<=7;d++){
-		var day=known[d-1]||{},pv=num(day.expectedPvKwh);if(pv===null)pv=num(g('learning.pv_horizon.day'+d+'.corrected_kwh'));
+		var day=known[d-1]||{},corr=d===1?num(day.expectedPvKwh):(d===2?snap.tomorrowKwh:num(g('learning.pv_horizon.day'+d+'.corrected_kwh')));
+		var applied=d<=2?snap.appliedBiasPct:num(g('learning.pv_horizon.day'+d+'.applied_bias_pct'));
+		var raw=d===2?snap.rawTomorrowKwh:(d>=3?num(g('learning.pv_horizon.day'+d+'.raw_kwh')):null);
+		if(d===1&&corr!==null&&applied!==null&&Math.abs(1+applied/100)>0.01)raw=corr/(1+applied/100);
+		var pv=corr;
+		var dd=new Date(today.getFullYear(),today.getMonth(),today.getDate()+d-1),dateTxt=String(dd.getDate()).padStart(2,'0')+'.'+String(dd.getMonth()+1).padStart(2,'0')+'.';
+		var dayLabel=d===1?'Heute':(d===2?'Morgen':(d===3?'Übermorgen':dayNames[dd.getDay()]+' ('+dateTxt+')'));
+		var pvLabel=(d===1?'PV Rest heute':'PV')+' roh '+fmtDec(raw,1,'kWh')+' · korrigiert '+fmtDec(corr,1,'kWh')+(applied===null?'':' ('+(applied>0?'+':'')+applied.toFixed(1).replace('.',',')+' %)');
 		var lo=num(day.priceCtPerKwh&&day.priceCtPerKwh.min),hi=num(day.priceCtPerKwh&&day.priceCtPerKwh.max),published=lo!==null&&hi!==null;
 		var pvFactor=pv===null?0:Math.max(-2.5,Math.min(2.5,(20-pv)*0.08)),mid=avg===null?null:avg+pvFactor;
 		var uncertainty=Math.max(5,spread===null?8:spread)*(1+(d-3)*0.12),estLo=mid===null?null:Math.max(0,mid-uncertainty),estHi=mid===null?null:mid+uncertainty;
@@ -3277,7 +3339,7 @@ function sevenDayForecastCard(){
 		var status=published?(day.priceCtPerKwh.complete?'vollständig veröffentlicht':'teilweise veröffentlicht'):'nur geschätzt';
 		var trustScore=Math.min(learnedConfidence===null?0:learnedConfidence,forecastConfidence===null?100:forecastConfidence),trust=trustScore>=75&&samples>=30?'hoch':(trustScore>=50&&samples>=14?'mittel':'gering · Lernphase');
 		var cls=published?'published':(tendency==='eher günstig'?'good':(tendency==='eher teuer'?'bad':'normal')),bar=published?Math.min(100,Math.max(8,(lo+hi)/2)):Math.min(100,Math.max(8,mid||35));
-		html+='<div class="ems-forecast-row"><b>Tag '+d+'</b><span>PV '+fmtDec(pv,1,'kWh')+'</span><span>'+esc(price)+'<div class="ems-trend '+cls+'"><i style="width:'+bar+'%;opacity:'+(published?'1':(trustScore>=50?'.75':'.45'))+'"></i></div></span><span>Preisstatus: '+esc(status)+(published?'':'<br>Schätzvertrauen: '+esc(trust))+'</span></div>';
+		html+='<div class="ems-forecast-row"><b>'+esc(dayLabel)+'</b><span>'+esc(pvLabel)+'</span><span>'+esc(price)+'<div class="ems-trend '+cls+'"><i style="width:'+bar+'%;opacity:'+(published?'1':(trustScore>=50?'.75':'.45'))+'"></i></div></span><span>Preisstatus: '+esc(status)+(published?'':'<br>Schätzvertrauen: '+esc(trust))+'</span></div>';
 	}
 	return html+'<div class="ems-q-note">Veröffentlichte Preise sind verbindliche Tibberwerte. Tendenzen ab Tag 3 sind gelernte Schätzungen aus eigener Preishistorie und PV-/Wetterlage; sie können deutlich abweichen und lösen keine Geräteaktion aus.</div></div>';
 }

@@ -31,6 +31,7 @@ import {
 	UNIFIED_OBJECTIVE_PRIORITY,
 	UNIFIED_REPLAN_TRIGGERS,
 } from "./types";
+import { allocateUnifiedDayPlan } from "./allocate";
 
 describe("unified day planner contract", () => {
 	it("exposes objective priority order (8 levels)", () => {
@@ -83,6 +84,28 @@ describe("unified day planner contract", () => {
 		const plan = golden001BadPlan(input);
 		assert.ok(plan.batteryTrajectory.length >= 1);
 		assert.ok(plan.batteryTrajectory[0].socPct !== null);
+	});
+
+	it("projects passive house consumption instead of leaving SOC flat", () => {
+		const input = golden002Input();
+		input.battery.socPct = 100;
+		input.battery.usableCapacityKwh = 10;
+		input.battery.reserveSocPct = 20;
+		input.battery.passiveBatteryEnergyAvailable = true;
+		input.battery.dischargeEfficiency = 1;
+		input.pv.slots = input.pv.slots.map((slot) => ({ ...slot, energyKwh: 0 }));
+		input.houseLoad.slots = input.houseLoad.slots.map((slot) => ({ ...slot, energyKwh: 0.2 }));
+		input.wallbox = null;
+		input.thermal = null;
+		input.climate = null;
+		input.otherFlex = [];
+		const plan = allocateUnifiedDayPlan(input);
+		assert.ok(plan.batteryTrajectory.length > 1);
+		const first = plan.batteryTrajectory[0]!.socPct!;
+		const last = plan.batteryTrajectory.at(-1)!.socPct!;
+		assert.ok(first < 100, `first SOC must already include house load, got ${first}`);
+		assert.ok(last < first, `SOC must fall across zero-PV house load, got ${first} -> ${last}`);
+		assert.ok(last >= 20, `reserve floor must hold, got ${last}`);
 	});
 
 	it("allocations name consumer, slot and energy source", () => {

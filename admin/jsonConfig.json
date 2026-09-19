@@ -19,9 +19,55 @@
 					"type": "panel",
 					"label": "Gesamtsteuerung – wirkt sofort",
 					"items": {
-						"current": {"type":"state","oid":"global.execution_mode","control":"text","label":"Aktueller Modus","size":"large","blinkOnUpdate":true,"xs":12,"sm":4,"md":4,"lg":4,"xl":4},
-						"dryrun": {"type":"state","oid":"global.execution_mode","control":"button","controlled":true,"buttonValue":"dryrun","label":"DRY-RUN","variant":"contained","xs":6,"sm":4,"md":4,"lg":4,"xl":4},
-						"live": {"type":"state","oid":"global.execution_mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","confirm":{"condition":"true","title":"Live aktivieren?","text":"Live erlaubt reale Gerätebefehle für Add-ons, die ebenfalls auf Live stehen.","ok":"Ja, Live","cancel":"Abbrechen","type":"warning"},"xs":6,"sm":4,"md":4,"lg":4,"xl":4}
+						"current": {
+							"type": "state",
+							"oid": "global.execution_mode",
+							"control": "text",
+							"label": "Aktueller Modus",
+							"size": "large",
+							"blinkOnUpdate": true,
+							"xs": 12,
+							"sm": 4,
+							"md": 4,
+							"lg": 4,
+							"xl": 4
+						},
+						"dryrun": {
+							"type": "state",
+							"oid": "global.execution_mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "dryrun",
+							"label": "DRY-RUN",
+							"variant": "contained",
+							"xs": 6,
+							"sm": 4,
+							"md": 4,
+							"lg": 4,
+							"xl": 4
+						},
+						"live": {
+							"type": "state",
+							"oid": "global.execution_mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "live",
+							"label": "LIVE",
+							"variant": "contained",
+							"confirm": {
+								"condition": "true",
+								"title": "Live aktivieren?",
+								"text": "Live erlaubt reale Gerätebefehle für Add-ons, die ebenfalls auf Live stehen.",
+								"ok": "Ja, Live",
+								"cancel": "Abbrechen",
+								"type": "warning"
+							},
+							"xs": 6,
+							"sm": 4,
+							"md": 4,
+							"lg": 4,
+							"xl": 4
+						}
 					},
 					"xs": 12,
 					"sm": 12,
@@ -264,42 +310,84 @@
 					"type": "header",
 					"size": 2,
 					"text": "Sommer- / Winterbetrieb",
-					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"winter_operation_state": {
 					"type": "objectId",
 					"label": "Winterbetrieb aktiv (bool, optional)",
 					"types": ["state"],
 					"help": "True: Klima- und Heizstabplanung samt zugehörigem Lernen pausieren. False: Betrieb entsprechend dem jeweiligen Add-on-Modus. Bei Ausfall bleibt der letzte bestätigte Wert erhalten.",
-					"xs": 12, "sm": 12, "md": 8, "lg": 8, "xl": 8
+					"xs": 12,
+					"sm": 12,
+					"md": 8,
+					"lg": 8,
+					"xl": 8
 				},
 				"winter_operation_invert": {
 					"type": "checkbox",
 					"label": "Signal umkehren (True bedeutet Sommerbetrieb)",
 					"default": false,
-					"xs": 12, "sm": 12, "md": 4, "lg": 4, "xl": 4
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"hGlobalRules": {
-					"type": "header", "size": 2, "text": "Globale Regeln für aktive Add-ons",
-					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+					"type": "header",
+					"size": 2,
+					"text": "Globale Regeln für aktive Add-ons",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"global_policy_energy_priority_json": {
-					"type": "text", "label": "Energie-Priorität (erweiterte Einstellung)", "default": "",
+					"type": "text",
+					"label": "Energie-Priorität (erweiterte Einstellung)",
+					"default": "",
 					"help": "Optional. Leer verwendet die sichere Standardreihenfolge. Eine benutzerfreundliche Sortierauswahl folgt; ungültige Eingaben werden nicht übernommen.",
-					"xs": 12, "sm": 12, "md": 6, "lg": 6, "xl": 6
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
 				"global_policy_mutual_exclusions_json": {
-					"type": "text", "label": "Zusätzliche gegenseitige Ausschlüsse (erweitert)", "default": "",
+					"type": "text",
+					"label": "Zusätzliche gegenseitige Ausschlüsse (erweitert)",
+					"default": "",
 					"help": "Die festen Sicherheitsausschlüsse sind immer aktiv. Leer lassen, wenn keine projektspezifische Sonderregel benötigt wird.",
-					"xs": 12, "sm": 12, "md": 6, "lg": 6, "xl": 6
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
 				},
 				"intent_timezone": {
-					"type": "text", "label": "Zeitzone", "default": "Europe/Berlin",
-					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+					"type": "text",
+					"label": "Zeitzone",
+					"default": "Europe/Berlin",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"intent_manual_override_max_minutes": {
-					"type": "text", "label": "Maximale manuelle Übersteuerung (Minuten, optional)", "placeholder": "z. B. 120",
-					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+					"type": "text",
+					"label": "Maximale manuelle Übersteuerung (Minuten, optional)",
+					"placeholder": "z. B. 120",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"climate_control_note": {
 					"type": "staticText",
@@ -339,10 +427,61 @@
 					"label": "Wallbox-Steuerung – wirkt sofort",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"items": {
-						"current": {"type":"state","oid":"addons.wallbox.mode","control":"text","label":"Aktueller Modus","size":"large","blinkOnUpdate":true,"xs":12,"sm":3,"md":3,"lg":3,"xl":3},
-						"off": {"type":"state","oid":"addons.wallbox.mode","control":"button","controlled":true,"buttonValue":"off","label":"AUS","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
-						"dryrun": {"type":"state","oid":"addons.wallbox.mode","control":"button","controlled":true,"buttonValue":"dryrun","label":"DRY-RUN","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
-						"live": {"type":"state","oid":"addons.wallbox.mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3}
+						"current": {
+							"type": "state",
+							"oid": "addons.wallbox.mode",
+							"control": "text",
+							"label": "Aktueller Modus",
+							"size": "large",
+							"blinkOnUpdate": true,
+							"xs": 12,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"off": {
+							"type": "state",
+							"oid": "addons.wallbox.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "off",
+							"label": "AUS",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"dryrun": {
+							"type": "state",
+							"oid": "addons.wallbox.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "dryrun",
+							"label": "DRY-RUN",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"live": {
+							"type": "state",
+							"oid": "addons.wallbox.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "live",
+							"label": "LIVE",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						}
 					},
 					"xs": 12,
 					"sm": 12,
@@ -351,17 +490,41 @@
 					"xl": 12
 				},
 				"hWallboxDefaults": {
-					"type": "header", "size": 2, "text": "Standardvorgaben für Ladeaufträge",
-					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+					"type": "header",
+					"size": 2,
+					"text": "Standardvorgaben für Ladeaufträge",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"intent_default_charge_strategy": {
-					"type": "select", "label": "Standard-Ladestrategie (optional)", "default": "",
-					"options": [{"label":"Keine Vorgabe","value":""},{"label":"Aus","value":"off"},{"label":"Minimum + PV","value":"min_pv"},{"label":"Nur PV","value":"pv"},{"label":"Sofort","value":"immediate"}],
-					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+					"type": "select",
+					"label": "Standard-Ladestrategie (optional)",
+					"default": "",
+					"options": [
+						{ "label": "Keine Vorgabe", "value": "" },
+						{ "label": "Aus", "value": "off" },
+						{ "label": "Minimum + PV", "value": "min_pv" },
+						{ "label": "Nur PV", "value": "pv" },
+						{ "label": "Sofort", "value": "immediate" }
+					],
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"intent_default_target_soc_pct": {
-					"type": "text", "label": "Standard-Ziel-SOC (%, optional)", "placeholder": "z. B. 80",
-					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+					"type": "text",
+					"label": "Standard-Ziel-SOC (%, optional)",
+					"placeholder": "z. B. 80",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"hEvccControlWrite": {
 					"type": "header",
@@ -461,9 +624,7 @@
 					"type": "objectId",
 					"label": "EVCC OFF (Write/Button)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -474,9 +635,7 @@
 					"type": "objectId",
 					"label": "EVCC PV (Write/Button)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -487,9 +646,7 @@
 					"type": "objectId",
 					"label": "EVCC MIN+PV (Write/Button)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -500,9 +657,7 @@
 					"type": "objectId",
 					"label": "EVCC NOW/Schnell (Write/Button)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'pv_control' || data.wb_evcc_mode_control === 'string_mode'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -513,9 +668,7 @@
 					"type": "objectId",
 					"label": "EVCC maxCurrent (Write)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'string_mode'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -526,9 +679,7 @@
 					"type": "objectId",
 					"label": "EVCC Phasen (Write)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control === 'string_mode'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -560,9 +711,7 @@
 					"type": "objectId",
 					"label": "EVCC Lademodus (Write)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -593,9 +742,7 @@
 					"type": "objectId",
 					"label": "EVCC maxCurrent (Write)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -606,9 +753,7 @@
 					"type": "objectId",
 					"label": "EVCC Phasen (Write)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'string_mode'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -640,9 +785,7 @@
 					"type": "objectId",
 					"label": "EVCC control.pvControl (Legacy)",
 					"hidden": "data.wb_control_model !== 'evcc' || data.wb_evcc_mode_control !== 'pv_control'",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -672,9 +815,7 @@
 					"type": "objectId",
 					"label": "EVCC Modus (Read)",
 					"help": "Feedback-State, typisch evcc.&lt;instanz&gt;.loadpoint.1.status.mode (off/pv/min/now). Kein Write-Ziel.",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -684,9 +825,7 @@
 				"wb_evcc_enabled_state": {
 					"type": "objectId",
 					"label": "EVCC Ladefreigabe / enabled",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -696,9 +835,7 @@
 				"wb_evcc_connected_state": {
 					"type": "objectId",
 					"label": "Fahrzeug angeschlossen / connected",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -708,9 +845,7 @@
 				"wb_evcc_charging_state": {
 					"type": "objectId",
 					"label": "Laden aktiv / charging",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -720,9 +855,7 @@
 				"wb_evcc_charge_power_w_state": {
 					"type": "objectId",
 					"label": "Aktuelle Ladeleistung (W)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -732,9 +865,7 @@
 				"wb_evcc_connection_state": {
 					"type": "objectId",
 					"label": "EVCC Verbindung (info.connection)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -744,9 +875,7 @@
 				"wb_evcc_session_energy_kwh_state": {
 					"type": "objectId",
 					"label": "Geladene Energie der Sitzung (EVCC liefert Wh — EMS spiegelt kWh)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -775,9 +904,7 @@
 				"wb_evcc_vehicle_soc_state": {
 					"type": "objectId",
 					"label": "Fahrzeug-SOC (%)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -787,9 +914,7 @@
 				"wb_evcc_vehicle_range_state": {
 					"type": "objectId",
 					"label": "Fahrzeugreichweite (km, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -799,9 +924,7 @@
 				"wb_evcc_vehicle_odometer_state": {
 					"type": "objectId",
 					"label": "Kilometerstand (optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -811,9 +934,7 @@
 				"wb_evcc_vehicle_detection_active_state": {
 					"type": "objectId",
 					"label": "vehicleDetectionActive (Diagnose, nicht connected)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -823,9 +944,7 @@
 				"intent_evcc_target_soc_state": {
 					"type": "objectId",
 					"label": "Ziel-SOC / EVCC-Ladelimit (%)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -835,9 +954,7 @@
 				"wb_evcc_charge_remaining_energy_state": {
 					"type": "objectId",
 					"label": "Restenergie chargeRemaining (Wh aus EVCC)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -847,9 +964,7 @@
 				"wb_evcc_charge_remaining_duration_state": {
 					"type": "objectId",
 					"label": "Restladezeit chargeRemainingDuration (s, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -859,9 +974,7 @@
 				"wb_evcc_vehicle_title_state": {
 					"type": "objectId",
 					"label": "EVCC Fahrzeug-Titel (vehicleTitle)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -871,9 +984,7 @@
 				"wb_evcc_effective_limit_soc_state": {
 					"type": "objectId",
 					"label": "effectiveLimitSoc (%)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -883,9 +994,7 @@
 				"wb_evcc_battery_boost_state": {
 					"type": "objectId",
 					"label": "batteryBoost (bool)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -896,9 +1005,7 @@
 					"type": "objectId",
 					"label": "EVCC Modus / status.mode (Read)",
 					"help": "Feedback-State, typisch evcc.&lt;instanz&gt;.loadpoint.1.status.mode (off/pv/min/now). Kein Write-Ziel.",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -908,9 +1015,7 @@
 				"wb_evcc_plan_active_state": {
 					"type": "objectId",
 					"label": "Plan aktiv",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -920,9 +1025,7 @@
 				"wb_evcc_plan_soc_state": {
 					"type": "objectId",
 					"label": "Plan-Ziel-SOC (%)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -932,9 +1035,7 @@
 				"wb_evcc_plan_time_state": {
 					"type": "objectId",
 					"label": "Gewünschte Planzeit",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -944,9 +1045,7 @@
 				"wb_evcc_effective_plan_time_state": {
 					"type": "objectId",
 					"label": "effectivePlanTime",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -956,9 +1055,7 @@
 				"wb_external_vehicle_charge_state": {
 					"type": "objectId",
 					"label": "Externes Fahrzeugladen (z. B. HA Ford elvehcharging)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -968,9 +1065,7 @@
 				"wb_tibber_grid_rewards_active_state": {
 					"type": "objectId",
 					"label": "Tibber Grid Rewards aktiv (bool, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -980,9 +1075,7 @@
 				"intent_evcc_deadline_state": {
 					"type": "objectId",
 					"label": "Intent-Deadline (optional, z. B. gleich wie effectivePlanTime)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -992,9 +1085,7 @@
 				"intent_evcc_immediate_state": {
 					"type": "objectId",
 					"label": "EVCC Sofortladen (optional, Intent-Diagnose)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1004,9 +1095,7 @@
 				"intent_evcc_source_timestamp_state": {
 					"type": "objectId",
 					"label": "EVCC Quell-Zeitstempel (optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1035,9 +1124,7 @@
 				"wb_evcc_vehicle_id_state": {
 					"type": "objectId",
 					"label": "EVCC Fahrzeug-ID (Erkennung)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 6,
 					"md": 6,
@@ -1047,9 +1134,7 @@
 				"wb_evcc_vehicle_name_state": {
 					"type": "objectId",
 					"label": "EVCC Fahrzeugname (Erkennung)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 6,
 					"md": 6,
@@ -1065,14 +1150,9 @@
 					"lg": 12,
 					"xl": 12,
 					"default": [],
-					"uniqueColumns": [
-						"evcc_vehicle_id"
-					],
+					"uniqueColumns": ["evcc_vehicle_id"],
 					"titleAttribute": "display_name",
-					"useCardFor": [
-						"sm",
-						"md"
-					],
+					"useCardFor": ["sm", "md"],
 					"items": [
 						{
 							"type": "text",
@@ -1158,9 +1238,7 @@
 				"wb_evcc_active_phases_state": {
 					"type": "objectId",
 					"label": "Aktive Phasen",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1170,9 +1248,7 @@
 				"wb_evcc_configured_phases_state": {
 					"type": "objectId",
 					"label": "Konfigurierte Phasen",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1182,9 +1258,7 @@
 				"wb_evcc_min_current_a_state": {
 					"type": "objectId",
 					"label": "Minimaler Ladestrom (A)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1194,9 +1268,7 @@
 				"wb_evcc_max_current_a_state": {
 					"type": "objectId",
 					"label": "Maximaler Ladestrom (A)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1206,9 +1278,7 @@
 				"wb_evcc_effective_max_current_state": {
 					"type": "objectId",
 					"label": "effectiveMaxCurrent (A, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1218,9 +1288,7 @@
 				"wb_evcc_effective_min_current_state": {
 					"type": "objectId",
 					"label": "effectiveMinCurrent (A, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1230,9 +1298,7 @@
 				"wb_evcc_offered_current_state": {
 					"type": "objectId",
 					"label": "offeredCurrent (A, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1242,9 +1308,7 @@
 				"wb_evcc_charge_currents_state": {
 					"type": "objectId",
 					"label": "chargeCurrents (Diagnose)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1254,9 +1318,7 @@
 				"wb_evcc_charge_voltages_state": {
 					"type": "objectId",
 					"label": "chargeVoltages (Diagnose)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1266,9 +1328,7 @@
 				"wb_evcc_session_price_state": {
 					"type": "objectId",
 					"label": "sessionPrice (Diagnose)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1278,9 +1338,7 @@
 				"wb_evcc_session_price_per_kwh_state": {
 					"type": "objectId",
 					"label": "sessionPricePerKWh (Diagnose)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1290,9 +1348,7 @@
 				"wb_evcc_smart_cost_limit_state": {
 					"type": "objectId",
 					"label": "smartCostLimit (nur lesen, nicht steuern)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1302,9 +1358,7 @@
 				"wb_evcc_smart_cost_active_state": {
 					"type": "objectId",
 					"label": "smartCostActive (nur lesen, nicht steuern)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1436,9 +1490,7 @@
 				"wb_external_smart_plan_state": {
 					"type": "objectId",
 					"label": "Externer Smart-Plan (JSON, nur lesen)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1448,9 +1500,7 @@
 				"wb_external_control_active_state": {
 					"type": "objectId",
 					"label": "Externe Steuerung aktiv (bool, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1460,9 +1510,7 @@
 				"wb_external_grid_rewards_active_state": {
 					"type": "objectId",
 					"label": "Grid Rewards aktiv (bool, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1472,9 +1520,7 @@
 				"wb_external_smart_plan_enabled_state": {
 					"type": "objectId",
 					"label": "Smart-Plan enabled (optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1484,9 +1530,7 @@
 				"wb_external_smart_charging_status_state": {
 					"type": "objectId",
 					"label": "Smart-Charging-Status (optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1496,9 +1540,7 @@
 				"wb_external_plan_deadline_state": {
 					"type": "objectId",
 					"label": "Externe Deadline (optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1508,9 +1550,7 @@
 				"wb_external_target_soc_state": {
 					"type": "objectId",
 					"label": "Externes Ziel-SOC (optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1520,9 +1560,7 @@
 				"wb_external_smart_plan_start_state": {
 					"type": "objectId",
 					"label": "Smart-Plan Start (einzelnes Fenster, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1532,9 +1570,7 @@
 				"wb_external_smart_plan_end_state": {
 					"type": "objectId",
 					"label": "Smart-Plan Ende (einzelnes Fenster, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1544,9 +1580,7 @@
 				"wb_vehicle_charge_pause_state": {
 					"type": "objectId",
 					"label": "Fahrzeug-Ladepause (nur Diagnose, kein External-Control)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1568,9 +1602,7 @@
 				"wb_external_source_updated_at_state": {
 					"type": "objectId",
 					"label": "Externe Quelle Heartbeat / Updated-At (optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1580,9 +1612,7 @@
 				"wb_external_smart_charging_min_soc_state": {
 					"type": "objectId",
 					"label": "Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1703,9 +1733,7 @@
 				"wb_evcc_battery_mode_state": {
 					"type": "objectId",
 					"label": "Hausbatterie-Modus (batteryMode)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1715,9 +1743,7 @@
 				"wb_evcc_battery_discharge_control_state": {
 					"type": "objectId",
 					"label": "Entladesteuerung aktiv (batteryDischargeControl)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -1744,10 +1770,61 @@
 					"label": "Batterie-Steuerung – wirkt sofort",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"items": {
-						"current": {"type":"state","oid":"addons.battery.mode","control":"text","label":"Aktueller Modus","size":"large","blinkOnUpdate":true,"xs":12,"sm":3,"md":3,"lg":3,"xl":3},
-						"off": {"type":"state","oid":"addons.battery.mode","control":"button","controlled":true,"buttonValue":"off","label":"AUS","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
-						"dryrun": {"type":"state","oid":"addons.battery.mode","control":"button","controlled":true,"buttonValue":"dryrun","label":"DRY-RUN","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
-						"live": {"type":"state","oid":"addons.battery.mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3}
+						"current": {
+							"type": "state",
+							"oid": "addons.battery.mode",
+							"control": "text",
+							"label": "Aktueller Modus",
+							"size": "large",
+							"blinkOnUpdate": true,
+							"xs": 12,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"off": {
+							"type": "state",
+							"oid": "addons.battery.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "off",
+							"label": "AUS",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"dryrun": {
+							"type": "state",
+							"oid": "addons.battery.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "dryrun",
+							"label": "DRY-RUN",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"live": {
+							"type": "state",
+							"oid": "addons.battery.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "live",
+							"label": "LIVE",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						}
 					},
 					"xs": 12,
 					"sm": 12,
@@ -1826,9 +1903,15 @@
 				"battery_wear_cost_ct_per_kwh": {
 					"type": "number",
 					"label": "Pauschaler Batterieverschleiß (ct je entnommener kWh, optional)",
-					"min": 0, "max": 100, "step": 0.1,
+					"min": 0,
+					"max": 100,
+					"step": 0.1,
 					"help": "Vereinfachter Tendenzwert: geschätzte Batteriekosten ÷ erwarteter Energieumsatz über die Lebensdauer. Leer oder 0 = Verschleiß nicht in Euro bewerten. Der Wert ist keine exakte Alterungsdiagnose.",
-					"xs": 12, "sm": 12, "md": 4, "lg": 4, "xl": 4
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"hBatProfile": {
 					"type": "header",
@@ -1902,9 +1985,7 @@
 				"bat_soc_target": {
 					"type": "objectId",
 					"label": "SOC (%) – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -1924,9 +2005,7 @@
 				"bat_power_target": {
 					"type": "objectId",
 					"label": "Batterieleistung (W) – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -1946,9 +2025,7 @@
 				"bat_charging_power_target": {
 					"type": "objectId",
 					"label": "Ladeleistung (W), optional – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -1968,9 +2045,7 @@
 				"bat_discharging_power_target": {
 					"type": "objectId",
 					"label": "Entladeleistung (W), optional – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -1990,9 +2065,7 @@
 				"bat_capacity_kwh_target": {
 					"type": "objectId",
 					"label": "Kapazität (kWh), optional – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2012,9 +2085,7 @@
 				"bat_seconds_since_full_target": {
 					"type": "objectId",
 					"label": "Sekunden seit Vollladung (s), optional – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2034,9 +2105,7 @@
 				"bat_operating_mode_read_target": {
 					"type": "objectId",
 					"label": "Betriebsmodus (Lesen), optional – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2056,9 +2125,7 @@
 				"bat_online_target": {
 					"type": "objectId",
 					"label": "Online-/Kommunikationsstatus, optional – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2078,9 +2145,7 @@
 				"bat_consumption_target": {
 					"type": "objectId",
 					"label": "Hausverbrauch (W), für Netzausgleich – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2100,9 +2165,7 @@
 				"bat_pv_ac_target": {
 					"type": "objectId",
 					"label": "PV-AC-Leistung (W), für Netzausgleich – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2295,9 +2358,7 @@
 				"bat_operating_mode_target": {
 					"type": "objectId",
 					"label": "EM_OperatingMode – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2319,9 +2380,7 @@
 				"bat_battery_charging_target": {
 					"type": "objectId",
 					"label": "control.charge – Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2343,9 +2402,7 @@
 				"bat_battery_discharging_target": {
 					"type": "objectId",
 					"label": "control.discharge – Ziel-State (Netzausgleich Mode 2)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2683,7 +2740,7 @@
 					"xl": 12,
 					"text": "Empfohlen: aktiv. Es gibt keine festen SOC-Böden je Verbraucher mehr. Die zentrale dynamische Batterie-Reserve und das Hardware-Minimum schützen die Batterie; Mindestlaufzeiten verhindern Abschalten bei kurzen Wolken."
 				},
-			"hBatDiagnostics": {
+				"hBatDiagnostics": {
 					"type": "header",
 					"size": 2,
 					"text": "Diagnose",
@@ -2740,10 +2797,61 @@
 					"label": "Heizstab-Steuerung – wirkt sofort",
 					"help": "Aus: EMS-Light übernimmt dieses Gerät nicht. Dryrun: plant und simuliert, keine Schaltbefehle. Live: plant und steuert, sofern auch Global auf Live steht.",
 					"items": {
-						"current": {"type":"state","oid":"addons.immersion_heater.mode","control":"text","label":"Aktueller Modus","size":"large","blinkOnUpdate":true,"xs":12,"sm":3,"md":3,"lg":3,"xl":3},
-						"off": {"type":"state","oid":"addons.immersion_heater.mode","control":"button","controlled":true,"buttonValue":"off","label":"AUS","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
-						"dryrun": {"type":"state","oid":"addons.immersion_heater.mode","control":"button","controlled":true,"buttonValue":"dryrun","label":"DRY-RUN","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3},
-						"live": {"type":"state","oid":"addons.immersion_heater.mode","control":"button","controlled":true,"buttonValue":"live","label":"LIVE","variant":"contained","xs":4,"sm":3,"md":3,"lg":3,"xl":3}
+						"current": {
+							"type": "state",
+							"oid": "addons.immersion_heater.mode",
+							"control": "text",
+							"label": "Aktueller Modus",
+							"size": "large",
+							"blinkOnUpdate": true,
+							"xs": 12,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"off": {
+							"type": "state",
+							"oid": "addons.immersion_heater.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "off",
+							"label": "AUS",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"dryrun": {
+							"type": "state",
+							"oid": "addons.immersion_heater.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "dryrun",
+							"label": "DRY-RUN",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						},
+						"live": {
+							"type": "state",
+							"oid": "addons.immersion_heater.mode",
+							"control": "button",
+							"controlled": true,
+							"buttonValue": "live",
+							"label": "LIVE",
+							"variant": "contained",
+							"xs": 4,
+							"sm": 3,
+							"md": 3,
+							"lg": 3,
+							"xl": 3
+						}
 					},
 					"xs": 12,
 					"sm": 12,
@@ -2764,9 +2872,7 @@
 				"ih_set_enabled_target": {
 					"type": "objectId",
 					"label": "Ziel-State (Relais ON/OFF)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2796,9 +2902,7 @@
 				"ih_buffer_temp_c_target": {
 					"type": "objectId",
 					"label": "Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -2828,9 +2932,7 @@
 				"ih_boiler_temp_c_target": {
 					"type": "objectId",
 					"label": "Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -3158,9 +3260,7 @@
 				"ih_actual_power_state": {
 					"type": "objectId",
 					"label": "Ist-Leistung gesamt (W, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -3212,9 +3312,7 @@
 				"ih_stage_1_set_state": {
 					"type": "objectId",
 					"label": "Schaltausgang (leer = set_enabled)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -3224,9 +3322,7 @@
 				"ih_stage_1_feedback_state": {
 					"type": "objectId",
 					"label": "Rückmeldung (optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10171,10 +10267,7 @@
 					"default": [],
 					"uniqueColumns": [],
 					"titleAttribute": "name",
-					"useCardFor": [
-						"sm",
-						"md"
-					],
+					"useCardFor": ["sm", "md"],
 					"items": [
 						{
 							"type": "checkbox",
@@ -10203,9 +10296,7 @@
 						{
 							"type": "objectId",
 							"attr": "power_state_id",
-							"types": [
-								"state"
-							],
+							"types": ["state"],
 							"title": {
 								"de": "Leistungs-Datenpunkt (W)",
 								"en": "Power datapoint (W)"
@@ -10218,9 +10309,7 @@
 						{
 							"type": "objectId",
 							"attr": "energy_state_id",
-							"types": [
-								"state"
-							],
+							"types": ["state"],
 							"title": {
 								"de": "Energie-Datenpunkt (kWh, optional)",
 								"en": "Energy datapoint (kWh, optional)"
@@ -10280,9 +10369,7 @@
 				"dt_price_now_target": {
 					"type": "objectId",
 					"label": "Ziel-State",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -10377,22 +10464,46 @@
 					"xl": 4
 				},
 				"hGridLimits": {
-					"type": "header", "size": 2, "text": "Netzanschluss und Leistungsgrenzen",
-					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+					"type": "header",
+					"size": 2,
+					"text": "Netzanschluss und Leistungsgrenzen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"global_policy_house_fuse_limit_w": {
-					"type": "number", "label": "Haus-Sicherung (W, optional)", "min": 0,
+					"type": "number",
+					"label": "Haus-Sicherung (W, optional)",
+					"min": 0,
 					"help": "Harte Obergrenze des Hausanschlusses. Flexible Verbraucher werden darunter begrenzt.",
-					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"global_policy_max_grid_import_w": {
-					"type": "number", "label": "Maximaler Netzbezug (W, optional)", "min": 0,
-					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+					"type": "number",
+					"label": "Maximaler Netzbezug (W, optional)",
+					"min": 0,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"global_policy_grid_import_allowed": {
-					"type": "checkbox", "label": "Netzbezug für flexible Verbraucher erlaubt", "default": true,
+					"type": "checkbox",
+					"label": "Netzbezug für flexible Verbraucher erlaubt",
+					"default": true,
 					"help": "Ausschalten sperrt unter anderem Batterie-Netzladung. Der normale unvermeidbare Hausbezug kann dadurch nicht technisch verhindert werden.",
-					"xs": 12, "sm": 12, "md": 4, "lg": 4, "xl": 4
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				}
 			}
 		},
@@ -10470,9 +10581,7 @@
 					"type": "objectId",
 					"label": "Tibber Tageskosten EUR (empfohlen)",
 					"help": "z. B. tibberlink.…LiveMeasurement.accumulatedCost — Kosten seit Mitternacht.",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10483,9 +10592,7 @@
 					"type": "objectId",
 					"label": "Tibber jsonDaily (Haus Monat)",
 					"help": "tibberlink.…Consumption.jsonDaily — totalCost ist komplett (inkl. Gebühren). Tarif-Tab-Gebühren werden dafür nicht nochmal addiert. Voraussetzung: Historische Verbrauchsdaten + Tage≥31.",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10496,9 +10603,7 @@
 					"type": "objectId",
 					"label": "Netzbezug Monat kWh (optional)",
 					"help": "z. B. tibberlink …Consumption.currentMonthConsumption — Alternative zu jsonDaily nur für kWh.",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10509,9 +10614,7 @@
 					"type": "objectId",
 					"label": "Tibber Monatskosten EUR (optional)",
 					"help": "Vorberechneter Monatswert (Script). jsonDaily hat Vorrang wenn gemappt.",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10533,9 +10636,7 @@
 					"type": "objectId",
 					"label": "Grid Rewards heute EUR (Schätzung)",
 					"help": "z. B. hass.…sensor.tibber_grid_reward_grid_reward_current_day — Schätzung, erst mit Tibber-Abrechnung exakt.",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10546,9 +10647,7 @@
 					"type": "objectId",
 					"label": "Grid Rewards Monat EUR (Schätzung)",
 					"help": "z. B. hass.…sensor.tibber_grid_reward_grid_reward_current_month — Monats-Schätzung bis Abrechnung.",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10559,9 +10658,7 @@
 					"type": "objectId",
 					"label": "Grid Rewards EUR (Legacy, Tag)",
 					"help": "Veraltet — bitte „Grid Rewards heute EUR“ nutzen. Fallback wenn Tag-Mapping leer.",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10590,9 +10687,7 @@
 				"statistics_grid_import_energy_kwh_state": {
 					"type": "objectId",
 					"label": "Netzbezug Energie (kWh, Zähler)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10602,9 +10697,7 @@
 				"statistics_grid_export_energy_kwh_state": {
 					"type": "objectId",
 					"label": "Einspeisung Energie (kWh, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10614,9 +10707,7 @@
 				"statistics_grid_import_power_w_state": {
 					"type": "objectId",
 					"label": "Netzbezug Leistung (W, für Kosten-Integration)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10672,9 +10763,7 @@
 				"statistics_fuel_price_eur_per_l_state": {
 					"type": "objectId",
 					"label": "Spritpreis €/l (z. B. Tankerkönig)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10697,9 +10786,7 @@
 				"statistics_ev_consumption_kwh_per_100_state": {
 					"type": "objectId",
 					"label": "E-Auto Verbrauch kWh/100 km (Ford Pass / Trip Log)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10731,9 +10818,7 @@
 				"statistics_wallbox_session_energy_kwh_state": {
 					"type": "objectId",
 					"label": "Session Energie kWh (Override — leer = EMS EVCC-Spiegel)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10743,9 +10828,7 @@
 				"statistics_wallbox_session_price_per_kwh_state": {
 					"type": "objectId",
 					"label": "Session Preis €/kWh (Override, z. B. evcc)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10862,9 +10945,7 @@
 				"learning_pv_bias_history_actual_state": {
 					"type": "objectId",
 					"label": "PV-Ist Tageswert (Historie)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10874,9 +10955,7 @@
 				"learning_pv_bias_history_forecast_state": {
 					"type": "objectId",
 					"label": "PV-Rohforecast Tageswert (Historie, nur ohne Freeze)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10896,9 +10975,7 @@
 				"learning_pv_bias_raw_today_state": {
 					"type": "objectId",
 					"label": "Rohforecast heute (kWh)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10908,9 +10985,7 @@
 				"learning_pv_bias_raw_tomorrow_state": {
 					"type": "objectId",
 					"label": "Rohforecast morgen (kWh)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10949,9 +11024,7 @@
 				"learning_pv_horizon_day3_raw_state": {
 					"type": "objectId",
 					"label": "Tag 3 (+2 Tage) Roh-Schätzung kWh — z. B. brightsky.0.daily.02.solar_estimate",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10961,9 +11034,7 @@
 				"learning_pv_horizon_day4_raw_state": {
 					"type": "objectId",
 					"label": "Tag 4 (+3 Tage) — z. B. brightsky.0.daily.03.solar_estimate",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10973,9 +11044,7 @@
 				"learning_pv_horizon_day5_raw_state": {
 					"type": "objectId",
 					"label": "Tag 5 (+4 Tage) — z. B. brightsky.0.daily.04.solar_estimate",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10985,9 +11054,7 @@
 				"learning_pv_horizon_day6_raw_state": {
 					"type": "objectId",
 					"label": "Tag 6 (+5 Tage) — z. B. brightsky.0.daily.05.solar_estimate",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -10997,9 +11064,7 @@
 				"learning_pv_horizon_day7_raw_state": {
 					"type": "objectId",
 					"label": "Tag 7 (+6 Tage) — z. B. brightsky.0.daily.06.solar_estimate",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11047,9 +11112,7 @@
 				"pv_shape_kwp_state_1": {
 					"type": "objectId",
 					"label": "Installierte Leistung Fläche/WR 1 (kWp) — z. B. pvforecast.0.plants.<name>.power.installed",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11059,9 +11122,7 @@
 				"pv_shape_kwp_state_2": {
 					"type": "objectId",
 					"label": "Installierte Leistung Fläche/WR 2 (kWp, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11122,9 +11183,7 @@
 				"learning_weather_forecast_temp_state": {
 					"type": "objectId",
 					"label": "Forecast Temperatur (°C)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11134,9 +11193,7 @@
 				"learning_weather_forecast_cloud_state": {
 					"type": "objectId",
 					"label": "Forecast Bewölkung (%)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11146,9 +11203,7 @@
 				"learning_weather_forecast_rain_state": {
 					"type": "objectId",
 					"label": "Forecast Niederschlag (mm)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11158,9 +11213,7 @@
 				"learning_weather_forecast_wind_state": {
 					"type": "objectId",
 					"label": "Forecast Wind (km/h, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11180,9 +11233,7 @@
 				"learning_weather_actual_temp_state": {
 					"type": "objectId",
 					"label": "Ist Temperatur (°C)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11192,9 +11243,7 @@
 				"learning_weather_actual_cloud_state": {
 					"type": "objectId",
 					"label": "Ist Bewölkung (%)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11204,9 +11253,7 @@
 				"learning_weather_actual_rain_state": {
 					"type": "objectId",
 					"label": "Ist Niederschlag (mm)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11216,9 +11263,7 @@
 				"learning_weather_actual_wind_state": {
 					"type": "objectId",
 					"label": "Ist Wind (km/h, optional)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11252,9 +11297,7 @@
 				"learning_weather_horizon_day1_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 1 (heute) Min °C — z. B. brightsky.0.daily.00.temperature_min",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11264,9 +11307,7 @@
 				"learning_weather_horizon_day1_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 1 (heute) Max °C — z. B. brightsky.0.daily.00.temperature_max",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11276,9 +11317,7 @@
 				"learning_weather_horizon_day2_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 2 (morgen) Min °C — z. B. brightsky.0.daily.01.temperature_min",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11288,9 +11327,7 @@
 				"learning_weather_horizon_day2_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 2 (morgen) Max °C — z. B. brightsky.0.daily.01.temperature_max",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11300,9 +11337,7 @@
 				"learning_weather_horizon_day3_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 3 Min °C — z. B. brightsky.0.daily.02.temperature_min",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11312,9 +11347,7 @@
 				"learning_weather_horizon_day3_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 3 Max °C — z. B. brightsky.0.daily.02.temperature_max",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11324,9 +11357,7 @@
 				"learning_weather_horizon_day4_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 4 Min °C — z. B. brightsky.0.daily.03.temperature_min",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11336,9 +11367,7 @@
 				"learning_weather_horizon_day4_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 4 Max °C — z. B. brightsky.0.daily.03.temperature_max",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11348,9 +11377,7 @@
 				"learning_weather_horizon_day5_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 5 Min °C — z. B. brightsky.0.daily.04.temperature_min",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11360,9 +11387,7 @@
 				"learning_weather_horizon_day5_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 5 Max °C — z. B. brightsky.0.daily.04.temperature_max",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11372,9 +11397,7 @@
 				"learning_weather_horizon_day6_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 6 Min °C — z. B. brightsky.0.daily.05.temperature_min",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11384,9 +11407,7 @@
 				"learning_weather_horizon_day6_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 6 Max °C — z. B. brightsky.0.daily.05.temperature_max",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11396,9 +11417,7 @@
 				"learning_weather_horizon_day7_min_temp_state": {
 					"type": "objectId",
 					"label": "Tag 7 Min °C — z. B. brightsky.0.daily.06.temperature_min",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11408,9 +11427,7 @@
 				"learning_weather_horizon_day7_max_temp_state": {
 					"type": "objectId",
 					"label": "Tag 7 Max °C — z. B. brightsky.0.daily.06.temperature_max",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11424,7 +11441,7 @@
 				},
 				"hPriceLearningHelp": {
 					"type": "staticText",
-					"text": "Liest historische Preise aus history.0. Quelle frei wählbar — Tibber CurrentPrice.total (€/kWh, empfohlen) oder live.price.now_ct_per_kwh (ct/kWh). Einheit wird automatisch erkannt; Ausgabe learning.price_learning.* immer in €/kWh. Kein zusätzlicher Timer — läuft im PV-Bias-Lernzyklus.",
+					"text": "Liest 24 Monate historische Preise aus history.0; die letzten 90 Tage werden doppelt gewichtet. Negative und extreme gültige Preise bleiben erhalten, ihr Einfluss auf die Modellmitte wird robust begrenzt. Quelle frei wählbar — Tibber CurrentPrice.total (€/kWh, empfohlen) oder live.price.now_ct_per_kwh (ct/kWh). Einheit wird automatisch erkannt; Ausgabe learning.price_learning.* immer in €/kWh. Kein zusätzlicher Timer — läuft im PV-Bias-Lernzyklus.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -11445,8 +11462,8 @@
 					"type": "number",
 					"label": "Lookback (Tage)",
 					"min": 7,
-					"max": 365,
-					"default": 90,
+					"max": 730,
+					"default": 730,
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -11456,9 +11473,7 @@
 				"learning_price_source_state": {
 					"type": "objectId",
 					"label": "Preis-State (optional, z. B. tibberlink.…CurrentPrice.total in €/kWh)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -11533,8 +11548,8 @@
 					"type": "number",
 					"label": "Lookback (Tage)",
 					"min": 7,
-					"max": 365,
-					"default": 90,
+					"max": 730,
+					"default": 730,
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -11544,9 +11559,7 @@
 				"learning_price_forecast_tomorrow_json_state": {
 					"type": "objectId",
 					"label": "Forecast morgen — PricesTomorrow.json",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -11556,9 +11569,7 @@
 				"learning_price_forecast_today_json_state": {
 					"type": "objectId",
 					"label": "Forecast heute — PricesToday.json",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -11568,14 +11579,85 @@
 				"learning_price_forecast_actual_state": {
 					"type": "objectId",
 					"label": "Ist-Preis — CurrentPrice.total (€/kWh)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
 					"lg": 12,
 					"xl": 12
+				},
+				"hPriceOutlook": {
+					"type": "header",
+					"size": 5,
+					"text": "Sieben-Tage-Preisprognose — SMARD + Bright Sky"
+				},
+				"hPriceOutlookHelp": {
+					"type": "staticText",
+					"text": "Veröffentlichte Tibber-Preise bleiben unverändert und haben Vorrang. Tag 3–7 wird stündlich aus SMARD-Preismustern und der Wind-, Solar- und Temperaturlage mehrerer deutscher Bright-Sky-Regionen geschätzt. Zahlen erscheinen erst ab 50 % Confidence; die Schätzung ist zunächst rein informativ und steuert keine Geräte. Externe Daten werden alle drei Stunden aktualisiert.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"price_outlook_enabled": {
+					"type": "checkbox",
+					"label": "Sieben-Tage-Preisprognose aktiv",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"price_outlook_latitude": {
+					"type": "number",
+					"label": "Breitengrad (optional)",
+					"help": "Leer = ioBroker-Systemkoordinaten. Nur für die lokale Anlagen-/PV-Wetterbasis; die Preisprognose verwendet zusätzlich mehrere deutsche Regionen.",
+					"min": -90,
+					"max": 90,
+					"step": 0.0001,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"price_outlook_longitude": {
+					"type": "number",
+					"label": "Längengrad (optional)",
+					"help": "Leer = ioBroker-Systemkoordinaten.",
+					"min": -180,
+					"max": 180,
+					"step": 0.0001,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"price_outlook_timezone": {
+					"type": "text",
+					"label": "Zeitzone (optional)",
+					"help": "Leer = ioBroker-Systemzeitzone beziehungsweise EMS-Zeitzone, z. B. Europe/Berlin.",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"price_outlook_pv_kwp": {
+					"type": "number",
+					"label": "PV-Anlagenleistung (kWp, optional)",
+					"help": "Leer = Summe der unter PV-Tagesform konfigurierten kWp-Datenpunkte. Bright Sky erzeugt daraus einen lokalen PV-Rohwert; der gelernte PV-Bias korrigiert ihn anschließend.",
+					"min": 0,
+					"max": 1000,
+					"step": 0.1,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"hHouseLoadLearning": {
 					"type": "header",
@@ -11616,9 +11698,7 @@
 				"learning_house_load_power_state": {
 					"type": "objectId",
 					"label": "Hauslast-State (optional, z. B. sonnen.0.status.consumption in W)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -11664,9 +11744,7 @@
 				"learning_thermal_runtime_temperature_state": {
 					"type": "objectId",
 					"label": "Temperatur-State (optional, z. B. Puffer Mitte °C)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -11793,9 +11871,7 @@
 				"learning_battery_runtime_soc_state": {
 					"type": "objectId",
 					"label": "SOC-State (optional, z. B. sonnen.0.status.userSoc)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -11805,9 +11881,7 @@
 				"learning_battery_runtime_power_state": {
 					"type": "objectId",
 					"label": "Batterie-Leistung W (optional, intern + laden / − entladen)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 9,
@@ -11827,9 +11901,7 @@
 				"learning_battery_runtime_capacity_state": {
 					"type": "objectId",
 					"label": "Kapazität kWh (optional, für Nacht-kWh)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -11839,9 +11911,7 @@
 				"learning_battery_runtime_seconds_since_full_state": {
 					"type": "objectId",
 					"label": "Sekunden seit Vollladung (optional — überschreibt battery.mapping)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 12,
@@ -11905,9 +11975,7 @@
 				"learning_battery_runtime_night_start_state": {
 					"type": "objectId",
 					"label": "Astro Nachtbeginn (z. B. javascript.0.variables.astro.dusk)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11917,9 +11985,7 @@
 				"learning_battery_runtime_night_end_state": {
 					"type": "objectId",
 					"label": "Astro Nachtende (z. B. javascript.0.variables.astro.dawn)",
-					"types": [
-						"state"
-					],
+					"types": ["state"],
 					"xs": 12,
 					"sm": 12,
 					"md": 6,
@@ -11935,13 +12001,28 @@
 				"storageIntro": {
 					"type": "staticText",
 					"text": "Zeigt die tatsächlich von dieser EMS-Instanz belegten Dateien und den freien Platz des Datenträgers. Haltezeiten unterscheiden sich je Datenart; alte Daten werden weiterhin automatisch begrenzt.",
-					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"storageReport": {
-					"type": "sendTo", "command": "getStorageReport", "jsonData": "{}",
-					"label": "Speicherbelegung jetzt berechnen", "showProcess": true, "timeout": 30000,
-					"result": {"ok": "Speicherbelegung ermittelt", "error": "Speicherbelegung nicht ermittelbar"},
-					"xs": 12, "sm": 6, "md": 4, "lg": 4, "xl": 4
+					"type": "sendTo",
+					"command": "getStorageReport",
+					"jsonData": "{}",
+					"label": "Speicherbelegung jetzt berechnen",
+					"showProcess": true,
+					"timeout": 30000,
+					"result": {
+						"ok": "Speicherbelegung ermittelt",
+						"error": "Speicherbelegung nicht ermittelbar"
+					},
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
 				"_storageReportResult": {
 					"type": "state",
@@ -11950,12 +12031,20 @@
 					"readOnly": true,
 					"label": "Auswertung",
 					"newLine": true,
-					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				},
 				"retentionExplanation": {
 					"type": "staticText",
 					"text": "Richtwerte: Tages-Telemetrie meist 90 Tage, Lern-/Rollup-Daten je nach Zweck 120 Tage, Energietageswerte bis 730 Tage; Backups und Supportpakete sind mengenbegrenzt. Die Hochrechnung ist anfangs nur eine Tendenz.",
-					"xs": 12, "sm": 12, "md": 12, "lg": 12, "xl": 12
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				}
 			}
 		},

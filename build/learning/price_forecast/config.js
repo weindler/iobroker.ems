@@ -27,7 +27,7 @@ function priceForecastConfigFromAdapter(config) {
     const c = config && typeof config === "object" ? config : {};
     const lookbackRaw = c.learning_price_forecast_lookback_days;
     const lookbackN = typeof lookbackRaw === "number" ? lookbackRaw : parseInt(String(lookbackRaw ?? ""), 10);
-    const lookbackDays = Number.isFinite(lookbackN) && lookbackN >= 7 && lookbackN <= 365
+    const lookbackDays = Number.isFinite(lookbackN) && lookbackN >= 7 && lookbackN <= 730
         ? Math.round(lookbackN)
         : constants_1.DEFAULT_LOOKBACK_DAYS;
     const tomorrowFreezeRaw = strField(c, "learning_price_forecast_freeze_time") ||

@@ -2925,7 +2925,7 @@ function renderHorizon(){
 					sbits.push(Math.round(bat.socBeforePvPct)+" % vor PV-Beginn ("+fmtTime(bat.pvStartIso)+")");
 				}
 				if(bat.pvEndIso&&bat.socAtPvEndPct!=null)sbits.push(Math.round(bat.socAtPvEndPct)+" % bei PV-Ende ("+fmtTime(bat.pvEndIso)+")");
-				if(!bat.pvStartIso&&!bat.pvEndIso)sbits.push("kein ausreichendes PV-Deckungsfenster erwartet oder Prognose unvollständig");
+				if(!bat.pvStartIso&&!bat.pvEndIso)sbits.push(bat.pvCoverageKnown?"kein ausreichendes PV-Deckungsfenster erwartet":"PV-/Hausprognose teilweise unbekannt");
 				if(bat.midnightSocPct!=null)sbits.push(Math.round(bat.midnightSocPct)+" % um Mitternacht");
 				if(bat.projectedMinSocPct!=null)sbits.push((oi===0?"Tiefststand ab jetzt ":"Tiefststand ")+Math.round(bat.projectedMinSocPct)+" %");
 				olines.push("Batterie voraussichtlich "+sbits.join(" · "));

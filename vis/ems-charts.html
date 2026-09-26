@@ -2917,9 +2917,19 @@ function renderHorizon(){
 			od=outlook.days[oi];olines=[];
 			olines.push((oi===0?"PV Rest heute ":"PV ")+(od.expectedPvKwh==null?"Prognose wird noch aufgebaut":Number(od.expectedPvKwh).toFixed(1).replace(".",",")+" kWh erwartet")+" · "+(oi===0?"Haus Rest heute ":"Haus ")+(od.expectedHouseLoadKwh==null?"Lernwert wird noch aufgebaut":Number(od.expectedHouseLoadKwh).toFixed(1).replace(".",",")+" kWh erwartet"));
 			if(od.priceCtPerKwh&&od.priceCtPerKwh.min!=null&&od.priceCtPerKwh.max!=null)olines.push("Preis "+Number(od.priceCtPerKwh.min).toFixed(1).replace(".",",")+"–"+Number(od.priceCtPerKwh.max).toFixed(1).replace(".",",")+" ct/kWh"+(od.priceCtPerKwh.complete?"":" · teilweise"));
-			if(od.battery&&od.battery.projectedFirstSocPct!=null&&od.battery.projectedLastSocPct!=null){
-				olines.push("Batterie voraussichtlich "+Math.round(od.battery.projectedFirstSocPct)+(oi===0?" % ab jetzt, ":" % morgens, ")+Math.round(od.battery.projectedLastSocPct)+" % abends · niedrigster Stand "+Math.round(od.battery.projectedMinSocPct)+" %");
-				olines.push("Batterie voraussichtlich "+Number(od.battery.chargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh geladen · "+Number(od.battery.dischargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh entladen");
+			if(od.battery){
+				var bat=od.battery, sbits=[];
+				if(oi===0){
+					if(bat.currentSocPct!=null)sbits.push(Math.round(bat.currentSocPct)+" % ab jetzt");
+				}else if(bat.pvStartIso&&bat.socBeforePvPct!=null){
+					sbits.push(Math.round(bat.socBeforePvPct)+" % vor PV-Beginn ("+localTime(bat.pvStartIso)+")");
+				}
+				if(bat.pvEndIso&&bat.socAtPvEndPct!=null)sbits.push(Math.round(bat.socAtPvEndPct)+" % bei PV-Ende ("+localTime(bat.pvEndIso)+")");
+				if(!bat.pvStartIso&&!bat.pvEndIso)sbits.push("kein ausreichendes PV-Deckungsfenster erwartet oder Prognose unvollständig");
+				if(bat.midnightSocPct!=null)sbits.push(Math.round(bat.midnightSocPct)+" % um Mitternacht");
+				if(bat.projectedMinSocPct!=null)sbits.push((oi===0?"Tiefststand ab jetzt ":"Tiefststand ")+Math.round(bat.projectedMinSocPct)+" %");
+				olines.push("Batterie voraussichtlich "+sbits.join(" · "));
+				olines.push("Batterie voraussichtlich "+Number(bat.chargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh geladen · "+Number(bat.dischargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh entladen");
 			}
 			if(od.allocations&&od.allocations.length){
 				var abits=[];

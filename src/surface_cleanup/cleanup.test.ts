@@ -479,4 +479,17 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.equal(host.deleted.includes("addons.battery.grid_balance.requested_power_w"), false);
 		assert.equal(host.deleted.includes("addons.battery.grid_balance.requested_discharge_w"), false);
 	});
+
+	it("creates and preserves price bridge runtime states before planner writes", async () => {
+		const { ensureBatteryArchitectureStates, BAT } = await import("../addons/battery/ensure_states.js");
+		const host = new FakeCleanupHost({});
+		await ensureBatteryArchitectureStates(host as unknown as ioBroker.Adapter);
+		const ids = [BAT.runtime.priceHoldUntilIso, BAT.runtime.priceHoldHeartbeatIso, BAT.runtime.priceTargetSocPct];
+		for (const id of ids) {
+			assert.equal(host.objects.has(id), true, `${id} must exist before first write`);
+			assert.equal(isAllowlistedCleanupRelativeId(id), false, `${id} must not be cleanup ballast`);
+		}
+		await runDynamicSurfaceCleanup(host);
+		for (const id of ids) assert.equal(host.objects.has(id), true, `${id} must survive cleanup`);
+	});
 });

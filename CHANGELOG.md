@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.17] – 2026-09-26
+
+### Fixed
+
+- Die drei neuen Laufzeit-States der Batterie-Preisbrücke werden vor dem ersten Zugriff angelegt und bleiben bei der Oberflächenbereinigung erhalten. Dadurch entfallen die entsprechenden Objektwarnungen beim Start.
+
 ## [0.4.16] – 2026-09-26
 
 ### Changed

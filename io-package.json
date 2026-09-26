@@ -1,14 +1,18 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.16",
+		"version": "0.4.17",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.17": {
+				"en": "Creates and preserves the three battery price-bridge runtime states before the planner writes to them.",
+				"de": "Legt die drei Laufzeit-States der Batterie-Preisbrücke vor dem ersten Planer-Write an und schützt sie vor der Bereinigung."
+			},
 			"0.4.16": {
-				"en": "Clarifies battery SOC at the usable PV window and midnight; reconciles energy, mobility and cost statistics against available measured data without changing device control.",
-				"de": "Zeigt Batterie-SOC zum nutzbaren PV-Fenster und um Mitternacht; gleicht Energie-, Mobilitäts- und Kostenstatistik mit vorhandenen Messdaten ab, ohne die Gerätesteuerung zu ändern."
+				"en": "Clarifies battery SOC at usable PV windows and midnight, reconciles statistics, and adds dynamic battery price planning with a controlled Sonnen discharge hold.",
+				"de": "Zeigt Batterie-SOC zum nutzbaren PV-Fenster und um Mitternacht, gleicht die Statistik ab und ergänzt dynamische Batterie-Preisplanung mit gesteuerter Sonnen-Entladesperre."
 			},
 			"0.4.15": {
 				"en": "Shows when climate control is off and creates the technical allocated-power states for all supported climate slots.",

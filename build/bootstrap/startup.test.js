@@ -423,11 +423,11 @@ function assertCoreCategories(adapter) {
          * Historisch 350–550. Stand Aug 2026 (leere Config): ~604 States.
          * Phasen 4–7 plus GB-Economics (α/β, C_replace, Shadow-Dreiteilung)
          * addieren schlanke Transparenz-States; JSON-Dumps bleiben in Dateien.
-         * Obergrenze 722: vier öffentliche EV-/Tibber-States sowie acht öffentliche
-         * PV-Horizon-Rohwerte bleiben nach der Startbereinigung absichtlich erhalten;
+         * Obergrenze 725: zusätzlich zu den EV-/Tibber- und PV-Horizon-States
+         * bleiben drei für die Batterie-Preisbrücke benötigte Laufzeit-States erhalten;
          * State-Explosionen bleiben sichtbar.
          */
-        strict_1.default.ok(states <= 722, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+        strict_1.default.ok(states <= 725, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
         strict_1.default.ok(states >= 250, `unexpectedly small surface states=${states}`);
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes("addons.measured_consumers")), "empty measured_consumers config must not create consumer/aggregate states");
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes(".mapping.")), "mapping shadows remain");

@@ -375,4 +375,17 @@ class FakeCleanupHost {
         strict_1.default.equal(host.deleted.includes("addons.battery.grid_balance.requested_power_w"), false);
         strict_1.default.equal(host.deleted.includes("addons.battery.grid_balance.requested_discharge_w"), false);
     });
+    (0, node_test_1.it)("creates and preserves price bridge runtime states before planner writes", async () => {
+        const { ensureBatteryArchitectureStates, BAT } = await import("../addons/battery/ensure_states.js");
+        const host = new FakeCleanupHost({});
+        await ensureBatteryArchitectureStates(host);
+        const ids = [BAT.runtime.priceHoldUntilIso, BAT.runtime.priceHoldHeartbeatIso, BAT.runtime.priceTargetSocPct];
+        for (const id of ids) {
+            strict_1.default.equal(host.objects.has(id), true, `${id} must exist before first write`);
+            strict_1.default.equal((0, allowlist_js_1.isAllowlistedCleanupRelativeId)(id), false, `${id} must not be cleanup ballast`);
+        }
+        await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
+        for (const id of ids)
+            strict_1.default.equal(host.objects.has(id), true, `${id} must survive cleanup`);
+    });
 });

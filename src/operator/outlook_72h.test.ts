@@ -147,6 +147,49 @@ describe("operator rolling 72 h outlook", () => {
 		assert.match(formatOperatorOutlook72hDe(outlook), /72-h-Ausblick/);
 	});
 
+	it("ordnet SOC dem ersten und letzten stabilen PV-Deckungsfenster zu", () => {
+		const input = input80h();
+		input.pv.slots = input.time.slots.map((slot) => {
+			const hour = new Date(slot.startIso).getUTCHours();
+			const power = hour >= 8 && hour < 17 ? 1500 : 0;
+			return { slot, forecastPowerW: power, observedPowerW: null, energyKwh: power / 4000 };
+		});
+		const plan = allocateUnifiedDayPlan(input);
+		plan.batteryTrajectory = input.time.slots.map((slot, i) => ({
+			slotStartIso: slot.startIso,
+			socPct: Math.min(100, 30 + i),
+			chargeEnergyKwh: 0,
+			dischargeEnergyKwh: 0,
+		}));
+		const outlook = buildOperatorOutlook72h({ now: NOW, timezone: "UTC", plan, plannerInput: input });
+		const today = outlook.days[0].battery!;
+		assert.equal(today.currentSocPct, input.battery.socPct);
+		assert.equal(today.pvStartIso, "2026-09-03T08:00:00.000Z");
+		assert.equal(today.pvEndIso, "2026-09-03T17:00:00.000Z");
+		assert.equal(today.socBeforePvPct, 61); // Ende 07:45-Slot
+		assert.equal(today.socAtPvEndPct, 97); // Ende 16:45-Slot
+		assert.equal(today.midnightSocPct, 100);
+		assert.match(formatOperatorOutlook72hDe(outlook), /PV-Ende.*Mitternacht/);
+		assert.doesNotMatch(formatOperatorOutlook72hDe(outlook), /morgens|abends|Tagesende/);
+	});
+
+	it("überbrückt kurze Wolkenlücken, ignoriert einzelne PV-Ausreißer und fehlende Werte", () => {
+		const input = input80h();
+		input.pv.slots = input.time.slots.map((slot, i) => {
+			const hour = new Date(slot.startIso).getUTCHours();
+			const power = (hour >= 8 && hour < 17 && i !== 41 && i !== 42) || i === 4 ? 1500 : 0;
+			return { slot, forecastPowerW: power, observedPowerW: null, energyKwh: power / 4000 };
+		});
+		const plan = allocateUnifiedDayPlan(input);
+		const a = buildOperatorOutlook72h({ now: NOW, timezone: "UTC", plan, plannerInput: input });
+		assert.equal(a.days[0].battery?.pvStartIso, "2026-09-03T08:00:00.000Z");
+		assert.equal(a.days[0].battery?.pvEndIso, "2026-09-03T17:00:00.000Z");
+		input.pv.slots[34].forecastPowerW = null;
+		const partial = buildOperatorOutlook72h({ now: NOW, timezone: "UTC", plan, plannerInput: input });
+		assert.equal(partial.days[0].battery?.pvStartIso, null);
+		assert.equal(partial.days[0].battery?.pvCoverageKnown, false);
+	});
+
 	it("keeps a partially missing PV day null instead of fabricating a full sum", () => {
 		const input = input80h(true);
 		const plan = allocateUnifiedDayPlan(input);

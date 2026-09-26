@@ -17,8 +17,9 @@ describe("Klima-State-Anlage", () => {
 			const id = acUnitRuntimeStates(i).allocatedPowerW;
 			const obj = objects.get(id);
 			assert.equal(obj?.type, "state", id);
-			assert.equal(obj?.common.type, "number", id);
-			assert.equal(obj?.common.unit, "W", id);
+			const common = obj?.common as ioBroker.StateCommon | undefined;
+			assert.equal(common?.type, "number", id);
+			assert.equal(common?.unit, "W", id);
 		}
 		for (let i = 3; i <= AC_UNIT_COUNT; i++) {
 			assert.equal(objects.has(acUnitRuntimeStates(i).estimatedPowerW), false);

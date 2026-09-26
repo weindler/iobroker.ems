@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.17",
+		"version": "0.4.18",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.18": {
+				"en": "Recognizes an EVCC battery hold at startup and waits for EVCC to release Sonnen manual mode without taking device ownership.",
+				"de": "Erkennt eine EVCC-Batteriesperre beim Start und wartet ohne eigene Sonnen-Steuerung auf die externe Freigabe des manuellen Modus."
+			},
 			"0.4.17": {
 				"en": "Creates and preserves the three battery price-bridge runtime states before the planner writes to them.",
 				"de": "Legt die drei Laufzeit-States der Batterie-Preisbrücke vor dem ersten Planer-Write an und schützt sie vor der Bereinigung."

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { __resetBatteryRuntimeForTest, runBatteryControlTick } from "./index.js";
+import { __resetBatteryRuntimeForTest, detectForeignOwnershipOnStart, runBatteryControlTick } from "./index.js";
 import { BAT } from "./ensure_states.js";
 import { getBatterySetpointSession } from "./runtime/setpoint_session.js";
 import { WALLBOX_EV_FOUNDATION_STATES } from "../wallbox/ev_foundation/ensure_states.js";
@@ -102,6 +102,37 @@ async function runTicks(a: MockAdapter, n: number, simulateDevice: boolean): Pro
 }
 
 describe("battery control tick — dryrun", () => {
+	it("recognizes EVCC-held Sonnen Mode 1 on restart and waits for Mode 2 without device writes", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live");
+		a.foreign.set("dev.mode", 1);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryMode, "hold");
+		await detectForeignOwnershipOnStart(a as unknown as ioBroker.Adapter & { config: unknown });
+		await runTicks(a, 14, true);
+		assert.equal(a.rel.get(BAT.status.fault), false);
+		assert.equal(a.rel.get(BAT.runtime.ownershipActive), false);
+		assert.match(String(a.rel.get(BAT.runtime.reasonDe)), /EVCC hält/);
+		assert.equal(a.foreignWrites.filter(w => DEVICE_TARGETS.has(w.id)).length, 0);
+
+		// Even if EVCC's hold signal clears before its mode write, EMS cannot claim Mode 1.
+		a.rel.set(WALLBOX_EVCC_STATES.batteryMode, "normal");
+		await runTicks(a, 3, true);
+		assert.equal(a.foreignWrites.filter(w => DEVICE_TARGETS.has(w.id)).length, 0);
+		a.foreign.set("dev.mode", 2);
+		await runTicks(a, 14, true);
+		assert.ok(a.foreignWrites.some(w => w.id === "dev.mode" && w.val === 1));
+	});
+
+	it("keeps unrecognized manual mode fault at startup", async () => {
+		__resetBatteryRuntimeForTest();
+		const a = setupCharge("live");
+		a.foreign.set("dev.mode", 1);
+		a.rel.set(WALLBOX_EVCC_STATES.batteryMode, "normal");
+		await detectForeignOwnershipOnStart(a as unknown as ioBroker.Adapter & { config: unknown });
+		await runTicks(a, 2, true);
+		assert.equal(a.rel.get(BAT.diagnostics.faultCode), "foreign_manual_control");
+		assert.equal(a.foreignWrites.filter(w => DEVICE_TARGETS.has(w.id)).length, 0);
+	});
 	it("never writes to device datapoints under global dryrun", async () => {
 		__resetBatteryRuntimeForTest();
 		const a = setupCharge("dryrun");

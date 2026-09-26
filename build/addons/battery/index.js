@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryUnloadRestore = exports.runBatteryControlTick = exports.handleBatteryForeignStateChange = exports.handleBatteryGridBalanceForeignStateChange = exports.handleBatteryAdapterStateChange = exports.stopBatteryModule = exports.initBatteryModule = exports.startBatteryModuleRuntime = exports.ensureBatteryStateTree = exports.__resetBatteryRuntimeForTest = exports.BATTERY_ADDON_ID = void 0;
+exports.batteryUnloadRestore = exports.runBatteryControlTick = exports.detectForeignOwnershipOnStart = exports.handleBatteryForeignStateChange = exports.handleBatteryGridBalanceForeignStateChange = exports.handleBatteryAdapterStateChange = exports.stopBatteryModule = exports.initBatteryModule = exports.startBatteryModuleRuntime = exports.ensureBatteryStateTree = exports.__resetBatteryRuntimeForTest = exports.BATTERY_ADDON_ID = void 0;
 const governance_1 = require("../governance");
 const runtime_surface_1 = require("../runtime_surface");
 const ems_activity_1 = require("../../ems_activity");
@@ -259,6 +259,7 @@ async function readRelOptionalBool(host, id) {
         return false;
     return null;
 }
+/** Startschutz auch für gezielte Tests des EVCC-Handoffs. */
 async function detectForeignOwnershipOnStart(host) {
     const config = (0, config_1.batteryConfigFromAdapter)(host.config);
     if (config.profile !== "sonnen_em")
@@ -270,12 +271,18 @@ async function detectForeignOwnershipOnStart(host) {
         manualModeValue: config.sonnenModeValues.manual,
         ownership: runtime.ownership,
     })) {
+        const evccBatteryMode = await readRelString(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryMode);
+        if ((0, hold_freshness_1.isEvccBatteryHoldMode)(evccBatteryMode)) {
+            host.log.info("battery: Sonnen Mode 1 is held by EVCC — no EMS ownership or device write");
+            return;
+        }
         host.log.warn("battery: device already in manual mode at startup without EMS ownership — live control degraded, awaiting user decision");
         runtime.faultCode = "foreign_manual_control";
         runtime.faultReason = "manual_mode_without_ownership";
         runtime.faultSinceMs = Date.now();
     }
 }
+exports.detectForeignOwnershipOnStart = detectForeignOwnershipOnStart;
 function buildReading(host, table, config, profileNormalizeMode, raw) {
     void host;
     void table;
@@ -367,6 +374,11 @@ async function controlTickInner(host) {
         globalLive: liveWriteAllowed,
         governanceEnabled,
         requiredValues: ["soc", "power"],
+    });
+    const foreignManualNow = (0, ownership_1.isForeignManualControl)({
+        currentMode: modeRead.val,
+        manualModeValue: config.sonnenModeValues.manual,
+        ownership: runtime.ownership,
     });
     // Device intent: manual user intent → daily plan → EMS mirror / safe default (Block 5: no winter/legacy planner).
     const resolvedRaw = await host.getStateAsync("user_intent.battery.resolved_json");
@@ -508,7 +520,9 @@ async function controlTickInner(host) {
         fault: runtime.faultCode !== null,
         lockout: runtime.lockout,
     });
-    const intentValid = validation.accepted && wantsCharge && profile.supportsLive;
+    // A manual mode set by EVCC (or any other controller) is never claimed by
+    // this FSM, even after a fault reset or if the EVCC hold signal disappears.
+    const intentValid = validation.accepted && wantsCharge && profile.supportsLive && !foreignManualNow;
     const effectiveChargeW = validation.effectiveChargeW ?? 0;
     const emsMirrorIntentActive = await readRelBool(host, ems_mirror_1.EMS_MIRROR_BATTERY.batteryIntentActive);
     const dailyPlanDriven = deviceIntent.source === "daily_plan";
@@ -540,6 +554,12 @@ async function controlTickInner(host) {
         evccBatteryMode,
     });
     const evccBatteryModeHold = holdSignals.evccBatteryModeHold;
+    if (foreignManualNow && runtime.faultCode === null) {
+        runtimeDecisionSource = "safety";
+        dailyPlanContext.allocationReasonDe = evccBatteryModeHold
+            ? "EVCC hält die Sonnen im manuellen Modus; EMS-Steuerung pausiert bis zur externen Freigabe."
+            : "Sonnen ist im manuellen Modus ohne EMS-Steuerhoheit; EMS-Steuerung pausiert.";
+    }
     const holdPlanned = holdSignals.holdPlanned;
     const holdActive = holdSignals.holdActive;
     if (holdPlanned || holdActive || (evAuthority ?? "").toLowerCase() === "external") {
@@ -562,6 +582,7 @@ async function controlTickInner(host) {
     const gridBalanceSuppressed = holdActive ||
         holdPlanned ||
         evConflict.conflict ||
+        foreignManualNow ||
         runtime.ownership.active;
     const emsBatteryIntentActive = Boolean(fromManual
         ? wantsCharge

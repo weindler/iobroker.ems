@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.18] – 2026-09-26
+
+### Fixed
+
+- EVCC-`hold` und `holdcharge` bei Sonnen-Modus 1 werden beim Start als externe Steuerung erkannt. Das EMS setzt keinen dauerhaften Fremdsteuerungsfehler und schreibt keine eigenen Sonnen-Sollwerte, solange Modus 1 ohne EMS-Steuerhoheit aktiv ist. Nach EVCC-Freigabe und Rückkehr in Modus 2 kann die normale Planung wieder übernehmen.
+
 ## [0.4.17] – 2026-09-26
 
 ### Fixed

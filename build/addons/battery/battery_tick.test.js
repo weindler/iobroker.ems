@@ -97,6 +97,35 @@ async function runTicks(a, n, simulateDevice) {
     }
 }
 (0, node_test_1.describe)("battery control tick — dryrun", () => {
+    (0, node_test_1.it)("recognizes EVCC-held Sonnen Mode 1 on restart and waits for Mode 2 without device writes", async () => {
+        (0, index_js_1.__resetBatteryRuntimeForTest)();
+        const a = setupCharge("live");
+        a.foreign.set("dev.mode", 1);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryMode, "hold");
+        await (0, index_js_1.detectForeignOwnershipOnStart)(a);
+        await runTicks(a, 14, true);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.status.fault), false);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.runtime.ownershipActive), false);
+        strict_1.default.match(String(a.rel.get(ensure_states_js_1.BAT.runtime.reasonDe)), /EVCC hält/);
+        strict_1.default.equal(a.foreignWrites.filter(w => DEVICE_TARGETS.has(w.id)).length, 0);
+        // Even if EVCC's hold signal clears before its mode write, EMS cannot claim Mode 1.
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryMode, "normal");
+        await runTicks(a, 3, true);
+        strict_1.default.equal(a.foreignWrites.filter(w => DEVICE_TARGETS.has(w.id)).length, 0);
+        a.foreign.set("dev.mode", 2);
+        await runTicks(a, 14, true);
+        strict_1.default.ok(a.foreignWrites.some(w => w.id === "dev.mode" && w.val === 1));
+    });
+    (0, node_test_1.it)("keeps unrecognized manual mode fault at startup", async () => {
+        (0, index_js_1.__resetBatteryRuntimeForTest)();
+        const a = setupCharge("live");
+        a.foreign.set("dev.mode", 1);
+        a.rel.set(ensure_evcc_states_js_1.WALLBOX_EVCC_STATES.batteryMode, "normal");
+        await (0, index_js_1.detectForeignOwnershipOnStart)(a);
+        await runTicks(a, 2, true);
+        strict_1.default.equal(a.rel.get(ensure_states_js_1.BAT.diagnostics.faultCode), "foreign_manual_control");
+        strict_1.default.equal(a.foreignWrites.filter(w => DEVICE_TARGETS.has(w.id)).length, 0);
+    });
     (0, node_test_1.it)("never writes to device datapoints under global dryrun", async () => {
         (0, index_js_1.__resetBatteryRuntimeForTest)();
         const a = setupCharge("dryrun");

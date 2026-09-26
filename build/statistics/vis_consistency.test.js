@@ -44,5 +44,7 @@ const root = path.resolve(__dirname, "..", "..");
         strict_1.default.match(vis, /vorläufig/);
         strict_1.default.match(vis, /measuredChargesCard\(chargeRuns/);
         strict_1.default.match(vis, /<th>Verbrenner<\/th><th>Unterschied<\/th>/);
+        strict_1.default.match(vis, /monthlyOverviewCard\(monthRows/);
+        strict_1.default.match(vis, /data-ems-action="stats-month-select"/);
     });
 });

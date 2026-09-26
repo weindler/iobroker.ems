@@ -18,5 +18,7 @@ describe("Statistik in VIS und Admin", () => {
 		assert.match(vis, /vorläufig/);
 		assert.match(vis, /measuredChargesCard\(chargeRuns/);
 		assert.match(vis, /<th>Verbrenner<\/th><th>Unterschied<\/th>/);
+		assert.match(vis, /monthlyOverviewCard\(monthRows/);
+		assert.match(vis, /data-ems-action="stats-month-select"/);
 	});
 });

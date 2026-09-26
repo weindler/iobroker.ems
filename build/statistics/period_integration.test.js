@@ -44,6 +44,8 @@ const tick_js_1 = require("./tick.js");
         yesterday: 3,
         last_7_days: 9,
         this_month: 9,
+        "month_2026-09": 9,
+        "month_2026-08": 10,
         last_month: 10,
         this_quarter: 19,
         last_quarter: null,
@@ -58,6 +60,12 @@ const tick_js_1 = require("./tick.js");
             await (0, tick_js_1.tickStatistics)(host, new Date("2026-09-26T12:00:00Z"));
             const comparison = JSON.parse(String(states.get(ensure_states_js_1.STATISTICS_STATES.homePeriodJson)?.val));
             strict_1.default.equal(comparison.savingsVsFixedEur, savings, period);
+            if (period === "this_year") {
+                const mobility = JSON.parse(String(states.get(ensure_states_js_1.STATISTICS_STATES.mobilityPeriodJson)?.val));
+                strict_1.default.equal(mobility.monthlyBreakdown.length, 2);
+                strict_1.default.equal(mobility.chargeRuns, undefined);
+                strict_1.default.deepEqual(mobility.monthlyBreakdown.map((row) => [row.month, row.homeSavingsEur]), [["2026-08", 10], ["2026-09", 9]]);
+            }
         }
     }
     finally {

@@ -42,7 +42,7 @@ function isValidPeriodId(id) {
         id === "last_year") {
         return true;
     }
-    return /^year_\d{4}$/.test(id);
+    return /^year_\d{4}$/.test(id) || /^month_\d{4}-(0[1-9]|1[0-2])$/.test(id);
 }
 exports.isValidPeriodId = isValidPeriodId;
 function normalizePeriodId(raw, fallback = "this_month") {
@@ -98,6 +98,17 @@ function resolvePeriodRange(periodId, todayKey) {
             fromKey: makeDateKey(y, m, 1),
             toKey: makeDateKey(y, m, lastDay),
         };
+    }
+    const chosenMonth = /^month_(\d{4})-(0[1-9]|1[0-2])$/.exec(id);
+    if (chosenMonth) {
+        const y = Number(chosenMonth[1]);
+        const m = Number(chosenMonth[2]);
+        const first = makeDateKey(y, m, 1);
+        if (first > todayKey)
+            return null;
+        const last = makeDateKey(y, m, daysInMonthNum(y, m));
+        return { id, labelDe: new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 1))),
+            fromKey: first, toKey: last > todayKey ? todayKey : last };
     }
     if (id === "this_quarter") {
         const qStart = quarterStartMonth(today.m);
@@ -180,7 +191,12 @@ function listPeriodOptions(todayKey, dayKeys) {
     const yearOpts = [...years]
         .sort((a, b) => b - a)
         .map((y) => ({ id: `year_${y}`, labelDe: `Jahr ${y}` }));
-    return [...fixed, ...yearOpts];
+    const months = new Set(dayKeys.filter((key) => /^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(key)).map((key) => key.slice(0, 7)));
+    months.add(todayKey.slice(0, 7));
+    const monthOpts = [...months].sort().reverse().map((month) => ({ id: `month_${month}`,
+        labelDe: new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric", timeZone: "UTC" })
+            .format(new Date(`${month}-01T00:00:00Z`)) }));
+    return [...fixed, ...yearOpts, ...monthOpts];
 }
 exports.listPeriodOptions = listPeriodOptions;
 function dayKeysInRange(days, fromKey, toKey) {

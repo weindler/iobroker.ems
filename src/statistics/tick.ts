@@ -769,10 +769,11 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		cfg.gridImportMonthKwhStateId ||
 		siblingTibberConsumptionState(jsonDailyId, "currentMonthConsumption");
 	const jsonDailyRaw = jsonDailyId ? await readForeignRaw(host, jsonDailyId) : null;
+	const jsonMonthlyRaw = jsonMonthlyId ? await readForeignRaw(host, jsonMonthlyId) : null;
 	const tibberMonth = resolveHomeMonthFromTibber({
 		dateKey,
 		jsonDailyRaw,
-		jsonMonthlyRaw: jsonMonthlyId ? await readForeignRaw(host, jsonMonthlyId) : null,
+		jsonMonthlyRaw,
 		currentMonthKwh: currentMonthKwhId ? await readForeignNum(host, currentMonthKwhId) : null,
 		mappedMonthKwh: null,
 		mappedMonthDynamicEur: cfg.dynamicCostMonthEurStateId
@@ -896,7 +897,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 			toKey: periodRange.toKey,
 			todayKey: dateKey,
 			jsonDailyRaw: jsonDailyRawForStart,
-			jsonMonthlyRaw: jsonMonthlyId ? await readForeignRaw(host, jsonMonthlyId) : null,
+			jsonMonthlyRaw,
 			currentMonth: hasPairedTibberMonth ? reconciledTibberMonth : { gridImportKwh: null, dynamicCostEur: null },
 		});
 		if (tibberRange.coveredMonths && tibberRange.coveredMonths < tibberRange.totalMonths) {
@@ -1075,7 +1076,52 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 				advantageEur: iceEur === null ? null : Math.round((iceEur - run.costEur) * 100) / 100 };
 		})
 		.sort((a, b) => b.startedAtIso.localeCompare(a.startedAtIso));
-	mobPeriodSum.chargeRuns = measuredChargeRows;
+	const groupedPeriod = periodId === "this_year" || periodId === "last_year" ||
+		periodId === "this_quarter" || periodId === "last_quarter" || /^year_\d{4}$/.test(periodId);
+	if (!groupedPeriod) mobPeriodSum.chargeRuns = measuredChargeRows;
+	if (periodRange && groupedPeriod) {
+		const rows: NonNullable<MobilityCompareSummary["monthlyBreakdown"]> = [];
+		let month = periodRange.fromKey.slice(0, 7);
+		while (month <= periodRange.toKey.slice(0, 7) && rows.length < 120) {
+			const [y, m] = month.split("-").map(Number);
+			const first = `${month}-01`;
+			const last = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+			const fromKey = first < periodRange.fromKey ? periodRange.fromKey : first;
+			const toKey = last > periodRange.toKey ? periodRange.toKey : last;
+			const monthKeys = dayKeysInRange(persist.days, fromKey, toKey);
+			const monthPrices = sumTibberPairedRange({ fromKey, toKey, todayKey: dateKey,
+				jsonDailyRaw, jsonMonthlyRaw,
+				currentMonth: hasPairedTibberMonth ? reconciledTibberMonth : { gridImportKwh: null, dynamicCostEur: null } });
+			const priceSegment = monthPrices.segments[0];
+			const fixedCost = priceSegment ? fixedTariffCostForRange({ gridImportKwh: priceSegment.gridImportKwh,
+				compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
+				monthlyBaseEur: cfg.compareTariffMonthlyBaseEur, fromKey, toKey }) : null;
+			const monthEnergy = sumEnergeticDays(monthKeys.map((key) => persist.days[key]?.energy),
+				{ period: `month_${month}`, periodLabelDe: month, fromKey, toKey });
+			const billed = persist.monthRewardsBilling?.[month]?.creditEur ?? null;
+			const wholeMonth = fromKey === first && toKey === last;
+			const monthMob = sumMobilityDays(monthKeys.map((key) => persist.days[key]!.mobility),
+				{ evKwhPer100: evCons.value, fuelPriceEurPerL: fuelPrice,
+					iceLPer100Km: cfg.iceLPer100Km,
+					evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source },
+				{ creditEur: wholeMonth ? billed : null, source: wholeMonth && billed !== null ? "billing" : "off" });
+			const monthlyOptions = mobilityOptions(monthKeys, fromKey, toKey,
+				{ creditEur: wholeMonth ? billed : null, source: wholeMonth && billed !== null ? "billing" : "off" });
+			monthlyOptions.finalized = monthlyOptions.finalized && monthEnergy.daysWithTelemetry === monthEnergy.daysTotal;
+			const monthly = reconcileMobilityEnergy(buildMobilitySummary(`month_${month}`, monthMob, 0, []),
+				monthEnergy, monthlyOptions);
+			rows.push({ month, fromKey, toKey,
+				homeSavingsEur: savingsVsFixedEur(fixedCost, priceSegment?.dynamicCostEur ?? null),
+				gridImportKwh: priceSegment?.gridImportKwh ?? null,
+				chargedKwh: monthly.homeChargedKwh ?? null,
+				evCostEur: monthly.evTotalCostEur ?? monthly.estimatedEvCostEur ?? null,
+				iceCostEur: monthly.iceCostEur,
+				mobilitySavingsEur: monthly.savingsVsIceEur ?? monthly.estimatedSavingsVsIceEur ?? null,
+				status: monthly.comparisonStatus ?? "unvollständig" });
+			month = `${y + (m === 12 ? 1 : 0)}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}`;
+		}
+		mobPeriodSum.monthlyBreakdown = rows;
+	}
 
 	const safeCfg: Partial<StatisticsAdminConfig> = {
 		enabled: cfg.enabled,

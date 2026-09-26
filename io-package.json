@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.21",
+		"version": "0.4.22",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.22": {
+				"en": "Shows year and quarter statistics as a compact monthly overview with tariff and car comparisons; selecting a month opens its own measured charging runs.",
+				"de": "Zeigt Jahres- und Quartalsstatistiken als übersichtliche Monatsübersicht mit Tarif- und Autovergleich; ein gewählter Monat zeigt seine gemessenen Ladevorgänge."
+			},
 			"0.4.21": {
 				"en": "Rebuilds selected-period home savings from paired Tibber measurements, calculates provisional mobility comparisons from EMS quarter-hour telemetry, and displays charging runs with combustion-car comparison. Grid Rewards and public charging only become final after billing.",
 				"de": "Berechnet die Hausersparnis je Zeitraum aus gepaarten Tibber-Messwerten, den vorläufigen Mobilitätsvergleich aus EMS-Viertelstundenmessungen und zeigt Ladevorgänge samt Verbrennervergleich. Grid Rewards und Schnellladen werden erst mit Abrechnung endgültig."

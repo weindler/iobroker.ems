@@ -135,6 +135,8 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-charge-table .emsolar{color:#f0b429}.ems-charge-table .emsaving{color:#3fb950;font-weight:700}
 .ems-charge-table tfoot td{font-weight:750;border-top:1px solid #6e7681;border-bottom:0;background:#161b22}
 .ems-charge-caption{color:#8b949e;font-size:10px;line-height:1.4;margin-top:9px}
+.ems-month-link{border:0;background:none;color:#79b8ff;font:inherit;font-weight:700;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}
+.ems-month-link:hover{color:#b6dcff}.ems-month-state{font-size:10px;color:#8b949e;display:block;margin-top:3px}
 @media(max-width:900px){.ems-stats-grid{grid-template-columns:1fr}.ems-entry-sections{grid-template-columns:1fr}}
 .ems-main{display:grid;grid-template-columns:minmax(310px,410px) minmax(200px,1fr) minmax(220px,28%);gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
 .ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(min-content,1fr);align-content:stretch;gap:4px;min-height:0;height:100%;overflow:auto}
@@ -3884,6 +3886,24 @@ function measuredChargesCard(rows,scopeLabel,energy){
 	var missing=num(energy&&energy.evChargedKwh)!==null&&energy.evChargedKwh>sumKwh+0.05?' Achtung: '+fmtKwhStats(energy.evChargedKwh-sumKwh)+' Ladung ohne vollständige Einzelbewertung.':'';
 	return html+'<div class="ems-charge-caption">Ladeabschnitte werden aus der EMS-Viertelstundenmessung gebildet. Direkt-PV und Ladekosten werden zeitgleich bilanziert; Batterie steckt im übrigen Anteil. Der Verbrennervergleich verwendet die eingestellten Verbräuche und den Spritpreis. Grid Rewards und externe Schnellladungen werden erst nach ihrer Abrechnung in der Zeitraum-Summe berücksichtigt; der Unterschied pro Ladeabschnitt bleibt vorläufig.'+esc(missing)+'</div></div>';
 }
+function monthlyOverviewCard(rows,scopeLabel){
+	if(!Array.isArray(rows))rows=[];
+	var html='<div class="ems-card ems-charge-card"><div class="ems-card-h"><span class="ems-card-title">Monatsübersicht · '+esc(scopeLabel)+'</span><span class="ems-note">Monat anklicken für Ladevorgänge</span></div>';
+	if(!rows.length)return html+'<div class="ems-charge-caption">Für diesen Zeitraum liegen keine Monatswerte vor.</div></div>';
+	html+='<div class="ems-charge-wrap"><table class="ems-charge-table"><thead><tr><th>Monat</th><th>Netzbezug</th><th>Haus · Tarifvorteil</th><th>Auto geladen</th><th>E-Auto</th><th>Verbrenner</th><th>Mobilität · Unterschied</th></tr></thead><tbody>';
+	for(var i=0;i<rows.length;i++){
+		var row=rows[i]||{},month=String(row.month||""),valid=/^\d{4}-(0[1-9]|1[0-2])$/.test(month);
+		if(!valid)continue;
+		var label=new Date(month+'-01T00:00:00Z').toLocaleString('de-DE',{month:'long',year:'numeric',timeZone:'UTC'});
+		var status=String(row.status||'unvollständig');
+		var diff=num(row.mobilitySavingsEur);
+		html+='<tr><td><button type="button" class="ems-month-link" data-ems-action="stats-month-select" data-month="'+esc(month)+'">'+esc(label)+'</button><span class="ems-month-state">'+esc(status)+'</span></td>'
+			+'<td>'+esc(fmtKwhStats(row.gridImportKwh))+'</td><td>'+esc(row.homeSavingsEur==null?'—':(Number(row.homeSavingsEur)>=0?'+':'')+fmtEur(row.homeSavingsEur))+'</td>'
+			+'<td>'+esc(fmtKwhStats(row.chargedKwh))+'</td><td>'+esc(fmtEur(row.evCostEur))+'</td><td>'+esc(fmtEur(row.iceCostEur))+'</td>'
+			+'<td class="'+(diff!==null&&diff>=0?'emsaving':'')+'">'+esc(diff===null?'—':(diff>=0?'+':'')+fmtEur(diff))+'</td></tr>';
+	}
+	return html+'</tbody></table></div><div class="ems-charge-caption">Jeder Monat zeigt nur seinen eigenen belegten Messzeitraum. Der Hausvergleich nutzt gepaarten Tibber-Verbrauch und Tibber-Kosten; der Mobilitätsvergleich EMS-Wallboxmessungen und erfasste Rechnungen. „—“ bedeutet, dass die nötigen Daten fehlen. Über den Monatsnamen gelangst du zu den einzelnen Ladevorgängen.</div></div>';
+}
 function emsAdvantageHero(v){
 	if(v===null||v===undefined||!isFinite(Number(v)))return {cls:"neu",txt:"—"};
 	var n=Number(v);
@@ -4004,6 +4024,10 @@ function fillPeriodSelect(){
 		];
 	}
 	var cur=txt(g("statistics.period_id"),"this_month")||"this_month";
+	if(/^month_\d{4}-(0[1-9]|1[0-2])$/.test(cur)&&!opts.some(function(o){return o&&o.id===cur;})){
+		var chosen=cur.slice(6);
+		opts.push({id:cur,labelDe:new Date(chosen+'-01T00:00:00Z').toLocaleString('de-DE',{month:'long',year:'numeric',timeZone:'UTC'})});
+	}
 	var fp="";
 	for(var i=0;i<opts.length;i++){
 		var o=opts[i];
@@ -4100,6 +4124,7 @@ function renderStatistics(){
 	var mobP=mergeMobFlat("period",parseObj(g("statistics.mobility.period_json")));
 	var mobM=parseObj(g("statistics.mobility.month_json"));
 	var chargeRuns=mobP&&mobP.period===periodId&&Array.isArray(mobP.chargeRuns)?mobP.chargeRuns:[];
+	var monthRows=mobP&&mobP.period===periodId&&Array.isArray(mobP.monthlyBreakdown)?mobP.monthlyBreakdown:[];
 	var energyT=energyStats("today");
 	var energyP=energyStats("period");
 	if(!mobP||typeof mobP!=="object"||(Object.keys(mobP).length===0&&num(g("statistics.mobility.period.savings_eur"))==null)){
@@ -4156,7 +4181,7 @@ function renderStatistics(){
 	grid.innerHTML=statsCard("Zeitraum und Datenstand",{cls:"neu",txt:scopeLabel},[["Von",shownEnergy.fromKey||"Heute"],["Bis",shownEnergy.toKey||"Heute"],["Anzeige aktualisiert",new Date().toLocaleString("de-DE")]],"Der laufende Tag ist noch nicht vollständig. Netzwerte stammen vorrangig vom Smart Meter, PV vom Wechselrichter und die Autoladung von der Wallbox. Einzelne Quellen können später aktualisiert werden.")
 		+(todaySelected?statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),homeTodayNote):statsCard(periodCardTitle("Haus",homeP,"Zeitraum")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote))
 		+(todaySelected?statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,"")):statsCard(periodCardTitle("Mobilität",mobP,"Zeitraum")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,"")))
-		+measuredChargesCard(chargeRuns,scopeLabel,shownEnergy)
+		+((periodId==="this_year"||periodId==="last_year"||periodId==="this_quarter"||periodId==="last_quarter"||/^year_\d{4}$/.test(periodId))?monthlyOverviewCard(monthRows,scopeLabel):measuredChargesCard(chargeRuns,scopeLabel,shownEnergy))
 		+energyCards
 		+smartMeterCard(shownEnergy,scopeLabel)
 		+statsCard("PV-Nutzung der Geräte · "+scopeLabel,pctHero(shownEnergy.selfConsumptionPct,"Eigenverbrauch"),energeticDeviceRows(shownEnergy),"PV-Anteile werden nur bei vollständiger zeitgleicher Messung ausgewiesen. Schnellladen: Netz und Sonnen-Batterie werden anhand zeitgleicher Messungen zugeordnet. Unbekannte Anteile bleiben offen. Diese Werte sind Energieflüsse und teils bereits im Hausverbrauch enthalten; sie dürfen nicht zusammengerechnet werden.")
@@ -4329,6 +4354,17 @@ function bindUiActions(){
 		content.addEventListener("click",function(ev){
 			var t=ev.target;
 			while(t&&t!==content){
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="stats-month-select"){
+					var month=t.getAttribute("data-month");
+					if(/^\d{4}-(0[1-9]|1[0-2])$/.test(month||"")){
+						ev.preventDefault();
+						var id="month_"+month;
+						cache[INST+".statistics.period_id"]=id;
+						setVisState(INST+".statistics.period_id",id);
+						renderStatistics();
+					}
+					return;
+				}
 				if(t.getAttribute&&t.getAttribute("data-ems-open-view")){
 					ev.preventDefault();
 					setEmsView(t.getAttribute("data-ems-open-view"));

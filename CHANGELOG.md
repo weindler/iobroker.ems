@@ -8,6 +8,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.22] – 2026-09-26
+
+### Changed
+
+- Jahres- und Quartalsauswahl zeigen jetzt Monatszeilen mit Netzbezug, Haus-Tarifvorteil, geladener Autoenergie und Mobilitätsvergleich, statt sämtliche Ladeabschnitte aufzulisten. Ein Klick auf den Monat öffnet die Detailansicht seiner gemessenen Ladevorgänge.
+- Jeder Monatswert verwendet seinen eigenen belegten Zeitraum. Fehlende Daten bleiben als unbekannt erkennbar, unvollständige Abrechnungen als vorläufig.
+
 ## [0.4.21] – 2026-09-26
 
 ### Fixed

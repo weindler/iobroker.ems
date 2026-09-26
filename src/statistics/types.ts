@@ -275,6 +275,18 @@ export interface MobilityCompareSummary {
 	estimatedSavingsVsIceEur?: number | null;
 	comparisonStatus?: "vorläufig" | "endgültig" | "unvollständig";
 	chargeRuns?: Array<MeasuredChargeRun & { kmEquivalent: number | null; iceCostEur: number | null; advantageEur: number | null }>;
+	monthlyBreakdown?: Array<{
+		month: string;
+		fromKey: string;
+		toKey: string;
+		homeSavingsEur: number | null;
+		gridImportKwh: number | null;
+		chargedKwh: number | null;
+		evCostEur: number | null;
+		iceCostEur: number | null;
+		mobilitySavingsEur: number | null;
+		status: "vorläufig" | "endgültig" | "unvollständig";
+	}>;
 	estimatedKm: number | null;
 	iceCostEur: number | null;
 	savingsVsIceEur: number | null;

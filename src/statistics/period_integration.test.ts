@@ -40,6 +40,8 @@ it("berechnet Hausvergleich für alle auswählbaren Zeiträume aus gepaarten Tib
 		yesterday: 3,
 		last_7_days: 9,
 		this_month: 9,
+		"month_2026-09": 9,
+		"month_2026-08": 10,
 		last_month: 10,
 		this_quarter: 19,
 		last_quarter: null,
@@ -54,6 +56,13 @@ it("berechnet Hausvergleich für alle auswählbaren Zeiträume aus gepaarten Tib
 			await tickStatistics(host, new Date("2026-09-26T12:00:00Z"));
 			const comparison = JSON.parse(String(states.get(STATISTICS_STATES.homePeriodJson)?.val));
 			assert.equal(comparison.savingsVsFixedEur, savings, period);
+			if (period === "this_year") {
+				const mobility = JSON.parse(String(states.get(STATISTICS_STATES.mobilityPeriodJson)?.val));
+				assert.equal(mobility.monthlyBreakdown.length, 2);
+				assert.equal(mobility.chargeRuns, undefined);
+				assert.deepEqual(mobility.monthlyBreakdown.map((row: { month: string; homeSavingsEur: number | null }) =>
+					[row.month, row.homeSavingsEur]), [["2026-08", 10], ["2026-09", 9]]);
+			}
 		}
 	} finally {
 		__resetStatisticsForTest();

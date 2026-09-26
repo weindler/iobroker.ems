@@ -56,6 +56,7 @@ export type OutlookDay72h = {
 		projectedMinSocPct: number | null;
 		projectedMaxSocPct: number | null;
 		pvStartIso: string | null;
+		pvCoverageKnown: boolean;
 		socBeforePvPct: number | null;
 		pvEndIso: string | null;
 		socAtPvEndPct: number | null;
@@ -696,6 +697,11 @@ export function buildOperatorOutlook72h(args: {
 							projectedMinSocPct: round(Math.min(...batteryPoints), 1),
 							projectedMaxSocPct: round(Math.max(...batteryPoints), 1),
 							pvStartIso: pvWindow?.startIso ?? null,
+							pvCoverageKnown: daySlots.every((s) => {
+								const p = pvPowerByStart.get(s.startIso);
+								const h = loadPowerByStart.get(s.startIso);
+								return p != null && h != null && Number.isFinite(p) && Number.isFinite(h);
+							}),
 							socBeforePvPct: before == null ? null : round(before, 1),
 							pvEndIso: pvWindow?.endIso ?? null,
 							socAtPvEndPct: atEnd == null ? null : round(atEnd, 1),
@@ -780,9 +786,19 @@ export function formatOperatorOutlook72hDe(outlook: OperatorOutlook72h): string 
 			? day.allocations.map((a) => `${allocationLabel(a.kind)} ${kwh(a.energyKwh)}`).join(", ")
 			: "keine verschiebbare Geräteaktion eingeplant";
 		const battery = day.battery
-			? `Batterie ${day.battery.projectedFirstSocPct?.toFixed(0) ?? "?"}→${day.battery.projectedLastSocPct?.toFixed(0) ?? "?"} %`
+			? [
+				day.battery.currentSocPct != null ? `${day.battery.currentSocPct.toFixed(0)} % ab jetzt` : null,
+				day.battery.pvStartIso && day.battery.socBeforePvPct != null
+					? `${day.battery.socBeforePvPct.toFixed(0)} % vor PV-Beginn (${localWhenDe(day.battery.pvStartIso, outlook.timezone)})` : null,
+				day.battery.pvEndIso && day.battery.socAtPvEndPct != null
+					? `${day.battery.socAtPvEndPct.toFixed(0)} % bei PV-Ende (${localWhenDe(day.battery.pvEndIso, outlook.timezone)})` : null,
+				!day.battery.pvStartIso && day.battery.pvCoverageKnown ? "kein ausreichendes PV-Deckungsfenster erwartet" : null,
+				!day.battery.pvCoverageKnown ? "PV-/Hausprognose teilweise unbekannt" : null,
+				day.battery.midnightSocPct != null ? `${day.battery.midnightSocPct.toFixed(0)} % um Mitternacht` : null,
+				day.battery.projectedMinSocPct != null ? `Tiefststand ${day.battery.projectedMinSocPct.toFixed(0)} %` : null,
+			].filter(Boolean).join(" · ")
 			: "Batterieprognose unbekannt";
-		return `${day.dayLabelDe}: PV ${kwh(day.expectedPvKwh)}, Haus ${kwh(day.expectedHouseLoadKwh)}, ${price}; ${flex}; ${battery}.`;
+		return `${day.dayLabelDe}: PV ${kwh(day.expectedPvKwh)}, Haus ${kwh(day.expectedHouseLoadKwh)}, ${price}; ${flex}; Batterie ${battery}.`;
 	});
 	const decisionLines = outlook.decisions.map((decision) => decision.explanationDe);
 	return [header, ...lines, ...(decisionLines.length ? ["Planner-Entscheidungen:", ...decisionLines] : [])].join("\n");

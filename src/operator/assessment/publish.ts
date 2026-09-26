@@ -94,6 +94,7 @@ export async function publishOperationalAssessment(
 		gbMin,
 		gbPrice,
 		ihMode,
+		climateMode,
 		ihAuto,
 		ihHygieneJson,
 		evGridRewardsActive,
@@ -117,6 +118,7 @@ export async function publishOperationalAssessment(
 		readNum(host, BAT.gridBalance.priceMinCtKwh),
 		readNum(host, BAT.gridBalance.currentPriceCtKwh),
 		readStr(host, "addons.immersion_heater.mode"),
+		readStr(host, "addons.air_conditioning.mode"),
 		readBool(host, IMMERSION_RUNTIME_STATES.autoTargetReached),
 		readStr(host, "addons.immersion_heater.runtime.hygiene_json"),
 		readBool(host, WALLBOX_EV_FOUNDATION_STATES.gridRewardsActive),
@@ -161,6 +163,7 @@ export async function publishOperationalAssessment(
 		weatherTomorrowMaxC,
 		surplusW,
 		priceNowCt,
+		climateMode,
 		gb: {
 			enabled: gbEnabled,
 			active: gbActive,

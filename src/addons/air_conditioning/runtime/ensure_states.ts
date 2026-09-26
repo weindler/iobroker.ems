@@ -1,5 +1,6 @@
 import { addonBase } from "../../../tree_paths";
 import { acUnitConfigFromAdapter } from "../config";
+import { AC_UNIT_COUNT } from "../constants";
 import { configuredAcUnitIndexes } from "../configured";
 
 export const AC_RUNTIME_BASE = `${addonBase("air_conditioning")}.runtime`;
@@ -255,5 +256,31 @@ export async function ensureAcRuntimeStates(
 				native: {},
 			} as ioBroker.Object);
 		}
+	}
+
+	// Der Moduswechsel setzt die Leistungszuordnung für alle unterstützten Plätze zurück.
+	// Dafür braucht auch ein nicht konfigurierter Platz einen gültigen technischen State.
+	const configured = new Set(unitIndexes);
+	for (let i = 1; i <= AC_UNIT_COUNT; i++) {
+		if (configured.has(i)) continue;
+		const ch = acUnitRuntimeBase(i);
+		await host.setObjectNotExistsAsync(ch, {
+			type: "channel",
+			common: { name: `Klima Innengerät ${i} (nicht konfiguriert)` },
+			native: {},
+		} as ioBroker.Object);
+		await host.setObjectNotExistsAsync(acUnitRuntimeStates(i).allocatedPowerW, {
+			type: "state",
+			common: {
+				name: `Klima Innengerät ${i} zugeordnete Leistung`,
+				type: "number",
+				role: "value.power",
+				read: true,
+				write: false,
+				unit: "W",
+				def: 0,
+			},
+			native: {},
+		} as ioBroker.Object);
 	}
 }

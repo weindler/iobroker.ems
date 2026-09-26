@@ -434,6 +434,37 @@ describe("buildOperationalAssessment", () => {
 		assert.equal(heatOff.climate.units[0]!.heating, null);
 	});
 
+	it("Klima Aus übersteuert alte Bedarfsbeiträge und Planfenster", () => {
+		const climateSlot = cell("climate", "2026-09-03T14:00:00.000Z", "2026-09-03T14:15:00.000Z", 800);
+		climateSlot.consumerId = "air_conditioning.unit_1";
+		const a = buildOperationalAssessment(
+			base({
+				climateMode: "off",
+				plan: emptyPlan([climateSlot]),
+				contributions: [
+					climateContrib({ likelyActive: true, coolingHours: 2, dehumidifyHours: 1 }),
+					climateContrib({ unitIndex: 2, unitName: "Josef", likelyActive: true, coolingHours: 2 }),
+				],
+			}),
+		);
+		assert.equal(a.climate.units.length, 2);
+		assert.match(a.climate.text, /ausgeschaltet/);
+		for (const unit of a.climate.units) {
+			assert.match(unit.cooling, /ausgeschaltet/);
+			assert.equal(unit.heating, null);
+			assert.equal(unit.dehumidify, "");
+			assert.equal(unit.next, null);
+		}
+		assert.doesNotMatch(formatOperationalAssessmentDe(a), /Kühlung heute vorgesehen|Entfeuchtung vorgesehen|Klimafenster/);
+		assert.match(buildOperationalAssessment(base({ climateMode: "live" })).climate.units[0]!.cooling, /keine Kühlung/);
+	});
+
+	it("Klima Aus ohne Gerätebeiträge bleibt als ausgeschaltet sichtbar", () => {
+		const a = buildOperationalAssessment(base({ climateMode: "off", contributions: [] }));
+		assert.deepEqual(a.climate.units, []);
+		assert.match(formatOperationalAssessmentDe(a), /Klima: Klimasteuerung ausgeschaltet/);
+	});
+
 	it("Batterie Hold / Entladung / GB aktiv vs Hard-Gate", () => {
 		const hold = buildOperationalAssessment(
 			base({

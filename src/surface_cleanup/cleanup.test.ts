@@ -177,14 +177,14 @@ describe("surface cleanup allowlist", () => {
 });
 
 describe("dynamic surface ensure + cleanup", () => {
-	it("fresh install with empty config creates no AC unit folders", async () => {
+	it("fresh install creates only technical power states for empty AC slots", async () => {
 		const host = new FakeCleanupHost({});
 		await ensureAddonMappingStates(host, AC_ADDON_ID, acMappingCommandsForConfiguredUnits(host.config));
 		await ensureAcRuntimeStates(host);
 		const unitKeys = [...host.objects.keys()].filter((k) =>
 			k.startsWith("addons.air_conditioning.units.unit_"),
 		);
-		assert.equal(unitKeys.length, 0);
+		assert.equal(unitKeys.length, 10);
 		assert.ok(host.objects.has("addons.air_conditioning.units"));
 		assert.ok(host.objects.has("addons.air_conditioning.runtime"));
 	});
@@ -200,10 +200,11 @@ describe("dynamic surface ensure + cleanup", () => {
 		await ensureAcRuntimeStates(host);
 		assert.ok(host.objects.has("addons.air_conditioning.units.unit_1"));
 		assert.ok(host.objects.has("addons.air_conditioning.units.unit_2"));
-		assert.equal(host.objects.has("addons.air_conditioning.units.unit_3"), false);
+		assert.equal(host.objects.has("addons.air_conditioning.units.unit_3.allocated_power_w"), true);
+		assert.equal(host.objects.has("addons.air_conditioning.units.unit_3.estimated_power_w"), false);
 	});
 
-	it("upgrade cleanup removes unconfigured AC placeholders and is idempotent", async () => {
+	it("upgrade cleanup preserves technical AC power states and removes unused mappings", async () => {
 		const host = new FakeCleanupHost({});
 		// Simulate pre-4B1 over-ensure
 		await ensureAddonMappingStates(host, AC_ADDON_ID, acMappingCommands());
@@ -221,7 +222,7 @@ describe("dynamic surface ensure + cleanup", () => {
 		const first = await runDynamicSurfaceCleanup(host);
 		assert.ok(first.deleted > 0);
 		assert.ok(host.objects.has("addons.air_conditioning.units.unit_1"));
-		assert.equal(host.objects.has("addons.air_conditioning.units.unit_5"), false);
+		assert.equal(host.objects.has("addons.air_conditioning.units.unit_5.allocated_power_w"), true);
 		assert.equal(
 			host.objects.has("addons.air_conditioning.mapping.unit_5_cmd_switch_on.enabled"),
 			false,
@@ -241,16 +242,16 @@ describe("dynamic surface ensure + cleanup", () => {
 		assert.equal(host.objects.size, before);
 	});
 
-	it("deletes disabled unit that only has leftover mapping targets", async () => {
+	it("preserves the technical power state of a disabled unit", async () => {
 		const host = new FakeCleanupHost({
 			ac_u1_enabled: false,
 			ac_u1_room_temp_target: "temp.0.x",
 		});
 		await ensureAcRuntimeStates(host, { unitIndexes: [1] });
 		const stats = await runDynamicSurfaceCleanup(host);
-		assert.equal(host.objects.has("addons.air_conditioning.units.unit_1"), false);
-		assert.ok(host.deleted.includes("addons.air_conditioning.units.unit_1"));
-		assert.ok(stats.deleted >= 1);
+		assert.equal(host.objects.has("addons.air_conditioning.units.unit_1.allocated_power_w"), true);
+		assert.equal(host.deleted.includes("addons.air_conditioning.units.unit_1"), false);
+		assert.ok(stats.skippedReasons.ac_allocated_power_kept >= 1);
 	});
 
 	it("empty vehicle mini-map creates no profile folders; legacy fat trees are purged", async () => {

@@ -12,7 +12,7 @@ import {
 	acMappingCommandsForConfiguredUnits,
 	isAcUnitConfigured,
 } from "../addons/air_conditioning/configured";
-import { acUnitRuntimeBase } from "../addons/air_conditioning/runtime/ensure_states";
+import { acUnitRuntimeBase, acUnitRuntimeStates } from "../addons/air_conditioning/runtime/ensure_states";
 import { WALLBOX_VEHICLES_BASE, vehicleBasePath } from "../addons/wallbox/vehicles/ensure_states";
 import { learningPersistenceMirrorRelativeIds } from "../learning/persistence_mirror";
 import { WALLBOX_RUNTIME_BASE, WALLBOX_RUNTIME_BALLAST_SUFFIXES } from "../addons/wallbox/runtime/states";
@@ -105,7 +105,14 @@ async function cleanupUnconfiguredAcUnits(host: SurfaceCleanupHost, stats: Surfa
 	for (let i = 1; i <= AC_UNIT_COUNT; i++) {
 		if (!isAcUnitConfigured(host.config, i)) {
 			const unitBase = acUnitRuntimeBase(i);
-			await safeDeleteRelative(host, unitBase, stats, "ac_unit");
+			// Der Leistungsstate ist auch für leere Plätze ein benötigtes Reset-Ziel.
+			// Vorhandene Bäume mit diesem State nicht rekursiv löschen.
+			if (await host.getObjectAsync(acUnitRuntimeStates(i).allocatedPowerW)) {
+				stats.checked += 1;
+				bump(stats, "ac_allocated_power_kept");
+			} else {
+				await safeDeleteRelative(host, unitBase, stats, "ac_unit");
+			}
 			for (const role of AC_MAPPING_ROLES) {
 				const cmd = acUnitMappingCommand(i, role);
 				const base = mappingBase(AC_ADDON_ID, cmd);

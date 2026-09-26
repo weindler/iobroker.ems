@@ -162,7 +162,7 @@ function pvCoverageWindow(
 		const pv = pvPower.get(slot.startIso);
 		const load = loadPower.get(slot.startIso);
 		if (pv == null || load == null || !Number.isFinite(pv) || !Number.isFinite(load)) return null;
-		covered.push(pv >= load);
+		covered.push(pv > 0 && pv >= load);
 	}
 	const runs: Array<{ first: number; last: number }> = [];
 	for (let i = 0; i < covered.length;) {

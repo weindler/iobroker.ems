@@ -68,6 +68,7 @@ export type AssessmentBuildInput = {
 	priceNowCt: number | null;
 	gb: AssessmentLiveGb;
 	immersion: AssessmentLiveImmersion;
+	climateMode?: string | null;
 	ev?: AssessmentLiveEv;
 };
 
@@ -482,6 +483,17 @@ function climateUnitsFrom(input: AssessmentBuildInput): AssessmentClimateUnit[] 
 	for (const [idx, c] of sorted) {
 		if (boolDetail(c, "unitEnabled") === false) continue;
 		const name = strDetail(c, "unitName") ?? `Klima ${idx}`;
+		if (input.climateMode === "off") {
+			units.push({
+				unitIndex: idx,
+				name,
+				cooling: "Klimasteuerung ausgeschaltet – EMS plant und steuert dieses Gerät nicht.",
+				heating: null,
+				dehumidify: "",
+				next: null,
+			});
+			continue;
+		}
 		const coolingH = numDetail(c, "coolingHours") ?? 0;
 		const heatingH = numDetail(c, "heatingHours") ?? 0;
 		const dryH = numDetail(c, "dehumidifyHours") ?? 0;
@@ -558,6 +570,9 @@ function climateUnitsFrom(input: AssessmentBuildInput): AssessmentClimateUnit[] 
 
 function assessClimate(input: AssessmentBuildInput): OperationalAssessment["climate"] {
 	const units = climateUnitsFrom(input);
+	if (input.climateMode === "off") {
+		return { text: "Klimasteuerung ausgeschaltet.", units };
+	}
 	if (units.length === 0) {
 		return { text: "Keine aktiven Klimageräte.", units: [] };
 	}
@@ -731,7 +746,7 @@ export function formatOperationalAssessmentDe(a: OperationalAssessment): string 
 	} else {
 		for (const u of a.climate.units) {
 			const heat = u.heating ? ` ${u.heating}` : "";
-			lines.push(`Klima ${u.name}: ${u.cooling}${heat} ${u.dehumidify}`);
+			lines.push(`Klima ${u.name}: ${u.cooling}${heat} ${u.dehumidify}`.trim());
 		}
 	}
 	lines.push(`Batterie: ${a.battery.text}`);

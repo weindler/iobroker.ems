@@ -177,6 +177,13 @@ function stepSonnenFsm(prev, ctx) {
             break;
         }
         case "set_charge_power":
+            if (rt.action === "hold") {
+                // A zero discharge setpoint is a deliberate command even when measured
+                // discharge is already zero; it takes ownership of the Sonnen output.
+                writes.push({ kind: "discharge_power", value: 0, expectedFeedback: 0 });
+                enter("verify_charge_power");
+                break;
+            }
             if (ctx.actualChargingW !== null &&
                 (0, feedback_1.chargeWithinTolerance)(rt.effectivePowerW, ctx.actualChargingW, ctx.tolerance)) {
                 log = { level: "debug", msg: "battery charge power already at target — skip write" };
@@ -195,8 +202,8 @@ function stepSonnenFsm(prev, ctx) {
             const outcome = ctx.simulateFeedback
                 ? "ok"
                 : (0, feedback_1.checkChargeFeedback)({
-                    expectedW: rt.effectivePowerW,
-                    actualChargingW: ctx.actualChargingW,
+                    expectedW: rt.action === "hold" ? 0 : rt.effectivePowerW,
+                    actualChargingW: rt.action === "hold" ? ctx.actualDischargingW ?? null : ctx.actualChargingW,
                     elapsedMs: elapsed,
                     timeoutMs: ctx.sequence.feedbackTimeoutChargeMs,
                     tolerance: ctx.tolerance,
@@ -212,13 +219,25 @@ function stepSonnenFsm(prev, ctx) {
             break;
         }
         case "active":
+            if (rt.action === "hold") {
+                if (ctx.actualDischargingW != null &&
+                    !(0, feedback_1.chargeWithinTolerance)(0, ctx.actualDischargingW, ctx.tolerance)) {
+                    enter("set_charge_power");
+                }
+                break;
+            }
             if (Math.abs(ctx.effectiveChargeW - rt.effectivePowerW) > ctx.tolerance.absoluteW) {
                 rt.effectivePowerW = ctx.effectiveChargeW;
                 enter("set_charge_power");
             }
             break;
         case "stop_charge":
-            if (ctx.forceZeroSetpointWrite === false) {
+            if (rt.action === "hold") {
+                // Mode 2 releases the deliberate discharge=0 hold; no charge
+                // setpoint was owned by this action.
+                enter("restore_self_consumption");
+            }
+            else if (ctx.forceZeroSetpointWrite === false) {
                 log = { level: "debug", msg: "battery charge stop: no own setpoint write — skip 0 W" };
                 enter("restore_self_consumption");
             }

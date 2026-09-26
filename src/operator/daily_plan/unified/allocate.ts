@@ -274,6 +274,7 @@ export function allocateUnifiedDayPlan(
 		goals,
 		reasonCodes: allocReasons,
 		finalSocKwh,
+		batteryPriceBridge,
 		thermalLearningExplanation,
 	} = runScoreBasedAllocation(
 		trimmed,
@@ -369,6 +370,7 @@ export function allocateUnifiedDayPlan(
 		totals: null,
 		legacyDailyPlan: null,
 		thermalLearningExplanation: thermalLearningExplanation ?? null,
+		batteryPriceBridge: batteryPriceBridge ?? null,
 	};
 }
 

@@ -68,6 +68,7 @@ import {
 	readDayTelemetryDay,
 } from "../learning/day_telemetry/persist";
 import { buildEnergeticDayTotals, reconcileEnergeticGridTruth, sumEnergeticDays } from "./energy";
+import { reconcileHomeEnergy, reconcileMobilityEnergy } from "./reconcile";
 import type {
 	HouseCompareSummary,
 	MobilityCompareSummary,
@@ -172,6 +173,8 @@ function buildHomeSummary(
 		fromKey: meta?.fromKey,
 		toKey: meta?.toKey,
 		gridImportKwh: home.gridImportKwh,
+		gridExportKwh: home.gridExportKwh,
+		feedInCreditEur: home.feedInCreditEur,
 		dynamicCostEur: home.dynamicCostEur,
 		fixedTariffCostEur: home.fixedTariffCostEur,
 		savingsVsFixedEur: home.savingsVsFixedEur,
@@ -924,26 +927,26 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		},
 	);
 
-	const homeTodaySum = buildHomeSummary("today", day.home, reasonsHome);
-	const homeMonthSum = buildHomeSummary("month", homeMonth, reasonsHome, {
+	const homeTodaySum = reconcileHomeEnergy(buildHomeSummary("today", day.home, reasonsHome, { periodLabelDe: "Heute", fromKey: dateKey, toKey: dateKey }), day.energy);
+	const homeMonthSum = reconcileHomeEnergy(buildHomeSummary("month", homeMonth, reasonsHome, {
 		periodLabelDe: "Dieser Monat",
 		fromKey: dateKey.slice(0, 7) + "-01",
 		toKey: dateKey,
-	});
-	const homePeriodSum = buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta);
-	const mobTodaySum = buildMobilitySummary("today", day.mobility, openSessions, reasonsMob);
-	const mobMonthSum = buildMobilitySummary("month", mobMonth, openSessions, reasonsMob, {
+	}), energyMonth);
+	const homePeriodSum = reconcileHomeEnergy(buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta), energyPeriod);
+	const mobTodaySum = reconcileMobilityEnergy(buildMobilitySummary("today", day.mobility, openSessions, reasonsMob), day.energy);
+	const mobMonthSum = reconcileMobilityEnergy(buildMobilitySummary("month", mobMonth, openSessions, reasonsMob, {
 		periodLabelDe: "Dieser Monat",
 		fromKey: dateKey.slice(0, 7) + "-01",
 		toKey: dateKey,
-	});
-	const mobPeriodSum = buildMobilitySummary(
+	}), energyMonth);
+	const mobPeriodSum = reconcileMobilityEnergy(buildMobilitySummary(
 		periodId,
 		mobPeriod,
 		openSessions,
 		[...reasonsMob, ...reasonsPeriod],
 		periodMeta,
-	);
+	), energyPeriod);
 
 	const safeCfg: Partial<StatisticsAdminConfig> = {
 		enabled: cfg.enabled,
@@ -972,12 +975,12 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	await setIfChanged(host, STATISTICS_STATES.energyTodayJson, JSON.stringify(day.energy ?? null));
 	await setIfChanged(host, STATISTICS_STATES.energyMonthJson, JSON.stringify(energyMonth));
 	await setIfChanged(host, STATISTICS_STATES.energyPeriodJson, JSON.stringify(energyPeriod));
-	await setIfChanged(host, STATISTICS_STATES.homeTodaySavingsEur, day.home.savingsVsFixedEur);
-	await setIfChanged(host, STATISTICS_STATES.homeMonthSavingsEur, homeMonth.savingsVsFixedEur);
-	await setIfChanged(host, STATISTICS_STATES.homePeriodSavingsEur, homePeriod.savingsVsFixedEur);
-	await setIfChanged(host, STATISTICS_STATES.mobilityTodaySavingsEur, day.mobility.savingsVsIceEur);
-	await setIfChanged(host, STATISTICS_STATES.mobilityMonthSavingsEur, mobMonth.savingsVsIceEur);
-	await setIfChanged(host, STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriod.savingsVsIceEur);
+	await setIfChanged(host, STATISTICS_STATES.homeTodaySavingsEur, homeTodaySum.savingsVsFixedEur);
+	await setIfChanged(host, STATISTICS_STATES.homeMonthSavingsEur, homeMonthSum.savingsVsFixedEur);
+	await setIfChanged(host, STATISTICS_STATES.homePeriodSavingsEur, homePeriodSum.savingsVsFixedEur);
+	await setIfChanged(host, STATISTICS_STATES.mobilityTodaySavingsEur, mobTodaySum.savingsVsIceEur);
+	await setIfChanged(host, STATISTICS_STATES.mobilityMonthSavingsEur, mobMonthSum.savingsVsIceEur);
+	await setIfChanged(host, STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriodSum.savingsVsIceEur);
 
 	const flatSet = (id: string, val: ioBroker.StateValue) => setIfChanged(host, id, val);
 	await setIfChanged(host, STATISTICS_FLAT.statisticsStartDate, statisticsStartKey ?? "");

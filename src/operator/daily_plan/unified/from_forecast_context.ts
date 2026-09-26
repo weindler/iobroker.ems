@@ -221,6 +221,9 @@ export type UnifiedForecastContext = {
 	batteryMaxDischargePowerW?: number | null;
 	batteryMinSocPct?: number | null;
 	batteryMaxSocPct?: number | null;
+	batteryChargeEfficiency?: number | null;
+	batteryDischargeEfficiency?: number | null;
+	batteryWearCtPerKwh?: number | null;
 	roomTemps?: Partial<Record<number, number | null>>;
 	/** Ist-Werte für aktuellen Slot (Replanning); null = unbekannt. */
 	observedPvPowerW?: number | null;
@@ -302,6 +305,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 	const pvC = contribById.get(CONTRIBUTION_IDS.PV_SUPPLY);
 	const loadC = contribById.get(CONTRIBUTION_IDS.HOUSE_LOAD_FIXED);
 	const gridC = contribById.get(CONTRIBUTION_IDS.GRID_SUPPLY);
+	const gridD = (gridC?.details ?? null) as Record<string, unknown> | null;
 	const batCharge = contribById.get(CONTRIBUTION_IDS.BATTERY_CHARGE);
 	const batReserve = contribById.get(CONTRIBUTION_IDS.BATTERY_RESERVE);
 	const batDischarge = contribById.get(CONTRIBUTION_IDS.BATTERY_DISCHARGE);
@@ -583,6 +587,7 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 		},
 		prices: {
 			slots: priceSlots,
+			source: str(gridD, "source") as UnifiedDayPlannerInput["prices"]["source"],
 			uncertainty: priceQuality,
 			freshness: priceFresh,
 		},
@@ -599,8 +604,9 @@ export function buildUnifiedInputFromForecastContext(ctx: UnifiedForecastContext
 			maxSocPct,
 			maxChargePowerW,
 			maxDischargePowerW,
-			chargeEfficiency: null, // nicht produktiv modelliert → unknown
-			dischargeEfficiency: null,
+			chargeEfficiency: ctx.batteryChargeEfficiency ?? null,
+			dischargeEfficiency: ctx.batteryDischargeEfficiency ?? null,
+			wearCtPerKwh: ctx.batteryWearCtPerKwh ?? null,
 			allowedModes,
 			reserveSocPct: minSocPct,
 			nightReserveKwh: num(batD, "avgNightDischargeKwh"),

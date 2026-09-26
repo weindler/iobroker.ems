@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureAcRuntimeStates = exports.AC_RUNTIME_SUMMARY_STATES = exports.acUnitRuntimeStates = exports.acUnitRuntimeBase = exports.AC_RUNTIME_BASE = void 0;
 const tree_paths_1 = require("../../../tree_paths");
 const config_1 = require("../config");
+const constants_1 = require("../constants");
 const configured_1 = require("../configured");
 exports.AC_RUNTIME_BASE = `${(0, tree_paths_1.addonBase)("air_conditioning")}.runtime`;
 function acUnitRuntimeBase(unitIndex) {
@@ -243,6 +244,32 @@ async function ensureAcRuntimeStates(host, options) {
                 native: {},
             });
         }
+    }
+    // Der Moduswechsel setzt die Leistungszuordnung für alle unterstützten Plätze zurück.
+    // Dafür braucht auch ein nicht konfigurierter Platz einen gültigen technischen State.
+    const configured = new Set(unitIndexes);
+    for (let i = 1; i <= constants_1.AC_UNIT_COUNT; i++) {
+        if (configured.has(i))
+            continue;
+        const ch = acUnitRuntimeBase(i);
+        await host.setObjectNotExistsAsync(ch, {
+            type: "channel",
+            common: { name: `Klima Innengerät ${i} (nicht konfiguriert)` },
+            native: {},
+        });
+        await host.setObjectNotExistsAsync(acUnitRuntimeStates(i).allocatedPowerW, {
+            type: "state",
+            common: {
+                name: `Klima Innengerät ${i} zugeordnete Leistung`,
+                type: "number",
+                role: "value.power",
+                read: true,
+                write: false,
+                unit: "W",
+                def: 0,
+            },
+            native: {},
+        });
     }
 }
 exports.ensureAcRuntimeStates = ensureAcRuntimeStates;

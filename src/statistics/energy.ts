@@ -84,9 +84,11 @@ function observedAutonomy(day: DayTelemetryDayRecord): {
 	let consumption = 0;
 	let grid = 0;
 	let pairs = 0;
+	let unpaired = false;
 	for (let index = 0; index < day.slotCount; index++) {
 		const house = day.buckets.houseTotalKwh[index];
 		const imported = day.buckets.gridImportKwh[index];
+		if (finite(house) !== finite(imported)) unpaired = true;
 		if (!finite(house) || !finite(imported)) continue;
 		const load = Math.max(0, house);
 		const importServingLoad = Math.min(load, Math.max(0, imported));
@@ -95,7 +97,7 @@ function observedAutonomy(day: DayTelemetryDayRecord): {
 		nonGrid += load - importServingLoad;
 		pairs += 1;
 	}
-	return pairs > 0
+	return pairs > 0 && !unpaired
 		? {
 			nonGridKwh: round3(nonGrid),
 			consumptionBasisKwh: round3(consumption),
@@ -305,9 +307,9 @@ function measuredBatteryLossKwh(
 	day: DayTelemetryDayRecord,
 	chargedKwh: number | null,
 	dischargedKwh: number | null,
-): { value: number | null; reason: string | null } {
+): { value: number | null; storedChangeKwh: number | null; reason: string | null } {
 	if (!day.complete || !day.evaluable) {
-		return { value: null, reason: "Batterieverlust erst für einen vollständigen, bewertbaren Tag." };
+		return { value: null, storedChangeKwh: null, reason: "Batterieverlust erst für einen vollständigen, bewertbaren Tag." };
 	}
 	if (
 		day.firstSampleMs == null ||
@@ -316,20 +318,20 @@ function measuredBatteryLossKwh(
 		day.lastSampleMs < day.endMs - day.slotWidthMs * 2 ||
 		!batteryDomainComplete(day)
 	) {
-		return { value: null, reason: "Batterieverlust: SOC-/Leistungsabdeckung an den Tagesgrenzen unvollständig." };
+		return { value: null, storedChangeKwh: null, reason: "Batterieverlust: SOC-/Leistungsabdeckung an den Tagesgrenzen unvollständig." };
 	}
 	const capacityKwh = batteryCapacityKwh(day);
 	const startSoc = firstKnown(day.buckets.batterySocEndPct);
 	const endSoc = lastKnown(day.buckets.batterySocEndPct);
 	if (!finite(capacityKwh) || !finite(startSoc) || !finite(endSoc) || !finite(chargedKwh) || !finite(dischargedKwh)) {
-		return { value: null, reason: "Batterieverlust: Kapazität, SOC oder Energiefluss fehlt." };
+		return { value: null, storedChangeKwh: null, reason: "Batterieverlust: Kapazität, SOC oder Energiefluss fehlt." };
 	}
 	const storedDeltaKwh = ((endSoc - startSoc) / 100) * capacityKwh;
 	const loss = chargedKwh - dischargedKwh - storedDeltaKwh;
 	if (loss < -0.1) {
-		return { value: null, reason: "Batterieverlust: Messbilanz widersprüchlich; kein Wert ausgewiesen." };
+		return { value: null, storedChangeKwh: null, reason: "Batterieverlust: Messbilanz widersprüchlich; kein Wert ausgewiesen." };
 	}
-	return { value: round3(Math.max(0, loss)), reason: null };
+	return { value: round3(Math.max(0, loss)), storedChangeKwh: round3(storedDeltaKwh), reason: null };
 }
 
 export function buildEnergeticDayTotals(day: DayTelemetryDayRecord): EnergeticDayTotals {
@@ -345,6 +347,12 @@ export function buildEnergeticDayTotals(day: DayTelemetryDayRecord): EnergeticDa
 	const climate = attributeDevicePv(day, day.buckets.climateElecSharedKwh);
 	const gridBalanceDischargeKwh = sumKnown(day.buckets.gridBalanceDischargeKwh);
 	const notesDe: string[] = [];
+	const shownHouse = sumKnown(day.buckets.houseTotalKwh);
+	const shownGrid = sumKnown(day.buckets.gridImportKwh);
+	const autonomyConsistent = autonomy.consumptionBasisKwh !== null && shownHouse !== null && shownGrid !== null &&
+		Math.abs(autonomy.consumptionBasisKwh - shownHouse) <= 0.002 &&
+		Math.abs((autonomy.gridImportBasisKwh ?? -1) - shownGrid) <= 0.002;
+	if (!autonomyConsistent) notesDe.push("Autarkie nicht vollständig berechenbar: Hausverbrauch und Netzbezug haben unterschiedliche Messabdeckung oder Bilanzgrenzen.");
 	if (!day.complete) notesDe.push("Laufender Tag: Werte sind eine Zwischenbilanz.");
 	if (!day.evaluable) notesDe.push(`Day-Telemetry noch nicht bewertbar (${round1(day.coveragePct)} % Abdeckung).`);
 	if (batteryLoss.reason) notesDe.push(batteryLoss.reason);
@@ -369,20 +377,21 @@ export function buildEnergeticDayTotals(day: DayTelemetryDayRecord): EnergeticDa
 		evaluable: day.evaluable,
 		coveragePct: round1(day.coveragePct),
 		pvGenerationKwh: sumKnown(day.buckets.pvKwh),
-		houseConsumptionKwh: sumKnown(day.buckets.houseTotalKwh),
-		gridImportKwh: sumKnown(day.buckets.gridImportKwh),
+		houseConsumptionKwh: shownHouse,
+		gridImportKwh: shownGrid,
 		gridExportKwh: sumKnown(day.buckets.gridExportKwh),
 		selfConsumptionKwh: self.energyKwh,
 		selfConsumptionPct: percentage(self.energyKwh, self.pvBasisKwh),
 		selfConsumptionPvBasisKwh: self.pvBasisKwh,
-		autonomyPct: percentage(autonomy.nonGridKwh, autonomy.consumptionBasisKwh),
-		autonomyConsumptionBasisKwh: autonomy.consumptionBasisKwh,
-		autonomyGridImportBasisKwh: autonomy.gridImportBasisKwh,
+		autonomyPct: autonomyConsistent ? percentage(autonomy.nonGridKwh, autonomy.consumptionBasisKwh) : null,
+		autonomyConsumptionBasisKwh: autonomyConsistent ? autonomy.consumptionBasisKwh : null,
+		autonomyGridImportBasisKwh: autonomyConsistent ? autonomy.gridImportBasisKwh : null,
 		batteryChargedKwh: battery.energyKwh,
 		batteryDischargedKwh,
 		batteryPvChargedKwh: battery.pvKwh,
 		batteryPvSharePct: battery.pvSharePct,
 		batteryMeasuredLossKwh: batteryLoss.value,
+		batteryStoredChangeKwh: batteryLoss.storedChangeKwh,
 		immersionEnergyKwh: immersion.energyKwh,
 		immersionPvKwh: immersion.pvKwh,
 		immersionPvSharePct: immersion.pvSharePct,
@@ -430,6 +439,8 @@ export function reconcileEnergeticGridTruth(
 	const selfConsumptionKwh = finite(pv) && finite(gridExportKwh) ? round3(Math.max(0, Math.min(pv, pv - gridExportKwh))) : null;
 	const autonomyGrid = finite(house) && finite(gridImportKwh) ? Math.min(house, gridImportKwh) : null;
 	const autonomyNonGrid = finite(house) && finite(autonomyGrid) ? Math.max(0, house - autonomyGrid) : null;
+	const captureAfterDayStart = input.captureSinceIso != null && Date.parse(input.captureSinceIso) > Date.parse(`${energy.dateKey}T00:00:00Z`);
+	const autonomyComparable = !captureAfterDayStart && finite(house) && finite(gridImportKwh) && gridImportKwh <= house + 0.002;
 	const notes = energy.notesDe.filter((note) => !note.startsWith("Netzwerte:"));
 	notes.push(input.captureSinceIso
 		? `Netzwerte: reale Smart-Meter-Differenz; Erfassung seit ${input.captureSinceIso}, der erste Tag kann unvollständig sein.`
@@ -441,9 +452,9 @@ export function reconcileEnergeticGridTruth(
 		selfConsumptionKwh,
 		selfConsumptionPvBasisKwh: finite(pv) ? pv : null,
 		selfConsumptionPct: percentage(selfConsumptionKwh, pv),
-		autonomyPct: percentage(autonomyNonGrid, house),
-		autonomyConsumptionBasisKwh: finite(house) ? house : null,
-		autonomyGridImportBasisKwh: autonomyGrid,
+		autonomyPct: autonomyComparable ? percentage(autonomyNonGrid, house) : null,
+		autonomyConsumptionBasisKwh: autonomyComparable ? house : null,
+		autonomyGridImportBasisKwh: autonomyComparable ? autonomyGrid : null,
 		gridTruthSource: "smart_meter",
 		meterCaptureSinceIso: input.captureSinceIso ?? null,
 		notesDe: notes,
@@ -481,6 +492,10 @@ export function sumEnergeticDays(
 	meta: { period: string; periodLabelDe: string; fromKey: string; toKey: string },
 ): EnergeticPeriodSummary {
 	const available = days.filter((day): day is EnergeticDayTotals => !!day);
+	const fromMs = Date.parse(`${meta.fromKey}T00:00:00Z`);
+	const toMs = Date.parse(`${meta.toKey}T00:00:00Z`);
+	const expectedDays = Number.isFinite(fromMs) && Number.isFinite(toMs) && toMs >= fromMs
+		? Math.round((toMs - fromMs) / 86_400_000) + 1 : days.length;
 	const selfConsumptionKwh = sumField(available, (day) => day.selfConsumptionKwh);
 	const selfBasis = sumField(available, (day) => day.selfConsumptionPvBasisKwh);
 	const autonomyNonGrid = sumField(available, (day) =>
@@ -489,6 +504,12 @@ export function sumEnergeticDays(
 			: null,
 	);
 	const autonomyBasis = sumField(available, (day) => day.autonomyConsumptionBasisKwh);
+	const displayedHouse = sumField(available, (day) => day.houseConsumptionKwh);
+	const displayedGrid = sumField(available, (day) => day.gridImportKwh);
+	const autonomyComparable = available.length === expectedDays && available.length > 0 &&
+		available.every((day) => finite(day.autonomyPct)) && finite(displayedHouse) && finite(displayedGrid) &&
+		finite(autonomyBasis) && Math.abs(displayedHouse - autonomyBasis) <= 0.002 &&
+		Math.abs(displayedGrid - (sumField(available, (day) => day.autonomyGridImportBasisKwh) ?? -1)) <= 0.002;
 	const battery = strictPvAggregate(available, (day) => day.batteryChargedKwh, (day) => day.batteryPvChargedKwh);
 	const immersion = strictPvAggregate(available, (day) => day.immersionEnergyKwh, (day) => day.immersionPvKwh);
 	const ev = strictPvAggregate(available, (day) => day.evChargedKwh, (day) => day.evPvKwh);
@@ -512,7 +533,7 @@ export function sumEnergeticDays(
 	const gridBalanceDischargeKwh = sumField(available, (day) => day.gridBalanceDischargeKwh);
 	const notesDe: string[] = [];
 	if (available.length === 0) notesDe.push("Für diesen Zeitraum liegt noch keine Day-Telemetry vor.");
-	else if (available.length < days.length) notesDe.push(`${available.length} von ${days.length} Tagen enthalten Energiemesswerte.`);
+	else if (available.length < expectedDays) notesDe.push(`${available.length} von ${expectedDays} Tagen enthalten Energiemesswerte.`);
 	if (available.some((day) => !day.complete || !day.evaluable)) {
 		notesDe.push("Der Zeitraum enthält laufende oder noch nicht vollständig bewertbare Tage.");
 	}
@@ -524,21 +545,26 @@ export function sumEnergeticDays(
 
 	return {
 		...meta,
-		daysTotal: days.length,
+		daysTotal: expectedDays,
 		daysWithTelemetry: available.length,
 		daysEvaluable: available.filter((day) => day.complete && day.evaluable).length,
 		pvGenerationKwh: sumField(available, (day) => day.pvGenerationKwh),
-		houseConsumptionKwh: sumField(available, (day) => day.houseConsumptionKwh),
-		gridImportKwh: sumField(available, (day) => day.gridImportKwh),
+		houseConsumptionKwh: displayedHouse,
+		gridImportKwh: displayedGrid,
 		gridExportKwh: sumField(available, (day) => day.gridExportKwh),
 		selfConsumptionKwh,
 		selfConsumptionPct: percentage(selfConsumptionKwh, selfBasis),
-		autonomyPct: percentage(autonomyNonGrid, autonomyBasis),
+		autonomyPct: autonomyComparable ? percentage(autonomyNonGrid, autonomyBasis) : null,
+		autonomyConsumptionBasisKwh: autonomyComparable ? autonomyBasis : null,
+		autonomyGridImportBasisKwh: autonomyComparable ? displayedGrid : null,
 		batteryChargedKwh: battery.energyKwh,
 		batteryDischargedKwh: sumField(available, (day) => day.batteryDischargedKwh),
 		batteryPvChargedKwh: battery.pvKwh,
 		batteryPvSharePct: battery.pvSharePct,
-		batteryMeasuredLossKwh: sumField(available, (day) => day.batteryMeasuredLossKwh),
+		batteryMeasuredLossKwh: available.length === expectedDays && available.every((day) => finite(day.batteryMeasuredLossKwh))
+			? sumField(available, (day) => day.batteryMeasuredLossKwh) : null,
+		batteryStoredChangeKwh: available.length === expectedDays && available.every((day) => finite(day.batteryStoredChangeKwh))
+			? sumField(available, (day) => day.batteryStoredChangeKwh ?? null) : null,
 		immersionEnergyKwh: immersion.energyKwh,
 		immersionPvKwh: immersion.pvKwh,
 		immersionPvSharePct: immersion.pvSharePct,

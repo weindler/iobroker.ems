@@ -27,6 +27,7 @@ exports.runDailyPlanTick = exports.lastUnifiedPlanIdForTest = exports.unifiedPla
 const config_1 = require("../../policy/global/config");
 const config_2 = require("../../intent/config");
 const mode_policy_1 = require("../../planner/mode_policy");
+const battery_winter_config_1 = require("../../planner/battery_winter_config");
 const state_write_1 = require("../../policy/core/state_write");
 const build_1 = require("./build");
 const briefing_1 = require("./briefing");
@@ -37,6 +38,7 @@ const battery_consumers_1 = require("../../policy/battery_consumers");
 const battery_discharge_authority_1 = require("./battery_discharge_authority");
 const battery_opportunity_cost_1 = require("./battery_opportunity_cost");
 const battery_replace_cost_1 = require("./battery_replace_cost");
+const config_3 = require("../../statistics/config");
 const ensure_states_1 = require("../../learning/grid_balance_economics/ensure_states");
 const constants_1 = require("../../learning/grid_balance_economics/constants");
 const override_ledger_1 = require("../../ai/override_ledger");
@@ -92,7 +94,7 @@ const daily_plan_4 = require("../../addons/wallbox/runtime/daily_plan");
 const limits_1 = require("../../addons/battery/core/limits");
 const vehicle_presence_1 = require("../../learning/vehicle_presence");
 const vehicle_availability_1 = require("./unified/vehicle_availability");
-const config_3 = require("../../addons/wallbox/vehicle_map/config");
+const config_4 = require("../../addons/wallbox/vehicle_map/config");
 const lookup_1 = require("../../addons/wallbox/vehicle_map/lookup");
 const session_1 = require("../../learning/day_evaluation/session");
 const explain_1 = require("../../learning/day_evaluation/explain");
@@ -109,7 +111,7 @@ const tree_paths_1 = require("../../tree_paths");
 const atomic_write_1 = require("../../persistence/atomic_write");
 const path = __importStar(require("node:path"));
 const invalidate_addon_off_1 = require("./invalidate_addon_off");
-const config_4 = require("../../addons/battery/config");
+const config_5 = require("../../addons/battery/config");
 const intent_read_1 = require("../../addons/battery/runtime/intent_read");
 const passive_battery_energy_1 = require("./unified/passive_battery_energy");
 const block_a_learning_bridge_1 = require("./block_a_learning_bridge");
@@ -438,7 +440,7 @@ async function runDailyPlanTick(host, forecastPlan) {
         wallboxChargeHold: wallboxHold.hold,
         wallboxChargeHoldReasonDe: wallboxHold.reasonDe,
     });
-    const batCfgModes = (0, config_4.batteryConfigFromAdapter)(host.config);
+    const batCfgModes = (0, config_5.batteryConfigFromAdapter)(host.config);
     const batOperatingMode = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_3.BAT.telemetry.operatingMode))?.val);
     const batOwnershipActive = (await host.getStateAsync(ensure_states_3.BAT.runtime.ownershipActive))?.val === true;
     const passiveBatteryEnergy = (0, passive_battery_energy_1.resolvePassiveBatteryEnergyAvailable)({
@@ -539,6 +541,12 @@ async function runDailyPlanTick(host, forecastPlan) {
     const etaGridUsable = (await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.etaGridUsable))?.val === true;
     const etaPvLearned = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.etaPvPath))?.val);
     const etaGridLearned = (0, state_util_1.asNum)((await host.getStateAsync(ensure_states_1.GRID_BALANCE_ECONOMICS_STATE_IDS.etaGridPath))?.val);
+    const configuredChargeEta = (0, battery_winter_config_1.batteryWinterPlanConfigFromAdapter)(host.config).chargeEfficiencyPct / 100;
+    const measuredDischargeEta = etaGridUsable && etaGridLearned != null && etaGridLearned > 0 && etaGridLearned <= 1
+        ? etaGridLearned / configuredChargeEta : null;
+    const usableDischargeEta = measuredDischargeEta != null && measuredDischargeEta > 0 && measuredDischargeEta <= 1
+        ? measuredDischargeEta : null;
+    const batteryWearCtPerKwh = (0, config_3.statisticsConfigFromAdapter)(host.config).batteryWearCostCtPerKwh;
     const feedInForReplace = (0, from_forecast_context_1.normalizeFeedInCtPerKwh)((0, state_util_1.asNum)((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val));
     const replaceCost = (0, battery_replace_cost_1.evaluateBatteryReplaceCost)({
         nowMs: now.getTime(),
@@ -797,7 +805,7 @@ async function runDailyPlanTick(host, forecastPlan) {
     let presenceStore = await (0, vehicle_presence_1.loadOrEmptyVehiclePresenceStore)(presenceDir);
     const vehicleName = await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleName);
     const vehicleTitle = await readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.vehicleTitle);
-    const mapEntry = (0, lookup_1.lookupVehicleMapEntry)((0, config_3.wallboxVehicleMapFromAdapter)(host.config).entries, vehicleName, vehicleTitle);
+    const mapEntry = (0, lookup_1.lookupVehicleMapEntry)((0, config_4.wallboxVehicleMapFromAdapter)(host.config).entries, vehicleName, vehicleTitle);
     // Ohne Map-Treffer: keine erfundene ID — Learning/Prediction aussetzen.
     const presenceVehicleKey = mapEntry?.evccVehicleId ?? null;
     if (wbConnected !== null && presenceVehicleKey) {
@@ -1030,6 +1038,9 @@ async function runDailyPlanTick(host, forecastPlan) {
                 batteryMaxDischargePowerW: hw.maxDischargeW,
                 batteryMinSocPct: hw.minSocPct,
                 batteryMaxSocPct: hw.maxSocPct,
+                batteryChargeEfficiency: configuredChargeEta,
+                batteryDischargeEfficiency: usableDischargeEta,
+                batteryWearCtPerKwh,
                 roomTemps,
                 observedPvPowerW: livePvPowerW,
                 observedHouseLoadPowerW: liveHouseLoadW,
@@ -1255,7 +1266,10 @@ async function runDailyPlanTick(host, forecastPlan) {
                     strategy,
                 });
                 await (0, state_write_1.setStateIfChanged)(host, "operator.product_summary_de", productSummary);
-                await (0, state_write_1.setStateIfChanged)(host, "operator.plan.battery_strategy_de", `${strategy.battery.summaryDe}. ${strategy.battery.reasonDe}`);
+                await (0, state_write_1.setStateIfChanged)(host, "operator.plan.battery_strategy_de", `${strategy.battery.summaryDe}. ${strategy.battery.reasonDe}` +
+                    (unifiedPlan.batteryPriceBridge
+                        ? ` ${unifiedPlan.batteryPriceBridge.reasonDe}`
+                        : ""));
                 await (0, state_write_1.setStateIfChanged)(host, "operator.plan.wallbox_strategy_de", `${strategy.wallbox.summaryDe}. ${strategy.wallbox.reasonDe}`);
                 const notifySurface = (0, notification_surface_1.buildProductNotificationSurface)(lastNotifyCandidates, now.toISOString());
                 await (0, state_write_1.setStateIfChanged)(host, "operator.notification.last_reason_de", notifySurface.lastReasonDe ?? "");
@@ -1285,13 +1299,15 @@ async function runDailyPlanTick(host, forecastPlan) {
         }
         catch (e) {
             /*
-             * Replan fehlgeschlagen: keine neue Unified-Generation.
-             * IH/Battery/Wallbox: im Zweifel idle (kein veralteter energetischer Slice).
-             * AC: planbasierten Flex leeren bei Komfortbedarf → lokaler Runtime-Komfort-Pfad.
-             * Wallbox: EMS-Intent idle — EVCC bleibt manuell bedienbar.
-             * Wenn Restplan noch sicher: nichts publishen (letzter Publish bleibt).
-             */
+         * Replan fehlgeschlagen: keine neue Unified-Generation.
+         * IH/Battery/Wallbox: im Zweifel idle (kein veralteter energetischer Slice).
+         * AC: planbasierten Flex leeren bei Komfortbedarf → lokaler Runtime-Komfort-Pfad.
+         * Wallbox: EMS-Intent idle — EVCC bleibt manuell bedienbar.
+         * Wenn Restplan noch sicher: nichts publishen (letzter Publish bleibt).
+         */
             host.log?.warn?.(`unified day replan failed — assess rest safety: ${String(e)}`);
+            await (0, state_write_1.setStateIfChanged)(host, ensure_states_3.BAT.runtime.priceHoldUntilIso, "");
+            await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_3.BAT.runtime.priceTargetSocPct, null);
             const disposition = (0, replan_failure_1.assessUnifiedReplanFailure)({
                 nowMs: now.getTime(),
                 lastUnifiedPlan,
@@ -1333,6 +1349,14 @@ async function runDailyPlanTick(host, forecastPlan) {
                 trimFuture("wallbox");
         }
         const publishReasonDe = `${plan.reasonDe}${ihAcReasonSuffix}`.slice(0, 480);
+        const bridgeHold = lastUnifiedPlan?.batteryPriceBridge;
+        const holdUntil = bridgeHold?.usable && bridgeHold.holdStartIso && bridgeHold.holdEndIso &&
+            now.getTime() >= Date.parse(bridgeHold.holdStartIso) &&
+            now.getTime() < Date.parse(bridgeHold.holdEndIso)
+            ? bridgeHold.holdEndIso : "";
+        await (0, state_write_1.setStateIfChanged)(host, ensure_states_3.BAT.runtime.priceHoldUntilIso, holdUntil);
+        await (0, state_write_1.setOptionalNumberIfChanged)(host, ensure_states_3.BAT.runtime.priceTargetSocPct, bridgeHold?.usable && bridgeHold.gridEnergyKwh > 0 ? bridgeHold.targetSocPct : null);
+        await host.setStateAsync(ensure_states_3.BAT.runtime.priceHoldHeartbeatIso, { val: now.toISOString(), ack: true });
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.status, plan.status);
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);
         await (0, state_write_1.setStateIfChanged)(host, states_1.DAILY_PLAN_STATE_IDS.validUntil, plan.validUntil ?? "");

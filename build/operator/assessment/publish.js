@@ -53,7 +53,7 @@ async function readBool(host, id) {
     }
 }
 async function publishOperationalAssessment(host, input) {
-    const [pvTodayKwh, pvTomorrowKwh, weatherTodayMinC, weatherTodayMaxC, weatherTomorrowMinC, weatherTomorrowMaxC, surplusW, priceNowCt, gbEnabled, gbActive, gbReady, gbPriceAllowed, gbBlock, gbRequested, gbMin, gbPrice, ihMode, ihAuto, ihHygieneJson, evGridRewardsActive, evGridRewardsLegacy, evCharging,] = await Promise.all([
+    const [pvTodayKwh, pvTomorrowKwh, weatherTodayMinC, weatherTodayMaxC, weatherTomorrowMinC, weatherTomorrowMaxC, surplusW, priceNowCt, gbEnabled, gbActive, gbReady, gbPriceAllowed, gbBlock, gbRequested, gbMin, gbPrice, ihMode, climateMode, ihAuto, ihHygieneJson, evGridRewardsActive, evGridRewardsLegacy, evCharging,] = await Promise.all([
         readNum(host, "learning.pv_bias.corrected_today_kwh"),
         readNum(host, "learning.pv_bias.corrected_tomorrow_kwh"),
         readNum(host, "learning.weather.horizon.day1.min_temp_c"),
@@ -71,6 +71,7 @@ async function publishOperationalAssessment(host, input) {
         readNum(host, ensure_states_1.BAT.gridBalance.priceMinCtKwh),
         readNum(host, ensure_states_1.BAT.gridBalance.currentPriceCtKwh),
         readStr(host, "addons.immersion_heater.mode"),
+        readStr(host, "addons.air_conditioning.mode"),
         readBool(host, types_1.IMMERSION_RUNTIME_STATES.autoTargetReached),
         readStr(host, "addons.immersion_heater.runtime.hygiene_json"),
         readBool(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.gridRewardsActive),
@@ -113,6 +114,7 @@ async function publishOperationalAssessment(host, input) {
         weatherTomorrowMaxC,
         surplusW,
         priceNowCt,
+        climateMode,
         gb: {
             enabled: gbEnabled,
             active: gbActive,

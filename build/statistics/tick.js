@@ -13,6 +13,7 @@ const adjust_1 = require("./adjust");
 const flat_states_1 = require("./flat_states");
 const persist_2 = require("../learning/day_telemetry/persist");
 const energy_1 = require("./energy");
+const reconcile_1 = require("./reconcile");
 async function setIfChanged(host, id, val) {
     const cur = await host.getStateAsync(id);
     if (cur?.val === val)
@@ -92,6 +93,8 @@ function buildHomeSummary(period, home, reasonParts, meta) {
         fromKey: meta?.fromKey,
         toKey: meta?.toKey,
         gridImportKwh: home.gridImportKwh,
+        gridExportKwh: home.gridExportKwh,
+        feedInCreditEur: home.feedInCreditEur,
         dynamicCostEur: home.dynamicCostEur,
         fixedTariffCostEur: home.fixedTariffCostEur,
         savingsVsFixedEur: home.savingsVsFixedEur,
@@ -727,20 +730,20 @@ async function tickStatistics(host, now = new Date()) {
         fromKey: periodMeta.fromKey,
         toKey: periodMeta.toKey,
     });
-    const homeTodaySum = buildHomeSummary("today", day.home, reasonsHome);
-    const homeMonthSum = buildHomeSummary("month", homeMonth, reasonsHome, {
+    const homeTodaySum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary("today", day.home, reasonsHome, { periodLabelDe: "Heute", fromKey: dateKey, toKey: dateKey }), day.energy);
+    const homeMonthSum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary("month", homeMonth, reasonsHome, {
         periodLabelDe: "Dieser Monat",
         fromKey: dateKey.slice(0, 7) + "-01",
         toKey: dateKey,
-    });
-    const homePeriodSum = buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta);
-    const mobTodaySum = buildMobilitySummary("today", day.mobility, openSessions, reasonsMob);
-    const mobMonthSum = buildMobilitySummary("month", mobMonth, openSessions, reasonsMob, {
+    }), energyMonth);
+    const homePeriodSum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta), energyPeriod);
+    const mobTodaySum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary("today", day.mobility, openSessions, reasonsMob), day.energy);
+    const mobMonthSum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary("month", mobMonth, openSessions, reasonsMob, {
         periodLabelDe: "Dieser Monat",
         fromKey: dateKey.slice(0, 7) + "-01",
         toKey: dateKey,
-    });
-    const mobPeriodSum = buildMobilitySummary(periodId, mobPeriod, openSessions, [...reasonsMob, ...reasonsPeriod], periodMeta);
+    }), energyMonth);
+    const mobPeriodSum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary(periodId, mobPeriod, openSessions, [...reasonsMob, ...reasonsPeriod], periodMeta), energyPeriod);
     const safeCfg = {
         enabled: cfg.enabled,
         compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
@@ -767,12 +770,12 @@ async function tickStatistics(host, now = new Date()) {
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.energyTodayJson, JSON.stringify(day.energy ?? null));
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.energyMonthJson, JSON.stringify(energyMonth));
     await setIfChanged(host, ensure_states_1.STATISTICS_STATES.energyPeriodJson, JSON.stringify(energyPeriod));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeTodaySavingsEur, day.home.savingsVsFixedEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeMonthSavingsEur, homeMonth.savingsVsFixedEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homePeriodSavingsEur, homePeriod.savingsVsFixedEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityTodaySavingsEur, day.mobility.savingsVsIceEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityMonthSavingsEur, mobMonth.savingsVsIceEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriod.savingsVsIceEur);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeTodaySavingsEur, homeTodaySum.savingsVsFixedEur);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeMonthSavingsEur, homeMonthSum.savingsVsFixedEur);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homePeriodSavingsEur, homePeriodSum.savingsVsFixedEur);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityTodaySavingsEur, mobTodaySum.savingsVsIceEur);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityMonthSavingsEur, mobMonthSum.savingsVsIceEur);
+    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriodSum.savingsVsIceEur);
     const flatSet = (id, val) => setIfChanged(host, id, val);
     await setIfChanged(host, flat_states_1.STATISTICS_FLAT.statisticsStartDate, statisticsStartKey ?? "");
     await (0, flat_states_1.publishHomeFlat)(flatSet, flat_states_1.STATISTICS_FLAT.homeToday, homeTodaySum, "Heute");

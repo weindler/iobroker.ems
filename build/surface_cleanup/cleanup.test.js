@@ -141,12 +141,12 @@ class FakeCleanupHost {
     });
 });
 (0, node_test_1.describe)("dynamic surface ensure + cleanup", () => {
-    (0, node_test_1.it)("fresh install with empty config creates no AC unit folders", async () => {
+    (0, node_test_1.it)("fresh install creates only technical power states for empty AC slots", async () => {
         const host = new FakeCleanupHost({});
         await (0, mapping_sync_js_1.ensureAddonMappingStates)(host, constants_js_1.AC_ADDON_ID, (0, mapping_config_js_1.acMappingCommandsForConfiguredUnits)(host.config));
         await (0, ensure_states_js_1.ensureAcRuntimeStates)(host);
         const unitKeys = [...host.objects.keys()].filter((k) => k.startsWith("addons.air_conditioning.units.unit_"));
-        strict_1.default.equal(unitKeys.length, 0);
+        strict_1.default.equal(unitKeys.length, 10);
         strict_1.default.ok(host.objects.has("addons.air_conditioning.units"));
         strict_1.default.ok(host.objects.has("addons.air_conditioning.runtime"));
     });
@@ -161,9 +161,10 @@ class FakeCleanupHost {
         await (0, ensure_states_js_1.ensureAcRuntimeStates)(host);
         strict_1.default.ok(host.objects.has("addons.air_conditioning.units.unit_1"));
         strict_1.default.ok(host.objects.has("addons.air_conditioning.units.unit_2"));
-        strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_3"), false);
+        strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_3.allocated_power_w"), true);
+        strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_3.estimated_power_w"), false);
     });
-    (0, node_test_1.it)("upgrade cleanup removes unconfigured AC placeholders and is idempotent", async () => {
+    (0, node_test_1.it)("upgrade cleanup preserves technical AC power states and removes unused mappings", async () => {
         const host = new FakeCleanupHost({});
         // Simulate pre-4B1 over-ensure
         await (0, mapping_sync_js_1.ensureAddonMappingStates)(host, constants_js_1.AC_ADDON_ID, (0, mapping_config_js_1.acMappingCommands)());
@@ -178,7 +179,7 @@ class FakeCleanupHost {
         const first = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
         strict_1.default.ok(first.deleted > 0);
         strict_1.default.ok(host.objects.has("addons.air_conditioning.units.unit_1"));
-        strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_5"), false);
+        strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_5.allocated_power_w"), true);
         strict_1.default.equal(host.objects.has("addons.air_conditioning.mapping.unit_5_cmd_switch_on.enabled"), false);
         strict_1.default.equal(host.objects.has("addons.air_conditioning.mapping.unit_1_cmd_switch_on.enabled"), false);
         strict_1.default.equal(host.objects.has("addons.air_conditioning.mapping.unit_3_cmd_cleaning_mode.target_state"), false);
@@ -187,16 +188,16 @@ class FakeCleanupHost {
         strict_1.default.equal(second.deleted, 0);
         strict_1.default.equal(host.objects.size, before);
     });
-    (0, node_test_1.it)("deletes disabled unit that only has leftover mapping targets", async () => {
+    (0, node_test_1.it)("preserves the technical power state of a disabled unit", async () => {
         const host = new FakeCleanupHost({
             ac_u1_enabled: false,
             ac_u1_room_temp_target: "temp.0.x",
         });
         await (0, ensure_states_js_1.ensureAcRuntimeStates)(host, { unitIndexes: [1] });
         const stats = await (0, cleanup_js_1.runDynamicSurfaceCleanup)(host);
-        strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_1"), false);
-        strict_1.default.ok(host.deleted.includes("addons.air_conditioning.units.unit_1"));
-        strict_1.default.ok(stats.deleted >= 1);
+        strict_1.default.equal(host.objects.has("addons.air_conditioning.units.unit_1.allocated_power_w"), true);
+        strict_1.default.equal(host.deleted.includes("addons.air_conditioning.units.unit_1"), false);
+        strict_1.default.ok(stats.skippedReasons.ac_allocated_power_kept >= 1);
     });
     (0, node_test_1.it)("empty vehicle mini-map creates no profile folders; legacy fat trees are purged", async () => {
         const host = new FakeCleanupHost({ wb_vehicle_map: [] });

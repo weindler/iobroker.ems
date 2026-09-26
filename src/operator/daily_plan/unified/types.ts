@@ -68,6 +68,8 @@ export type UnifiedPriceSlot = {
 
 export type UnifiedPriceInput = {
 	slots: UnifiedPriceSlot[];
+	/** Nur dynamic_tariff enthält veröffentlichte Viertelstundenpreise. */
+	source?: "dynamic_tariff" | "price_learning_fallback" | "fixed_tariff" | "none" | null;
 	uncertainty: OperatorDataQuality;
 	freshness: UnifiedDataFreshness;
 };
@@ -96,6 +98,8 @@ export type UnifiedBatteryInput = {
 	/** Wirkungsgrad Laden 0–1; null wenn unbekannt. */
 	chargeEfficiency: number | null;
 	dischargeEfficiency: number | null;
+	/** Konfigurierter Verschleiß für wirtschaftliche Netzlade-Entscheidungen. */
+	wearCtPerKwh?: number | null;
 	/** Erlaubte Betriebsarten — frei erweiterbar, keine Sommer/Winter-Enums. */
 	allowedModes: string[];
 	reserveSocPct: number | null;
@@ -588,6 +592,8 @@ export type UnifiedGoalStatus = {
  * Kompatibel genug, um später aus/zu `DailyPlan` zu mappen.
  */
 export type UnifiedDayPlan = {
+	/** Veröffentlichung nur als Diagnose; Runtime prüft gesondert Autorität und Telemetrie. */
+	batteryPriceBridge?: import("./battery_price_bridge").PriceBridgeDecision | null;
 	schemaVersion: 1;
 	planId: string;
 	generation: number;

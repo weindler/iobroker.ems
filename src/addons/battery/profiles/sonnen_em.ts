@@ -73,7 +73,7 @@ export const SONNEN_EM_PROFILE: BatteryProfile = {
 		m.set_operating_mode = capability(true, modeWrite && limitsValid, modeWrite ? "limits_invalid" : "mapping_missing");
 		m.set_charge_power = capability(true, chargeWrite && limitsValid, chargeWrite ? "limits_invalid" : "mapping_missing");
 		m.enable_grid_charge = capability(true, modeWrite && chargeWrite && limitsValid, "mapping_or_limits");
-		m.hold_battery = capability(true, modeWrite && limitsValid, "mapping_or_limits");
+		m.hold_battery = capability(true, modeWrite && dischargeWrite && limitsValid, "mapping_or_limits");
 
 		m.set_discharge_power = capability(
 			true,

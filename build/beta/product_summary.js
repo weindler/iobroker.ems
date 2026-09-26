@@ -339,6 +339,21 @@ function buildProductSummaryDe(plan, opts) {
     if (batEnd !== null && Number.isFinite(batEnd)) {
         parts.push(`Batterie zum Tagesende ~${Math.round(batEnd)} %.`);
     }
+    const bridge = plan.batteryPriceBridge;
+    if (bridge) {
+        if (!bridge.usable)
+            parts.push(`Batterieplanung eingeschränkt: ${bridge.reasonDe}`);
+        else {
+            const start = fmtDayClock(bridge.chargeStartIso ?? "", x.timezone);
+            const end = fmtClock(bridge.chargeEndIso, x.timezone);
+            const peak = fmtDayClock(bridge.peakStartIso ?? "", x.timezone);
+            parts.push(bridge.gridEnergyKwh > 0
+                ? `Batterie: ${fmtKwh(bridge.gridEnergyKwh)} kWh Netzladung ${start ?? ""}–${end ?? ""} bis ${Math.round(bridge.targetSocPct ?? 0)} % vor der Hochpreisphase ${peak ?? ""}. ${bridge.reasonDe}`
+                : `Batterie: keine zusätzliche Netzladung nötig. ${bridge.reasonDe}`);
+            if (bridge.holdEndIso)
+                parts.push(`Batterieenergie bis ${fmtDayClock(bridge.holdEndIso, x.timezone) ?? "zur Hochpreisphase"} schonen; Entladung wird aktiv gesperrt.`);
+        }
+    }
     const agenda = buildUnifiedDayAgendaDe(plan, opts?.execution, opts?.strategy ?? null);
     if (agenda.length > 0) {
         parts.push(`Plan: ${agenda.join("; ")}.`);

@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.16] – 2026-09-26
+
+### Changed
+
+- Der 72-Stunden-Ausblick benennt den SOC vor PV-Beginn, bei PV-Ende und um Mitternacht; fehlende Prognosewerte bleiben unbekannt.
+- Die Statistik zeigt Energieflüsse, Bilanzgrenzen und fehlende Messwerte verständlicher. Mobilität verwendet dieselbe gemessene Autoladung wie die Energiebilanz; widersprüchliche Kostenvergleiche bleiben offen.
+- Die Batterieplanung prüft bei veröffentlichten dynamischen Preisen Netto-PV-Überschuss, Nachtbedarf, Ladeverluste und Verschleiß, bevor sie eine Teil-Netzladung vor einer Hochpreisphase einplant. Der Ziel-SOC wird an die Sonnen-Laufzeitsteuerung übergeben; ein geplanter Batterie-Hold schreibt im manuellen Modus den Entlade-Sollwert null, prüft die Rückmeldung und stellt anschließend den Eigenverbrauch wieder her. Netzausgleich und EV-Konflikte bleiben vorrangig gesperrt.
+
 ## [0.4.14] – 2026-09-19
 
 ### Added

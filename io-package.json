@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.15",
+		"version": "0.4.16",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.16": {
+				"en": "Clarifies battery SOC at the usable PV window and midnight; reconciles energy, mobility and cost statistics against available measured data without changing device control.",
+				"de": "Zeigt Batterie-SOC zum nutzbaren PV-Fenster und um Mitternacht; gleicht Energie-, Mobilitäts- und Kostenstatistik mit vorhandenen Messdaten ab, ohne die Gerätesteuerung zu ändern."
+			},
 			"0.4.15": {
 				"en": "Shows when climate control is off and creates the technical allocated-power states for all supported climate slots.",
 				"de": "Zeigt die ausgeschaltete Klimasteuerung eindeutig an und legt die technischen Leistungsstates für alle unterstützten Klimaplätze an."

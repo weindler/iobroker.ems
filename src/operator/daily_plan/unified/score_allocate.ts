@@ -3,6 +3,7 @@
  */
 
 import { plannerModePolicyFromGlobalMode } from "../../../planner/mode_policy";
+import { planBatteryPriceBridge, type PriceBridgeDecision } from "./battery_price_bridge";
 import type { PlannerModePolicy } from "../../../planner/mode_policy";
 import {
 	buildBatteryReserveFloor,
@@ -159,6 +160,7 @@ export type AllocationState = {
 	consumers: ConsumerState[];
 	nowMs: number;
 	batteryHold: boolean;
+	priceBridge?: PriceBridgeDecision | null;
 	dischargeLiveSupported: boolean;
 	/** Self-Consumption passiv nutzbar? Sonst keine battery-Energiequelle für Verbraucher. */
 	passiveBatteryEnergyAvailable: boolean;
@@ -232,6 +234,7 @@ export type ScoreAllocationResult = {
 	goals: UnifiedGoalStatus[];
 	reasonCodes: string[];
 	finalSocKwh: number;
+	batteryPriceBridge?: PriceBridgeDecision | null;
 	/** BLOCK B (Explainability, additiv): letzte Thermal-Opportunity-Auswertung dieses Laufs. */
 	thermalLearningExplanation?: PlannerLearningExplanation<boolean> | null;
 };
@@ -1366,6 +1369,16 @@ export function scoreCandidate(
 		if (!slot.gridAllowed || slot.importCt === null) return -Infinity;
 		if (!consumer.gridEligible) return -Infinity;
 		if (!weights.allowOptimization && input.globalMode === "off") return -Infinity;
+		if (candidate.kind === "battery_charge" && input.prices.source === "dynamic_tariff" &&
+			!state.priceBridge?.usable) return -Infinity;
+		if (candidate.kind === "battery_charge" && input.prices.source != null &&
+			input.prices.source !== "dynamic_tariff") return -Infinity;
+		if (candidate.kind === "battery_charge" && state.priceBridge?.usable) {
+			const bridge = state.priceBridge;
+			if (!(bridge.gridEnergyKwh > EPS) || !bridge.chargeStartIso || !bridge.chargeEndIso ||
+				slot.startMs < Date.parse(bridge.chargeStartIso) ||
+				Date.parse(slot.endIso) > Date.parse(bridge.chargeEndIso)) return -Infinity;
+		}
 	}
 
 	if (candidate.source === "pv_surplus") {
@@ -2100,6 +2113,11 @@ function generateCandidatesForConsumer(
 		} else {
 			take = applyMinPower(take, consumer.minPowerW, take, consumer.remainingKwh);
 		}
+		if (consumer.kind === "battery_charge" && source === "grid" && state.priceBridge?.usable) {
+			const alreadyGrid = allocations.filter(a => a.kind === "battery_charge" && a.energySource === "grid")
+				.reduce((sum, a) => sum + a.allocatedEnergyKwh, 0);
+			take = Math.min(take, Math.max(0, state.priceBridge.gridEnergyKwh - alreadyGrid));
+		}
 		if (take <= EPS) continue;
 		if (
 			consumer.minPowerW &&
@@ -2572,7 +2590,7 @@ export function runScoreBasedAllocation(
 	const allocations: UnifiedAllocationCell[] = [];
 	const reasonCodes: string[] = opts?.reasonCodes ? [...opts.reasonCodes] : [];
 
-	const bat = input.battery;
+	let bat = input.battery;
 	const capacity = bat.usableCapacityKwh ?? 0;
 	const socPct = bat.socPct;
 	const batteryKnown = capacity > 0 && socPct !== null;
@@ -2581,7 +2599,7 @@ export function runScoreBasedAllocation(
 		bat.endSocTargetPct != null && Number.isFinite(bat.endSocTargetPct)
 			? bat.endSocTargetPct
 			: policy.chargeTargetSocPct;
-	const targetKwh = batteryKnown ? capacity * (endSocPct / 100) : 0;
+	let targetKwh = batteryKnown ? capacity * (endSocPct / 100) : 0;
 	const chargeEff = bat.chargeEfficiency ?? 1;
 	const dischargeEff = bat.dischargeEfficiency ?? 1;
 
@@ -2597,12 +2615,36 @@ export function runScoreBasedAllocation(
 		}
 	}
 	applyExternalEvReservations(input, slots, reasonCodes);
+	const hardBound = hardPvBoundForPlanning(input, slots);
+	const bridge = bat.gridChargeAllowed && bat.allowedModes.includes("charge") &&
+		bat.uncertainty.status === "valid" && input.pv.uncertainty.status === "valid" &&
+		input.houseLoad.uncertainty.status === "valid" && !(input.wallbox && wallboxImmediate(input.wallbox))
+		? planBatteryPriceBridge({
+			slots: slots.map((s, i) => ({ startIso: s.startIso, endIso: s.endIso,
+				pvKwh: s.pvKwh, houseKwh: s.houseKwh, committedKwh: hardBound[i] ?? 0,
+				importCt: s.importCt, gridAllowed: s.gridAllowed && !s.evGridReserved })),
+			nowMs: Date.parse(input.time.nowIso), socPct: bat.socPct,
+			capacityKwh: bat.usableCapacityKwh, maxChargePowerW: bat.maxChargePowerW, minSocPct: bat.minSocPct,
+			maxSocPct: bat.maxSocPct, nightKwh: bat.nightReserveKwh,
+			pvConfidencePct: input.pv.uncertainty.confidencePct,
+			chargeEfficiency: bat.chargeEfficiency, dischargeEfficiency: bat.dischargeEfficiency,
+			wearCtPerKwh: bat.wearCtPerKwh ?? null, priceSource: input.prices.source ?? null,
+			mode: input.globalMode,
+		}) : null;
+	if (bridge?.usable && bridge.gridEnergyKwh > EPS && bridge.targetSocPct != null && bridge.peakStartIso &&
+		bat.socPct != null && bat.usableCapacityKwh != null) {
+		bat = { ...bat, endSocTargetPct: bridge.targetSocPct,
+			requiredChargeEnergyKwh: Math.max(0, (bridge.targetSocPct - bat.socPct) * bat.usableCapacityKwh / 100 / Math.max(bat.chargeEfficiency ?? 1, 0.1)),
+			chargeDeadlineIso: bridge.peakStartIso };
+		input = { ...input, battery: bat };
+		targetKwh = capacity * bridge.targetSocPct / 100;
+		reasonCodes.push("battery_price_bridge");
+	}
 
 	const th = input.thermal;
 	if (th?.emptyAtSource === "estimated") reasonCodes.push(REASON.THERMAL_EMPTY_AT_ESTIMATED);
 
 	/** Reserve: freier Surplus nach Pflichtbindung. next-PV: Fenster roh, Check gebunden. */
-	const hardBound = hardPvBoundForPlanning(input, slots);
 	const reserveFloor = buildBatteryReserveFloor(input, applyHardPvBoundsToSlots(slots, hardBound));
 	const nowMsPlan = Date.parse(input.time.nowIso);
 	const fromIdxPlan = Math.max(
@@ -2639,6 +2681,7 @@ export function runScoreBasedAllocation(
 		consumers,
 		nowMs: nowMsPlan,
 		batteryHold: wb ? wallboxImmediate(wb) : false,
+		priceBridge: bridge,
 		dischargeLiveSupported: bat.dischargeLiveSupported,
 		passiveBatteryEnergyAvailable: bat.passiveBatteryEnergyAvailable === true,
 		pvConfidence: pvConfidenceFactor(input),
@@ -2653,6 +2696,7 @@ export function runScoreBasedAllocation(
 			goals: buildGoals(input, state, reasonCodes),
 			reasonCodes,
 			finalSocKwh: state.socKwh,
+			batteryPriceBridge: bridge,
 		};
 	}
 
@@ -2768,6 +2812,7 @@ export function runScoreBasedAllocation(
 		goals,
 		reasonCodes,
 		finalSocKwh: state.socKwh,
+		batteryPriceBridge: bridge,
 		thermalLearningExplanation: toThermalLearningExplanation(state.thermalOpportunityLastExplanation),
 	};
 }

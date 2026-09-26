@@ -201,7 +201,7 @@ function allocateUnifiedDayPlan(input, opts) {
             : null;
     const goalDeadline = trimmed.wallbox?.deadlineIso ?? null;
     const pvToGoal = (0, energy_scopes_1.sumEnergyToDeadline)(input.pv.slots, goalDeadline);
-    const { allocations, goals, reasonCodes: allocReasons, finalSocKwh, thermalLearningExplanation, } = (0, score_allocate_1.runScoreBasedAllocation)(trimmed, slots, {
+    const { allocations, goals, reasonCodes: allocReasons, finalSocKwh, batteryPriceBridge, thermalLearningExplanation, } = (0, score_allocate_1.runScoreBasedAllocation)(trimmed, slots, {
         initialSocKwh: startSocKwh,
         reserveKwh,
         reasonCodes,
@@ -283,6 +283,7 @@ function allocateUnifiedDayPlan(input, opts) {
         totals: null,
         legacyDailyPlan: null,
         thermalLearningExplanation: thermalLearningExplanation ?? null,
+        batteryPriceBridge: batteryPriceBridge ?? null,
     };
 }
 exports.allocateUnifiedDayPlan = allocateUnifiedDayPlan;

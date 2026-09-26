@@ -37,7 +37,7 @@ function fixture(dateKey = "2026-09-10") {
         strict_1.default.equal(result.gridImportKwh, 1.2);
         strict_1.default.equal(result.gridExportKwh, 0.4);
         strict_1.default.equal(result.selfConsumptionKwh, 2.6);
-        strict_1.default.equal(result.autonomyPct, 65.7);
+        strict_1.default.equal(result.autonomyPct, null, "Smart Meter erst ab 08:00: keine scheinbar vollständige Tagesautarkie");
         strict_1.default.equal(result.gridTruthSource, "smart_meter");
         strict_1.default.match(result.notesDe.join(" "), /erste Tag kann unvollständig/);
     });
@@ -60,6 +60,15 @@ function fixture(dateKey = "2026-09-10") {
         strict_1.default.equal(result.evFastLocalSharePct, 40);
         strict_1.default.equal(result.climatePvKwh, 0.25);
         strict_1.default.equal(result.batteryPvChargedKwh, null, "mixed darf nicht als PV erfunden werden");
+    });
+    (0, node_test_1.it)("zeigt bei 284,8 kWh Haus und 51,1 kWh Netz dieselbe berechenbare Autarkie", () => {
+        const day = fixture();
+        day.buckets.houseTotalKwh = [284.8, null, null, null];
+        day.buckets.gridImportKwh = [51.1, null, null, null];
+        const result = (0, energy_1.buildEnergeticDayTotals)(day);
+        strict_1.default.equal(result.autonomyPct, 82.1);
+        day.buckets.gridImportKwh[1] = 1;
+        strict_1.default.equal((0, energy_1.buildEnergeticDayTotals)(day).autonomyPct, null);
     });
     (0, node_test_1.it)("lässt Schnellmodus-Quellen bei einer Messlücke null, aber behält die Schnelllade-Energie", () => {
         const day = fixture();
@@ -121,7 +130,7 @@ function fixture(dateKey = "2026-09-10") {
             fromKey: "2026-09-05",
             toKey: "2026-09-11",
         });
-        strict_1.default.equal(period.daysTotal, 3);
+        strict_1.default.equal(period.daysTotal, 7);
         strict_1.default.equal(period.daysWithTelemetry, 2);
         strict_1.default.equal(period.selfConsumptionKwh, 3.25);
         strict_1.default.equal(period.selfConsumptionPct, 81.3);

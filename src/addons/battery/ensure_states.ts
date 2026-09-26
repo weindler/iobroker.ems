@@ -55,6 +55,9 @@ export const BAT = {
 		effectiveReason: `${BATTERY_BASE}.limits.effective_reason`,
 	},
 	runtime: {
+		priceHoldUntilIso: `${BATTERY_BASE}.runtime.price_hold_until_iso`,
+		priceHoldHeartbeatIso: `${BATTERY_BASE}.runtime.price_hold_heartbeat_iso`,
+		priceTargetSocPct: `${BATTERY_BASE}.runtime.price_target_soc_pct`,
 		requestId: `${BATTERY_BASE}.runtime.request_id`,
 		action: `${BATTERY_BASE}.runtime.action`,
 		state: `${BATTERY_BASE}.runtime.state`,
@@ -328,6 +331,9 @@ function batteryStateDefs(): Def[] {
 		{ id: BAT.limits.effectiveReason, common: txt("Grenzen-Grund"), defVal: "" },
 
 		{ id: BAT.runtime.requestId, common: txt("Request-ID"), defVal: "" },
+		{ id: BAT.runtime.priceHoldUntilIso, common: txt("Preis-Hold bis"), defVal: "" },
+		{ id: BAT.runtime.priceHoldHeartbeatIso, common: txt("Preis-Hold Planungsstand"), defVal: "" },
+		{ id: BAT.runtime.priceTargetSocPct, common: numS("Dynamischer Ziel-SOC der Preisbrücke", "%") },
 		{ id: BAT.runtime.action, common: txt("Aktion"), defVal: "" },
 		{ id: BAT.runtime.state, common: txt("FSM-Zustand"), defVal: "idle" },
 		{ id: BAT.runtime.step, common: txt("FSM-Schritt"), defVal: "" },

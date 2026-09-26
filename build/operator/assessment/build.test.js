@@ -388,6 +388,33 @@ function base(over = {}) {
         const heatOff = (0, build_1.buildOperationalAssessment)(base());
         strict_1.default.equal(heatOff.climate.units[0].heating, null);
     });
+    (0, node_test_1.it)("Klima Aus übersteuert alte Bedarfsbeiträge und Planfenster", () => {
+        const climateSlot = cell("climate", "2026-09-03T14:00:00.000Z", "2026-09-03T14:15:00.000Z", 800);
+        climateSlot.consumerId = "air_conditioning.unit_1";
+        const a = (0, build_1.buildOperationalAssessment)(base({
+            climateMode: "off",
+            plan: emptyPlan([climateSlot]),
+            contributions: [
+                climateContrib({ likelyActive: true, coolingHours: 2, dehumidifyHours: 1 }),
+                climateContrib({ unitIndex: 2, unitName: "Josef", likelyActive: true, coolingHours: 2 }),
+            ],
+        }));
+        strict_1.default.equal(a.climate.units.length, 2);
+        strict_1.default.match(a.climate.text, /ausgeschaltet/);
+        for (const unit of a.climate.units) {
+            strict_1.default.match(unit.cooling, /ausgeschaltet/);
+            strict_1.default.equal(unit.heating, null);
+            strict_1.default.equal(unit.dehumidify, "");
+            strict_1.default.equal(unit.next, null);
+        }
+        strict_1.default.doesNotMatch((0, build_1.formatOperationalAssessmentDe)(a), /Kühlung heute vorgesehen|Entfeuchtung vorgesehen|Klimafenster/);
+        strict_1.default.match((0, build_1.buildOperationalAssessment)(base({ climateMode: "live" })).climate.units[0].cooling, /keine Kühlung/);
+    });
+    (0, node_test_1.it)("Klima Aus ohne Gerätebeiträge bleibt als ausgeschaltet sichtbar", () => {
+        const a = (0, build_1.buildOperationalAssessment)(base({ climateMode: "off", contributions: [] }));
+        strict_1.default.deepEqual(a.climate.units, []);
+        strict_1.default.match((0, build_1.formatOperationalAssessmentDe)(a), /Klima: Klimasteuerung ausgeschaltet/);
+    });
     (0, node_test_1.it)("Batterie Hold / Entladung / GB aktiv vs Hard-Gate", () => {
         const hold = (0, build_1.buildOperationalAssessment)(base({
             strategy: {

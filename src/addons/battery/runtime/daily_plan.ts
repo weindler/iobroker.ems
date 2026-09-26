@@ -42,6 +42,7 @@ export type BatteryDecisionSource =
 	| "profile_read_only"
 	| "manual_user_intent"
 	| "daily_plan"
+	| "price_bridge"
 	| "daily_plan_passive_pv"
 	| "daily_plan_zero"
 	| "battery_winter_fallback"

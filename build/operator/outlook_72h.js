@@ -37,6 +37,55 @@ function priceSummary(values, slotCount) {
         complete: slotCount > 0 && finite.length === slotCount,
     };
 }
+/** Nur bekannte, zusammenhängende Viertelstunden dürfen ein nutzbares PV-Fenster bilden. */
+function pvCoverageWindow(daySlots, pvPower, loadPower) {
+    if (daySlots.length < 2)
+        return null;
+    const covered = [];
+    for (const slot of daySlots) {
+        const pv = pvPower.get(slot.startIso);
+        const load = loadPower.get(slot.startIso);
+        if (pv == null || load == null || !Number.isFinite(pv) || !Number.isFinite(load))
+            return null;
+        covered.push(pv > 0 && pv >= load);
+    }
+    const runs = [];
+    for (let i = 0; i < covered.length;) {
+        if (!covered[i]) {
+            i++;
+            continue;
+        }
+        const first = i;
+        while (i < covered.length && covered[i]) {
+            if (i > first && daySlots[i - 1].endIso !== daySlots[i].startIso)
+                break;
+            i++;
+        }
+        if (i - first >= 2)
+            runs.push({ first, last: i - 1 });
+    }
+    if (!runs.length)
+        return null;
+    // Kurze Wolkenlücken bis zu zwei Slots verbinden nur benachbarte stabile Fenster.
+    const merged = [runs[0]];
+    for (const run of runs.slice(1)) {
+        const prev = merged[merged.length - 1];
+        const gap = run.first - prev.last - 1;
+        let contiguous = gap <= 2;
+        for (let i = prev.last; i < run.first; i++) {
+            if (daySlots[i].endIso !== daySlots[i + 1].startIso)
+                contiguous = false;
+        }
+        if (contiguous)
+            prev.last = run.last;
+        else
+            merged.push({ ...run });
+    }
+    return {
+        startIso: daySlots[merged[0].first].startIso,
+        endIso: daySlots[merged[merged.length - 1].last].endIso,
+    };
+}
 function allocationSummaries(cells) {
     const grouped = new Map();
     for (const cell of cells) {
@@ -398,6 +447,10 @@ function buildOperatorOutlook72h(args) {
     const horizonComplete = coveredHours >= exports.OPERATOR_OUTLOOK_HOURS - 0.001;
     const pvByStart = new Map(args.plannerInput.pv.slots.map((s) => [s.slot.startIso, s.energyKwh]));
     const loadByStart = new Map(args.plannerInput.houseLoad.slots.map((s) => [s.slot.startIso, s.energyKwh]));
+    const pvPowerByStart = new Map(args.plannerInput.pv.slots.map((s) => [s.slot.startIso, s.forecastPowerW]));
+    const loadPowerByStart = new Map(args.plannerInput.houseLoad.slots.map((s) => [s.slot.startIso, s.forecastPowerW]));
+    const batteryByStart = new Map(args.plan.batteryTrajectory.map((p) => [p.slotStartIso, p.socPct]));
+    const batteryByEnd = new Map(args.plannerInput.time.slots.map((s) => [s.endIso, batteryByStart.get(s.startIso) ?? null]));
     const priceByStart = new Map(args.plannerInput.prices.slots.map((s) => [s.slot.startIso, s.importCtPerKwh]));
     const knownHours = (values) => round(slots.reduce((sum, slot) => {
         const value = values.get(slot.startIso);
@@ -434,6 +487,16 @@ function buildOperatorOutlook72h(args) {
         const batteryPoints = dayBatteryTrajectory
             .map((point) => point.socPct)
             .filter((soc) => typeof soc === "number" && Number.isFinite(soc));
+        const pvWindow = pvCoverageWindow(daySlots, pvPowerByStart, loadPowerByStart);
+        const before = pvWindow?.startIso === args.plannerInput.time.slots[0]?.startIso
+            ? args.plannerInput.battery.socPct
+            : pvWindow ? batteryByEnd.get(pvWindow.startIso) ?? null : null;
+        const atEnd = pvWindow ? batteryByEnd.get(pvWindow.endIso) ?? null : null;
+        const lastEndMs = finiteMs(daySlots[daySlots.length - 1].endIso);
+        const midnight = lastEndMs !== null &&
+            (0, time_1.localDateKeyInTimezone)(new Date(lastEndMs), args.timezone) !== dateKey
+            ? batteryByStart.get(daySlots[daySlots.length - 1].startIso) ?? null
+            : null;
         const reasonCodes = [
             ...new Set(allocations.flatMap((allocation) => allocation.reasonCodes)),
         ].sort();
@@ -455,6 +518,17 @@ function buildOperatorOutlook72h(args) {
                     projectedLastSocPct: round(batteryPoints[batteryPoints.length - 1], 1),
                     projectedMinSocPct: round(Math.min(...batteryPoints), 1),
                     projectedMaxSocPct: round(Math.max(...batteryPoints), 1),
+                    pvStartIso: pvWindow?.startIso ?? null,
+                    pvCoverageKnown: daySlots.every((s) => {
+                        const p = pvPowerByStart.get(s.startIso);
+                        const h = loadPowerByStart.get(s.startIso);
+                        return p != null && h != null && Number.isFinite(p) && Number.isFinite(h);
+                    }),
+                    socBeforePvPct: before == null ? null : round(before, 1),
+                    pvEndIso: pvWindow?.endIso ?? null,
+                    socAtPvEndPct: atEnd == null ? null : round(atEnd, 1),
+                    midnightSocPct: midnight == null ? null : round(midnight, 1),
+                    currentSocPct: dateKey === todayKey ? args.plannerInput.battery.socPct : null,
                     chargedEnergyKwh: round(dayBatteryTrajectory.reduce((sum, point) => sum + point.chargeEnergyKwh, 0)),
                     dischargedEnergyKwh: round(dayBatteryTrajectory.reduce((sum, point) => sum + point.dischargeEnergyKwh, 0)),
                     knownPoints: batteryPoints.length,
@@ -528,9 +602,19 @@ function formatOperatorOutlook72hDe(outlook) {
             ? day.allocations.map((a) => `${allocationLabel(a.kind)} ${kwh(a.energyKwh)}`).join(", ")
             : "keine verschiebbare Geräteaktion eingeplant";
         const battery = day.battery
-            ? `Batterie ${day.battery.projectedFirstSocPct?.toFixed(0) ?? "?"}→${day.battery.projectedLastSocPct?.toFixed(0) ?? "?"} %`
+            ? [
+                day.battery.currentSocPct != null ? `${day.battery.currentSocPct.toFixed(0)} % ab jetzt` : null,
+                day.battery.pvStartIso && day.battery.socBeforePvPct != null
+                    ? `${day.battery.socBeforePvPct.toFixed(0)} % vor PV-Beginn (${localWhenDe(day.battery.pvStartIso, outlook.timezone)})` : null,
+                day.battery.pvEndIso && day.battery.socAtPvEndPct != null
+                    ? `${day.battery.socAtPvEndPct.toFixed(0)} % bei PV-Ende (${localWhenDe(day.battery.pvEndIso, outlook.timezone)})` : null,
+                !day.battery.pvStartIso && day.battery.pvCoverageKnown ? "kein ausreichendes PV-Deckungsfenster erwartet" : null,
+                !day.battery.pvCoverageKnown ? "PV-/Hausprognose teilweise unbekannt" : null,
+                day.battery.midnightSocPct != null ? `${day.battery.midnightSocPct.toFixed(0)} % um Mitternacht` : null,
+                day.battery.projectedMinSocPct != null ? `Tiefststand ${day.battery.projectedMinSocPct.toFixed(0)} %` : null,
+            ].filter(Boolean).join(" · ")
             : "Batterieprognose unbekannt";
-        return `${day.dayLabelDe}: PV ${kwh(day.expectedPvKwh)}, Haus ${kwh(day.expectedHouseLoadKwh)}, ${price}; ${flex}; ${battery}.`;
+        return `${day.dayLabelDe}: PV ${kwh(day.expectedPvKwh)}, Haus ${kwh(day.expectedHouseLoadKwh)}, ${price}; ${flex}; Batterie ${battery}.`;
     });
     const decisionLines = outlook.decisions.map((decision) => decision.explanationDe);
     return [header, ...lines, ...(decisionLines.length ? ["Planner-Entscheidungen:", ...decisionLines] : [])].join("\n");

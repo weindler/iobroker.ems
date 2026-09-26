@@ -203,6 +203,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
     const pvC = contribById.get(contribution_ids_1.CONTRIBUTION_IDS.PV_SUPPLY);
     const loadC = contribById.get(contribution_ids_1.CONTRIBUTION_IDS.HOUSE_LOAD_FIXED);
     const gridC = contribById.get(contribution_ids_1.CONTRIBUTION_IDS.GRID_SUPPLY);
+    const gridD = (gridC?.details ?? null);
     const batCharge = contribById.get(contribution_ids_1.CONTRIBUTION_IDS.BATTERY_CHARGE);
     const batReserve = contribById.get(contribution_ids_1.CONTRIBUTION_IDS.BATTERY_RESERVE);
     const batDischarge = contribById.get(contribution_ids_1.CONTRIBUTION_IDS.BATTERY_DISCHARGE);
@@ -459,6 +460,7 @@ function buildUnifiedInputFromForecastContext(ctx) {
         },
         prices: {
             slots: priceSlots,
+            source: str(gridD, "source"),
             uncertainty: priceQuality,
             freshness: priceFresh,
         },
@@ -475,8 +477,9 @@ function buildUnifiedInputFromForecastContext(ctx) {
             maxSocPct,
             maxChargePowerW,
             maxDischargePowerW,
-            chargeEfficiency: null, // nicht produktiv modelliert → unknown
-            dischargeEfficiency: null,
+            chargeEfficiency: ctx.batteryChargeEfficiency ?? null,
+            dischargeEfficiency: ctx.batteryDischargeEfficiency ?? null,
+            wearCtPerKwh: ctx.batteryWearCtPerKwh ?? null,
             allowedModes,
             reserveSocPct: minSocPct,
             nightReserveKwh: num(batD, "avgNightDischargeKwh"),

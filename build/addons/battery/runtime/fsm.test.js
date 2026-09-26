@@ -53,6 +53,26 @@ function drive(rt, overFor, steps, startMs) {
     return { rt: cur, writes, gb };
 }
 (0, node_test_1.describe)("sonnen FSM", () => {
+    (0, node_test_1.it)("sets discharge to zero for a price hold and restores self consumption on expiry", () => {
+        let rt = (0, fsm_js_1.initialSonnenRuntime)(0);
+        const held = drive(rt, () => ({ action: "hold", requestId: "price-bridge-1",
+            effectiveChargeW: 0, actualChargingW: 0, actualDischargingW: 0,
+            actualMode: MODE.selfConsumption, gridBalanceActive: true }), 4, 0);
+        rt = held.rt;
+        const active = drive(rt, () => ({ action: "hold", requestId: "price-bridge-1",
+            effectiveChargeW: 0, actualChargingW: 0, actualDischargingW: 0,
+            actualMode: MODE.manual }), 8, 4000);
+        strict_1.default.equal(active.rt.state, "active");
+        strict_1.default.deepEqual(active.writes.filter(w => w.kind === "discharge_power").map(w => w.value), [0]);
+        strict_1.default.equal(active.writes.filter(w => w.kind === "charge_power").length, 0);
+        const restored = drive(active.rt, cur => ({ action: "self_consumption", stopReason: "intent_expired",
+            chargingActionRequested: false, actualDischargingW: 0,
+            actualMode: cur.state === "verify_self_consumption" || cur.state === "restore_grid_balance"
+                ? MODE.selfConsumption : MODE.manual }), 8, 12000);
+        strict_1.default.equal(restored.rt.ownership.active, false);
+        strict_1.default.ok(restored.writes.some(w => w.kind === "operating_mode" && w.value === MODE.selfConsumption));
+        strict_1.default.equal(restored.writes.filter(w => w.kind === "charge_power").length, 0);
+    });
     (0, node_test_1.it)("runs full live charge sequence in correct write order", () => {
         const rt = (0, fsm_js_1.initialSonnenRuntime)(0);
         const res = drive(rt, (cur) => ({

@@ -100,6 +100,8 @@ export interface EnergeticDayTotals {
 	batteryPvSharePct: number | null;
 	/** Nur bei vollständiger SOC-/Kapazitäts-/Leistungs-Messkette, sonst null. */
 	batteryMeasuredLossKwh: number | null;
+	/** Veränderung der gespeicherten Energie zwischen gemessenen SOC-Tagesgrenzen. */
+	batteryStoredChangeKwh?: number | null;
 	immersionEnergyKwh: number | null;
 	immersionPvKwh: number | null;
 	immersionPvSharePct: number | null;
@@ -152,11 +154,15 @@ export interface EnergeticPeriodSummary {
 	selfConsumptionKwh: number | null;
 	selfConsumptionPct: number | null;
 	autonomyPct: number | null;
+	/** Haus und Netz derselben vollständig gepaarten Messslots; null bei Datenlücken. */
+	autonomyConsumptionBasisKwh?: number | null;
+	autonomyGridImportBasisKwh?: number | null;
 	batteryChargedKwh: number | null;
 	batteryDischargedKwh: number | null;
 	batteryPvChargedKwh: number | null;
 	batteryPvSharePct: number | null;
 	batteryMeasuredLossKwh: number | null;
+	batteryStoredChangeKwh?: number | null;
 	immersionEnergyKwh: number | null;
 	immersionPvKwh: number | null;
 	immersionPvSharePct: number | null;
@@ -218,6 +224,8 @@ export interface HouseCompareSummary {
 	fromKey?: string;
 	toKey?: string;
 	gridImportKwh: number | null;
+	gridExportKwh?: number | null;
+	feedInCreditEur?: number | null;
 	dynamicCostEur: number | null;
 	fixedTariffCostEur: number | null;
 	savingsVsFixedEur: number | null;
@@ -232,6 +240,10 @@ export interface MobilityCompareSummary {
 	fromKey?: string;
 	toKey?: string;
 	homePvKwh: number | null;
+	/** Dieselbe gemessene Wallboxenergie wie in der energetischen Bilanz. */
+	homeChargedKwh?: number | null;
+	/** Nur wenn die zeitgleiche Quellenmessung diese Zuordnung belegt. */
+	homeBatteryKwh?: number | null;
 	homeGridKwh: number | null;
 	homeGridCostEur: number | null;
 	homeGridCostNetEur: number | null;

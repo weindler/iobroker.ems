@@ -2,6 +2,7 @@ import { globalPolicyConfigFromAdapter } from "../../policy/global/config";
 import type { PolicySnapshot } from "../../policy/core/types";
 import { intentAdminConfigFromAdapter } from "../../intent/config";
 import { plannerModePolicyFromGlobalMode } from "../../planner/mode_policy";
+import { batteryWinterPlanConfigFromAdapter } from "../../planner/battery_winter_config";
 import { setOptionalNumberIfChanged, setStateIfChanged } from "../../policy/core/state_write";
 import type { ForecastPlan } from "../forecast/types";
 import { buildDailyPlanFromForecast, dailyPlanRevisionPayload } from "./build";
@@ -23,6 +24,7 @@ import {
 } from "./battery_discharge_authority";
 import { evaluateBatteryOpportunityCost } from "./battery_opportunity_cost";
 import { evaluateBatteryReplaceCost } from "./battery_replace_cost";
+import { statisticsConfigFromAdapter } from "../../statistics/config";
 import { GRID_BALANCE_ECONOMICS_STATE_IDS } from "../../learning/grid_balance_economics/ensure_states";
 import { ETA_PATH_FALLBACK } from "../../learning/grid_balance_economics/constants";
 import { listActiveOverrides } from "../../ai/override_ledger";
@@ -621,6 +623,12 @@ export async function runDailyPlanTick(
 	const etaGridUsable = (await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.etaGridUsable))?.val === true;
 	const etaPvLearned = asNum((await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.etaPvPath))?.val);
 	const etaGridLearned = asNum((await host.getStateAsync(GRID_BALANCE_ECONOMICS_STATE_IDS.etaGridPath))?.val);
+	const configuredChargeEta = batteryWinterPlanConfigFromAdapter(host.config).chargeEfficiencyPct / 100;
+	const measuredDischargeEta = etaGridUsable && etaGridLearned != null && etaGridLearned > 0 && etaGridLearned <= 1
+		? etaGridLearned / configuredChargeEta : null;
+	const usableDischargeEta = measuredDischargeEta != null && measuredDischargeEta > 0 && measuredDischargeEta <= 1
+		? measuredDischargeEta : null;
+	const batteryWearCtPerKwh = statisticsConfigFromAdapter(host.config).batteryWearCostCtPerKwh;
 	const feedInForReplace = normalizeFeedInCtPerKwh(
 		asNum((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val),
 	);
@@ -1158,6 +1166,9 @@ export async function runDailyPlanTick(
 				batteryMaxDischargePowerW: hw.maxDischargeW,
 				batteryMinSocPct: hw.minSocPct,
 				batteryMaxSocPct: hw.maxSocPct,
+				batteryChargeEfficiency: configuredChargeEta,
+				batteryDischargeEfficiency: usableDischargeEta,
+				batteryWearCtPerKwh,
 				roomTemps,
 				observedPvPowerW: livePvPowerW,
 				observedHouseLoadPowerW: liveHouseLoadW,
@@ -1390,7 +1401,10 @@ export async function runDailyPlanTick(
 				await setStateIfChanged(
 					host,
 					"operator.plan.battery_strategy_de",
-					`${strategy.battery.summaryDe}. ${strategy.battery.reasonDe}`,
+					`${strategy.battery.summaryDe}. ${strategy.battery.reasonDe}` +
+						(unifiedPlan.batteryPriceBridge
+							? ` ${unifiedPlan.batteryPriceBridge.reasonDe}`
+							: ""),
 				);
 				await setStateIfChanged(
 					host,
@@ -1446,15 +1460,17 @@ export async function runDailyPlanTick(
 				` ${summarizeUnifiedDayPlanForReason(unifiedPlan)} IH/AC/Battery/Wallbox autoritativ` +
 				(decision.reasons.length ? ` [${decision.reasons.join(",")}]` : "") +
 				` replansToday=${replanCountToday}.`;
-		} catch (e) {
-			/*
+			} catch (e) {
+				/*
 			 * Replan fehlgeschlagen: keine neue Unified-Generation.
 			 * IH/Battery/Wallbox: im Zweifel idle (kein veralteter energetischer Slice).
 			 * AC: planbasierten Flex leeren bei Komfortbedarf → lokaler Runtime-Komfort-Pfad.
 			 * Wallbox: EMS-Intent idle — EVCC bleibt manuell bedienbar.
 			 * Wenn Restplan noch sicher: nichts publishen (letzter Publish bleibt).
 			 */
-			host.log?.warn?.(`unified day replan failed — assess rest safety: ${String(e)}`);
+				host.log?.warn?.(`unified day replan failed — assess rest safety: ${String(e)}`);
+				await setStateIfChanged(host, BAT.runtime.priceHoldUntilIso, "");
+				await setOptionalNumberIfChanged(host, BAT.runtime.priceTargetSocPct, null);
 			const disposition = assessUnifiedReplanFailure({
 				nowMs: now.getTime(),
 				lastUnifiedPlan,
@@ -1500,6 +1516,15 @@ export async function runDailyPlanTick(
 		}
 
 		const publishReasonDe = `${plan.reasonDe}${ihAcReasonSuffix}`.slice(0, 480);
+		const bridgeHold = lastUnifiedPlan?.batteryPriceBridge;
+		const holdUntil = bridgeHold?.usable && bridgeHold.holdStartIso && bridgeHold.holdEndIso &&
+			now.getTime() >= Date.parse(bridgeHold.holdStartIso) &&
+			now.getTime() < Date.parse(bridgeHold.holdEndIso)
+			? bridgeHold.holdEndIso : "";
+		await setStateIfChanged(host, BAT.runtime.priceHoldUntilIso, holdUntil);
+		await setOptionalNumberIfChanged(host, BAT.runtime.priceTargetSocPct,
+			bridgeHold?.usable && bridgeHold.gridEnergyKwh > 0 ? bridgeHold.targetSocPct : null);
+		await host.setStateAsync(BAT.runtime.priceHoldHeartbeatIso, { val: now.toISOString(), ack: true });
 
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.status, plan.status);
 		await setStateIfChanged(host, DAILY_PLAN_STATE_IDS.generatedAt, plan.generatedAt);

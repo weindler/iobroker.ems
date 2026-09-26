@@ -2917,9 +2917,19 @@ function renderHorizon(){
 			od=outlook.days[oi];olines=[];
 			olines.push((oi===0?"PV Rest heute ":"PV ")+(od.expectedPvKwh==null?"Prognose wird noch aufgebaut":Number(od.expectedPvKwh).toFixed(1).replace(".",",")+" kWh erwartet")+" · "+(oi===0?"Haus Rest heute ":"Haus ")+(od.expectedHouseLoadKwh==null?"Lernwert wird noch aufgebaut":Number(od.expectedHouseLoadKwh).toFixed(1).replace(".",",")+" kWh erwartet"));
 			if(od.priceCtPerKwh&&od.priceCtPerKwh.min!=null&&od.priceCtPerKwh.max!=null)olines.push("Preis "+Number(od.priceCtPerKwh.min).toFixed(1).replace(".",",")+"–"+Number(od.priceCtPerKwh.max).toFixed(1).replace(".",",")+" ct/kWh"+(od.priceCtPerKwh.complete?"":" · teilweise"));
-			if(od.battery&&od.battery.projectedFirstSocPct!=null&&od.battery.projectedLastSocPct!=null){
-				olines.push("Batterie voraussichtlich "+Math.round(od.battery.projectedFirstSocPct)+(oi===0?" % ab jetzt, ":" % morgens, ")+Math.round(od.battery.projectedLastSocPct)+" % abends · niedrigster Stand "+Math.round(od.battery.projectedMinSocPct)+" %");
-				olines.push("Batterie voraussichtlich "+Number(od.battery.chargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh geladen · "+Number(od.battery.dischargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh entladen");
+			if(od.battery){
+				var bat=od.battery, sbits=[];
+				if(oi===0){
+					if(bat.currentSocPct!=null)sbits.push(Math.round(bat.currentSocPct)+" % ab jetzt");
+				}else if(bat.pvStartIso&&bat.socBeforePvPct!=null){
+					sbits.push(Math.round(bat.socBeforePvPct)+" % vor PV-Beginn ("+fmtTime(bat.pvStartIso)+")");
+				}
+				if(bat.pvEndIso&&bat.socAtPvEndPct!=null)sbits.push(Math.round(bat.socAtPvEndPct)+" % bei PV-Ende ("+fmtTime(bat.pvEndIso)+")");
+				if(!bat.pvStartIso&&!bat.pvEndIso)sbits.push(bat.pvCoverageKnown?"kein ausreichendes PV-Deckungsfenster erwartet":"PV-/Hausprognose teilweise unbekannt");
+				if(bat.midnightSocPct!=null)sbits.push(Math.round(bat.midnightSocPct)+" % um Mitternacht");
+				if(bat.projectedMinSocPct!=null)sbits.push((oi===0?"Tiefststand ab jetzt ":"Tiefststand ")+Math.round(bat.projectedMinSocPct)+" %");
+				olines.push("Batterie voraussichtlich "+sbits.join(" · "));
+				olines.push("Batterie voraussichtlich "+Number(bat.chargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh geladen · "+Number(bat.dischargedEnergyKwh||0).toFixed(1).replace(".",",")+" kWh entladen");
 			}
 			if(od.allocations&&od.allocations.length){
 				var abits=[];
@@ -3731,7 +3741,7 @@ function fmtScoreStats(v){
 	return Math.round(Number(v))+" %";
 }
 function fmtKwhStats(v){
-	if(v===null||v===undefined||!isFinite(Number(v)))return "—";
+	if(v===null||v===undefined||!isFinite(Number(v)))return "Wert für diesen Zeitraum nicht verfügbar";
 	return Number(v).toFixed(1).replace(".",",")+" kWh";
 }
 function fmtRewardsLabel(source){
@@ -3798,25 +3808,34 @@ function fmtHomeGridMob(mob){
 	return ["Heim Netz",kwh+" · "+fmtEur(net)+" (Abrechnung)"];
 }
 function homeStatsRows(home){
+	var cfg=parseObj(g("statistics.config_json"));
 	var rows=[
 		["Netzbezug",fmtKwhStats(home.gridImportKwh)],
-		["Tibber",fmtEur(home.dynamicCostEur)],
-		["Festtarif",fmtEur(home.fixedTariffCostEur)]
+		["Mit Tibber bezahlt",fmtEur(home.dynamicCostEur)],
+		["Festtarif (Vergleich)",fmtEur(home.fixedTariffCostEur)],
+		["Eingestellter Festtarif",fmtDec(cfg.compareTariffCtPerKwh,2,"ct/kWh")],
+		["Festtarif-Grundpreis pro Monat",fmtEur(cfg.compareTariffMonthlyBaseEur)],
+		["Tibber-Grundpreis pro Monat",fmtEur(cfg.tibberMonthlyBaseEur)],
+		["Tibber-Netzgebühr pro Monat",fmtEur(cfg.tibberMonthlyGridFeeEur)]
 	];
 	if(gridRewardsShowEuro(home.gridRewardsSource,home.gridRewardsCreditEur)){
 		rows.push([fmtRewardsLabel(home.gridRewardsSource),fmtEur(home.gridRewardsCreditEur)]);
 	}
+	rows.push(["Einspeisevergütung (getrennt)",fmtEur(home.feedInCreditEur)]);
 	return rows;
 }
 function mobStatsRows(mob){
 	var rows=[
-		["Heim PV",fmtKwhStats(mob.homePvKwh)],
+		["Auto zu Hause geladen",fmtKwhStats(mob.homeChargedKwh)],
+		["Davon direkt aus PV",fmtKwhStats(mob.homePvKwh)],
+		["Davon aus der Batterie",fmtKwhStats(mob.homeBatteryKwh)],
 		fmtHomeGridMob(mob),
 		["Schnellader (bezahlt)",fmtKwhStats(mob.publicInvoicedKwh)],
 		["km ≈",mob.estimatedKm!=null?String(mob.estimatedKm).replace(".",","):"—"],
 		["E-Auto",fmtEur(mob.evTotalCostEur)],
 		["Verbrenner",fmtEur(mob.iceCostEur)],
-		["Sprit €/l",mob.fuelPriceEurPerL!=null?Number(mob.fuelPriceEurPerL).toFixed(3).replace(".",","):"—"]
+		["E-Auto Verbrauchsannahme",fmtDec(mob.evKwhPer100Km,1,"kWh/100 km")],
+		["Spritpreis",mob.fuelPriceEurPerL!=null?Number(mob.fuelPriceEurPerL).toFixed(3).replace(".",",")+" €/l":"nicht eingestellt"]
 	];
 	return rows;
 }
@@ -3847,13 +3866,13 @@ function statsCard(title,hero,rows,note,extraCls){
 }
 function pctHero(v,label){
 	var n=num(v);
-	return n===null?{cls:"neu",txt:"—"}:{cls:"pos",txt:(label?label+" ":"")+Math.round(n)+" %"};
+	return n===null?{cls:"neu",txt:"nicht vollständig berechenbar"}:{cls:"pos",txt:(label?label+" ":"")+Math.round(n)+" %"};
 }
 function energeticRows(energy){
 	return[
 		["PV-Erzeugung",fmtKwhStats(energy.pvGenerationKwh)],
 		["Hausverbrauch",fmtKwhStats(energy.houseConsumptionKwh)],
-		["Netzbezug",fmtKwhStats(energy.gridImportKwh)],
+		["Netzbezug im Zeitraum",fmtKwhStats(energy.gridImportKwh)],
 		["Einspeisung",fmtKwhStats(energy.gridExportKwh)],
 		["Eigenverbrauch",fmtKwhStats(energy.selfConsumptionKwh)+" · "+(num(energy.selfConsumptionPct)===null?"—":Math.round(Number(energy.selfConsumptionPct))+" %")],
 		["Autarkie",num(energy.autonomyPct)===null?"—":Math.round(Number(energy.autonomyPct))+" %"]
@@ -3863,13 +3882,14 @@ function energeticDeviceRows(energy){
 	return[
 		["Batterie laden",fmtKwhStats(energy.batteryChargedKwh)+" · PV "+(num(energy.batteryPvSharePct)===null?"—":Math.round(Number(energy.batteryPvSharePct))+" %")],
 		["Batterie entladen",fmtKwhStats(energy.batteryDischargedKwh)],
-		["Batterieverlust",fmtKwhStats(energy.batteryMeasuredLossKwh)],
+		["Gespeicherte Energie verändert um",fmtKwhStats(energy.batteryStoredChangeKwh)],
+		["Berechneter Batterieverlust",fmtKwhStats(energy.batteryMeasuredLossKwh)],
 		["Heizstab",fmtKwhStats(energy.immersionEnergyKwh)+" · PV "+(num(energy.immersionPvSharePct)===null?"—":Math.round(Number(energy.immersionPvSharePct))+" %")],
 		["Auto",fmtKwhStats(energy.evChargedKwh)+" · PV "+(num(energy.evPvSharePct)===null?"—":Math.round(Number(energy.evPvSharePct))+" %")],
 		["Auto Schnell/now",fmtKwhStats(energy.evFastChargedKwh)],
 		["↳ Sonnen-Batterie",energyShare(energy.evFastBatteryKwh,energy.evFastBatterySharePct)],
 		["↳ Netzbezug",energyShare(energy.evFastGridKwh,energy.evFastGridSharePct)],
-		["↳ PV/lokal",energyShare(energy.evFastLocalKwh,energy.evFastLocalSharePct)],
+		["↳ lokale Versorgung",energyShare(energy.evFastLocalKwh,energy.evFastLocalSharePct)],
 		["Klima",fmtKwhStats(energy.climateEnergyKwh)+" · PV "+(num(energy.climatePvSharePct)===null?"—":Math.round(Number(energy.climatePvSharePct))+" %")]
 	];
 }
@@ -3890,7 +3910,7 @@ function nonMonetizedRows(energy){
 	];
 }
 function smartMeterCard(energy,scopeLabel){
-	var live=num(g("statistics.meter.live_power_w")),flow=live===null?"Netzleistung unbekannt":(live>10?"Bezug "+Math.round(live)+" W":(live<-10?"Einspeisung "+Math.round(Math.abs(live))+" W":"nahezu ausgeglichen"));
+	var live=num(g("statistics.meter.live_power_w")),flow=live===null?"Jetzt: Netzleistung unbekannt":(live>10?"Jetzt: Bezug "+Math.round(live)+" W":(live<-10?"Jetzt: Einspeisung "+Math.round(Math.abs(live))+" W":"nahezu ausgeglichen"));
 	var color=live===null?"#8b949e":(live>10?"#f0883e":(live<-10?"#3fb950":"#8b949e"));
 	return '<div class="ems-card"><div class="ems-card-h"><span class="ems-card-title">Smart Meter · '+esc(scopeLabel)+'</span></div><div class="ems-meter"><div class="ems-meter-icon" style="color:'+color+'">↕</div><div><div class="ems-stats-hero neu" style="color:'+color+'">'+esc(flow)+'</div><div class="ems-rows"><div class="l">Netzbezug</div><div class="r">'+esc(fmtKwhStats(energy.gridImportKwh))+'</div><div class="l">Einspeisung</div><div class="r">'+esc(fmtKwhStats(energy.gridExportKwh))+'</div><div class="l">Erfassung seit</div><div class="r">'+esc(fmtDateTimeOrDash(g("statistics.meter.capture_since_iso")))+'</div></div></div></div><div class="ems-note">'+esc(txt(g("statistics.meter.source_de"),"Smart Meter nicht konfiguriert"))+'</div></div>';
 }
@@ -4007,8 +4027,8 @@ function mergeHomeFlat(scope,json){
 function mergeMobFlat(scope,json){
 	var o=Object.assign({},json&&typeof json==="object"?json:{});
 	var p="statistics.mobility."+scope+".";
-	var pv=num(g(p+"home_pv_kwh")); if(pv!=null)o.homePvKwh=pv;
-	var hg=num(g(p+"home_grid_kwh")); if(hg!=null)o.homeGridKwh=hg;
+	var pv=num(g(p+"home_pv_kwh")); if(pv!=null&&o.homePvKwh===undefined)o.homePvKwh=pv;
+	var hg=num(g(p+"home_grid_kwh")); if(hg!=null&&o.homeGridKwh===undefined)o.homeGridKwh=hg;
 	var hc=num(g(p+"home_grid_cost_eur")); if(hc!=null)o.homeGridCostEur=hc;
 	var hn=num(g(p+"home_grid_cost_net_eur")); if(hn!=null)o.homeGridCostNetEur=hn;
 	var pi=num(g(p+"public_invoiced_kwh")); if(pi!=null)o.publicInvoicedKwh=pi;
@@ -4016,7 +4036,7 @@ function mergeMobFlat(scope,json){
 	var ev=num(g(p+"ev_cost_eur")); if(ev!=null)o.evTotalCostEur=ev;
 	var ice=num(g(p+"ice_cost_eur")); if(ice!=null)o.iceCostEur=ice;
 	var fp=num(g(p+"fuel_price_eur_per_l")); if(fp!=null)o.fuelPriceEurPerL=fp;
-	var sv=num(g(p+"savings_eur")); if(sv!=null)o.savingsVsIceEur=sv;
+	var sv=num(g(p+"savings_eur")); if(sv!=null&&o.savingsVsIceEur===undefined)o.savingsVsIceEur=sv;
 	var rs=txt(g(p+"rewards_source"),""); if(rs&&rs!=="—")o.gridRewardsSource=rs;
 	var lb=txt(g(p+"label_de"),""); if(lb&&lb!=="—")o.periodLabelDe=lb;
 	return o;
@@ -4094,9 +4114,9 @@ function renderStatistics(){
 		));
 	var shownEnergy=todaySelected?energyT:energyP;
 	var scopeLabel=todaySelected?"Heute":(energyP.periodLabelDe||periodLabel);
-	grid.innerHTML=energyCards
+	grid.innerHTML=statsCard("Zeitraum und Datenstand",{cls:"neu",txt:scopeLabel},[["Von",shownEnergy.fromKey||"Heute"],["Bis",shownEnergy.toKey||"Heute"],["Anzeige aktualisiert",new Date().toLocaleString("de-DE")]],"Der laufende Tag ist noch nicht vollständig. Netzwerte stammen vorrangig vom Smart Meter, PV vom Wechselrichter und die Autoladung von der Wallbox. Einzelne Quellen können später aktualisiert werden.")+energyCards
 		+smartMeterCard(shownEnergy,scopeLabel)
-		+statsCard("PV-Nutzung der Geräte · "+scopeLabel,pctHero(shownEnergy.selfConsumptionPct,"Eigenverbrauch"),energeticDeviceRows(shownEnergy),"PV-Anteile werden nur bei vollständiger zeitgleicher Messung ausgewiesen. Schnellladen: Netz und Sonnen-Batterie werden proportional zur gemessenen Hausversorgung aufgeteilt; der Rest ist PV/lokal.")
+		+statsCard("PV-Nutzung der Geräte · "+scopeLabel,pctHero(shownEnergy.selfConsumptionPct,"Eigenverbrauch"),energeticDeviceRows(shownEnergy),"PV-Anteile werden nur bei vollständiger zeitgleicher Messung ausgewiesen. Schnellladen: Netz und Sonnen-Batterie werden anhand zeitgleicher Messungen zugeordnet. Unbekannte Anteile bleiben offen. Diese Werte sind Energieflüsse und teils bereits im Hausverbrauch enthalten; sie dürfen nicht zusammengerechnet werden.")
 		+statsCard("Nutzen ohne Eurobewertung · "+scopeLabel,{cls:"neu",txt:"energetisch ausgewiesen"},nonMonetizedRows(shownEnergy),(function(){
 			var n=shownEnergy&&shownEnergy.nonMonetized;
 			return n&&Array.isArray(n.notesDe)?n.notesDe.join(" "):"Pelletentlastung, vermiedene Kesselstarts und Verschleiß bleiben ohne belastbare Messquelle unbewertet.";

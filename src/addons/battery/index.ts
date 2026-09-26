@@ -496,14 +496,28 @@ async function controlTickInner(host: Host): Promise<void> {
 		resolvedIntent?.top_off_requested.status === "valid" && resolvedIntent.top_off_requested.value === true;
 	const targetSocFromIntent =
 		resolvedIntent?.target_soc_pct.status === "valid" ? resolvedIntent.target_soc_pct.value : null;
+	const [priceHoldUntil, priceHoldHeartbeat, priceTarget] = await Promise.all([
+		readRelString(host, BAT.runtime.priceHoldUntilIso),
+		readRelString(host, BAT.runtime.priceHoldHeartbeatIso),
+		readRelNumber(host, BAT.runtime.priceTargetSocPct),
+	]);
+	const holdBeatMs = Date.parse(priceHoldHeartbeat ?? "");
+	const freshPricePlan = Number.isFinite(holdBeatMs) && holdBeatMs <= nowMs &&
+		nowMs - holdBeatMs < 30 * 60_000;
 
 	const dailyPlanContext = await resolveBatteryDailyPlanAllocation(host, profile, snapshot.limits, {
 		now: new Date(nowMs),
 		socPct: snapshot.telemetry.socPct,
 		topOffActive,
-		targetSocFromIntent,
+		targetSocFromIntent: targetSocFromIntent ?? (freshPricePlan && priceTarget != null && priceTarget > 0 ? priceTarget : null),
 		governanceEnabled,
 	});
+	const holdEndMs = Date.parse(priceHoldUntil ?? "");
+	const priceHoldActive = Number.isFinite(holdEndMs) && nowMs < holdEndMs &&
+		freshPricePlan &&
+		!topOffActive && snapshot.telemetry.socPct != null &&
+		(snapshot.limits.minSocPct == null || snapshot.telemetry.socPct > snapshot.limits.minSocPct) &&
+		!snapshot.telemetry.stale && snapshot.capabilities.hold_battery.available;
 
 	let deviceIntent: BatteryDeviceIntent;
 	let wantsCharge: boolean;
@@ -521,6 +535,17 @@ async function controlTickInner(host: Host): Promise<void> {
 				deviceIntent = { ...deviceIntent, maxChargeW: mirrorW };
 			}
 		}
+	} else if (!executionOff && priceHoldActive && !dailyPlanContext.chargingAllowed &&
+		!dailyPlanContext.legacyFallbackActive) {
+		requestId = `price-bridge-${priceHoldUntil}`;
+		wantsCharge = true;
+		runtimeDecisionSource = "price_bridge";
+		deviceIntent = {
+			requestId, action: "hold", targetSocPct: null, maxChargeW: 0, maxDischargeW: 0,
+			energySource: "any", validFrom: null, validUntil: priceHoldUntil,
+			issuedAt: priceHoldHeartbeat!, reason: "Preisbrücke: Entladung bis zur Hochpreisphase aussetzen",
+			source: "price_bridge",
+		};
 	} else if (!executionOff && dailyPlanContext.useDailyPlan) {
 		deviceIntent = deviceIntentFromDailyPlan(dailyPlanContext, nowMs);
 		wantsCharge = dailyPlanContext.chargingAllowed && (dailyPlanContext.effectiveChargePowerW ?? 0) > 0;
@@ -647,7 +672,7 @@ async function controlTickInner(host: Host): Promise<void> {
 	const holdSignals = resolveGridBalanceHoldSignals({
 		nowMs,
 		constraintHoldState: batteryHoldConstraintSt,
-		deviceIntentHold: deviceIntent.action === "hold",
+		deviceIntentHold: deviceIntent.action === "hold" && deviceIntent.source !== "price_bridge",
 		batteryHoldForEvCharge: evChargeHold,
 		evccBatteryMode,
 	});
@@ -669,6 +694,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		wallboxAllocatedGridW: null,
 		vehicleConnected: evccConnectedFlag,
 	});
+	if (deviceIntent.source === "price_bridge" && evConflict.conflict) wantsCharge = false;
 	const gridBalanceSuppressed =
 		holdActive ||
 		holdPlanned ||
@@ -677,7 +703,9 @@ async function controlTickInner(host: Host): Promise<void> {
 	const emsBatteryIntentActive = Boolean(
 		fromManual
 			? wantsCharge
-			: dailyPlanDriven
+			: deviceIntent.source === "price_bridge"
+				? wantsCharge
+				: dailyPlanDriven
 				? wantsCharge || (runtime.ownership.active && runtime.requestId?.startsWith("daily-plan"))
 				: deviceIntent.source === "winter_planner"
 					? wantsCharge || runtime.ownership.active
@@ -714,7 +742,7 @@ async function controlTickInner(host: Host): Promise<void> {
 	// Hardware-Sicherheitsdecke unabhängig vom Intent-Ziel: nie über den konfigurierten
 	// HW-Max-SOC hinaus laden, auch wenn der Intent kein (oder ein höheres) Ziel setzt.
 	const safetyBlocked =
-		runtime.ownership.active &&
+		runtime.ownership.active && runtime.action !== "hold" &&
 		snapshot.limits.maxSocPct != null &&
 		snapshot.telemetry.socPct != null &&
 		snapshot.telemetry.socPct >= snapshot.limits.maxSocPct;
@@ -723,7 +751,8 @@ async function controlTickInner(host: Host): Promise<void> {
 		targetSocReached,
 		intentExpired:
 			deviceIntent.validUntil != null && Date.parse(deviceIntent.validUntil) <= nowMs,
-		intentRevoked: runtime.ownership.active && !wantsCharge,
+		intentRevoked: runtime.ownership.active && (!wantsCharge ||
+			(runtime.action != null && runtime.action !== deviceIntent.action)),
 		addonDisabled: !governanceEnabled,
 		globalLeftLive: ownershipLive && !liveWriteAllowed,
 		safetyBlocked,
@@ -733,8 +762,13 @@ async function controlTickInner(host: Host): Promise<void> {
 		unloading: false,
 		higherPriorityIntent: false,
 	});
+	const manualStartedMs = Date.parse(runtime.ownership.startedAt ?? "");
+	const manualDurationExceeded = runtime.action === "hold" && runtime.ownership.active &&
+		Number.isFinite(manualStartedMs) && nowMs - manualStartedMs >= config.sequence.maxManualModeMs;
 	const setpointHandover = resolveBatterySetpointHandover({
-		hold: holdPlanned || holdActive,
+		hold: runtime.action === "hold" ||
+			(runtime.action === "grid_charge" && runtime.requestId?.startsWith("daily-plan"))
+			? false : holdPlanned || holdActive,
 		external: (evAuthority ?? "").toLowerCase() === "external",
 		restoreOrFault: isRestoreInProgress(),
 		higherPriority: false,
@@ -743,7 +777,7 @@ async function controlTickInner(host: Host): Promise<void> {
 	const fsmOwnsSetpoint =
 		sessionNow.wrotePositive &&
 		(sessionNow.owner === "grid_charge" || sessionNow.owner === "planned_charge");
-	let stopReason = stopReasonRaw;
+	let stopReason = stopReasonRaw ?? (manualDurationExceeded ? "manual_mode_timeout" : null);
 	let stopDisposition: "release_zero" | "drop_ownership" | undefined;
 	const inChargeSequence =
 		runtime.state !== "idle" &&
@@ -777,6 +811,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		stopReason,
 		actualMode: modeRead.val,
 		actualChargingW: snapshot.telemetry.chargingPowerW,
+		actualDischargingW: snapshot.telemetry.dischargingPowerW,
 		socPct: snapshot.telemetry.socPct,
 		modeValues: config.sonnenModeValues,
 		sequence: config.sequence,
@@ -821,8 +856,8 @@ async function controlTickInner(host: Host): Promise<void> {
 
 	let lastWrite: { state: string; value: number; success: boolean; expected: number | null } | null = null;
 	for (const w of step.writes) {
-		const stateId =
-			w.kind === "operating_mode" ? table.set_operating_mode.targetState : table.set_charge_power.targetState;
+		const stateId = w.kind === "operating_mode" ? table.set_operating_mode.targetState :
+			w.kind === "discharge_power" ? table.set_discharge_power.targetState : table.set_charge_power.targetState;
 		const result = await executeBatteryWrite(host as unknown as BatteryWriteHost, {
 			kind: w.kind,
 			stateId,
@@ -831,7 +866,7 @@ async function controlTickInner(host: Host): Promise<void> {
 			reason: `fsm:${runtime.state}`,
 			expectedFeedback: w.expectedFeedback,
 			dryrun: !effectiveLive,
-			numericTolerance: w.kind === "charge_power" ? config.feedbackTolerance.absoluteW : 0,
+			numericTolerance: w.kind === "operating_mode" ? 0 : config.feedbackTolerance.absoluteW,
 			gate: { ...gate, targetMappingConfigured: stateId.length > 0 },
 		});
 		lastWrite = { state: stateId, value: w.value, success: result.executed, expected: result.expectedFeedback };
@@ -1328,7 +1363,7 @@ export async function batteryUnloadRestore(host: Host): Promise<void> {
 				gate,
 			});
 			setBatterySetpointSession(applyZeroRelease(session, new Date().toISOString(), "unload_stop"));
-		} else if (setpointLive || fsmLive) {
+		} else if (setpointLive || (fsmLive && runtime.action !== "hold")) {
 			await executeBatteryWrite(host as unknown as BatteryWriteHost, {
 				kind: "charge_power",
 				stateId: table.set_charge_power.targetState,

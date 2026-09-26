@@ -64,7 +64,15 @@ async function cleanupUnconfiguredAcUnits(host, stats) {
     for (let i = 1; i <= constants_1.AC_UNIT_COUNT; i++) {
         if (!(0, configured_1.isAcUnitConfigured)(host.config, i)) {
             const unitBase = (0, ensure_states_1.acUnitRuntimeBase)(i);
-            await safeDeleteRelative(host, unitBase, stats, "ac_unit");
+            // Der Leistungsstate ist auch für leere Plätze ein benötigtes Reset-Ziel.
+            // Vorhandene Bäume mit diesem State nicht rekursiv löschen.
+            if (await host.getObjectAsync((0, ensure_states_1.acUnitRuntimeStates)(i).allocatedPowerW)) {
+                stats.checked += 1;
+                bump(stats, "ac_allocated_power_kept");
+            }
+            else {
+                await safeDeleteRelative(host, unitBase, stats, "ac_unit");
+            }
             for (const role of constants_1.AC_MAPPING_ROLES) {
                 const cmd = (0, constants_1.acUnitMappingCommand)(i, role);
                 const base = (0, tree_paths_1.mappingBase)(constants_1.AC_ADDON_ID, cmd);

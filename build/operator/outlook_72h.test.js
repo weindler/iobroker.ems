@@ -140,6 +140,88 @@ function multiDayThermalInput(args) {
         strict_1.default.equal(outlook.days[0].priceCtPerKwh.complete, true);
         strict_1.default.match((0, outlook_72h_1.formatOperatorOutlook72hDe)(outlook), /72-h-Ausblick/);
     });
+    (0, node_test_1.it)("ordnet SOC dem ersten und letzten stabilen PV-Deckungsfenster zu", () => {
+        const input = input80h();
+        input.pv.slots = input.time.slots.map((slot) => {
+            const hour = new Date(slot.startIso).getUTCHours();
+            const power = hour >= 8 && hour < 17 ? 1500 : 0;
+            return { slot, forecastPowerW: power, observedPowerW: null, energyKwh: power / 4000 };
+        });
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        plan.batteryTrajectory = input.time.slots.map((slot, i) => ({
+            slotStartIso: slot.startIso,
+            socPct: Math.min(100, 30 + i),
+            chargeEnergyKwh: 0,
+            dischargeEnergyKwh: 0,
+        }));
+        const outlook = (0, outlook_72h_1.buildOperatorOutlook72h)({ now: NOW, timezone: "UTC", plan, plannerInput: input });
+        const today = outlook.days[0].battery;
+        strict_1.default.equal(today.currentSocPct, input.battery.socPct);
+        strict_1.default.equal(today.pvStartIso, "2026-09-03T08:00:00.000Z");
+        strict_1.default.equal(today.pvEndIso, "2026-09-03T17:00:00.000Z");
+        strict_1.default.equal(today.socBeforePvPct, 61); // Ende 07:45-Slot
+        strict_1.default.equal(today.socAtPvEndPct, 97); // Ende 16:45-Slot
+        strict_1.default.equal(today.midnightSocPct, 100);
+        strict_1.default.match((0, outlook_72h_1.formatOperatorOutlook72hDe)(outlook), /PV-Ende.*Mitternacht/);
+        strict_1.default.doesNotMatch((0, outlook_72h_1.formatOperatorOutlook72hDe)(outlook), /morgens|abends|Tagesende/);
+    });
+    (0, node_test_1.it)("überbrückt kurze Wolkenlücken, ignoriert einzelne PV-Ausreißer und fehlende Werte", () => {
+        const input = input80h();
+        input.pv.slots = input.time.slots.map((slot, i) => {
+            const hour = new Date(slot.startIso).getUTCHours();
+            const power = (hour >= 8 && hour < 17 && i !== 41 && i !== 42) || i === 4 ? 1500 : 0;
+            return { slot, forecastPowerW: power, observedPowerW: null, energyKwh: power / 4000 };
+        });
+        const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+        const a = (0, outlook_72h_1.buildOperatorOutlook72h)({ now: NOW, timezone: "UTC", plan, plannerInput: input });
+        strict_1.default.equal(a.days[0].battery?.pvStartIso, "2026-09-03T08:00:00.000Z");
+        strict_1.default.equal(a.days[0].battery?.pvEndIso, "2026-09-03T17:00:00.000Z");
+        input.pv.slots[34].forecastPowerW = null;
+        const partial = (0, outlook_72h_1.buildOperatorOutlook72h)({ now: NOW, timezone: "UTC", plan, plannerInput: input });
+        strict_1.default.equal(partial.days[0].battery?.pvStartIso, null);
+        strict_1.default.equal(partial.days[0].battery?.pvCoverageKnown, false);
+    });
+    (0, node_test_1.it)("ordnet PV-Fenster an 92- und 100-Slot-Tagen nach lokaler Zeit zu", () => {
+        for (const [startIso, count] of [
+            ["2026-03-28T23:00:00.000Z", 92],
+            ["2026-10-24T22:00:00.000Z", 100],
+        ]) {
+            const input = input80h();
+            const slots = (0, fixtures_1.buildSlots)(startIso, 80);
+            input.time = {
+                ...input.time,
+                nowIso: startIso,
+                timezone: "Europe/Berlin",
+                horizonStartIso: slots[0].startIso,
+                horizonEndIso: slots[slots.length - 1].endIso,
+                slots,
+            };
+            input.pv.slots = slots.map((slot) => {
+                const hour = Number(new Intl.DateTimeFormat("en-GB", {
+                    timeZone: "Europe/Berlin", hour: "2-digit", hourCycle: "h23",
+                }).format(new Date(slot.startIso)));
+                const power = hour >= 8 && hour < 17 ? 1500 : 0;
+                return { slot, forecastPowerW: power, observedPowerW: null, energyKwh: power / 4000 };
+            });
+            input.houseLoad.slots = slots.map((slot) => ({
+                slot, forecastPowerW: 500, observedPowerW: null, energyKwh: 0.125,
+            }));
+            input.prices.slots = slots.map((slot) => ({
+                slot, importCtPerKwh: 20, exportCtPerKwh: 8, gridImportAllowed: true,
+            }));
+            const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+            plan.batteryTrajectory = slots.map((slot) => ({
+                slotStartIso: slot.startIso, socPct: 70, chargeEnergyKwh: 0, dischargeEnergyKwh: 0,
+            }));
+            const out = (0, outlook_72h_1.buildOperatorOutlook72h)({
+                now: new Date(startIso), timezone: "Europe/Berlin", plan, plannerInput: input,
+            });
+            strict_1.default.equal(out.days[0].slotCount, count);
+            strict_1.default.equal(out.days[0].battery?.midnightSocPct, 70);
+            strict_1.default.ok(out.days[0].battery?.pvStartIso);
+            strict_1.default.ok(out.days[0].battery?.pvEndIso);
+        }
+    });
     (0, node_test_1.it)("keeps a partially missing PV day null instead of fabricating a full sum", () => {
         const input = input80h(true);
         const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);

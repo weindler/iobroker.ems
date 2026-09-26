@@ -34,7 +34,7 @@ describe("energetische Statistik", () => {
 		assert.equal(result.gridImportKwh, 1.2);
 		assert.equal(result.gridExportKwh, 0.4);
 		assert.equal(result.selfConsumptionKwh, 2.6);
-		assert.equal(result.autonomyPct, 65.7);
+		assert.equal(result.autonomyPct, null, "Smart Meter erst ab 08:00: keine scheinbar vollständige Tagesautarkie");
 		assert.equal(result.gridTruthSource, "smart_meter");
 		assert.match(result.notesDe.join(" "), /erste Tag kann unvollständig/);
 	});
@@ -57,6 +57,15 @@ describe("energetische Statistik", () => {
 		assert.equal(result.evFastLocalSharePct, 40);
 		assert.equal(result.climatePvKwh, 0.25);
 		assert.equal(result.batteryPvChargedKwh, null, "mixed darf nicht als PV erfunden werden");
+	});
+	it("zeigt bei 284,8 kWh Haus und 51,1 kWh Netz dieselbe berechenbare Autarkie", () => {
+		const day = fixture();
+		day.buckets.houseTotalKwh = [284.8, null, null, null];
+		day.buckets.gridImportKwh = [51.1, null, null, null];
+		const result = buildEnergeticDayTotals(day);
+		assert.equal(result.autonomyPct, 82.1);
+		day.buckets.gridImportKwh[1] = 1;
+		assert.equal(buildEnergeticDayTotals(day).autonomyPct, null);
 	});
 
 	it("lässt Schnellmodus-Quellen bei einer Messlücke null, aber behält die Schnelllade-Energie", () => {
@@ -126,7 +135,7 @@ describe("energetische Statistik", () => {
 			fromKey: "2026-09-05",
 			toKey: "2026-09-11",
 		});
-		assert.equal(period.daysTotal, 3);
+		assert.equal(period.daysTotal, 7);
 		assert.equal(period.daysWithTelemetry, 2);
 		assert.equal(period.selfConsumptionKwh, 3.25);
 		assert.equal(period.selfConsumptionPct, 81.3);

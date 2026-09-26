@@ -720,6 +720,12 @@ async function runAcRuntimeTickBody(host) {
         }
         const ids = (0, ensure_states_1.acUnitRuntimeStates)(unit.index);
         const fbOn = feedbackOn;
+        // Aus beendet eine frühere EMS-Statistik-Session, sobald das echte
+        // Gerätefeedback AUS meldet. Sonst bleibt up.running aus einem früheren
+        // Dryrun/Live-Lauf erhalten und zählt ohne Stromverbrauch weiter.
+        if (executionOff && !fbOn) {
+            (0, stats_active_1.closeAcUnitStatsSession)(up, nowMs);
+        }
         const deviceActive = (0, stats_active_1.acStatsDeviceActive)(up, fbOn, up.running, nowMs);
         // Live + feedback off: do not keep a forever-open stats session after the start grace.
         if (!fbOn && !deviceActive && up.lastStartAtMs && (up.lastStopAtMs == null || up.lastStopAtMs < up.lastStartAtMs)) {

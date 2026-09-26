@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.18",
+		"version": "0.4.19",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.19": {
+				"en": "Stops stale climate runtime counting when climate control is off and device feedback reports off.",
+				"de": "Beendet eine alte Klima-Laufzeitzählung, wenn die Klimasteuerung aus ist und das Gerät Aus zurückmeldet."
+			},
 			"0.4.18": {
 				"en": "Recognizes an EVCC battery hold at startup and waits for EVCC to release Sonnen manual mode without taking device ownership.",
 				"de": "Erkennt eine EVCC-Batteriesperre beim Start und wartet ohne eigene Sonnen-Steuerung auf die externe Freigabe des manuellen Modus."

@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.19] – 2026-09-26
+
+### Fixed
+
+- Wenn Klima auf „Aus“ steht und das Gerätefeedback „aus“ meldet, wird eine alte Laufzeit-Session geschlossen. Die Tageslaufzeit läuft damit nicht mehr trotz ausgeschaltetem Gerät weiter. Die Messwerte des gemeinsamen Außengeräts bleiben unverändert.
+
 ## [0.4.18] – 2026-09-26
 
 ### Fixed

@@ -1073,6 +1073,12 @@ async function runAcRuntimeTickBody(host: AcRuntimeHost): Promise<void> {
 
 		const ids = acUnitRuntimeStates(unit.index);
 		const fbOn = feedbackOn;
+		// Aus beendet eine frühere EMS-Statistik-Session, sobald das echte
+		// Gerätefeedback AUS meldet. Sonst bleibt up.running aus einem früheren
+		// Dryrun/Live-Lauf erhalten und zählt ohne Stromverbrauch weiter.
+		if (executionOff && !fbOn) {
+			closeAcUnitStatsSession(up, nowMs);
+		}
 		const deviceActive = acStatsDeviceActive(up, fbOn, up.running, nowMs);
 		// Live + feedback off: do not keep a forever-open stats session after the start grace.
 		if (!fbOn && !deviceActive && up.lastStartAtMs && (up.lastStopAtMs == null || up.lastStopAtMs < up.lastStartAtMs)) {

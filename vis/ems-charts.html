@@ -125,6 +125,16 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-climate-now{display:flex;align-items:center;gap:16px}.ems-climate-ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;position:relative}.ems-climate-ring:after{content:"";position:absolute;width:76px;height:76px;border-radius:50%;background:#21262d}.ems-climate-ring-value{position:relative;z-index:1;text-align:center;font-size:17px;font-weight:800}.ems-climate-ring-value small{display:block;font-size:9px;color:#8b949e}.ems-climate-values{font-size:12px;line-height:1.55}.ems-climate-values b{font-size:14px;color:#79c0ff}
 .ems-meter{display:flex;gap:14px;align-items:center}.ems-meter-icon{width:72px;height:86px;border:3px solid #8b949e;border-radius:8px;display:grid;place-items:center;font-size:24px;font-weight:800;color:#58a6ff;background:#161b22}.ems-entry{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.ems-entry input,.ems-entry select{background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:4px;padding:5px;font-size:10px}.ems-entry .wide{grid-column:1/-1}.ems-entry-actions{display:flex;gap:6px;grid-column:1/-1;flex-wrap:wrap}.ems-btn-primary{font-size:9px;font-weight:700;color:#fff;background:#1f6feb;border:1px solid #58a6ff;border-radius:5px;padding:4px 8px;cursor:pointer}.ems-btn-danger{font-size:9px;font-weight:700;color:#ffb4ad;background:#f8514922;border:1px solid #f8514966;border-radius:5px;padding:4px 8px;cursor:pointer}.ems-stats-entry{grid-column:1/-1}.ems-entry-sections{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ems-entry-section{border:1px solid #30363d;border-radius:5px;padding:7px}.ems-entry-section h4{font-size:10px;margin:0 0 3px;color:#58a6ff}.ems-entry label{font-size:9px;color:#8b949e;display:flex;flex-direction:column;gap:2px}.ems-entry label.wide{grid-column:1/-1}.ems-entry-status{font-size:9px;color:#c9d1d9;min-height:13px;margin-top:5px;white-space:pre-wrap}
 .ems-stats-pending{border-color:#f0883e66}
+.ems-charge-card{grid-column:1/-1;padding:12px 14px!important;border-radius:10px!important}
+.ems-charge-wrap{width:100%;overflow-x:auto}
+.ems-charge-table{width:100%;border-collapse:collapse;font-size:11px;min-width:820px;font-variant-numeric:tabular-nums}
+.ems-charge-table th{text-align:right;color:#8b949e;font-size:10px;font-weight:650;padding:9px 10px;border-bottom:1px solid #484f58;white-space:nowrap}
+.ems-charge-table th:first-child,.ems-charge-table td:first-child{text-align:left}
+.ems-charge-table td{text-align:right;padding:10px;border-bottom:1px solid #30363d;color:#e6edf3;white-space:nowrap}
+.ems-charge-table tbody tr:hover{background:#30363d66}
+.ems-charge-table .emsolar{color:#f0b429}.ems-charge-table .emsaving{color:#3fb950;font-weight:700}
+.ems-charge-table tfoot td{font-weight:750;border-top:1px solid #6e7681;border-bottom:0;background:#161b22}
+.ems-charge-caption{color:#8b949e;font-size:10px;line-height:1.4;margin-top:9px}
 @media(max-width:900px){.ems-stats-grid{grid-template-columns:1fr}.ems-entry-sections{grid-template-columns:1fr}}
 .ems-main{display:grid;grid-template-columns:minmax(310px,410px) minmax(200px,1fr) minmax(220px,28%);gap:4px;align-items:stretch;flex:1 1 auto;min-height:0;overflow:hidden}
 .ems-tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(min-content,1fr);align-content:stretch;gap:4px;min-height:0;height:100%;overflow:auto}
@@ -3832,9 +3842,8 @@ function mobStatsRows(mob){
 		["Davon aus der Batterie",fmtKwhStats(mob.homeBatteryKwh)],
 		fmtHomeGridMob(mob),
 		["Schnellader (bezahlt)",fmtKwhStats(mob.publicInvoicedKwh)],
-		["km ≈",mob.estimatedKm!=null?String(mob.estimatedKm).replace(".",","):"—"],
-		["E-Auto",fmtEur(mob.evTotalCostEur)],
-		...(num(mob.estimatedEvCostEur)===null?[]:[["E-Auto · grobe Schätzung",fmtEur(mob.estimatedEvCostEur)]]),
+		["km (aus Ladeenergie)",mob.estimatedKm!=null?String(mob.estimatedKm).replace(".",","):"—"],
+		["E-Auto",num(mob.evTotalCostEur)!==null?fmtEur(mob.evTotalCostEur):num(mob.estimatedEvCostEur)!==null?fmtEur(mob.estimatedEvCostEur)+" · vorläufig":"—"],
 		["Verbrenner",fmtEur(mob.iceCostEur)],
 		["E-Auto Verbrauchsannahme",fmtDec(mob.evKwhPer100Km,1,"kWh/100 km")],
 		["Spritpreis",mob.fuelPriceEurPerL!=null?Number(mob.fuelPriceEurPerL).toFixed(3).replace(".",",")+" €/l":"nicht eingestellt"]
@@ -3850,10 +3859,30 @@ function savingsHero(v){
 }
 function mobilitySavingsHero(mob,exact){
 	if(num(exact)!==null)return savingsHero(exact);
-	var estimate=num(mob&&mob.estimatedSavingsVsIceEur);
-	if(estimate===null)return savingsHero(null);
-	var base=savingsHero(estimate);
-	return {cls:"neu",txt:"≈ "+base.txt+" (Schätzung)"};
+	var preliminary=num(mob&&mob.estimatedSavingsVsIceEur);
+	if(preliminary===null)return savingsHero(null);
+	var base=savingsHero(preliminary);
+	return {cls:"neu",txt:base.txt+" · vorläufig"};
+}
+function measuredChargesCard(rows,scopeLabel,energy){
+	if(!Array.isArray(rows))rows=[];
+	var sumKwh=0,sumPv=0,sumEv=0,sumIce=0,allIce=true;
+	var html='<div class="ems-card ems-charge-card"><div class="ems-card-h"><span class="ems-card-title">Ladevorgänge · '+esc(scopeLabel)+'</span><span class="ems-note">aus EMS-Messdaten</span></div>';
+	if(!rows.length){
+		return html+'<div class="ems-charge-caption">'+(num(energy&&energy.evChargedKwh)>0?'Ladung gemessen, aber für die Einzelrechnung fehlen zeitgleiche Lade-, Haus-, PV- oder Preisdaten.':'In diesem Zeitraum liegen keine gemessenen Ladeabschnitte vor.')+'</div></div>';
+	}
+	html+='<div class="ems-charge-wrap"><table class="ems-charge-table"><thead><tr><th>Beginn</th><th>Geladen</th><th>Direkt PV</th><th>Ladedauer</th><th>E-Auto</th><th>Verbrenner</th><th>Unterschied</th><th>km rechnerisch</th></tr></thead><tbody>';
+	for(var i=0;i<rows.length;i++){
+		var r=rows[i]||{},k=num(r.chargedKwh),pv=num(r.directPvKwh),ev=num(r.costEur),ice=num(r.iceCostEur),adv=num(r.advantageEur);
+		if(k!==null)sumKwh+=k;if(pv!==null)sumPv+=pv;if(ev!==null)sumEv+=ev;
+		if(ice===null)allIce=false;else sumIce+=ice;
+		var dt=r.startedAtIso?new Date(r.startedAtIso):null;
+		var start=dt&&!isNaN(dt.getTime())?dt.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
+		html+='<tr><td>'+esc(start)+'</td><td>'+esc(fmtKwhStats(k))+'</td><td class="emsolar">'+esc(k>0&&pv!==null?Math.round(100*pv/k)+" %":"—")+'</td><td>'+esc(num(r.chargeDurationMin)===null?"—":Math.round(r.chargeDurationMin)+" min")+'</td><td>'+esc(fmtEur(ev))+'</td><td>'+esc(fmtEur(ice))+'</td><td class="'+(adv!==null&&adv>=0?'emsaving':'')+'">'+esc(adv===null?"—":(adv>=0?"+":"")+fmtEur(adv))+'</td><td>'+esc(r.kmEquivalent===null||r.kmEquivalent===undefined?"—":String(r.kmEquivalent))+'</td></tr>';
+	}
+	html+='</tbody><tfoot><tr><td>Gesamt</td><td>'+esc(fmtKwhStats(sumKwh))+'</td><td class="emsolar">'+esc(sumKwh>0?Math.round(100*sumPv/sumKwh)+" %":"—")+'</td><td>—</td><td>'+esc(fmtEur(sumEv))+'</td><td>'+esc(allIce?fmtEur(sumIce):"—")+'</td><td class="emsaving">'+esc(allIce?(sumIce-sumEv>=0?"+":"")+fmtEur(sumIce-sumEv):"—")+'</td><td>—</td></tr></tfoot></table></div>';
+	var missing=num(energy&&energy.evChargedKwh)!==null&&energy.evChargedKwh>sumKwh+0.05?' Achtung: '+fmtKwhStats(energy.evChargedKwh-sumKwh)+' Ladung ohne vollständige Einzelbewertung.':'';
+	return html+'<div class="ems-charge-caption">Ladeabschnitte werden aus der EMS-Viertelstundenmessung gebildet. Direkt-PV und Ladekosten werden zeitgleich bilanziert; Batterie steckt im übrigen Anteil. Der Verbrennervergleich verwendet die eingestellten Verbräuche und den Spritpreis. Grid Rewards und externe Schnellladungen werden erst nach ihrer Abrechnung in der Zeitraum-Summe berücksichtigt; der Unterschied pro Ladeabschnitt bleibt vorläufig.'+esc(missing)+'</div></div>';
 }
 function emsAdvantageHero(v){
 	if(v===null||v===undefined||!isFinite(Number(v)))return {cls:"neu",txt:"—"};
@@ -4070,6 +4099,7 @@ function renderStatistics(){
 	var mobT=mergeMobFlat("today",parseObj(g("statistics.mobility.today_json")));
 	var mobP=mergeMobFlat("period",parseObj(g("statistics.mobility.period_json")));
 	var mobM=parseObj(g("statistics.mobility.month_json"));
+	var chargeRuns=mobP&&mobP.period===periodId&&Array.isArray(mobP.chargeRuns)?mobP.chargeRuns:[];
 	var energyT=energyStats("today");
 	var energyP=energyStats("period");
 	if(!mobP||typeof mobP!=="object"||(Object.keys(mobP).length===0&&num(g("statistics.mobility.period.savings_eur"))==null)){
@@ -4123,15 +4153,17 @@ function renderStatistics(){
 		));
 	var shownEnergy=todaySelected?energyT:energyP;
 	var scopeLabel=todaySelected?"Heute":(energyP.periodLabelDe||periodLabel);
-	grid.innerHTML=statsCard("Zeitraum und Datenstand",{cls:"neu",txt:scopeLabel},[["Von",shownEnergy.fromKey||"Heute"],["Bis",shownEnergy.toKey||"Heute"],["Anzeige aktualisiert",new Date().toLocaleString("de-DE")]],"Der laufende Tag ist noch nicht vollständig. Netzwerte stammen vorrangig vom Smart Meter, PV vom Wechselrichter und die Autoladung von der Wallbox. Einzelne Quellen können später aktualisiert werden.")+energyCards
+	grid.innerHTML=statsCard("Zeitraum und Datenstand",{cls:"neu",txt:scopeLabel},[["Von",shownEnergy.fromKey||"Heute"],["Bis",shownEnergy.toKey||"Heute"],["Anzeige aktualisiert",new Date().toLocaleString("de-DE")]],"Der laufende Tag ist noch nicht vollständig. Netzwerte stammen vorrangig vom Smart Meter, PV vom Wechselrichter und die Autoladung von der Wallbox. Einzelne Quellen können später aktualisiert werden.")
+		+(todaySelected?statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),homeTodayNote):statsCard(periodCardTitle("Haus",homeP,"Zeitraum")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote))
+		+(todaySelected?statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,"")):statsCard(periodCardTitle("Mobilität",mobP,"Zeitraum")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,"")))
+		+measuredChargesCard(chargeRuns,scopeLabel,shownEnergy)
+		+energyCards
 		+smartMeterCard(shownEnergy,scopeLabel)
 		+statsCard("PV-Nutzung der Geräte · "+scopeLabel,pctHero(shownEnergy.selfConsumptionPct,"Eigenverbrauch"),energeticDeviceRows(shownEnergy),"PV-Anteile werden nur bei vollständiger zeitgleicher Messung ausgewiesen. Schnellladen: Netz und Sonnen-Batterie werden anhand zeitgleicher Messungen zugeordnet. Unbekannte Anteile bleiben offen. Diese Werte sind Energieflüsse und teils bereits im Hausverbrauch enthalten; sie dürfen nicht zusammengerechnet werden.")
 		+statsCard("Nutzen ohne Eurobewertung · "+scopeLabel,{cls:"neu",txt:"energetisch ausgewiesen"},nonMonetizedRows(shownEnergy),(function(){
 			var n=shownEnergy&&shownEnergy.nonMonetized;
 			return n&&Array.isArray(n.notesDe)?n.notesDe.join(" "):"Pelletentlastung, vermiedene Kesselstarts und Verschleiß bleiben ohne belastbare Messquelle unbewertet.";
 		})())
-		+(todaySelected?statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),homeTodayNote):statsCard(periodCardTitle("Haus",homeP,"Zeitraum")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote))
-		+(todaySelected?statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,"")):statsCard(periodCardTitle("Mobilität",mobP,"Zeitraum")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,"")))
 		+(pending.length?publicChargeEntryCard(pending):"")
 		+statisticsEntryCard();
 	var reasonBase=txt(g("statistics.reason_de"),"Statistik: Mappings im Admin-Tab „Statistik“ setzen.");

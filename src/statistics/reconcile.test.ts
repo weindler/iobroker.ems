@@ -33,7 +33,7 @@ describe("gemeinsame Energiemengen der Statistik", () => {
 		assert.equal(result.homeGridKwh, null);
 		assert.equal(result.homePvKwh, 12.3);
 		assert.equal(result.savingsVsIceEur, null);
-		assert.match(result.reasonDe, /Tages-Telemetrie/);
+		assert.match(result.reasonDe, /Ladeslot/);
 	});
 	it("weist nur mit belegten Quellen Heim-Netz und Batterieanteil aus", () => {
 		const result = reconcileMobilityEnergy(mobility, energy({
@@ -47,22 +47,31 @@ describe("gemeinsame Energiemengen der Statistik", () => {
 		assert.equal(result.homeGridKwh, 27);
 		assert.equal(result.evTotalCostEur, null);
 	});
-	it("berechnet eine getrennt gekennzeichnete Mobilitäts-Schätzung ohne Batterie-Zuordnung", () => {
+	it("berechnet vorläufig aus zeitgleichen Ladepreisen und wird erst nach Abrechnung endgültig", () => {
 		const result = reconcileMobilityEnergy({ ...mobility, evKwhPer100Km: 20,
 			fuelPriceEurPerL: 1.8, publicInvoicedKwh: null }, energy({
 			evChargedKwh: 10, evPvKwh: 4, evFastChargedKwh: 10,
-		}), { iceLPer100Km: 6, tibberAvgEurPerKwh: 0.3, feedInCtPerKwh: 9.3 });
+		}), { iceLPer100Km: 6, provisionalChargedKwh: 10, provisionalHomeCostEur: 2.17 });
 		assert.equal(result.homeChargedKwh, 10);
 		assert.equal(result.homeGridKwh, null);
 		assert.equal(result.evTotalCostEur, null);
 		assert.equal(result.estimatedEvCostEur, 2.17);
 		assert.equal(result.iceCostEur, 5.4);
 		assert.equal(result.estimatedSavingsVsIceEur, 3.23);
-		assert.match(result.reasonDe, /Schätzung/);
+		assert.equal(result.comparisonStatus, "vorläufig");
+		assert.match(result.reasonDe, /Viertelstundenpreis/);
+		const settled = reconcileMobilityEnergy({ ...mobility, evKwhPer100Km: 20,
+			fuelPriceEurPerL: 1.8, publicInvoicedKwh: null }, energy({
+			evChargedKwh: 10, evPvKwh: 4,
+		}), { iceLPer100Km: 6, provisionalChargedKwh: 10, provisionalHomeCostEur: 2.17,
+			invoicedKwh: 5, invoicedEur: 2, billedRewardsEur: 0.5, finalized: true });
+		assert.equal(settled.evTotalCostEur, 3.67);
+		assert.equal(settled.savingsVsIceEur, 4.43);
+		assert.equal(settled.comparisonStatus, "endgültig");
 		const withoutPrice = reconcileMobilityEnergy({ ...mobility, evKwhPer100Km: 20,
 			fuelPriceEurPerL: 1.8, publicInvoicedKwh: null }, energy({
 			evChargedKwh: 10, evPvKwh: 4,
-		}), { iceLPer100Km: 6, tibberAvgEurPerKwh: null, feedInCtPerKwh: 9.3 });
+		}), { iceLPer100Km: 6 });
 		assert.equal(withoutPrice.estimatedSavingsVsIceEur, null);
 	});
 	it("entfernt Tarifvorteil bei voneinander abweichendem Smart-Meter- und Tibber-Stand", () => {

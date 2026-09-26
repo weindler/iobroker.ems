@@ -142,17 +142,18 @@ function tibberEntryDateKey(entry: Record<string, unknown>): string | null {
 }
 
 function tibberEntryConsumptionKwh(entry: Record<string, unknown>): number | null {
+	if (entry.consumption === null || entry.consumption === undefined || entry.consumption === "") return null;
 	const c = Number(entry.consumption);
 	return Number.isFinite(c) && c >= 0 ? c : null;
 }
 
 function tibberEntryCostEur(entry: Record<string, unknown>): number | null {
-	const totalCost = Number(entry.totalCost);
+	const totalCost = entry.totalCost == null || entry.totalCost === "" ? NaN : Number(entry.totalCost);
 	if (Number.isFinite(totalCost)) return totalCost;
-	const cost = Number(entry.cost);
+	const cost = entry.cost == null || entry.cost === "" ? NaN : Number(entry.cost);
 	if (Number.isFinite(cost)) return cost;
 	const cons = tibberEntryConsumptionKwh(entry);
-	const unitCost = Number(entry.unitCost);
+	const unitCost = entry.unitCost == null || entry.unitCost === "" ? NaN : Number(entry.unitCost);
 	if (cons !== null && Number.isFinite(unitCost)) return cons * unitCost;
 	return null;
 }
@@ -190,6 +191,7 @@ export function sumTibberJsonDailyForRange(
 	raw: unknown,
 	fromKey: string,
 	toKey: string,
+	requirePaired = false,
 ): { gridImportKwh: number | null; dynamicCostEur: number | null } {
 	try {
 		const arr = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
@@ -206,6 +208,9 @@ export function sumTibberJsonDailyForRange(
 			if (key < fromKey || key > toKey) continue;
 			const c = tibberEntryConsumptionKwh(o);
 			const t = tibberEntryCostEur(o);
+			if (requirePaired && (c === null || t === null)) {
+				return { gridImportKwh: null, dynamicCostEur: null };
+			}
 			if (c !== null) kwh += c;
 			if (t !== null) cost += t;
 			hits++;
@@ -240,6 +245,55 @@ export function pickTibberJsonMonthlyForMonth(
 	} catch {
 		return { gridImportKwh: null, dynamicCostEur: null };
 	}
+}
+
+/** Gepaarten Tibber-Verbrauch und Kosten über längere Zeiträume ohne doppelte Monatstage summieren. */
+export function sumTibberPairedRange(input: {
+	fromKey: string;
+	toKey: string;
+	todayKey: string;
+	jsonDailyRaw: unknown;
+	jsonMonthlyRaw: unknown;
+	currentMonth: { gridImportKwh: number | null; dynamicCostEur: number | null };
+}): { gridImportKwh: number | null; dynamicCostEur: number | null; coveredMonths: number; totalMonths: number;
+	segments: Array<{ fromKey: string; toKey: string; gridImportKwh: number; dynamicCostEur: number }> } {
+	let from = input.fromKey.slice(0, 7);
+	const end = input.toKey.slice(0, 7);
+	let kwh = 0;
+	let cost = 0;
+	let coveredMonths = 0;
+	let totalMonths = 0;
+	const segments: Array<{ fromKey: string; toKey: string; gridImportKwh: number; dynamicCostEur: number }> = [];
+	while (/^\d{4}-\d{2}$/.test(from) && from <= end && totalMonths < 120) {
+		const first = `${from}-01`;
+		const last = `${from}-${String(daysInMonth(first)).padStart(2, "0")}`;
+		const rangeStart = first < input.fromKey ? input.fromKey : first;
+		const rangeEnd = last > input.toKey ? input.toKey : last;
+		const wholeMonth = rangeStart === first && rangeEnd === last;
+		const currentMonth = from === input.todayKey.slice(0, 7) && rangeStart === first && rangeEnd === input.todayKey;
+		const value = currentMonth ? input.currentMonth : wholeMonth
+			? pickTibberJsonMonthlyForMonth(input.jsonMonthlyRaw, first)
+			: { gridImportKwh: null, dynamicCostEur: null };
+		const paired = value.gridImportKwh !== null && value.dynamicCostEur !== null
+			? value : sumTibberJsonDailyForRange(input.jsonDailyRaw, rangeStart, rangeEnd, true);
+		if (paired.gridImportKwh !== null && paired.dynamicCostEur !== null) {
+			kwh += paired.gridImportKwh;
+			cost += paired.dynamicCostEur;
+			coveredMonths++;
+			segments.push({ fromKey: rangeStart, toKey: rangeEnd,
+				gridImportKwh: paired.gridImportKwh, dynamicCostEur: paired.dynamicCostEur });
+		}
+		totalMonths++;
+		const [year, month] = from.split("-").map(Number);
+		from = `${year + (month === 12 ? 1 : 0)}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}`;
+	}
+	return {
+		gridImportKwh: coveredMonths ? round3(kwh) : null,
+		dynamicCostEur: coveredMonths ? round2(cost) : null,
+		coveredMonths,
+		totalMonths,
+		segments,
+	};
 }
 
 /** Geschwister-State im selben Tibber-Home (jsonDaily → jsonMonthly / currentMonthConsumption). */

@@ -15,6 +15,8 @@ describe("Statistik in VIS und Admin", () => {
 		assert.match(vis, /Diese Werte sind Energieflüsse/);
 		assert.match(vis, /Vergleichsmenge \(Tibber\)/);
 		assert.match(vis, /mobilitySavingsHero\(mobP/);
-		assert.match(vis, /E-Auto · grobe Schätzung/);
+		assert.match(vis, /vorläufig/);
+		assert.match(vis, /measuredChargesCard\(chargeRuns/);
+		assert.match(vis, /<th>Verbrenner<\/th><th>Unterschied<\/th>/);
 	});
 });

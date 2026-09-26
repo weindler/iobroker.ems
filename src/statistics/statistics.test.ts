@@ -13,6 +13,7 @@ import {
 	normalizeWallboxSessionEnergyKwh,
 	sumMobilityDays,
 	sumTibberJsonDailyForMonth,
+	sumTibberPairedRange,
 	pickTibberJsonMonthlyForMonth,
 	resolveHomeMonthFromTibber,
 	reconcileCurrentMonthWithToday,
@@ -665,6 +666,50 @@ describe("statistics compute", () => {
 });
 
 describe("statistics period", () => {
+	it("wählt für alle Zeiträume eindeutige Tibber-Monats- oder Tageswerte ohne Doppelzählung", () => {
+		const today = "2026-09-26";
+		const daily = [
+			{ from: "2026-09-25", consumption: 1, totalCost: 0.4 },
+			{ from: "2026-09-26", consumption: 2, totalCost: 0.8 },
+			{ from: "2026-08-31", consumption: 3, totalCost: 1.2 },
+		];
+		const monthly = [{ from: "2026-08-01", consumption: 100, totalCost: 30 },
+			{ from: "2026-07-01", consumption: 50, totalCost: 12 }];
+		const currentMonth = { gridImportKwh: 62, dynamicCostEur: 24 };
+		for (const id of ["today", "yesterday", "last_7_days", "this_month", "last_month",
+			"this_quarter", "last_quarter", "this_year", "last_year", "year_2026"]) {
+			const period = resolvePeriodRange(id, today)!;
+			const result = sumTibberPairedRange({ fromKey: period.fromKey, toKey: period.toKey,
+				todayKey: today, jsonDailyRaw: daily, jsonMonthlyRaw: monthly, currentMonth });
+			assert.ok(result.coveredMonths <= result.totalMonths, id);
+			assert.equal(result.segments.length, result.coveredMonths, id);
+			if (id === "today") assert.equal(result.gridImportKwh, 2);
+			if (id === "yesterday") assert.equal(result.gridImportKwh, 1);
+			if (id === "this_month") assert.equal(result.gridImportKwh, 62);
+			if (id === "last_month") assert.equal(result.gridImportKwh, 100);
+			if (id === "this_year" || id === "year_2026") assert.equal(result.gridImportKwh, 212);
+			if (id === "last_year") assert.equal(result.gridImportKwh, null);
+		}
+		const partial = sumTibberPairedRange({ fromKey: "2026-08-31", toKey: "2026-09-26",
+			todayKey: today, jsonDailyRaw: daily, jsonMonthlyRaw: monthly, currentMonth });
+		assert.equal(partial.gridImportKwh, 65);
+		assert.equal(partial.dynamicCostEur, 25.2);
+	});
+	it("wertet fehlende Tibber-Kosten oder Verbrauch nicht als gemessene Null", () => {
+		const value = sumTibberPairedRange({ fromKey: "2026-09-01", toKey: "2026-09-26",
+			todayKey: "2026-09-26", jsonDailyRaw: [
+				{ from: "2026-09-25", consumption: 10, totalCost: null },
+			], jsonMonthlyRaw: [], currentMonth: { gridImportKwh: null, dynamicCostEur: null } });
+		assert.equal(value.gridImportKwh, null);
+		assert.equal(value.dynamicCostEur, null);
+	});
+	it("rechnet Monats-Grid-Rewards nicht vollständig in einzelne Tage oder sieben Tage hinein", () => {
+		const input = { enabled: true, todayKey: "2026-09-26", mappedMonthEur: 3,
+			monthRewardsBilling: { "2026-08": { creditEur: 8 } }, dayCredits: [] };
+		assert.equal(resolvePeriodGridRewards({ ...input, fromKey: "2026-08-31", toKey: "2026-09-01" }).creditEur, null);
+		assert.equal(resolvePeriodGridRewards({ ...input, fromKey: "2026-08-01", toKey: "2026-08-31" }).creditEur, 8);
+		assert.equal(resolvePeriodGridRewards({ ...input, fromKey: "2026-08-01", toKey: "2026-09-26" }).creditEur, 11);
+	});
 	it("resolves last_7_days and this_month ranges", () => {
 		const r7 = resolvePeriodRange("last_7_days", "2026-08-28");
 		assert.equal(r7?.fromKey, "2026-08-22");

@@ -37,9 +37,13 @@ export function reconcileHomeEnergy(
 export function reconcileMobilityEnergy(
 	mobility: MobilityCompareSummary,
 	energy: EnergeticDayTotals | EnergeticPeriodSummary | null | undefined,
-	options: { iceLPer100Km?: number | null; tibberAvgEurPerKwh?: number | null; feedInCtPerKwh?: number | null } = {},
+	options: { iceLPer100Km?: number | null; provisionalHomeCostEur?: number | null;
+		provisionalChargedKwh?: number | null; invoicedKwh?: number | null; invoicedEur?: number | null;
+		pendingInvoices?: number; billedRewardsEur?: number | null; finalized?: boolean } = {},
 ): MobilityCompareSummary {
-	if (!energy || energy.evChargedKwh === null) {
+	const publicKwh = options.invoicedKwh ?? mobility.publicInvoicedKwh ?? 0;
+	const publicEur = options.invoicedEur ?? mobility.publicInvoicedEur ?? 0;
+	if ((!energy || energy.evChargedKwh === null) && publicKwh <= 0) {
 		return {
 			...mobility,
 			homeChargedKwh: null,
@@ -50,23 +54,21 @@ export function reconcileMobilityEnergy(
 			evTotalCostEur: null,
 			iceCostEur: null,
 			savingsVsIceEur: null,
+			estimatedEvCostEur: null,
+			estimatedSavingsVsIceEur: null,
+			comparisonStatus: "unvollständig",
 			reasonDe: "Gemessene Wallboxenergie für diesen Zeitraum noch nicht verfügbar. " + mobility.reasonDe,
 		};
 	}
-	const measured = energy.evChargedKwh;
+	const measured = energy?.evChargedKwh ?? 0;
 	const legacy = (mobility.homePvKwh ?? 0) + (mobility.homeGridKwh ?? 0);
 	const sameEnergy = Math.abs(measured - legacy) <= 0.05;
-	const onlyFast = energy.evFastChargedKwh !== null && Math.abs(measured - energy.evFastChargedKwh) <= 0.05;
-	const sourcesComplete = onlyFast && energy.evFastBatteryKwh !== null &&
-		energy.evFastGridKwh !== null && energy.evFastLocalKwh !== null;
-	const homeGridKwh = sourcesComplete ? energy.evFastGridKwh : null;
-	const homeBatteryKwh = sourcesComplete ? energy.evFastBatteryKwh : null;
-	const homePvKwh = energy.evPvKwh;
-	const sourceMatchesLegacy = sourcesComplete && homeGridKwh !== null && homePvKwh !== null &&
-		Math.abs(homeGridKwh - (mobility.homeGridKwh ?? 0)) <= 0.05 &&
-		Math.abs(homePvKwh - (mobility.homePvKwh ?? 0)) <= 0.05;
-	const costsKnown = sameEnergy && sourceMatchesLegacy;
-	const chargedWithInvoice = measured + (mobility.publicInvoicedKwh ?? 0);
+	const onlyFast = energy?.evFastChargedKwh !== null && energy?.evFastChargedKwh !== undefined && Math.abs(measured - energy.evFastChargedKwh) <= 0.05;
+	const sourcesComplete = onlyFast && energy?.evFastBatteryKwh !== null && energy?.evFastGridKwh !== null && energy?.evFastLocalKwh !== null;
+	const homeGridKwh = sourcesComplete ? energy!.evFastGridKwh : null;
+	const homeBatteryKwh = sourcesComplete ? energy!.evFastBatteryKwh : null;
+	const homePvKwh = energy?.evPvKwh ?? null;
+	const chargedWithInvoice = measured + publicKwh;
 	const estimatedKm = mobility.evKwhPer100Km && mobility.evKwhPer100Km > 0
 		? Math.round((chargedWithInvoice / mobility.evKwhPer100Km) * 100_000) / 1000
 		: null;
@@ -75,37 +77,34 @@ export function reconcileMobilityEnergy(
 		lPer100Km: options.iceLPer100Km ?? null,
 		fuelPriceEurPerL: mobility.fuelPriceEurPerL,
 	}).costEur;
-	// Vorläufiger Vergleich ohne unbelegte Batterie-/Netzzuordnung: der Nicht-PV-Anteil
-	// wird mit dem mittleren Tibber-Preis bewertet. Nur reine Heimladung; keine
-	// fremden Schnelllade-Rechnungen oder unbestätigten Rewards dazumischen.
-	const canEstimate = (mobility.publicInvoicedKwh ?? 0) === 0 && (mobility.openPublicSessions ?? 0) === 0 &&
-		homePvKwh !== null && homePvKwh >= 0 && homePvKwh <= measured + 0.05 &&
-		options.tibberAvgEurPerKwh != null && options.tibberAvgEurPerKwh >= 0 &&
-		options.feedInCtPerKwh != null && options.feedInCtPerKwh >= 0 && iceCost !== null;
-	const estimatedEvCostEur = canEstimate
-		? Math.round((homePvKwh! * options.feedInCtPerKwh! / 100 +
-			Math.max(0, measured - homePvKwh!) * options.tibberAvgEurPerKwh!) * 100) / 100
-		: null;
+	const pairedHome = measured === 0 || (options.provisionalHomeCostEur != null &&
+		options.provisionalChargedKwh != null && Math.abs(options.provisionalChargedKwh - measured) <= 0.05);
+	const provisionalEvCostEur = pairedHome ? Math.round(Math.max(0,
+		(options.provisionalHomeCostEur ?? 0) + publicEur - (options.billedRewardsEur ?? 0)) * 100) / 100 : null;
+	const finalized = provisionalEvCostEur !== null && options.finalized === true &&
+		(options.pendingInvoices ?? mobility.openPublicSessions ?? 0) === 0;
 	return {
 		...mobility,
 		homeChargedKwh: measured,
 		homePvKwh,
 		homeBatteryKwh,
 		homeGridKwh,
-		homeGridCostEur: costsKnown ? mobility.homeGridCostEur : null,
-		homeGridCostNetEur: costsKnown ? mobility.homeGridCostNetEur : null,
+		homeGridCostEur: null,
+		homeGridCostNetEur: null,
+		publicInvoicedKwh: publicKwh > 0 ? publicKwh : null,
+		publicInvoicedEur: publicKwh > 0 ? publicEur : null,
 		estimatedKm,
-		estimatedEvCostEur: costsKnown ? null : estimatedEvCostEur,
-		estimatedSavingsVsIceEur: costsKnown || estimatedEvCostEur === null || iceCost === null
-			? null : Math.round((iceCost - estimatedEvCostEur) * 100) / 100,
-		evTotalCostEur: costsKnown ? mobility.evTotalCostEur : null,
-		iceCostEur: costsKnown ? mobility.iceCostEur : iceCost,
-		savingsVsIceEur: costsKnown ? mobility.savingsVsIceEur : null,
-		reasonDe: (!sameEnergy || !sourceMatchesLegacy
-			? "Wallboxenergie stammt aus der Tages-Telemetrie; Herkunft oder Kosten der bisherigen Sitzungszählung weichen ab. " +
-				(estimatedEvCostEur === null
-					? "Für eine Geldschätzung fehlen Preis- oder Verbrauchsdaten. "
-					: "Die Schätzung bewertet PV mit Einspeisevergütung und den übrigen Heimladeanteil mit dem mittleren Tibber-Preis; Batterieanteil, Ladezeitpreise und Grid Rewards sind darin nicht gesondert berücksichtigt. ")
-			: "Wallboxenergie und Sitzungszählung stimmen überein. ") + mobility.reasonDe,
+		estimatedEvCostEur: finalized ? null : provisionalEvCostEur,
+		estimatedSavingsVsIceEur: finalized || provisionalEvCostEur === null || iceCost === null
+			? null : Math.round((iceCost - provisionalEvCostEur) * 100) / 100,
+		evTotalCostEur: finalized ? provisionalEvCostEur : null,
+		iceCostEur: iceCost,
+		savingsVsIceEur: finalized && iceCost !== null ? Math.round((iceCost - provisionalEvCostEur!) * 100) / 100 : null,
+		comparisonStatus: provisionalEvCostEur === null || iceCost === null ? "unvollständig" : finalized ? "endgültig" : "vorläufig",
+		reasonDe: (provisionalEvCostEur === null
+			? "Für mindestens einen gemessenen Ladeslot fehlen zeitgleiche PV-, Haus- oder Tibber-Preisdaten. "
+			: finalized ? "Mit erfassten Abrechnungen abgeschlossen. "
+				: "Vorläufige Rechnung aus zeitgleicher Wallboxenergie und Tibber-Viertelstundenpreis; direkte PV mit Einspeisevergütung bewertet. Batterieenergie ist im übrigen Anteil enthalten. Offene Schnelllade-Rechnungen und Grid Rewards werden erst nach Abrechnung ergänzt. ") +
+			(!sameEnergy ? "Alte Sitzungszählung weicht von der Wallbox-Messung ab. " : "") + mobility.reasonDe,
 	};
 }

@@ -48,6 +48,11 @@ export interface HomeDayTotals {
 
 export interface MobilityDayTotals {
 	dateKey: string;
+	/** Zeitgleiche Wallbox-/PV-/Tibber-Bilanz für den vorläufigen Kostenvergleich. */
+	provisionalChargedKwh?: number | null;
+	provisionalPvKwh?: number | null;
+	provisionalOtherKwh?: number | null;
+	provisionalCostEur?: number | null;
 	homePvKwh: number | null;
 	homeGridKwh: number | null;
 	homePvCostEur: number | null;
@@ -67,6 +72,16 @@ export interface MobilityDayTotals {
 	iceCostEur: number | null;
 	/** ice − ev (positiv = E-Auto günstiger). */
 	savingsVsIceEur: number | null;
+}
+
+export interface MeasuredChargeRun {
+	dateKey: string;
+	startedAtIso: string;
+	endedAtIso: string;
+	chargedKwh: number;
+	directPvKwh: number;
+	costEur: number;
+	chargeDurationMin: number;
 }
 
 /**
@@ -189,6 +204,7 @@ export interface StatisticsDayRecord {
 	home: HomeDayTotals;
 	mobility: MobilityDayTotals;
 	publicSessions: PublicChargeSession[];
+	chargeRuns?: MeasuredChargeRun[];
 	/** Additiv und rückwärtskompatibel; alte Statistikdateien haben das Feld noch nicht. */
 	energy?: EnergeticDayTotals | null;
 }
@@ -251,11 +267,14 @@ export interface MobilityCompareSummary {
 	homeGridCostNetEur: number | null;
 	gridRewardsSource: GridRewardsSource;
 	publicInvoicedKwh: number | null;
+	publicInvoicedEur?: number | null;
 	publicPendingKwh: number | null;
 	evTotalCostEur: number | null;
-	/** Schätzung aus Wallboxenergie, PV-Anteil und mittlerem Tibber-Preis; niemals Abrechnung. */
+	/** Vorläufige Rechnung aus 15-Minuten-Messung, keine pauschale Monatspreis-Schätzung. */
 	estimatedEvCostEur?: number | null;
 	estimatedSavingsVsIceEur?: number | null;
+	comparisonStatus?: "vorläufig" | "endgültig" | "unvollständig";
+	chargeRuns?: Array<MeasuredChargeRun & { kmEquivalent: number | null; iceCostEur: number | null; advantageEur: number | null }>;
 	estimatedKm: number | null;
 	iceCostEur: number | null;
 	savingsVsIceEur: number | null;

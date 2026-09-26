@@ -26,6 +26,7 @@ import {
 	applyHomeGridRewards,
 	applyMobilityGridRewards,
 	sumTibberJsonDailyForRange,
+	sumTibberPairedRange,
 	earliestTibberJsonDailyDateKey,
 	emptyHomeDay,
 	emptyMobilityDay,
@@ -69,6 +70,7 @@ import {
 } from "../learning/day_telemetry/persist";
 import { buildEnergeticDayTotals, reconcileEnergeticGridTruth, sumEnergeticDays } from "./energy";
 import { reconcileHomeEnergy, reconcileMobilityEnergy } from "./reconcile";
+import { measuredMobilityCost } from "./mobility_cost";
 import type {
 	HouseCompareSummary,
 	MobilityCompareSummary,
@@ -161,6 +163,55 @@ function monthKeys(dateKey: string, days: Record<string, StatisticsDayRecord>): 
 		.sort();
 }
 
+function measuredChargeForKeys(days: StatisticsPersist["days"], keys: string[]):
+	{ chargedKwh: number | null; costEur: number | null; invoicedKwh: number; invoicedEur: number; pending: number } {
+	let charged = 0;
+	let cost = 0;
+	let hasCharge = false;
+	let missing = false;
+	let invoicedKwh = 0;
+	let invoicedEur = 0;
+	let pending = 0;
+	for (const key of keys) {
+		const day = days[key];
+		if (!day) continue;
+		const energy = day.energy?.evChargedKwh ?? 0;
+		if (energy > 0) {
+			hasCharge = true;
+			if (day.mobility.provisionalCostEur === null || day.mobility.provisionalCostEur === undefined ||
+				day.mobility.provisionalChargedKwh == null ||
+				Math.abs(energy - day.mobility.provisionalChargedKwh) > 0.05) missing = true;
+			else {
+				charged += day.mobility.provisionalChargedKwh;
+				cost += day.mobility.provisionalCostEur;
+			}
+		}
+		const invoice = invoicedPublicTotals(day.publicSessions);
+		invoicedKwh += invoice.kwh;
+		invoicedEur += invoice.eur;
+		pending += day.publicSessions.filter((session) => session.status === "pending_invoice").length;
+	}
+	return { chargedKwh: hasCharge && !missing ? Math.round(charged * 1000) / 1000 : hasCharge ? null : 0,
+		costEur: hasCharge && !missing ? Math.round(cost * 100) / 100 : hasCharge ? null : 0,
+		invoicedKwh: Math.round(invoicedKwh * 1000) / 1000,
+		invoicedEur: Math.round(invoicedEur * 100) / 100, pending };
+}
+
+function rewardsForRangeFinal(persist: StatisticsPersist, fromKey: string, toKey: string,
+	todayKey: string, enabled: boolean): boolean {
+	if (toKey >= todayKey) return false;
+	if (!enabled) return true;
+	let month = fromKey.slice(0, 7);
+	while (month <= toKey.slice(0, 7)) {
+		if (persist.monthRewardsBilling?.[month]?.creditEur == null) return false;
+		const [year, part] = month.split("-").map(Number);
+		const lastDay = new Date(year, part, 0).getDate();
+		if (fromKey > `${month}-01` || toKey < `${month}-${String(lastDay).padStart(2, "0")}`) return false;
+		month = `${year + (part === 12 ? 1 : 0)}-${String(part === 12 ? 1 : part + 1).padStart(2, "0")}`;
+	}
+	return true;
+}
+
 function buildHomeSummary(
 	period: string,
 	home: StatisticsDayRecord["home"],
@@ -202,6 +253,7 @@ function buildMobilitySummary(
 		homeGridCostNetEur: mob.homeGridCostNetEur,
 		gridRewardsSource: mob.gridRewardsSource,
 		publicInvoicedKwh: mob.publicInvoicedKwh,
+		publicInvoicedEur: mob.publicInvoicedEur,
 		publicPendingKwh: mob.publicPendingKwh,
 		evTotalCostEur: mob.evTotalCostEur,
 		estimatedKm: mob.estimatedKm,
@@ -231,6 +283,7 @@ async function syncEnergeticTelemetry(
 	host: StatisticsHost,
 	persist: StatisticsPersist,
 	todayKey: string,
+	feedInCtPerKwh: number | null,
 ): Promise<void> {
 	const dir = baseDir(host);
 	if (!dir) return;
@@ -246,14 +299,30 @@ async function syncEnergeticTelemetry(
 			Object.prototype.hasOwnProperty.call(existing, "evFastBatteryKwh") &&
 			Object.prototype.hasOwnProperty.call(existing, "evFastGridKwh") &&
 			Object.prototype.hasOwnProperty.call(existing, "evFastLocalKwh");
-		if (key !== todayKey && existing?.complete && hasFastChargeSchema) continue;
+		const previousMobility = persist.days[key]?.mobility;
+		if (key !== todayKey && existing?.complete && hasFastChargeSchema &&
+			previousMobility?.provisionalCostEur !== undefined && persist.days[key]?.chargeRuns !== undefined) continue;
 		const telemetry = await readDayTelemetryDay(telemetryDir, key);
 		if (!telemetry) continue;
 		const next = buildEnergeticDayTotals(telemetry);
 		const target = ensureDay(persist, key);
-		if (JSON.stringify(target.energy ?? null) === JSON.stringify(next)) continue;
-		target.energy = next;
-		persistDirty = true;
+		const priced = measuredMobilityCost(telemetry, feedInCtPerKwh);
+		if (JSON.stringify(target.chargeRuns ?? null) !== JSON.stringify(priced?.runs ?? [])) {
+			target.chargeRuns = priced?.runs ?? [];
+			persistDirty = true;
+		}
+		if (JSON.stringify(target.energy ?? null) !== JSON.stringify(next)) {
+			target.energy = next;
+			persistDirty = true;
+		}
+		if (target.mobility.provisionalCostEur !== (priced?.costEur ?? null) ||
+			target.mobility.provisionalChargedKwh !== (priced?.chargedKwh ?? null)) {
+			target.mobility.provisionalChargedKwh = priced?.chargedKwh ?? null;
+			target.mobility.provisionalPvKwh = priced?.pvKwh ?? null;
+			target.mobility.provisionalOtherKwh = priced?.otherKwh ?? null;
+			target.mobility.provisionalCostEur = priced?.costEur ?? null;
+			persistDirty = true;
+		}
 	}
 }
 
@@ -379,7 +448,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 
 	const reasonsHome: string[] = [];
 	const reasonsMob: string[] = [];
-	await syncEnergeticTelemetry(host, persist, dateKey);
+	await syncEnergeticTelemetry(host, persist, dateKey, cfg.feedInCtPerKwh);
 	const day = ensureDay(persist, dateKey);
 	const rt = persist.runtime;
 	const nowMs = now.getTime();
@@ -782,6 +851,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 
 	let homePeriod = homeMonth;
 	let mobPeriod = mobMonth;
+	let pairedPeriodComparison = false;
 	let periodMeta = {
 		periodLabelDe: "Dieser Monat",
 		fromKey: dateKey.slice(0, 7) + "-01",
@@ -821,16 +891,22 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 			})),
 		});
 
-		const tibberRange = sumTibberJsonDailyForRange(
-			jsonDailyRawForStart,
-			periodRange.fromKey,
-			periodRange.toKey,
-		);
+		const tibberRange = sumTibberPairedRange({
+			fromKey: periodRange.fromKey,
+			toKey: periodRange.toKey,
+			todayKey: dateKey,
+			jsonDailyRaw: jsonDailyRawForStart,
+			jsonMonthlyRaw: jsonMonthlyId ? await readForeignRaw(host, jsonMonthlyId) : null,
+			currentMonth: hasPairedTibberMonth ? reconciledTibberMonth : { gridImportKwh: null, dynamicCostEur: null },
+		});
+		if (tibberRange.coveredMonths && tibberRange.coveredMonths < tibberRange.totalMonths) {
+			reasonsPeriod.push(`Tibber-Preisvergleich umfasst ${tibberRange.coveredMonths} von ${tibberRange.totalMonths} Monaten im ausgewählten Zeitraum; übrige Monate sind noch nicht belegbar.`);
+		}
 
 		// Bei gepaarten Tibber-Monatswerten muss der Festtarif dieselbe Monatsmenge
 		// und denselben Grundpreisanteil nutzen. Nur Persistenz-Tage werden ab
 		// Statistik-Start beschnitten.
-		if (periodId === "this_month") {
+		if (periodId === "this_month" && periodRange.fromKey === `${dateKey.slice(0, 7)}-01`) {
 			const fixedClipped = fixedTariffCostForRange({
 				gridImportKwh: homeMonth.gridImportKwh,
 				compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
@@ -866,7 +942,18 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 			if (tibberRange.gridImportKwh !== null || tibberRange.dynamicCostEur !== null) {
 				const importKwh = tibberRange.gridImportKwh ?? homeAgg.gridImportKwh;
 				const dynamic = tibberRange.dynamicCostEur ?? homeAgg.dynamicCostEur;
-				const fixed = fixedTariffCostForRange({
+				const pairedPeriod = tibberRange.gridImportKwh !== null && tibberRange.dynamicCostEur !== null;
+				pairedPeriodComparison = pairedPeriod;
+				const fixed = pairedPeriod ? tibberRange.segments.reduce<number | null>((sum, segment) => {
+					const value = fixedTariffCostForRange({
+						gridImportKwh: segment.gridImportKwh,
+						compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
+						monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+						fromKey: segment.fromKey,
+						toKey: segment.toKey,
+					});
+					return sum === null || value === null ? null : Math.round((sum + value) * 100) / 100;
+				}, 0) : fixedTariffCostForRange({
 					gridImportKwh: importKwh,
 					compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
 					monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
@@ -941,31 +1028,54 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		toKey: dateKey,
 	}), energyMonth, { preserveTibberMonthlyComparison: hasPairedTibberMonth, feedInCtPerKwh: cfg.feedInCtPerKwh });
 	const homePeriodSum = reconcileHomeEnergy(buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta), energyPeriod,
-		{ preserveTibberMonthlyComparison: periodId === "this_month" && hasPairedTibberMonth, feedInCtPerKwh: cfg.feedInCtPerKwh });
-	const averageTibberPrice = (home: HouseCompareSummary): number | null => {
-		const kwh = home.comparisonGridImportKwh ?? home.gridImportKwh;
-		return kwh !== null && kwh > 0 && home.dynamicCostEur !== null && home.dynamicCostEur >= 0
-			? home.dynamicCostEur / kwh : null;
+		{ preserveTibberMonthlyComparison: periodId === "this_month" && periodRange?.fromKey === `${dateKey.slice(0, 7)}-01`
+			? hasPairedTibberMonth : pairedPeriodComparison,
+			feedInCtPerKwh: cfg.feedInCtPerKwh });
+	const mobilityOptions = (keys: string[], fromKey: string, toKey: string,
+		rewards: { creditEur: number | null; source: string }) => {
+		const measured = measuredChargeForKeys(persist.days, keys);
+		return { iceLPer100Km: cfg.iceLPer100Km,
+			provisionalHomeCostEur: measured.costEur,
+			provisionalChargedKwh: measured.chargedKwh,
+			invoicedKwh: measured.invoicedKwh,
+			invoicedEur: measured.invoicedEur,
+			pendingInvoices: measured.pending,
+			billedRewardsEur: rewards.source === "billing" ? rewards.creditEur : null,
+			finalized: measured.pending === 0 && rewardsForRangeFinal(persist,
+				fromKey, toKey, dateKey, cfg.gridRewardsEnabled),
+		};
 	};
-	const mobilityEstimateOptions = (home: HouseCompareSummary) => ({
-		iceLPer100Km: cfg.iceLPer100Km,
-		feedInCtPerKwh: cfg.feedInCtPerKwh,
-		tibberAvgEurPerKwh: averageTibberPrice(home),
-	});
 	const mobTodaySum = reconcileMobilityEnergy(buildMobilitySummary("today", day.mobility, openSessions, reasonsMob), day.energy,
-		mobilityEstimateOptions(homeTodaySum));
+		mobilityOptions([dateKey], dateKey, dateKey, todayRewards));
 	const mobMonthSum = reconcileMobilityEnergy(buildMobilitySummary("month", mobMonth, openSessions, reasonsMob, {
 		periodLabelDe: "Dieser Monat",
 		fromKey: dateKey.slice(0, 7) + "-01",
 		toKey: dateKey,
-	}), energyMonth, mobilityEstimateOptions(homeMonthSum));
+	}), energyMonth, mobilityOptions(monthDayKeys, dateKey.slice(0, 7) + "-01", dateKey, monthRewards));
 	const mobPeriodSum = reconcileMobilityEnergy(buildMobilitySummary(
 		periodId,
 		mobPeriod,
 		openSessions,
 		[...reasonsMob, ...reasonsPeriod],
 		periodMeta,
-	), energyPeriod, mobilityEstimateOptions(homePeriodSum));
+	), energyPeriod, mobilityOptions(energyPeriodKeys, periodMeta.fromKey, periodMeta.toKey,
+		periodId === "this_month" && periodMeta.fromKey === `${dateKey.slice(0, 7)}-01`
+			? monthRewards : resolvePeriodGridRewards({ enabled: cfg.gridRewardsEnabled,
+			fromKey: periodMeta.fromKey, toKey: periodMeta.toKey, todayKey: dateKey,
+			mappedMonthEur: rewardsCreditMonth, monthRewardsBilling: persist.monthRewardsBilling ?? {},
+			dayCredits: energyPeriodKeys.map((key) => ({ dateKey: key,
+				creditEur: persist.days[key]!.home.gridRewardsCreditEur })) })));
+	const measuredChargeRows = energyPeriodKeys.flatMap((key) => persist.days[key]?.chargeRuns ?? [])
+		.map((run) => {
+			const km = evCons.value && evCons.value > 0 ? run.chargedKwh * 100 / evCons.value : null;
+			const iceEur = iceCostForKm({ km, lPer100Km: cfg.iceLPer100Km,
+				fuelPriceEurPerL: fuelPrice }).costEur;
+			return { ...run, kmEquivalent: km === null ? null : Math.round(km),
+				iceCostEur: iceEur,
+				advantageEur: iceEur === null ? null : Math.round((iceEur - run.costEur) * 100) / 100 };
+		})
+		.sort((a, b) => b.startedAtIso.localeCompare(a.startedAtIso));
+	mobPeriodSum.chargeRuns = measuredChargeRows;
 
 	const safeCfg: Partial<StatisticsAdminConfig> = {
 		enabled: cfg.enabled,

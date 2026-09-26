@@ -148,13 +148,18 @@ export function resolvePeriodGridRewards(input: {
 
 	for (const prefix of [...prefixes].sort()) {
 		const billing = input.monthRewardsBilling[prefix];
-		if (billing && billing.creditEur >= 0) {
+		const [year, month] = prefix.split("-").map(Number);
+		const monthStart = `${prefix}-01`;
+		const monthEnd = `${prefix}-${String(new Date(year!, month!, 0).getDate()).padStart(2, "0")}`;
+		const fullBillingMonth = input.fromKey <= monthStart && input.toKey >= monthEnd;
+		if (fullBillingMonth && billing && billing.creditEur >= 0) {
 			total += billing.creditEur;
 			hits++;
 			anyBilling = true;
 			continue;
 		}
-		if (prefix === currentPrefix && input.mappedMonthEur !== null && input.mappedMonthEur >= 0) {
+		if (prefix === currentPrefix && input.fromKey <= monthStart && input.toKey >= input.todayKey &&
+			input.mappedMonthEur !== null && input.mappedMonthEur >= 0) {
 			const mapped = positiveCredit(input.mappedMonthEur);
 			if (mapped !== null) {
 				total += mapped;

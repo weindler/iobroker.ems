@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.21] – 2026-09-26
+
+### Fixed
+
+- Hausersparnis wird für alle auswählbaren Zeiträume aus zusammengehörigem Tibber-Verbrauch und Kosten berechnet; Monatswerte und Tageswerte werden ohne Doppelzählung kombiniert. Nicht belegte Monate werden gekennzeichnet und leere Tibber-Felder nicht als Nullbeträge behandelt.
+- Der vorläufige Mobilitätsvergleich verwendet zeitgleiche EMS-Viertelstundenwerte für Wallboxladung, Hausverbrauch, PV, Einspeisung und Tibber-Preis. Fehlende Messwerte bleiben offen; der Vergleich wird erst nach dem Zeitraum und den einschlägigen Abrechnungen endgültig.
+- Die Statistik zeigt EMS-Ladeabschnitte mit Energie, direktem PV-Anteil, Dauer, rechnerischen Kosten und Verbrennervergleich. EVCC-Ladehistorie wird nicht als Statistikquelle verwendet.
+
 ## [0.4.20] – 2026-09-26
 
 ### Fixed

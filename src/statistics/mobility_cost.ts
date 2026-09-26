@@ -3,25 +3,27 @@ import type { MeasuredChargeRun } from "./types";
 
 export interface MeasuredMobilityCost {
 	chargedKwh: number;
-	pvKwh: number;
-	otherKwh: number;
+	pvKwh: number | null;
+	otherKwh: number | null;
 	/** Rechnerischer Betrag mit zeitgleichem Tibberpreis und entgangener Einspeisevergütung. */
-	costEur: number;
+	costEur: number | null;
 	runs: MeasuredChargeRun[];
 }
 
-/** Nur zeitgleiche Messwerte; ein fehlender Ladeslot verhindert einen Geldvergleich. */
+/** Gemessene Ladung behalten; fehlende zeitgleiche Quellen sperren nur die monetäre Bewertung. */
 export function measuredMobilityCost(
 	day: DayTelemetryDayRecord,
 	feedInCtPerKwh: number | null,
 ): MeasuredMobilityCost | null {
-	if (feedInCtPerKwh === null || feedInCtPerKwh < 0) return null;
 	let charged = 0;
 	let pvCharged = 0;
 	let cost = 0;
+	let pvKnown = true;
+	let costKnown = true;
 	let observed = false;
 	const runs: MeasuredChargeRun[] = [];
-	let run: { first: number; last: number; charged: number; pv: number; cost: number; minutes: number } | null = null;
+	let run: { first: number; last: number; charged: number; pv: number; pvKnown: boolean;
+		cost: number; costKnown: boolean; minutes: number } | null = null;
 	const flush = () => {
 		if (!run) return;
 		const value = run;
@@ -29,8 +31,8 @@ export function measuredMobilityCost(
 			startedAtIso: new Date(day.startMs + value.first * day.slotWidthMs).toISOString(),
 			endedAtIso: new Date(day.startMs + (value.last + 1) * day.slotWidthMs).toISOString(),
 			chargedKwh: Math.round(value.charged * 1000) / 1000,
-			directPvKwh: Math.round(value.pv * 1000) / 1000,
-			costEur: Math.round(value.cost * 100) / 100,
+			directPvKwh: value.pvKnown ? Math.round(value.pv * 1000) / 1000 : null,
+			costEur: value.costKnown ? Math.round(value.cost * 100) / 100 : null,
 			chargeDurationMin: Math.round(value.minutes),
 		});
 		run = null;
@@ -41,31 +43,43 @@ export function measuredMobilityCost(
 		observed = true;
 		if (ev <= 0) continue;
 		if (run && i - run.last > 4) flush();
+		if (!run) run = { first: i, last: i, charged: 0, pv: 0, pvKnown: true,
+			cost: 0, costKnown: true, minutes: 0 };
+		run.last = i;
+		run.charged += ev;
+		run.minutes += day.slotWidthMs / 60_000;
+		charged += ev;
 		const house = day.buckets.houseTotalKwh[i];
 		const pv = day.buckets.pvKwh[i];
 		const exported = day.buckets.gridExportKwh[i];
 		const price = day.buckets.priceCtPerKwh[i];
 		if (house === null || house === undefined || house <= 0 || pv === null || pv === undefined ||
 			exported === null || exported === undefined || !Number.isFinite(house) ||
-			!Number.isFinite(pv) || !Number.isFinite(exported)) return null;
+			!Number.isFinite(pv) || !Number.isFinite(exported)) {
+			pvKnown = false;
+			costKnown = false;
+			run.pvKnown = false;
+			run.costKnown = false;
+			continue;
+		}
 		const directPv = Math.min(ev, ev * Math.max(0, Math.min(pv, pv - Math.max(0, exported))) / house);
 		const other = ev - directPv;
-		if (other > 0.00001 && (price === null || price === undefined || !Number.isFinite(price) || price < 0)) return null;
-		charged += ev;
 		pvCharged += directPv;
-		const slotCost = (directPv * feedInCtPerKwh + other * (price ?? 0)) / 100;
-		cost += slotCost;
-		if (!run) run = { first: i, last: i, charged: 0, pv: 0, cost: 0, minutes: 0 };
-		run.last = i;
-		run.charged += ev;
 		run.pv += directPv;
+		if ((directPv > 0.00001 && (feedInCtPerKwh === null || feedInCtPerKwh < 0)) ||
+			(other > 0.00001 && (price === null || price === undefined || !Number.isFinite(price) || price < 0))) {
+			costKnown = false;
+			run.costKnown = false;
+			continue;
+		}
+		const slotCost = (directPv * (feedInCtPerKwh ?? 0) + other * (price ?? 0)) / 100;
+		cost += slotCost;
 		run.cost += slotCost;
-		run.minutes += day.slotWidthMs / 60_000;
 	}
 	flush();
 	if (!observed) return null;
 	return { chargedKwh: Math.round(charged * 1000) / 1000,
-		pvKwh: Math.round(pvCharged * 1000) / 1000,
-		otherKwh: Math.round((charged - pvCharged) * 1000) / 1000,
-		costEur: Math.round(cost * 100) / 100, runs };
+		pvKwh: pvKnown ? Math.round(pvCharged * 1000) / 1000 : null,
+		otherKwh: pvKnown ? Math.round((charged - pvCharged) * 1000) / 1000 : null,
+		costEur: costKnown ? Math.round(cost * 100) / 100 : null, runs };
 }

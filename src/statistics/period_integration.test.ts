@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { it } from "node:test";
 import { STATISTICS_STATES } from "./ensure_states.js";
 import { __resetStatisticsForTest, tickStatistics, type StatisticsHost } from "./tick.js";
+import { emptyDayRecord, emptyPersist, writeStatisticsPersist } from "./persist.js";
 
 it("berechnet Hausvergleich für alle auswählbaren Zeiträume aus gepaarten Tibber-Messwerten", async () => {
 	const dir = await mkdtemp(join(tmpdir(), "ems-stat-periods-"));
@@ -51,6 +52,11 @@ it("berechnet Hausvergleich für alle auswählbaren Zeiträume aus gepaarten Tib
 	};
 	try {
 		__resetStatisticsForTest();
+		const ledger = emptyPersist(new Date("2026-09-26T12:00:00Z"));
+		const olderChargingDay = emptyDayRecord("2026-08-22");
+		olderChargingDay.mobility.homeGridKwh = 12.34;
+		ledger.days["2026-08-22"] = olderChargingDay;
+		await writeStatisticsPersist(join(dir, "statistics"), ledger);
 		for (const [period, savings] of Object.entries(expected)) {
 			states.set(STATISTICS_STATES.periodId, { val: period } as ioBroker.State);
 			await tickStatistics(host, new Date("2026-09-26T12:00:00Z"));
@@ -62,6 +68,14 @@ it("berechnet Hausvergleich für alle auswählbaren Zeiträume aus gepaarten Tib
 				assert.equal(mobility.chargeRuns, undefined);
 				assert.deepEqual(mobility.monthlyBreakdown.map((row: { month: string; homeSavingsEur: number | null }) =>
 					[row.month, row.homeSavingsEur]), [["2026-08", 10], ["2026-09", 9]]);
+				assert.equal(mobility.monthlyBreakdown[0].chargedKwh, 12.34);
+				assert.equal(mobility.monthlyBreakdown[0].evCostEur, null);
+			}
+			if (period === "month_2026-08") {
+				const mobility = JSON.parse(String(states.get(STATISTICS_STATES.mobilityPeriodJson)?.val));
+				assert.deepEqual(mobility.legacyDailyCharges, [{ dateKey: "2026-08-22", chargedKwh: 12.34 }]);
+				assert.equal(mobility.homeChargedKwh, 12.34);
+				assert.equal(mobility.evTotalCostEur, null);
 			}
 		}
 	} finally {

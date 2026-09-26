@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleStatisticsStateChange = exports.isStatisticsRelatedState = exports.__resetStatisticsForTest = exports.tickStatistics = void 0;
+exports.handleStatisticsStateChange = exports.isStatisticsRelatedState = exports.__resetStatisticsForTest = exports.tickStatistics = exports.legacyDailyChargesForKeys = void 0;
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
 const compute_1 = require("./compute");
@@ -87,6 +87,21 @@ function monthKeys(dateKey, days) {
         .filter((k) => k.startsWith(prefix))
         .sort();
 }
+/** Alte EMS-Statistiktage erhalten, für die noch keine Viertelstundenmessung existiert. */
+function legacyDailyChargesForKeys(days, keys) {
+    return keys.flatMap((key) => {
+        const day = days[key];
+        if (!day || (day.energy?.evChargedKwh != null && day.energy.evChargedKwh > 0))
+            return [];
+        const pv = day.mobility.homePvKwh ?? 0;
+        const grid = day.mobility.homeGridKwh ?? 0;
+        const charged = pv + grid;
+        return Number.isFinite(charged) && charged > 0
+            ? [{ dateKey: key, chargedKwh: Math.round(charged * 1000) / 1000 }]
+            : [];
+    });
+}
+exports.legacyDailyChargesForKeys = legacyDailyChargesForKeys;
 function measuredChargeForKeys(days, keys) {
     let charged = 0;
     let cost = 0;
@@ -210,7 +225,8 @@ async function syncEnergeticTelemetry(host, persist, todayKey, feedInCtPerKwh) {
             Object.prototype.hasOwnProperty.call(existing, "evFastLocalKwh");
         const previousMobility = persist.days[key]?.mobility;
         if (key !== todayKey && existing?.complete && hasFastChargeSchema &&
-            previousMobility?.provisionalCostEur !== undefined && persist.days[key]?.chargeRuns !== undefined)
+            previousMobility?.provisionalCostEur !== undefined && persist.days[key]?.chargeRuns !== undefined &&
+            (persist.days[key].chargeRuns.length > 0 || !(existing.evChargedKwh !== null && existing.evChargedKwh > 0)))
             continue;
         const telemetry = await (0, persist_2.readDayTelemetryDay)(telemetryDir, key);
         if (!telemetry)
@@ -827,6 +843,11 @@ async function tickStatistics(host, now = new Date()) {
         fromKey: periodMeta.fromKey,
         toKey: periodMeta.toKey,
     });
+    const legacyPeriodCharges = legacyDailyChargesForKeys(persist.days, energyPeriodKeys);
+    const legacyPeriodKwh = legacyPeriodCharges.reduce((sum, row) => sum + row.chargedKwh, 0);
+    const comparedPeriodEnergy = legacyPeriodKwh > 0 ? { ...energyPeriod,
+        evChargedKwh: Math.round(((energyPeriod.evChargedKwh ?? 0) + legacyPeriodKwh) * 1000) / 1000,
+        evPvKwh: null, evPvSharePct: null } : energyPeriod;
     const homeTodaySum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary("today", day.home, reasonsHome, { periodLabelDe: "Heute", fromKey: dateKey, toKey: dateKey }), day.energy, { feedInCtPerKwh: cfg.feedInCtPerKwh });
     const homeMonthSum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary("month", homeMonth, reasonsHome, {
         periodLabelDe: "Dieser Monat",
@@ -854,7 +875,7 @@ async function tickStatistics(host, now = new Date()) {
         fromKey: dateKey.slice(0, 7) + "-01",
         toKey: dateKey,
     }), energyMonth, mobilityOptions(monthDayKeys, dateKey.slice(0, 7) + "-01", dateKey, monthRewards));
-    const mobPeriodSum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary(periodId, mobPeriod, openSessions, [...reasonsMob, ...reasonsPeriod], periodMeta), energyPeriod, mobilityOptions(energyPeriodKeys, periodMeta.fromKey, periodMeta.toKey, periodId === "this_month" && periodMeta.fromKey === `${dateKey.slice(0, 7)}-01`
+    const mobPeriodSum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary(periodId, mobPeriod, openSessions, [...reasonsMob, ...reasonsPeriod], periodMeta), comparedPeriodEnergy, mobilityOptions(energyPeriodKeys, periodMeta.fromKey, periodMeta.toKey, periodId === "this_month" && periodMeta.fromKey === `${dateKey.slice(0, 7)}-01`
         ? monthRewards : (0, grid_rewards_1.resolvePeriodGridRewards)({ enabled: cfg.gridRewardsEnabled,
         fromKey: periodMeta.fromKey, toKey: periodMeta.toKey, todayKey: dateKey,
         mappedMonthEur: rewardsCreditMonth, monthRewardsBilling: persist.monthRewardsBilling ?? {},
@@ -867,13 +888,15 @@ async function tickStatistics(host, now = new Date()) {
             fuelPriceEurPerL: fuelPrice }).costEur;
         return { ...run, kmEquivalent: km === null ? null : Math.round(km),
             iceCostEur: iceEur,
-            advantageEur: iceEur === null ? null : Math.round((iceEur - run.costEur) * 100) / 100 };
+            advantageEur: iceEur === null || run.costEur === null ? null : Math.round((iceEur - run.costEur) * 100) / 100 };
     })
         .sort((a, b) => b.startedAtIso.localeCompare(a.startedAtIso));
     const groupedPeriod = periodId === "this_year" || periodId === "last_year" ||
         periodId === "this_quarter" || periodId === "last_quarter" || /^year_\d{4}$/.test(periodId);
     if (!groupedPeriod)
         mobPeriodSum.chargeRuns = measuredChargeRows;
+    if (!groupedPeriod)
+        mobPeriodSum.legacyDailyCharges = legacyPeriodCharges;
     if (periodRange && groupedPeriod) {
         const rows = [];
         let month = periodRange.fromKey.slice(0, 7);
@@ -892,6 +915,11 @@ async function tickStatistics(host, now = new Date()) {
                 compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
                 monthlyBaseEur: cfg.compareTariffMonthlyBaseEur, fromKey, toKey }) : null;
             const monthEnergy = (0, energy_1.sumEnergeticDays)(monthKeys.map((key) => persist.days[key]?.energy), { period: `month_${month}`, periodLabelDe: month, fromKey, toKey });
+            const legacyMonthKwh = legacyDailyChargesForKeys(persist.days, monthKeys)
+                .reduce((sum, row) => sum + row.chargedKwh, 0);
+            const comparedMonthEnergy = legacyMonthKwh > 0 ? { ...monthEnergy,
+                evChargedKwh: Math.round(((monthEnergy.evChargedKwh ?? 0) + legacyMonthKwh) * 1000) / 1000,
+                evPvKwh: null, evPvSharePct: null } : monthEnergy;
             const billed = persist.monthRewardsBilling?.[month]?.creditEur ?? null;
             const wholeMonth = fromKey === first && toKey === last;
             const monthMob = (0, compute_1.sumMobilityDays)(monthKeys.map((key) => persist.days[key].mobility), { evKwhPer100: evCons.value, fuelPriceEurPerL: fuelPrice,
@@ -899,7 +927,7 @@ async function tickStatistics(host, now = new Date()) {
                 evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source }, { creditEur: wholeMonth ? billed : null, source: wholeMonth && billed !== null ? "billing" : "off" });
             const monthlyOptions = mobilityOptions(monthKeys, fromKey, toKey, { creditEur: wholeMonth ? billed : null, source: wholeMonth && billed !== null ? "billing" : "off" });
             monthlyOptions.finalized = monthlyOptions.finalized && monthEnergy.daysWithTelemetry === monthEnergy.daysTotal;
-            const monthly = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary(`month_${month}`, monthMob, 0, []), monthEnergy, monthlyOptions);
+            const monthly = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary(`month_${month}`, monthMob, 0, []), comparedMonthEnergy, monthlyOptions);
             rows.push({ month, fromKey, toKey,
                 homeSavingsEur: (0, compute_1.savingsVsFixedEur)(fixedCost, priceSegment?.dynamicCostEur ?? null),
                 gridImportKwh: priceSegment?.gridImportKwh ?? null,

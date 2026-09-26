@@ -79,8 +79,8 @@ export interface MeasuredChargeRun {
 	startedAtIso: string;
 	endedAtIso: string;
 	chargedKwh: number;
-	directPvKwh: number;
-	costEur: number;
+	directPvKwh: number | null;
+	costEur: number | null;
 	chargeDurationMin: number;
 }
 
@@ -275,6 +275,8 @@ export interface MobilityCompareSummary {
 	estimatedSavingsVsIceEur?: number | null;
 	comparisonStatus?: "vorläufig" | "endgültig" | "unvollständig";
 	chargeRuns?: Array<MeasuredChargeRun & { kmEquivalent: number | null; iceCostEur: number | null; advantageEur: number | null }>;
+	/** Vor der Viertelstunden-Telemetrie gespeicherte EMS-Tagesmengen ohne Sitzungsuhrzeit. */
+	legacyDailyCharges?: Array<{ dateKey: string; chargedKwh: number }>;
 	monthlyBreakdown?: Array<{
 		month: string;
 		fromKey: string;

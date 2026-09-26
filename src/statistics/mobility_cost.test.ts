@@ -17,5 +17,14 @@ it("bewertet jede gemessene Ladung mit ihrem eigenen Tibber-Preis statt Monatsdu
 	assert.equal(result?.runs.length, 1);
 	assert.equal(result?.runs[0]?.chargeDurationMin, 30);
 	day.buckets.priceCtPerKwh[1] = null;
-	assert.equal(measuredMobilityCost(day, 9.3), null);
+	const incomplete = measuredMobilityCost(day, 9.3);
+	assert.equal(incomplete?.chargedKwh, 10);
+	assert.equal(incomplete?.costEur, null);
+	assert.equal(incomplete?.runs[0]?.chargedKwh, 10);
+	assert.equal(incomplete?.runs[0]?.costEur, null);
+	day.buckets.houseTotalKwh[0] = null;
+	const withoutHouse = measuredMobilityCost(day, null);
+	assert.equal(withoutHouse?.chargedKwh, 10);
+	assert.equal(withoutHouse?.runs[0]?.directPvKwh, null);
+	assert.equal(withoutHouse?.runs[0]?.costEur, null);
 });

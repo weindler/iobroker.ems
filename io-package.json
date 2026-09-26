@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.22",
+		"version": "0.4.23",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.23": {
+				"en": "Restores older EMS charging-day totals in August and retains measured charging runs even when historical price or PV data is incomplete; unknown costs remain unset.",
+				"de": "Zeigt ältere EMS-Ladetage aus dem August wieder an und erhält gemessene Ladeabschnitte auch bei lückenhaften historischen Preis- oder PV-Daten; unbekannte Kosten bleiben offen."
+			},
 			"0.4.22": {
 				"en": "Shows year and quarter statistics as a compact monthly overview with tariff and car comparisons; selecting a month opens its own measured charging runs.",
 				"de": "Zeigt Jahres- und Quartalsstatistiken als übersichtliche Monatsübersicht mit Tarif- und Autovergleich; ein gewählter Monat zeigt seine gemessenen Ladevorgänge."

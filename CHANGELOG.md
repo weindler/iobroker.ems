@@ -8,6 +8,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.23] – 2026-09-26
+
+### Fixed
+
+- Ältere Lade-Tagesmengen aus der bereits vorhandenen EMS-Statistik werden in Monats- und Jahreswerten wieder sichtbar, wenn für den Tag noch keine Viertelstunden-Ladeenergie vorliegt. Die Monatsansicht zeigt solche Tagesmengen separat ohne erfundene Sitzungsuhrzeiten oder Kosten.
+- Fehlen bei einem gemessenen Ladeabschnitt zeitgleiche Preise, PV- oder Hausdaten, bleiben seine gemessenen kWh und die Ladezeit erhalten. Nur PV-Anteil und Geldbetrag bleiben offen; Summen mit fehlenden Beträgen werden nicht als Null ausgewiesen.
+
 ## [0.4.22] – 2026-09-26
 
 ### Changed

@@ -10,6 +10,7 @@ const node_path_1 = require("node:path");
 const node_test_1 = require("node:test");
 const ensure_states_js_1 = require("./ensure_states.js");
 const tick_js_1 = require("./tick.js");
+const persist_js_1 = require("./persist.js");
 (0, node_test_1.it)("berechnet Hausvergleich für alle auswählbaren Zeiträume aus gepaarten Tibber-Messwerten", async () => {
     const dir = await (0, promises_1.mkdtemp)((0, node_path_1.join)((0, node_os_1.tmpdir)(), "ems-stat-periods-"));
     const states = new Map();
@@ -55,6 +56,11 @@ const tick_js_1 = require("./tick.js");
     };
     try {
         (0, tick_js_1.__resetStatisticsForTest)();
+        const ledger = (0, persist_js_1.emptyPersist)(new Date("2026-09-26T12:00:00Z"));
+        const olderChargingDay = (0, persist_js_1.emptyDayRecord)("2026-08-22");
+        olderChargingDay.mobility.homeGridKwh = 12.34;
+        ledger.days["2026-08-22"] = olderChargingDay;
+        await (0, persist_js_1.writeStatisticsPersist)((0, node_path_1.join)(dir, "statistics"), ledger);
         for (const [period, savings] of Object.entries(expected)) {
             states.set(ensure_states_js_1.STATISTICS_STATES.periodId, { val: period });
             await (0, tick_js_1.tickStatistics)(host, new Date("2026-09-26T12:00:00Z"));
@@ -65,6 +71,14 @@ const tick_js_1 = require("./tick.js");
                 strict_1.default.equal(mobility.monthlyBreakdown.length, 2);
                 strict_1.default.equal(mobility.chargeRuns, undefined);
                 strict_1.default.deepEqual(mobility.monthlyBreakdown.map((row) => [row.month, row.homeSavingsEur]), [["2026-08", 10], ["2026-09", 9]]);
+                strict_1.default.equal(mobility.monthlyBreakdown[0].chargedKwh, 12.34);
+                strict_1.default.equal(mobility.monthlyBreakdown[0].evCostEur, null);
+            }
+            if (period === "month_2026-08") {
+                const mobility = JSON.parse(String(states.get(ensure_states_js_1.STATISTICS_STATES.mobilityPeriodJson)?.val));
+                strict_1.default.deepEqual(mobility.legacyDailyCharges, [{ dateKey: "2026-08-22", chargedKwh: 12.34 }]);
+                strict_1.default.equal(mobility.homeChargedKwh, 12.34);
+                strict_1.default.equal(mobility.evTotalCostEur, null);
             }
         }
     }

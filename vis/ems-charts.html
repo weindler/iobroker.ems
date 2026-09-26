@@ -3868,7 +3868,7 @@ function mobilitySavingsHero(mob,exact){
 }
 function measuredChargesCard(rows,scopeLabel,energy){
 	if(!Array.isArray(rows))rows=[];
-	var sumKwh=0,sumPv=0,sumEv=0,sumIce=0,allIce=true;
+	var sumKwh=0,sumPv=0,sumEv=0,sumIce=0,allPv=true,allEv=true,allIce=true;
 	var html='<div class="ems-card ems-charge-card"><div class="ems-card-h"><span class="ems-card-title">Ladevorgänge · '+esc(scopeLabel)+'</span><span class="ems-note">aus EMS-Messdaten</span></div>';
 	if(!rows.length){
 		return html+'<div class="ems-charge-caption">'+(num(energy&&energy.evChargedKwh)>0?'Ladung gemessen, aber für die Einzelrechnung fehlen zeitgleiche Lade-, Haus-, PV- oder Preisdaten.':'In diesem Zeitraum liegen keine gemessenen Ladeabschnitte vor.')+'</div></div>';
@@ -3876,15 +3876,29 @@ function measuredChargesCard(rows,scopeLabel,energy){
 	html+='<div class="ems-charge-wrap"><table class="ems-charge-table"><thead><tr><th>Beginn</th><th>Geladen</th><th>Direkt PV</th><th>Ladedauer</th><th>E-Auto</th><th>Verbrenner</th><th>Unterschied</th><th>km rechnerisch</th></tr></thead><tbody>';
 	for(var i=0;i<rows.length;i++){
 		var r=rows[i]||{},k=num(r.chargedKwh),pv=num(r.directPvKwh),ev=num(r.costEur),ice=num(r.iceCostEur),adv=num(r.advantageEur);
-		if(k!==null)sumKwh+=k;if(pv!==null)sumPv+=pv;if(ev!==null)sumEv+=ev;
+		if(k!==null)sumKwh+=k;if(pv===null)allPv=false;else sumPv+=pv;
+		if(ev===null)allEv=false;else sumEv+=ev;
 		if(ice===null)allIce=false;else sumIce+=ice;
 		var dt=r.startedAtIso?new Date(r.startedAtIso):null;
 		var start=dt&&!isNaN(dt.getTime())?dt.toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
 		html+='<tr><td>'+esc(start)+'</td><td>'+esc(fmtKwhStats(k))+'</td><td class="emsolar">'+esc(k>0&&pv!==null?Math.round(100*pv/k)+" %":"—")+'</td><td>'+esc(num(r.chargeDurationMin)===null?"—":Math.round(r.chargeDurationMin)+" min")+'</td><td>'+esc(fmtEur(ev))+'</td><td>'+esc(fmtEur(ice))+'</td><td class="'+(adv!==null&&adv>=0?'emsaving':'')+'">'+esc(adv===null?"—":(adv>=0?"+":"")+fmtEur(adv))+'</td><td>'+esc(r.kmEquivalent===null||r.kmEquivalent===undefined?"—":String(r.kmEquivalent))+'</td></tr>';
 	}
-	html+='</tbody><tfoot><tr><td>Gesamt</td><td>'+esc(fmtKwhStats(sumKwh))+'</td><td class="emsolar">'+esc(sumKwh>0?Math.round(100*sumPv/sumKwh)+" %":"—")+'</td><td>—</td><td>'+esc(fmtEur(sumEv))+'</td><td>'+esc(allIce?fmtEur(sumIce):"—")+'</td><td class="emsaving">'+esc(allIce?(sumIce-sumEv>=0?"+":"")+fmtEur(sumIce-sumEv):"—")+'</td><td>—</td></tr></tfoot></table></div>';
-	var missing=num(energy&&energy.evChargedKwh)!==null&&energy.evChargedKwh>sumKwh+0.05?' Achtung: '+fmtKwhStats(energy.evChargedKwh-sumKwh)+' Ladung ohne vollständige Einzelbewertung.':'';
+	html+='</tbody><tfoot><tr><td>Gesamt</td><td>'+esc(fmtKwhStats(sumKwh))+'</td><td class="emsolar">'+esc(allPv&&sumKwh>0?Math.round(100*sumPv/sumKwh)+" %":"—")+'</td><td>—</td><td>'+esc(allEv?fmtEur(sumEv):"—")+'</td><td>'+esc(allIce?fmtEur(sumIce):"—")+'</td><td class="emsaving">'+esc(allIce&&allEv?(sumIce-sumEv>=0?"+":"")+fmtEur(sumIce-sumEv):"—")+'</td><td>—</td></tr></tfoot></table></div>';
+	var missing=num(energy&&energy.evChargedKwh)!==null&&energy.evChargedKwh>sumKwh+0.05?' Achtung: '+fmtKwhStats(energy.evChargedKwh-sumKwh)+' Ladung ohne rekonstruierbaren Ladeabschnitt.':'';
+	if(!allEv)missing+=' Für mindestens einen Ladeabschnitt fehlen die zeitgleichen Daten zur Kostenrechnung; gemessene kWh bleiben sichtbar.';
 	return html+'<div class="ems-charge-caption">Ladeabschnitte werden aus der EMS-Viertelstundenmessung gebildet. Direkt-PV und Ladekosten werden zeitgleich bilanziert; Batterie steckt im übrigen Anteil. Der Verbrennervergleich verwendet die eingestellten Verbräuche und den Spritpreis. Grid Rewards und externe Schnellladungen werden erst nach ihrer Abrechnung in der Zeitraum-Summe berücksichtigt; der Unterschied pro Ladeabschnitt bleibt vorläufig.'+esc(missing)+'</div></div>';
+}
+function historicDailyChargesCard(rows,scopeLabel){
+	if(!Array.isArray(rows)||!rows.length)return "";
+	var html='<div class="ems-card ems-charge-card"><div class="ems-card-h"><span class="ems-card-title">Ältere EMS-Ladetage · '+esc(scopeLabel)+'</span><span class="ems-note">Tagesmengen ohne Sitzungsuhrzeit</span></div><div class="ems-charge-wrap"><table class="ems-charge-table"><thead><tr><th>Tag</th><th>Zu Hause geladen</th><th>Ladekosten</th><th>Hinweis</th></tr></thead><tbody>';
+	var sum=0;
+	for(var i=0;i<rows.length;i++){
+		var row=rows[i]||{},k=num(row.chargedKwh),date=String(row.dateKey||"");
+		if(k===null||k<=0||!/^\d{4}-\d{2}-\d{2}$/.test(date))continue;
+		sum+=k;
+		html+='<tr><td>'+esc(date.slice(8)+'.'+date.slice(5,7)+'.'+date.slice(0,4))+'</td><td>'+esc(fmtKwhStats(k))+'</td><td>—</td><td>Ältere EMS-Tagesbilanz</td></tr>';
+	}
+	return html+'</tbody><tfoot><tr><td>Gesamt</td><td>'+esc(fmtKwhStats(sum))+'</td><td>—</td><td>Keine einzelnen Ladezeiten gespeichert</td></tr></tfoot></table></div><div class="ems-charge-caption">Diese kWh stammen aus dem bestehenden EMS-Statistikprotokoll. Für diese Tage liegen keine auswertbaren Viertelstunden-Ladeabschnitte vor. Ohne zeitgleiche Messwerte wird dafür kein Eurobetrag ergänzt.</div></div>';
 }
 function monthlyOverviewCard(rows,scopeLabel){
 	if(!Array.isArray(rows))rows=[];
@@ -4124,6 +4138,7 @@ function renderStatistics(){
 	var mobP=mergeMobFlat("period",parseObj(g("statistics.mobility.period_json")));
 	var mobM=parseObj(g("statistics.mobility.month_json"));
 	var chargeRuns=mobP&&mobP.period===periodId&&Array.isArray(mobP.chargeRuns)?mobP.chargeRuns:[];
+	var olderChargeDays=mobP&&mobP.period===periodId&&Array.isArray(mobP.legacyDailyCharges)?mobP.legacyDailyCharges:[];
 	var monthRows=mobP&&mobP.period===periodId&&Array.isArray(mobP.monthlyBreakdown)?mobP.monthlyBreakdown:[];
 	var energyT=energyStats("today");
 	var energyP=energyStats("period");
@@ -4181,7 +4196,7 @@ function renderStatistics(){
 	grid.innerHTML=statsCard("Zeitraum und Datenstand",{cls:"neu",txt:scopeLabel},[["Von",shownEnergy.fromKey||"Heute"],["Bis",shownEnergy.toKey||"Heute"],["Anzeige aktualisiert",new Date().toLocaleString("de-DE")]],"Der laufende Tag ist noch nicht vollständig. Netzwerte stammen vorrangig vom Smart Meter, PV vom Wechselrichter und die Autoladung von der Wallbox. Einzelne Quellen können später aktualisiert werden.")
 		+(todaySelected?statsCard("Haus heute · Tibber vs. Festtarif",hT,homeStatsRows(homeT),homeTodayNote):statsCard(periodCardTitle("Haus",homeP,"Zeitraum")+" · Tibber vs. Festtarif",hP,homeStatsRows(homeP),homePeriodNote))
 		+(todaySelected?statsCard("Mobilität heute · vs. Verbrenner",mT,mobStatsRows(mobT),txt(mobT.reasonDe,"")):statsCard(periodCardTitle("Mobilität",mobP,"Zeitraum")+" · vs. Verbrenner",mP,mobStatsRows(mobP),txt(mobP.reasonDe,"")))
-		+((periodId==="this_year"||periodId==="last_year"||periodId==="this_quarter"||periodId==="last_quarter"||/^year_\d{4}$/.test(periodId))?monthlyOverviewCard(monthRows,scopeLabel):measuredChargesCard(chargeRuns,scopeLabel,shownEnergy))
+		+((periodId==="this_year"||periodId==="last_year"||periodId==="this_quarter"||periodId==="last_quarter"||/^year_\d{4}$/.test(periodId))?monthlyOverviewCard(monthRows,scopeLabel):(chargeRuns.length||!olderChargeDays.length?measuredChargesCard(chargeRuns,scopeLabel,shownEnergy):"")+historicDailyChargesCard(olderChargeDays,scopeLabel))
 		+energyCards
 		+smartMeterCard(shownEnergy,scopeLabel)
 		+statsCard("PV-Nutzung der Geräte · "+scopeLabel,pctHero(shownEnergy.selfConsumptionPct,"Eigenverbrauch"),energeticDeviceRows(shownEnergy),"PV-Anteile werden nur bei vollständiger zeitgleicher Messung ausgewiesen. Schnellladen: Netz und Sonnen-Batterie werden anhand zeitgleicher Messungen zugeordnet. Unbekannte Anteile bleiben offen. Diese Werte sind Energieflüsse und teils bereits im Hausverbrauch enthalten; sie dürfen nicht zusammengerechnet werden.")

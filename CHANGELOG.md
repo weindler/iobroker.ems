@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.20] – 2026-09-26
+
+### Fixed
+
+- Der Hausvergleich zeigt für den laufenden Monat wieder einen vorläufigen Tibber-gegen-Festtarif-Wert, wenn Tibber Monatsenergie und Monatskosten zusammen liefert. Bei abweichender Smart-Meter-Menge erscheinen beide Messmengen getrennt; der Festtarif wird auf Tibbers Menge berechnet.
+- Einspeisevergütung wird für den gewählten Zeitraum aus der Smart-Meter-Einspeisung und dem konfigurierten Vergütungssatz berechnet.
+- Die Mobilitätskarte zeigt bei fehlender genauer Ladequellen-Zuordnung eine ausdrücklich gekennzeichnete Kostenschätzung aus gemessener Wallboxenergie, PV-Anteil, Einspeisevergütung und mittlerem Tibber-Preis. Sie zieht nicht abgerechnete Grid Rewards nicht als gesicherte Gutschrift ab und lässt unbekannte Batterieanteile offen.
+
 ## [0.4.19] – 2026-09-26
 
 ### Fixed

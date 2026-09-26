@@ -1,28 +1,38 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reconcileMobilityEnergy = exports.reconcileHomeEnergy = void 0;
+const compute_1 = require("./compute");
 /** Netzmenge des Smart Meters ist die sichtbare Bezugsbasis; abweichende Tibber-Perioden bleiben markiert. */
-function reconcileHomeEnergy(home, energy) {
+function reconcileHomeEnergy(home, energy, options = {}) {
     if (!energy || energy.gridImportKwh === null)
         return home;
     const same = home.gridImportKwh !== null && Math.abs(home.gridImportKwh - energy.gridImportKwh) <= 0.05;
+    const separateTibberComparison = !same && options.preserveTibberMonthlyComparison === true &&
+        home.gridImportKwh !== null && home.dynamicCostEur !== null &&
+        home.fixedTariffCostEur !== null && home.savingsVsFixedEur !== null;
     const exportSame = home.gridExportKwh != null && energy.gridExportKwh !== null &&
         Math.abs(home.gridExportKwh - energy.gridExportKwh) <= 0.05;
+    const meterFeedInCredit = energy.gridExportKwh !== null && energy.gridExportKwh >= 0 &&
+        options.feedInCtPerKwh != null && options.feedInCtPerKwh >= 0
+        ? Math.round(energy.gridExportKwh * options.feedInCtPerKwh) / 100 : null;
     return {
         ...home,
         gridImportKwh: energy.gridImportKwh,
+        comparisonGridImportKwh: separateTibberComparison ? home.gridImportKwh : null,
         gridExportKwh: energy.gridExportKwh,
-        feedInCreditEur: exportSame ? home.feedInCreditEur : null,
-        fixedTariffCostEur: same ? home.fixedTariffCostEur : null,
-        savingsVsFixedEur: same ? home.savingsVsFixedEur : null,
+        feedInCreditEur: meterFeedInCredit ?? (exportSame ? home.feedInCreditEur : null),
+        fixedTariffCostEur: same || separateTibberComparison ? home.fixedTariffCostEur : null,
+        savingsVsFixedEur: same || separateTibberComparison ? home.savingsVsFixedEur : null,
         reasonDe: (same
             ? "Netzbezug und Tibber-Kosten verwenden dieselbe gemessene Menge. "
-            : "Smart-Meter-Netzbezug und Tibber-Kosten beziehen sich auf unterschiedliche Erfassungsstände; Festtarifvergleich bis zum gemeinsamen Datenstand derzeit nicht berechenbar. ") + home.reasonDe,
+            : separateTibberComparison
+                ? "Vorläufiger Preisvergleich auf Tibbers Monatsmenge; der Smart-Meter-Wert hat einen anderen Erfassungsstand. Beide Mengen werden getrennt ausgewiesen. "
+                : "Smart-Meter-Netzbezug und Tibber-Kosten beziehen sich auf unterschiedliche Erfassungsstände; Festtarifvergleich bis zum gemeinsamen Datenstand derzeit nicht berechenbar. ") + home.reasonDe,
     };
 }
 exports.reconcileHomeEnergy = reconcileHomeEnergy;
 /** Dieselbe Wallboxmessung für Energie- und Mobilitätskarte verwenden. */
-function reconcileMobilityEnergy(mobility, energy) {
+function reconcileMobilityEnergy(mobility, energy, options = {}) {
     if (!energy || energy.evChargedKwh === null) {
         return {
             ...mobility,
@@ -54,6 +64,22 @@ function reconcileMobilityEnergy(mobility, energy) {
     const estimatedKm = mobility.evKwhPer100Km && mobility.evKwhPer100Km > 0
         ? Math.round((chargedWithInvoice / mobility.evKwhPer100Km) * 100_000) / 1000
         : null;
+    const iceCost = (0, compute_1.iceCostForKm)({
+        km: estimatedKm,
+        lPer100Km: options.iceLPer100Km ?? null,
+        fuelPriceEurPerL: mobility.fuelPriceEurPerL,
+    }).costEur;
+    // Vorläufiger Vergleich ohne unbelegte Batterie-/Netzzuordnung: der Nicht-PV-Anteil
+    // wird mit dem mittleren Tibber-Preis bewertet. Nur reine Heimladung; keine
+    // fremden Schnelllade-Rechnungen oder unbestätigten Rewards dazumischen.
+    const canEstimate = (mobility.publicInvoicedKwh ?? 0) === 0 && (mobility.openPublicSessions ?? 0) === 0 &&
+        homePvKwh !== null && homePvKwh >= 0 && homePvKwh <= measured + 0.05 &&
+        options.tibberAvgEurPerKwh != null && options.tibberAvgEurPerKwh >= 0 &&
+        options.feedInCtPerKwh != null && options.feedInCtPerKwh >= 0 && iceCost !== null;
+    const estimatedEvCostEur = canEstimate
+        ? Math.round((homePvKwh * options.feedInCtPerKwh / 100 +
+            Math.max(0, measured - homePvKwh) * options.tibberAvgEurPerKwh) * 100) / 100
+        : null;
     return {
         ...mobility,
         homeChargedKwh: measured,
@@ -63,11 +89,17 @@ function reconcileMobilityEnergy(mobility, energy) {
         homeGridCostEur: costsKnown ? mobility.homeGridCostEur : null,
         homeGridCostNetEur: costsKnown ? mobility.homeGridCostNetEur : null,
         estimatedKm,
+        estimatedEvCostEur: costsKnown ? null : estimatedEvCostEur,
+        estimatedSavingsVsIceEur: costsKnown || estimatedEvCostEur === null || iceCost === null
+            ? null : Math.round((iceCost - estimatedEvCostEur) * 100) / 100,
         evTotalCostEur: costsKnown ? mobility.evTotalCostEur : null,
-        iceCostEur: costsKnown ? mobility.iceCostEur : null,
+        iceCostEur: costsKnown ? mobility.iceCostEur : iceCost,
         savingsVsIceEur: costsKnown ? mobility.savingsVsIceEur : null,
         reasonDe: (!sameEnergy || !sourceMatchesLegacy
-            ? "Wallboxenergie stammt aus der Tages-Telemetrie; Herkunft oder Kosten der bisherigen Sitzungszählung weichen ab. Unbelegte Anteile und Ersparnis bleiben offen. "
+            ? "Wallboxenergie stammt aus der Tages-Telemetrie; Herkunft oder Kosten der bisherigen Sitzungszählung weichen ab. " +
+                (estimatedEvCostEur === null
+                    ? "Für eine Geldschätzung fehlen Preis- oder Verbrauchsdaten. "
+                    : "Die Schätzung bewertet PV mit Einspeisevergütung und den übrigen Heimladeanteil mit dem mittleren Tibber-Preis; Batterieanteil, Ladezeitpreise und Grid Rewards sind darin nicht gesondert berücksichtigt. ")
             : "Wallboxenergie und Sitzungszählung stimmen überein. ") + mobility.reasonDe,
     };
 }

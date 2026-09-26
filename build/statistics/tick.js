@@ -566,6 +566,9 @@ async function tickStatistics(host, now = new Date()) {
         todayGridImportKwh: day.home.gridImportKwh,
         todayDynamicCostEur: day.home.dynamicCostEur,
     });
+    const hasPairedTibberMonth = tibberMonth.source !== null &&
+        tibberMonth.gridImportKwh !== null && tibberMonth.dynamicCostEur !== null &&
+        reconciledTibberMonth.gridImportKwh !== null && reconciledTibberMonth.dynamicCostEur !== null;
     let homeMonth = homeMonthPersist;
     if (reconciledTibberMonth.gridImportKwh !== null || reconciledTibberMonth.dynamicCostEur !== null) {
         homeMonth = (0, compute_1.buildHomeMonthTotals)({
@@ -655,7 +658,9 @@ async function tickStatistics(host, now = new Date()) {
             })),
         });
         const tibberRange = (0, compute_1.sumTibberJsonDailyForRange)(jsonDailyRawForStart, periodRange.fromKey, periodRange.toKey);
-        // dieser Monat: Tibber-Monatsauflösung behalten, Festtarif aber nur ab Statistik-Start
+        // Bei gepaarten Tibber-Monatswerten muss der Festtarif dieselbe Monatsmenge
+        // und denselben Grundpreisanteil nutzen. Nur Persistenz-Tage werden ab
+        // Statistik-Start beschnitten.
         if (periodId === "this_month") {
             const fixedClipped = (0, period_1.fixedTariffCostForRange)({
                 gridImportKwh: homeMonth.gridImportKwh,
@@ -664,10 +669,11 @@ async function tickStatistics(host, now = new Date()) {
                 fromKey: periodRange.fromKey,
                 toKey: periodRange.toKey,
             });
+            const fixedForPeriod = hasPairedTibberMonth ? homeMonth.fixedTariffCostEur : fixedClipped ?? homeMonth.fixedTariffCostEur;
             homePeriod = (0, compute_1.applyHomeGridRewards)({
                 ...homeMonth,
-                fixedTariffCostEur: fixedClipped ?? homeMonth.fixedTariffCostEur,
-                savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixedClipped ?? homeMonth.fixedTariffCostEur, homeMonth.dynamicCostEur),
+                fixedTariffCostEur: fixedForPeriod,
+                savingsVsFixedEur: (0, compute_1.savingsVsFixedEur)(fixedForPeriod, homeMonth.dynamicCostEur),
             }, monthRewards);
             mobPeriod = mobMonth;
         }
@@ -730,20 +736,30 @@ async function tickStatistics(host, now = new Date()) {
         fromKey: periodMeta.fromKey,
         toKey: periodMeta.toKey,
     });
-    const homeTodaySum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary("today", day.home, reasonsHome, { periodLabelDe: "Heute", fromKey: dateKey, toKey: dateKey }), day.energy);
+    const homeTodaySum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary("today", day.home, reasonsHome, { periodLabelDe: "Heute", fromKey: dateKey, toKey: dateKey }), day.energy, { feedInCtPerKwh: cfg.feedInCtPerKwh });
     const homeMonthSum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary("month", homeMonth, reasonsHome, {
         periodLabelDe: "Dieser Monat",
         fromKey: dateKey.slice(0, 7) + "-01",
         toKey: dateKey,
-    }), energyMonth);
-    const homePeriodSum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta), energyPeriod);
-    const mobTodaySum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary("today", day.mobility, openSessions, reasonsMob), day.energy);
+    }), energyMonth, { preserveTibberMonthlyComparison: hasPairedTibberMonth, feedInCtPerKwh: cfg.feedInCtPerKwh });
+    const homePeriodSum = (0, reconcile_1.reconcileHomeEnergy)(buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta), energyPeriod, { preserveTibberMonthlyComparison: periodId === "this_month" && hasPairedTibberMonth, feedInCtPerKwh: cfg.feedInCtPerKwh });
+    const averageTibberPrice = (home) => {
+        const kwh = home.comparisonGridImportKwh ?? home.gridImportKwh;
+        return kwh !== null && kwh > 0 && home.dynamicCostEur !== null && home.dynamicCostEur >= 0
+            ? home.dynamicCostEur / kwh : null;
+    };
+    const mobilityEstimateOptions = (home) => ({
+        iceLPer100Km: cfg.iceLPer100Km,
+        feedInCtPerKwh: cfg.feedInCtPerKwh,
+        tibberAvgEurPerKwh: averageTibberPrice(home),
+    });
+    const mobTodaySum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary("today", day.mobility, openSessions, reasonsMob), day.energy, mobilityEstimateOptions(homeTodaySum));
     const mobMonthSum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary("month", mobMonth, openSessions, reasonsMob, {
         periodLabelDe: "Dieser Monat",
         fromKey: dateKey.slice(0, 7) + "-01",
         toKey: dateKey,
-    }), energyMonth);
-    const mobPeriodSum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary(periodId, mobPeriod, openSessions, [...reasonsMob, ...reasonsPeriod], periodMeta), energyPeriod);
+    }), energyMonth, mobilityEstimateOptions(homeMonthSum));
+    const mobPeriodSum = (0, reconcile_1.reconcileMobilityEnergy)(buildMobilitySummary(periodId, mobPeriod, openSessions, [...reasonsMob, ...reasonsPeriod], periodMeta), energyPeriod, mobilityEstimateOptions(homePeriodSum));
     const safeCfg = {
         enabled: cfg.enabled,
         compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,

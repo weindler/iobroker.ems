@@ -47,6 +47,24 @@ describe("gemeinsame Energiemengen der Statistik", () => {
 		assert.equal(result.homeGridKwh, 27);
 		assert.equal(result.evTotalCostEur, null);
 	});
+	it("berechnet eine getrennt gekennzeichnete Mobilitäts-Schätzung ohne Batterie-Zuordnung", () => {
+		const result = reconcileMobilityEnergy({ ...mobility, evKwhPer100Km: 20,
+			fuelPriceEurPerL: 1.8, publicInvoicedKwh: null }, energy({
+			evChargedKwh: 10, evPvKwh: 4, evFastChargedKwh: 10,
+		}), { iceLPer100Km: 6, tibberAvgEurPerKwh: 0.3, feedInCtPerKwh: 9.3 });
+		assert.equal(result.homeChargedKwh, 10);
+		assert.equal(result.homeGridKwh, null);
+		assert.equal(result.evTotalCostEur, null);
+		assert.equal(result.estimatedEvCostEur, 2.17);
+		assert.equal(result.iceCostEur, 5.4);
+		assert.equal(result.estimatedSavingsVsIceEur, 3.23);
+		assert.match(result.reasonDe, /Schätzung/);
+		const withoutPrice = reconcileMobilityEnergy({ ...mobility, evKwhPer100Km: 20,
+			fuelPriceEurPerL: 1.8, publicInvoicedKwh: null }, energy({
+			evChargedKwh: 10, evPvKwh: 4,
+		}), { iceLPer100Km: 6, tibberAvgEurPerKwh: null, feedInCtPerKwh: 9.3 });
+		assert.equal(withoutPrice.estimatedSavingsVsIceEur, null);
+	});
 	it("entfernt Tarifvorteil bei voneinander abweichendem Smart-Meter- und Tibber-Stand", () => {
 		const home = { gridImportKwh: 51.7, dynamicCostEur: 20.04, fixedTariffCostEur: 24.04,
 			savingsVsFixedEur: 4, reasonDe: "Test." } as HouseCompareSummary;
@@ -54,5 +72,27 @@ describe("gemeinsame Energiemengen der Statistik", () => {
 		assert.equal(result.gridImportKwh, 51.1);
 		assert.equal(result.savingsVsFixedEur, null);
 		assert.match(result.reasonDe, /unterschiedliche Erfassungsstände/);
+	});
+	it("trennt vorläufigen Monatsvergleich auf Tibber-Menge vom Smart Meter", () => {
+		const home = { gridImportKwh: 62.7, dynamicCostEur: 24.45, fixedTariffCostEur: 29.40,
+			savingsVsFixedEur: 4.95, reasonDe: "Test." } as HouseCompareSummary;
+		const result = reconcileHomeEnergy(home, energy({ gridImportKwh: 62.1 }),
+			{ preserveTibberMonthlyComparison: true });
+		assert.equal(result.gridImportKwh, 62.1);
+		assert.equal(result.comparisonGridImportKwh, 62.7);
+		assert.equal(result.savingsVsFixedEur, 4.95);
+		assert.match(result.reasonDe, /Vorläufiger Preisvergleich/);
+		const missing = reconcileHomeEnergy({ ...home, dynamicCostEur: null }, energy({ gridImportKwh: 62.1 }),
+			{ preserveTibberMonthlyComparison: true });
+		assert.equal(missing.savingsVsFixedEur, null);
+	});
+	it("berechnet Einspeisevergütung aus der Smart-Meter-Menge auch bei abweichender Historie", () => {
+		const home = { gridImportKwh: 62.7, gridExportKwh: 370, feedInCreditEur: 34.41,
+			dynamicCostEur: 24.45, fixedTariffCostEur: 29.40, savingsVsFixedEur: 4.95,
+			reasonDe: "Test." } as HouseCompareSummary;
+		const result = reconcileHomeEnergy(home, energy({ gridImportKwh: 62.1, gridExportKwh: 374.3 }),
+			{ preserveTibberMonthlyComparison: true, feedInCtPerKwh: 9.3 });
+		assert.equal(result.feedInCreditEur, 34.81);
+		assert.equal(result.gridExportKwh, 374.3);
 	});
 });

@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.19",
+		"version": "0.4.20",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.20": {
+				"en": "Shows a provisional monthly fixed-tariff comparison on paired Tibber data and clearly labeled mobility savings estimates when charging sources are incomplete.",
+				"de": "Zeigt einen vorläufigen Monatsvergleich auf gemeinsamen Tibber-Daten und klar gekennzeichnete Mobilitätsschätzungen bei unvollständigen Ladequellen."
+			},
 			"0.4.19": {
 				"en": "Stops stale climate runtime counting when climate control is off and device feedback reports off.",
 				"de": "Beendet eine alte Klima-Laufzeitzählung, wenn die Klimasteuerung aus ist und das Gerät Aus zurückmeldet."

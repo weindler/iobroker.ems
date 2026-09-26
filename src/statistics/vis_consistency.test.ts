@@ -13,5 +13,8 @@ describe("Statistik in VIS und Admin", () => {
 		assert.match(vis, /Auto zu Hause geladen.*mob\.homeChargedKwh/);
 		assert.match(vis, /Jetzt: Einspeisung/);
 		assert.match(vis, /Diese Werte sind Energieflüsse/);
+		assert.match(vis, /Vergleichsmenge \(Tibber\)/);
+		assert.match(vis, /mobilitySavingsHero\(mobP/);
+		assert.match(vis, /E-Auto · grobe Schätzung/);
 	});
 });

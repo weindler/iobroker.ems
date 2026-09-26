@@ -224,6 +224,8 @@ export interface HouseCompareSummary {
 	fromKey?: string;
 	toKey?: string;
 	gridImportKwh: number | null;
+	/** Separate Tibber-Monatsmenge für den vorläufigen Preisvergleich bei abweichendem Smart Meter. */
+	comparisonGridImportKwh?: number | null;
 	gridExportKwh?: number | null;
 	feedInCreditEur?: number | null;
 	dynamicCostEur: number | null;
@@ -251,6 +253,9 @@ export interface MobilityCompareSummary {
 	publicInvoicedKwh: number | null;
 	publicPendingKwh: number | null;
 	evTotalCostEur: number | null;
+	/** Schätzung aus Wallboxenergie, PV-Anteil und mittlerem Tibber-Preis; niemals Abrechnung. */
+	estimatedEvCostEur?: number | null;
+	estimatedSavingsVsIceEur?: number | null;
 	estimatedKm: number | null;
 	iceCostEur: number | null;
 	savingsVsIceEur: number | null;

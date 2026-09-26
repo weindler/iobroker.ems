@@ -719,6 +719,9 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		todayGridImportKwh: day.home.gridImportKwh,
 		todayDynamicCostEur: day.home.dynamicCostEur,
 	});
+	const hasPairedTibberMonth = tibberMonth.source !== null &&
+		tibberMonth.gridImportKwh !== null && tibberMonth.dynamicCostEur !== null &&
+		reconciledTibberMonth.gridImportKwh !== null && reconciledTibberMonth.dynamicCostEur !== null;
 	let homeMonth = homeMonthPersist;
 	if (reconciledTibberMonth.gridImportKwh !== null || reconciledTibberMonth.dynamicCostEur !== null) {
 		homeMonth = buildHomeMonthTotals({
@@ -824,7 +827,9 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 			periodRange.toKey,
 		);
 
-		// dieser Monat: Tibber-Monatsauflösung behalten, Festtarif aber nur ab Statistik-Start
+		// Bei gepaarten Tibber-Monatswerten muss der Festtarif dieselbe Monatsmenge
+		// und denselben Grundpreisanteil nutzen. Nur Persistenz-Tage werden ab
+		// Statistik-Start beschnitten.
 		if (periodId === "this_month") {
 			const fixedClipped = fixedTariffCostForRange({
 				gridImportKwh: homeMonth.gridImportKwh,
@@ -833,12 +838,13 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 				fromKey: periodRange.fromKey,
 				toKey: periodRange.toKey,
 			});
+			const fixedForPeriod = hasPairedTibberMonth ? homeMonth.fixedTariffCostEur : fixedClipped ?? homeMonth.fixedTariffCostEur;
 			homePeriod = applyHomeGridRewards(
 				{
 					...homeMonth,
-					fixedTariffCostEur: fixedClipped ?? homeMonth.fixedTariffCostEur,
+					fixedTariffCostEur: fixedForPeriod,
 					savingsVsFixedEur: savingsVsFixedEur(
-						fixedClipped ?? homeMonth.fixedTariffCostEur,
+						fixedForPeriod,
 						homeMonth.dynamicCostEur,
 					),
 				},
@@ -927,26 +933,39 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		},
 	);
 
-	const homeTodaySum = reconcileHomeEnergy(buildHomeSummary("today", day.home, reasonsHome, { periodLabelDe: "Heute", fromKey: dateKey, toKey: dateKey }), day.energy);
+	const homeTodaySum = reconcileHomeEnergy(buildHomeSummary("today", day.home, reasonsHome, { periodLabelDe: "Heute", fromKey: dateKey, toKey: dateKey }), day.energy,
+		{ feedInCtPerKwh: cfg.feedInCtPerKwh });
 	const homeMonthSum = reconcileHomeEnergy(buildHomeSummary("month", homeMonth, reasonsHome, {
 		periodLabelDe: "Dieser Monat",
 		fromKey: dateKey.slice(0, 7) + "-01",
 		toKey: dateKey,
-	}), energyMonth);
-	const homePeriodSum = reconcileHomeEnergy(buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta), energyPeriod);
-	const mobTodaySum = reconcileMobilityEnergy(buildMobilitySummary("today", day.mobility, openSessions, reasonsMob), day.energy);
+	}), energyMonth, { preserveTibberMonthlyComparison: hasPairedTibberMonth, feedInCtPerKwh: cfg.feedInCtPerKwh });
+	const homePeriodSum = reconcileHomeEnergy(buildHomeSummary(periodId, homePeriod, [...reasonsHome, ...reasonsPeriod], periodMeta), energyPeriod,
+		{ preserveTibberMonthlyComparison: periodId === "this_month" && hasPairedTibberMonth, feedInCtPerKwh: cfg.feedInCtPerKwh });
+	const averageTibberPrice = (home: HouseCompareSummary): number | null => {
+		const kwh = home.comparisonGridImportKwh ?? home.gridImportKwh;
+		return kwh !== null && kwh > 0 && home.dynamicCostEur !== null && home.dynamicCostEur >= 0
+			? home.dynamicCostEur / kwh : null;
+	};
+	const mobilityEstimateOptions = (home: HouseCompareSummary) => ({
+		iceLPer100Km: cfg.iceLPer100Km,
+		feedInCtPerKwh: cfg.feedInCtPerKwh,
+		tibberAvgEurPerKwh: averageTibberPrice(home),
+	});
+	const mobTodaySum = reconcileMobilityEnergy(buildMobilitySummary("today", day.mobility, openSessions, reasonsMob), day.energy,
+		mobilityEstimateOptions(homeTodaySum));
 	const mobMonthSum = reconcileMobilityEnergy(buildMobilitySummary("month", mobMonth, openSessions, reasonsMob, {
 		periodLabelDe: "Dieser Monat",
 		fromKey: dateKey.slice(0, 7) + "-01",
 		toKey: dateKey,
-	}), energyMonth);
+	}), energyMonth, mobilityEstimateOptions(homeMonthSum));
 	const mobPeriodSum = reconcileMobilityEnergy(buildMobilitySummary(
 		periodId,
 		mobPeriod,
 		openSessions,
 		[...reasonsMob, ...reasonsPeriod],
 		periodMeta,
-	), energyPeriod);
+	), energyPeriod, mobilityEstimateOptions(homePeriodSum));
 
 	const safeCfg: Partial<StatisticsAdminConfig> = {
 		enabled: cfg.enabled,

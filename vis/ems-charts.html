@@ -3810,7 +3810,8 @@ function fmtHomeGridMob(mob){
 function homeStatsRows(home){
 	var cfg=parseObj(g("statistics.config_json"));
 	var rows=[
-		["Netzbezug",fmtKwhStats(home.gridImportKwh)],
+		["Netzbezug (Smart Meter)",fmtKwhStats(home.gridImportKwh)],
+		...(num(home.comparisonGridImportKwh)===null?[]:[["Vergleichsmenge (Tibber)",fmtKwhStats(home.comparisonGridImportKwh)]]),
 		["Mit Tibber bezahlt",fmtEur(home.dynamicCostEur)],
 		["Festtarif (Vergleich)",fmtEur(home.fixedTariffCostEur)],
 		["Eingestellter Festtarif",fmtDec(cfg.compareTariffCtPerKwh,2,"ct/kWh")],
@@ -3833,6 +3834,7 @@ function mobStatsRows(mob){
 		["Schnellader (bezahlt)",fmtKwhStats(mob.publicInvoicedKwh)],
 		["km ≈",mob.estimatedKm!=null?String(mob.estimatedKm).replace(".",","):"—"],
 		["E-Auto",fmtEur(mob.evTotalCostEur)],
+		...(num(mob.estimatedEvCostEur)===null?[]:[["E-Auto · grobe Schätzung",fmtEur(mob.estimatedEvCostEur)]]),
 		["Verbrenner",fmtEur(mob.iceCostEur)],
 		["E-Auto Verbrauchsannahme",fmtDec(mob.evKwhPer100Km,1,"kWh/100 km")],
 		["Spritpreis",mob.fuelPriceEurPerL!=null?Number(mob.fuelPriceEurPerL).toFixed(3).replace(".",",")+" €/l":"nicht eingestellt"]
@@ -3845,6 +3847,13 @@ function savingsHero(v){
 	if(n>0.005)return {cls:"pos",txt:"+"+fmtEur(n)};
 	if(n<-0.005)return {cls:"neg",txt:fmtEur(n)};
 	return {cls:"neu",txt:fmtEur(0)};
+}
+function mobilitySavingsHero(mob,exact){
+	if(num(exact)!==null)return savingsHero(exact);
+	var estimate=num(mob&&mob.estimatedSavingsVsIceEur);
+	if(estimate===null)return savingsHero(null);
+	var base=savingsHero(estimate);
+	return {cls:"neu",txt:"≈ "+base.txt+" (Schätzung)"};
 }
 function emsAdvantageHero(v){
 	if(v===null||v===undefined||!isFinite(Number(v)))return {cls:"neu",txt:"—"};
@@ -4092,11 +4101,11 @@ function renderStatistics(){
 	var hP=periodReady
 		?savingsHero(num(g("statistics.home.period.savings_eur"))!=null?num(g("statistics.home.period.savings_eur")):(num(g("statistics.home.period_savings_vs_fixed_eur"))!=null?num(g("statistics.home.period_savings_vs_fixed_eur")):num(homeP.savingsVsFixedEur)))
 		:savingsHero(homeP&&homeP.savingsVsFixedEur!=null?homeP.savingsVsFixedEur:null);
-	var mT=savingsHero(num(g("statistics.mobility.today.savings_eur"))!=null?num(g("statistics.mobility.today.savings_eur")):(num(g("statistics.mobility.today_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.today_savings_vs_ice_eur")):num(mobT.savingsVsIceEur)));
+	var mT=mobilitySavingsHero(mobT,num(g("statistics.mobility.today.savings_eur"))!=null?num(g("statistics.mobility.today.savings_eur")):(num(g("statistics.mobility.today_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.today_savings_vs_ice_eur")):num(mobT.savingsVsIceEur)));
 	var mobReady=mobP&&(mobP.period===periodId||num(g("statistics.mobility.period.savings_eur"))!=null)&&mobP.savingsVsIceEur!=null;
 	var mP=mobReady
 		?savingsHero(num(g("statistics.mobility.period.savings_eur"))!=null?num(g("statistics.mobility.period.savings_eur")):(num(g("statistics.mobility.period_savings_vs_ice_eur"))!=null?num(g("statistics.mobility.period_savings_vs_ice_eur")):num(mobP.savingsVsIceEur)))
-		:savingsHero(mobP&&mobP.savingsVsIceEur!=null?mobP.savingsVsIceEur:null);
+		:mobilitySavingsHero(mobP,mobP&&mobP.savingsVsIceEur!=null?mobP.savingsVsIceEur:null);
 	var homePeriodNote=joinNotes(txt(homeP.reasonDe,""),gridRewardsPendingHint(homeP.gridRewardsSource,homeP.gridRewardsCreditEur));
 	if(gridRewardsShowEuro(homeP.gridRewardsSource,homeP.gridRewardsCreditEur)){
 		homePeriodNote=joinNotes(homePeriodNote,"Grid Rewards aus Tibber-Abrechnung.");

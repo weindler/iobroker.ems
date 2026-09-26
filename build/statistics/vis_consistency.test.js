@@ -39,5 +39,8 @@ const root = path.resolve(__dirname, "..", "..");
         strict_1.default.match(vis, /Auto zu Hause geladen.*mob\.homeChargedKwh/);
         strict_1.default.match(vis, /Jetzt: Einspeisung/);
         strict_1.default.match(vis, /Diese Werte sind Energieflüsse/);
+        strict_1.default.match(vis, /Vergleichsmenge \(Tibber\)/);
+        strict_1.default.match(vis, /mobilitySavingsHero\(mobP/);
+        strict_1.default.match(vis, /E-Auto · grobe Schätzung/);
     });
 });

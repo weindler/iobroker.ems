@@ -94,9 +94,18 @@ describe("Batterie-Preisbrücke am Nebeltag", () => {
 		assert.equal(planBatteryPriceBridge({ ...input, maxChargePowerW: 100 }).usable, false);
 	});
 	it("bleibt für 92, 96 und 100 Viertelstunden an lokalen Zeitwechseln eindeutig", () => {
-		for (const count of [92, 96, 100]) {
+		for (const [startIso, count] of [
+			["2026-03-28T23:00:00Z", 92], // Berlin: Beginn der Sommerzeit
+			["2026-11-07T23:00:00Z", 96],
+			["2026-10-24T22:00:00Z", 100], // Berlin: Ende der Sommerzeit
+		] as const) {
 			const input = fixture();
-			input.slots = input.slots.slice(0, count);
+			const start = Date.parse(startIso);
+			input.nowMs = start;
+			input.slots = input.slots.slice(0, count).map((s, i) => ({ ...s,
+				startIso: new Date(start + i * 900_000).toISOString(),
+				endIso: new Date(start + (i + 1) * 900_000).toISOString() }));
+			assert.equal(input.slots.length, count);
 			const result = planBatteryPriceBridge(input);
 			assert.ok(result.chargeStartIso == null || Date.parse(result.chargeStartIso) >= input.nowMs);
 			assert.ok(result.chargeEndIso == null || Date.parse(result.chargeEndIso) <= Date.parse(input.slots.at(-1)!.endIso));

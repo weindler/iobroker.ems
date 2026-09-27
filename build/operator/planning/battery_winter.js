@@ -114,6 +114,17 @@ function planBatteryWinter(input) {
     }
     const energyStored = round3((input.socPct / 100) * cap);
     const { recoveryIndex, scanDays } = findRecoveryDay(days, input.config.pvRecoveryRatio);
+    const incompleteDay = days
+        .slice(0, scanDays)
+        .find((day) => day.pvKwh === null || day.loadKwh === null);
+    if (incompleteDay) {
+        const missing = [];
+        if (incompleteDay.pvKwh === null)
+            missing.push("PV-Prognose");
+        if (incompleteDay.loadKwh === null)
+            missing.push("Hauslast-Prognose");
+        return inactive(`Horizont unvollständig: ${missing.join(" und ")} für ${incompleteDay.dateKey} fehlt — keine Winter-Netzladeentscheidung.`);
+    }
     const bridgeOffset = recoveryIndex ?? scanDays - 1;
     const bridgeEnd = new Date(input.now);
     bridgeEnd.setHours(23, 59, 59, 999);
@@ -122,8 +133,8 @@ function planBatteryWinter(input) {
     let cumPv = 0;
     let cumLoad = 0;
     for (let i = 0; i < scanDays; i++) {
-        cumPv += days[i].pvKwh ?? 0;
-        cumLoad += days[i].loadKwh ?? 0;
+        cumPv += days[i].pvKwh;
+        cumLoad += days[i].loadKwh;
     }
     let energySim = energyStored;
     for (let i = 0; i < scanDays; i++) {
@@ -144,9 +155,10 @@ function planBatteryWinter(input) {
     const modeFactor = comfortReserveFactor(input.modePolicy);
     const { reserveKwh, minConfidence } = reserveFromConfidence(days, scanDays, input.config.marginKwh, input.config.reserveLowConfidenceFactor, modeFactor);
     const reserveApplied = energyDeficitRaw > 0 ? reserveKwh : 0;
-    const energyTarget = round3(Math.min(cap, energyStored + energyDeficit + reserveApplied));
+    const maxSoc = Math.min(100, Math.max(0, input.config.maxSocPct));
+    const maxEnergyKwh = (cap * maxSoc) / 100;
+    const energyTarget = round3(Math.min(maxEnergyKwh, energyStored + energyDeficit + reserveApplied));
     const chargeEnergy = round3(Math.max(0, energyTarget - energyStored));
-    const maxSoc = input.config.maxSocPct;
     const minSoc = input.config.minSocPct;
     let socTarget = round1((energyTarget / cap) * 100);
     socTarget = Math.min(maxSoc, Math.max(minSoc, socTarget));

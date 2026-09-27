@@ -79,6 +79,42 @@ function days(overrides = []) {
         strict_1.default.equal(r.active, false);
         strict_1.default.equal(r.chargeEnergyKwh, null);
     });
+    (0, node_test_1.it)("caps target energy and charge energy at the configured maximum SOC", () => {
+        const r = (0, battery_charge_logic_1.planBatteryChargeLogic)({
+            now: NOW,
+            socPct: 61,
+            snowCoverSuspected: false,
+            config: cfg({ maxSocPct: 90 }),
+            modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced"),
+            governanceEnabled: true,
+            days: days(),
+        });
+        strict_1.default.equal(r.socTargetPct, 90);
+        strict_1.default.equal(r.energyTargetKwh, 9);
+        strict_1.default.equal(r.chargeEnergyKwh, 2.9);
+        strict_1.default.match(r.reasonDe, /\+2\.9 kWh → 90 %/);
+    });
+    (0, node_test_1.it)("pauses instead of treating missing PV or house load as zero", () => {
+        const incomplete = days([
+            { pvKwh: null },
+            { loadKwh: null },
+        ]);
+        const r = (0, battery_charge_logic_1.planBatteryChargeLogic)({
+            now: NOW,
+            socPct: 40,
+            snowCoverSuspected: false,
+            config: cfg({ maxSocPct: 90 }),
+            modePolicy: (0, mode_policy_1.plannerModePolicyFromGlobalMode)("balanced"),
+            governanceEnabled: true,
+            days: incomplete,
+        });
+        strict_1.default.equal(r.active, false);
+        strict_1.default.equal(r.forecastActive, false);
+        strict_1.default.equal(r.chargeEnergyKwh, null);
+        strict_1.default.match(r.reasonDe, /Horizont unvollständig/);
+        strict_1.default.match(r.reasonDe, /PV-Prognose/);
+        strict_1.default.doesNotMatch(r.reasonDe, /kein Netzladen nötig/);
+    });
     (0, node_test_1.it)("comfort adds more reserve than eco", () => {
         const base = {
             now: NOW,

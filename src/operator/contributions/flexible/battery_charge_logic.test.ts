@@ -82,6 +82,44 @@ describe("battery charge logic (PV-Defizit, Block 2)", () => {
 		assert.equal(r.chargeEnergyKwh, null);
 	});
 
+	it("caps target energy and charge energy at the configured maximum SOC", () => {
+		const r = planBatteryChargeLogic({
+			now: NOW,
+			socPct: 61,
+			snowCoverSuspected: false,
+			config: cfg({ maxSocPct: 90 }),
+			modePolicy: plannerModePolicyFromGlobalMode("balanced"),
+			governanceEnabled: true,
+			days: days(),
+		});
+		assert.equal(r.socTargetPct, 90);
+		assert.equal(r.energyTargetKwh, 9);
+		assert.equal(r.chargeEnergyKwh, 2.9);
+		assert.match(r.reasonDe, /\+2\.9 kWh → 90 %/);
+	});
+
+	it("pauses instead of treating missing PV or house load as zero", () => {
+		const incomplete = days([
+			{ pvKwh: null },
+			{ loadKwh: null },
+		]);
+		const r = planBatteryChargeLogic({
+			now: NOW,
+			socPct: 40,
+			snowCoverSuspected: false,
+			config: cfg({ maxSocPct: 90 }),
+			modePolicy: plannerModePolicyFromGlobalMode("balanced"),
+			governanceEnabled: true,
+			days: incomplete,
+		});
+		assert.equal(r.active, false);
+		assert.equal(r.forecastActive, false);
+		assert.equal(r.chargeEnergyKwh, null);
+		assert.match(r.reasonDe, /Horizont unvollständig/);
+		assert.match(r.reasonDe, /PV-Prognose/);
+		assert.doesNotMatch(r.reasonDe, /kein Netzladen nötig/);
+	});
+
 	it("comfort adds more reserve than eco", () => {
 		const base = {
 			now: NOW,

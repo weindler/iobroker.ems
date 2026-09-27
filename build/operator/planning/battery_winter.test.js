@@ -71,6 +71,39 @@ function winterDays(overrides = []) {
         strict_1.default.equal(r.active, false);
         strict_1.default.equal(r.charge_energy_kwh, null);
     });
+    (0, node_test_1.it)("caps legacy target and charge energy at the configured maximum SOC", () => {
+        const r = (0, battery_winter_js_1.planBatteryWinter)({
+            now: NOW,
+            socPct: 61,
+            snowCoverSuspected: false,
+            config: cfg({ maxSocPct: 90 }),
+            modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("balanced"),
+            batteryGovernanceEnabled: true,
+            batteryAiAllowed: false,
+            days: winterDays(),
+            priceSlots: [],
+        });
+        strict_1.default.equal(r.soc_target_pct, 90);
+        strict_1.default.equal(r.energy_target_kwh, 9);
+        strict_1.default.equal(r.charge_energy_kwh, 2.9);
+    });
+    (0, node_test_1.it)("pauses legacy planning when the scanned horizon is incomplete", () => {
+        const r = (0, battery_winter_js_1.planBatteryWinter)({
+            now: NOW,
+            socPct: 40,
+            snowCoverSuspected: false,
+            config: cfg({ maxSocPct: 90 }),
+            modePolicy: (0, mode_policy_js_1.plannerModePolicyFromGlobalMode)("balanced"),
+            batteryGovernanceEnabled: true,
+            batteryAiAllowed: false,
+            days: winterDays([{ pvKwh: null }, { loadKwh: null }]),
+            priceSlots: [],
+        });
+        strict_1.default.equal(r.active, false);
+        strict_1.default.equal(r.forecast_active, false);
+        strict_1.default.equal(r.charge_energy_kwh, null);
+        strict_1.default.match(r.reason_de, /Horizont unvollständig/);
+    });
     (0, node_test_1.it)("comfort adds more reserve than eco", () => {
         const base = {
             now: NOW,

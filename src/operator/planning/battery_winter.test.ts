@@ -74,6 +74,41 @@ describe("battery winter plan", () => {
 		assert.equal(r.charge_energy_kwh, null);
 	});
 
+	it("caps legacy target and charge energy at the configured maximum SOC", () => {
+		const r = planBatteryWinter({
+			now: NOW,
+			socPct: 61,
+			snowCoverSuspected: false,
+			config: cfg({ maxSocPct: 90 }),
+			modePolicy: plannerModePolicyFromGlobalMode("balanced"),
+			batteryGovernanceEnabled: true,
+			batteryAiAllowed: false,
+			days: winterDays(),
+			priceSlots: [],
+		});
+		assert.equal(r.soc_target_pct, 90);
+		assert.equal(r.energy_target_kwh, 9);
+		assert.equal(r.charge_energy_kwh, 2.9);
+	});
+
+	it("pauses legacy planning when the scanned horizon is incomplete", () => {
+		const r = planBatteryWinter({
+			now: NOW,
+			socPct: 40,
+			snowCoverSuspected: false,
+			config: cfg({ maxSocPct: 90 }),
+			modePolicy: plannerModePolicyFromGlobalMode("balanced"),
+			batteryGovernanceEnabled: true,
+			batteryAiAllowed: false,
+			days: winterDays([{ pvKwh: null }, { loadKwh: null }]),
+			priceSlots: [],
+		});
+		assert.equal(r.active, false);
+		assert.equal(r.forecast_active, false);
+		assert.equal(r.charge_energy_kwh, null);
+		assert.match(r.reason_de, /Horizont unvollständig/);
+	});
+
 	it("comfort adds more reserve than eco", () => {
 		const base = {
 			now: NOW,

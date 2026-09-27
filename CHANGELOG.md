@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.27] – 2026-09-27
+
+### Fixed
+
+- Der Speicherbericht zählt jetzt sowohl die temporären EMS-Laufzeitdateien als auch die dauerhaften Instanzdateien, einschließlich der Tages-Telemetrie im Learning-Ordner. Bisherige Wachstumswerte werden nach der Korrektur neu aufgebaut, damit der zusätzliche Datenbestand nicht fälschlich als Tageswachstum gilt.
+
 ## [0.4.26] – 2026-09-27
 
 ### Fixed

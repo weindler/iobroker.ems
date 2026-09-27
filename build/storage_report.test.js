@@ -57,4 +57,30 @@ const storage_report_1 = require("./storage_report");
             await fs.rm(dir, { recursive: true, force: true });
         }
     });
+    (0, node_test_1.it)("zählt Laufzeitdaten und dauerhafte Tages-Telemetrie ohne doppeltes Wachstum", async () => {
+        const root = await fs.mkdtemp(path.join(os.tmpdir(), "ems-storage-roots-"));
+        try {
+            const runtime = path.join(root, "ems-runtime.0");
+            const durable = path.join(root, "ems.0");
+            await fs.mkdir(path.join(runtime, "exports", "backup"), { recursive: true });
+            await fs.mkdir(path.join(durable, "learning", "day_telemetry"), { recursive: true });
+            await fs.writeFile(path.join(runtime, "exports", "backup", "latest.emsbackup"), Buffer.alloc(1024));
+            await fs.writeFile(path.join(durable, "learning", "day_telemetry", "day_telemetry_v1.json"), Buffer.alloc(3 * 1024 * 1024));
+            await fs.writeFile(path.join(runtime, "storage_report_history_v1.json"), JSON.stringify([
+                { ts: Date.parse("2026-09-24T12:00:00Z"), bytes: 100 },
+                { ts: Date.parse("2026-09-25T12:00:00Z"), bytes: 200 },
+                { ts: Date.parse("2026-09-26T12:00:00Z"), bytes: 300 },
+            ]));
+            const report = await (0, storage_report_1.buildStorageReport)(runtime, new Date("2026-09-27T12:00:00Z"), durable);
+            strict_1.default.equal(report.bytes, 3 * 1024 * 1024 + 1024);
+            strict_1.default.equal(report.categories["learning/day_telemetry"]?.bytes, 3 * 1024 * 1024);
+            strict_1.default.equal(report.categories["learning/day_telemetry"]?.retentionDe, "90 Tage");
+            strict_1.default.equal(report.categories.exports?.files, 1);
+            strict_1.default.equal(report.growthBytesPerDay, null);
+            strict_1.default.deepEqual(report.errors, []);
+        }
+        finally {
+            await fs.rm(root, { recursive: true, force: true });
+        }
+    });
 });

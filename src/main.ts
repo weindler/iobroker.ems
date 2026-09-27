@@ -99,8 +99,8 @@ class Ems extends utils.Adapter {
 			void (async () => {
 				const { resolveEmsPaths } = await import("./backup_integration/paths.js");
 				const { buildStorageReport, storageReportText, storageReportHtml, STORAGE_REPORT_HTML_STATE } = await import("./storage_report.js");
-				const root = resolveEmsPaths(this).runtimeDataDir;
-				const report = await buildStorageReport(root);
+				const layout = resolveEmsPaths(this);
+				const report = await buildStorageReport(layout.runtimeDataDir, new Date(), layout.durableDataDir);
 				const hint = storageReportText(report);
 				await this.setStateAsync(STORAGE_REPORT_HTML_STATE, { val: storageReportHtml(report), ack: true });
 				if (obj.callback) this.sendTo(obj.from, obj.command, {

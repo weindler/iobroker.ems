@@ -39,7 +39,7 @@ function retentionForCategory(category: string): string {
 	return "datenartspezifisch begrenzt";
 }
 
-async function scan(root: string): Promise<Pick<StorageReport, "bytes" | "files" | "byCategory" | "categories" | "errors">> {
+async function scan(root: string, durableRoot?: string): Promise<Pick<StorageReport, "bytes" | "files" | "byCategory" | "categories" | "errors">> {
 	let bytes = 0, files = 0;
 	const byCategory: Record<string, number> = {};
 	const raw: Record<string, { bytes: number; files: number; oldestMs: number | null; newestMs: number | null }> = {};
@@ -51,7 +51,7 @@ async function scan(root: string): Promise<Pick<StorageReport, "bytes" | "files"
 		for (const entry of entries) {
 			if (entry.isSymbolicLink() || entry.name === HISTORY_FILE) continue;
 			const full = path.join(dir, entry.name);
-			const top = category || entry.name;
+			const top = category === "learning" && entry.isDirectory() ? `learning/${entry.name}` : category || entry.name;
 			if (entry.isDirectory()) { await walk(full, top); continue; }
 			if (!entry.isFile()) continue;
 			try {
@@ -66,6 +66,7 @@ async function scan(root: string): Promise<Pick<StorageReport, "bytes" | "files"
 		}
 	}
 	await walk(root, "");
+	if (durableRoot && path.resolve(durableRoot) !== path.resolve(root)) await walk(durableRoot, "");
 	const categories: Record<string, CategoryReport> = {};
 	for (const [name, item] of Object.entries(raw)) categories[name] = {
 		bytes: item.bytes, files: item.files,
@@ -81,13 +82,16 @@ async function updateHistory(root: string, bytes: number, nowMs: number): Promis
 	let samples: Sample[] = [];
 	try {
 		const parsed = JSON.parse(await fs.readFile(file, "utf8")) as unknown;
-		if (Array.isArray(parsed)) samples = parsed.filter((s): s is Sample => !!s && Number.isFinite(s.ts) && Number.isFinite(s.bytes));
+		if (parsed && !Array.isArray(parsed) && (parsed as { version?: number }).version === 2 &&
+			Array.isArray((parsed as { samples?: unknown }).samples)) {
+			samples = (parsed as { samples: Sample[] }).samples.filter((s): s is Sample => !!s && Number.isFinite(s.ts) && Number.isFinite(s.bytes));
+		}
 	} catch { /* erster Lauf */ }
 	const day = new Date(nowMs).toISOString().slice(0, 10);
 	const idx = samples.findIndex((s) => new Date(s.ts).toISOString().slice(0, 10) === day);
 	if (idx >= 0) samples[idx] = { ts: nowMs, bytes }; else samples.push({ ts: nowMs, bytes });
 	samples = samples.filter((s) => nowMs - s.ts <= 120 * 86_400_000).sort((a, b) => a.ts - b.ts).slice(-120);
-	await fs.writeFile(file, JSON.stringify(samples), { mode: 0o600 });
+	await fs.writeFile(file, JSON.stringify({ version: 2, samples }), { mode: 0o600 });
 	return samples;
 }
 
@@ -98,9 +102,9 @@ export function growthPerDay(samples: Sample[]): number | null {
 	return days < 2 ? null : Math.max(0, (last.bytes - first.bytes) / days);
 }
 
-export async function buildStorageReport(root: string, now = new Date()): Promise<StorageReport> {
+export async function buildStorageReport(root: string, now = new Date(), durableRoot?: string): Promise<StorageReport> {
 	await fs.mkdir(root, { recursive: true });
-	const measured = await scan(root);
+	const measured = await scan(root, durableRoot);
 	const disk = await fs.statfs(root);
 	const freeBytes = Number(disk.bavail) * Number(disk.bsize);
 	const growthBytesPerDay = growthPerDay(await updateHistory(root, measured.bytes, now.getTime()));

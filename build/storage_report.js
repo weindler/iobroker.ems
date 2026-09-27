@@ -56,7 +56,7 @@ function retentionForCategory(category) {
         return "meist 120 Tage bzw. modellbegrenzt";
     return "datenartspezifisch begrenzt";
 }
-async function scan(root) {
+async function scan(root, durableRoot) {
     let bytes = 0, files = 0;
     const byCategory = {};
     const raw = {};
@@ -74,7 +74,7 @@ async function scan(root) {
             if (entry.isSymbolicLink() || entry.name === HISTORY_FILE)
                 continue;
             const full = path.join(dir, entry.name);
-            const top = category || entry.name;
+            const top = category === "learning" && entry.isDirectory() ? `learning/${entry.name}` : category || entry.name;
             if (entry.isDirectory()) {
                 await walk(full, top);
                 continue;
@@ -99,6 +99,8 @@ async function scan(root) {
         }
     }
     await walk(root, "");
+    if (durableRoot && path.resolve(durableRoot) !== path.resolve(root))
+        await walk(durableRoot, "");
     const categories = {};
     for (const [name, item] of Object.entries(raw))
         categories[name] = {
@@ -114,8 +116,10 @@ async function updateHistory(root, bytes, nowMs) {
     let samples = [];
     try {
         const parsed = JSON.parse(await fs.readFile(file, "utf8"));
-        if (Array.isArray(parsed))
-            samples = parsed.filter((s) => !!s && Number.isFinite(s.ts) && Number.isFinite(s.bytes));
+        if (parsed && !Array.isArray(parsed) && parsed.version === 2 &&
+            Array.isArray(parsed.samples)) {
+            samples = parsed.samples.filter((s) => !!s && Number.isFinite(s.ts) && Number.isFinite(s.bytes));
+        }
     }
     catch { /* erster Lauf */ }
     const day = new Date(nowMs).toISOString().slice(0, 10);
@@ -125,7 +129,7 @@ async function updateHistory(root, bytes, nowMs) {
     else
         samples.push({ ts: nowMs, bytes });
     samples = samples.filter((s) => nowMs - s.ts <= 120 * 86_400_000).sort((a, b) => a.ts - b.ts).slice(-120);
-    await fs.writeFile(file, JSON.stringify(samples), { mode: 0o600 });
+    await fs.writeFile(file, JSON.stringify({ version: 2, samples }), { mode: 0o600 });
     return samples;
 }
 function growthPerDay(samples) {
@@ -136,9 +140,9 @@ function growthPerDay(samples) {
     return days < 2 ? null : Math.max(0, (last.bytes - first.bytes) / days);
 }
 exports.growthPerDay = growthPerDay;
-async function buildStorageReport(root, now = new Date()) {
+async function buildStorageReport(root, now = new Date(), durableRoot) {
     await fs.mkdir(root, { recursive: true });
-    const measured = await scan(root);
+    const measured = await scan(root, durableRoot);
     const disk = await fs.statfs(root);
     const freeBytes = Number(disk.bavail) * Number(disk.bsize);
     const growthBytesPerDay = growthPerDay(await updateHistory(root, measured.bytes, now.getTime()));

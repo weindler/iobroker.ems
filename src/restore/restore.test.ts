@@ -64,6 +64,7 @@ import {
 import { runRestoreRollback } from "./rollback.js";
 import { runRestoreStartupRecovery } from "./startup_recovery.js";
 import { RESTORE_LEARNING_KEYS, RESTORE_LEARNING_TARGETS } from "./learning_map.js";
+import { SELECTED_STATE_DATA_ARTIFACTS } from "../backup/collect_persistence.js";
 import { resetDiagnosticModeForTest } from "../support/diagnostic_mode.js";
 
 /** Store-ZIP unabhängig von buildZipArchive (Python zipfile). */
@@ -558,6 +559,27 @@ describe("restore validate and apply", () => {
 		assert.equal(await fs.readFile(learningPath, "utf8"), beforeLearning);
 	});
 
+	it("validates and restores a backup with every exported learning file", async () => {
+		for (const { fileName } of SELECTED_STATE_DATA_ARTIFACTS) {
+			if (fileName !== "statistics_v1.json") {
+				await writeLearningFixture(host, fileName, { version: 1, marker: fileName });
+			}
+		}
+		const { fileName } = await copyBackupToInbox(host);
+		const validation = await runRestoreValidate(host, fileName);
+		assert.equal(validation.ok, true, validation.ok ? undefined : validation.error);
+		const plan = getActiveRestorePlan();
+		assert.ok(plan);
+		const restored = await runRestoreApply(host, fileName, plan!.planId);
+		assert.equal(restored.ok, true, restored.ok ? undefined : restored.error);
+		for (const { fileName: key } of SELECTED_STATE_DATA_ARTIFACTS) {
+			if (key === "statistics_v1.json") continue;
+			const target = RESTORE_LEARNING_TARGETS[key]!;
+			const raw = await fs.readFile(path.join(learningDataPath(host as unknown as ioBroker.Adapter, target.category), target.fileName), "utf8");
+			assert.equal(JSON.parse(raw).marker, key);
+		}
+	});
+
 	it("apply requires valid plan and enforces dryrun modes", async () => {
 		const { fileName } = await copyBackupToInbox(host);
 		const validate = await runRestoreValidate(host, fileName);
@@ -732,10 +754,11 @@ describe("restore startup recovery", () => {
 });
 
 describe("restore learning keys", () => {
-	it("maps exactly thirteen known learning keys", () => {
-		assert.equal(RESTORE_LEARNING_KEYS.length, 14);
+	it("maps every exported learning key to its original category", () => {
+		assert.deepEqual(RESTORE_LEARNING_KEYS.slice().sort(), SELECTED_STATE_DATA_ARTIFACTS.map(a => a.fileName).sort());
 		for (const key of RESTORE_LEARNING_KEYS) {
-			assert.ok(RESTORE_LEARNING_TARGETS[key]);
+			const exported = SELECTED_STATE_DATA_ARTIFACTS.find(a => a.fileName === key)!;
+			assert.equal(RESTORE_LEARNING_TARGETS[key]?.category, exported.category);
 			assert.ok(key.endsWith(".json"));
 		}
 	});

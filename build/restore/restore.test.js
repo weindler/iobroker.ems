@@ -54,6 +54,7 @@ const barrier_js_1 = require("./barrier.js");
 const journal_js_1 = require("./journal.js");
 const startup_recovery_js_1 = require("./startup_recovery.js");
 const learning_map_js_1 = require("./learning_map.js");
+const collect_persistence_js_1 = require("../backup/collect_persistence.js");
 const diagnostic_mode_js_1 = require("../support/diagnostic_mode.js");
 /** Store-ZIP unabhängig von buildZipArchive (Python zipfile). */
 const INDEPENDENT_STORE_ZIP_B64 = "UEsDBBQAAAAAAHZD7Fx8xiG9GQAAABkAAAAVAAAAaW5kZXBlbmRlbnQvaGVsbG8udHh0aGVsbG8taW5kZXBlbmRlbnQtZml4dHVyZVBLAwQUAAAAAAB2Q+xciEF/wgwAAAAMAAAAFQAAAGluZGVwZW5kZW50L2RhdGEuanNvbnsib2siOnRydWV9ClBLAQIUAxQAAAAAAHZD7Fx8xiG9GQAAABkAAAAVAAAAAAAAAAAAAACAAQAAAABpbmRlcGVuZGVudC9oZWxsby50eHRQSwECFAMUAAAAAAB2Q+xciEF/wgwAAAAMAAAAFQAAAAAAAAAAAAAAgAFMAAAAaW5kZXBlbmRlbnQvZGF0YS5qc29uUEsFBgAAAAACAAIAhgAAAIsAAAAAAA==";
@@ -492,6 +493,27 @@ async function writeLearningFixture(host, key, data) {
         strict_1.default.equal((await host.getStateAsync("command.inbox"))?.val, beforeInbox);
         strict_1.default.equal(await fs.readFile(learningPath, "utf8"), beforeLearning);
     });
+    (0, node_test_1.it)("validates and restores a backup with every exported learning file", async () => {
+        for (const { fileName } of collect_persistence_js_1.SELECTED_STATE_DATA_ARTIFACTS) {
+            if (fileName !== "statistics_v1.json") {
+                await writeLearningFixture(host, fileName, { version: 1, marker: fileName });
+            }
+        }
+        const { fileName } = await copyBackupToInbox(host);
+        const validation = await (0, apply_js_1.runRestoreValidate)(host, fileName);
+        strict_1.default.equal(validation.ok, true, validation.ok ? undefined : validation.error);
+        const plan = (0, plan_js_1.getActiveRestorePlan)();
+        strict_1.default.ok(plan);
+        const restored = await (0, apply_js_1.runRestoreApply)(host, fileName, plan.planId);
+        strict_1.default.equal(restored.ok, true, restored.ok ? undefined : restored.error);
+        for (const { fileName: key } of collect_persistence_js_1.SELECTED_STATE_DATA_ARTIFACTS) {
+            if (key === "statistics_v1.json")
+                continue;
+            const target = learning_map_js_1.RESTORE_LEARNING_TARGETS[key];
+            const raw = await fs.readFile(path.join((0, data_dir_js_1.learningDataPath)(host, target.category), target.fileName), "utf8");
+            strict_1.default.equal(JSON.parse(raw).marker, key);
+        }
+    });
     (0, node_test_1.it)("apply requires valid plan and enforces dryrun modes", async () => {
         const { fileName } = await copyBackupToInbox(host);
         const validate = await (0, apply_js_1.runRestoreValidate)(host, fileName);
@@ -643,10 +665,11 @@ async function writeLearningFixture(host, key, data) {
     });
 });
 (0, node_test_1.describe)("restore learning keys", () => {
-    (0, node_test_1.it)("maps exactly thirteen known learning keys", () => {
-        strict_1.default.equal(learning_map_js_1.RESTORE_LEARNING_KEYS.length, 14);
+    (0, node_test_1.it)("maps every exported learning key to its original category", () => {
+        strict_1.default.deepEqual(learning_map_js_1.RESTORE_LEARNING_KEYS.slice().sort(), collect_persistence_js_1.SELECTED_STATE_DATA_ARTIFACTS.map(a => a.fileName).sort());
         for (const key of learning_map_js_1.RESTORE_LEARNING_KEYS) {
-            strict_1.default.ok(learning_map_js_1.RESTORE_LEARNING_TARGETS[key]);
+            const exported = collect_persistence_js_1.SELECTED_STATE_DATA_ARTIFACTS.find(a => a.fileName === key);
+            strict_1.default.equal(learning_map_js_1.RESTORE_LEARNING_TARGETS[key]?.category, exported.category);
             strict_1.default.ok(key.endsWith(".json"));
         }
     });

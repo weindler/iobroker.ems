@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.26] – 2026-09-27
+
+### Fixed
+
+- Restore-Validierung und Wiederherstellung kennen jetzt alle vom Backup exportierten Learning-Dateien, einschließlich Klima-Lernen, Tagesauswertung, Wirtschaftlichkeit und KI-Override-Ledger. Ein durchgängiger Export-/Restore-Test prüft sämtliche Dateizuordnungen.
+
 ## [0.4.25] – 2026-09-27
 
 ### Fixed

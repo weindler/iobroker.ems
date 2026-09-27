@@ -18,6 +18,11 @@ export const RESTORE_LEARNING_TARGETS: Readonly<Record<string, { category: strin
 		category: "learning/vehicle_presence",
 		fileName: "vehicle_presence_learning_v1.json",
 	},
+	"climate_shared_power_v1.json": { category: "learning/climate_shared_power", fileName: "climate_shared_power_v1.json" },
+	"climate_thermal_v1.json": { category: "learning/climate_thermal", fileName: "climate_thermal_v1.json" },
+	"learning_state_v1.json": { category: "learning/daily_evaluator", fileName: "learning_state_v1.json" },
+	"economics_v1.json": { category: "economics", fileName: "economics_v1.json" },
+	"override_ledger_v1.json": { category: "ai/override_ledger", fileName: "override_ledger_v1.json" },
 };
 
 export const RESTORE_LEARNING_KEYS = Object.keys(RESTORE_LEARNING_TARGETS);

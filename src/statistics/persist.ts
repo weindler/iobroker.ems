@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, open, rename, unlink } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
 	STATISTICS_PERSIST_VERSION,
@@ -82,32 +83,80 @@ export function emptyDayRecord(dateKey: string): StatisticsDayRecord {
 	};
 }
 
-export async function readStatisticsPersist(dir: string): Promise<StatisticsPersist> {
+export class UnsupportedStatisticsVersion extends Error {}
+
+export function decodeStatistics(raw: string): StatisticsPersist {
+	const parsed = JSON.parse(raw) as StatisticsPersist;
+	if (!parsed || parsed.version !== STATISTICS_PERSIST_VERSION) {
+		throw new UnsupportedStatisticsVersion("Unsupported statistics version; archive left unchanged");
+	}
+	if (!parsed.days || typeof parsed.days !== "object" || Array.isArray(parsed.days)) {
+		throw new Error("Invalid statistics days");
+	}
+	for (const [key, day] of Object.entries(parsed.days)) {
+		if (!validDateKey(key) || !day || day.dateKey !== key || !day.home || !day.mobility || !Array.isArray(day.publicSessions)) {
+			throw new Error(`Invalid statistics day: ${key}`);
+		}
+	}
+	parsed.runtime ??= emptyRuntime(localDateKey(new Date()));
+	parsed.monthRewardsBilling ??= {};
+	return parsed;
+}
+
+function isMissing(error: unknown): boolean {
+	return (error as NodeJS.ErrnoException)?.code === "ENOENT";
+}
+
+/** Never truncate the only copy. Rename a flushed, same-directory temporary file. */
+export async function atomicStatisticsWrite(path: string, raw: string): Promise<void> {
+	const temporary = `${path}.${randomUUID()}.tmp`;
+	const handle = await open(temporary, "wx", 0o600);
 	try {
-		const raw = await readFile(join(dir, STATISTICS_PERSIST_FILE), "utf8");
-		const parsed = JSON.parse(raw) as StatisticsPersist;
-		if (!parsed || parsed.version !== STATISTICS_PERSIST_VERSION || !parsed.days) {
-			return emptyPersist();
-		}
-		if (!parsed.runtime) {
-			parsed.runtime = emptyRuntime(localDateKey(new Date()));
-		}
-		if (!parsed.monthRewardsBilling) {
-			parsed.monthRewardsBilling = {};
-		}
-		return parsed;
-	} catch {
-		return emptyPersist();
+		await handle.writeFile(raw, "utf8");
+		await handle.sync();
+		await handle.close();
+		await rename(temporary, path);
+	} finally {
+		await handle.close().catch(() => undefined);
+		await unlink(temporary).catch((error: unknown) => { if (!isMissing(error)) throw error; });
+	}
+}
+
+export async function readStatisticsPersist(dir: string): Promise<StatisticsPersist> {
+	const path = join(dir, STATISTICS_PERSIST_FILE);
+	let primaryError: unknown;
+	try { return decodeStatistics(await readFile(path, "utf8")); }
+	catch (error) {
+		if (error instanceof UnsupportedStatisticsVersion) throw error;
+		primaryError = error;
+	}
+	try { return decodeStatistics(await readFile(`${path}.bak`, "utf8")); }
+	catch (error) {
+		if (isMissing(primaryError) && isMissing(error)) return emptyPersist();
+		throw new Error("Statistics cannot be recovered; refusing to replace history with empty data", { cause: error });
 	}
 }
 
 export async function writeStatisticsPersist(dir: string, data: StatisticsPersist): Promise<void> {
 	await mkdir(dir, { recursive: true });
-	const anchor = validDateKey(data.runtime.dateKey) ? data.runtime.dateKey : localDateKey(new Date());
-	const compacted = pruneStatisticsPersist(data, anchor);
-	/* Tick-Cache ebenfalls begrenzen; nicht erst nach Adapter-Neustart. */
-	data.days = compacted.days;
-	data.monthRewardsBilling = compacted.monthRewardsBilling;
-	data.generatedAt = new Date().toISOString();
-	await writeFile(join(dir, STATISTICS_PERSIST_FILE), JSON.stringify(data, null, 2), "utf8");
+	const path = join(dir, STATISTICS_PERSIST_FILE);
+	// Validate input before touching either durable copy. Historical days are not pruned.
+	const generatedAt = new Date().toISOString();
+	const raw = JSON.stringify({ ...data, generatedAt }, null, 2);
+	decodeStatistics(raw);
+	let previous: string | undefined;
+	try {
+		previous = await readFile(path, "utf8");
+		decodeStatistics(previous);
+	} catch (error) {
+		if (error instanceof UnsupportedStatisticsVersion) throw error;
+		if (!isMissing(error)) {
+			// A corrupt primary must not replace a valid backup.
+			previous = await readFile(`${path}.bak`, "utf8");
+			decodeStatistics(previous);
+		}
+	}
+	if (previous !== undefined) await atomicStatisticsWrite(`${path}.bak`, previous);
+	await atomicStatisticsWrite(path, raw);
+	data.generatedAt = generatedAt;
 }

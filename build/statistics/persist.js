@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeStatisticsPersist = exports.readStatisticsPersist = exports.emptyDayRecord = exports.emptyPersist = exports.emptyRuntime = exports.pruneStatisticsPersist = exports.STATISTICS_DAILY_RETENTION_DAYS = exports.STATISTICS_PERSIST_CATEGORY = exports.STATISTICS_PERSIST_FILE = void 0;
+exports.writeStatisticsPersist = exports.readStatisticsPersist = exports.atomicStatisticsWrite = exports.decodeStatistics = exports.UnsupportedStatisticsVersion = exports.emptyDayRecord = exports.emptyPersist = exports.emptyRuntime = exports.pruneStatisticsPersist = exports.STATISTICS_DAILY_RETENTION_DAYS = exports.STATISTICS_PERSIST_CATEGORY = exports.STATISTICS_PERSIST_FILE = void 0;
 const promises_1 = require("node:fs/promises");
+const node_crypto_1 = require("node:crypto");
 const node_path_1 = require("node:path");
 const types_1 = require("./types");
 const compute_1 = require("./compute");
@@ -76,34 +77,92 @@ function emptyDayRecord(dateKey) {
     };
 }
 exports.emptyDayRecord = emptyDayRecord;
-async function readStatisticsPersist(dir) {
-    try {
-        const raw = await (0, promises_1.readFile)((0, node_path_1.join)(dir, exports.STATISTICS_PERSIST_FILE), "utf8");
-        const parsed = JSON.parse(raw);
-        if (!parsed || parsed.version !== types_1.STATISTICS_PERSIST_VERSION || !parsed.days) {
-            return emptyPersist();
-        }
-        if (!parsed.runtime) {
-            parsed.runtime = emptyRuntime((0, compute_1.localDateKey)(new Date()));
-        }
-        if (!parsed.monthRewardsBilling) {
-            parsed.monthRewardsBilling = {};
-        }
-        return parsed;
+class UnsupportedStatisticsVersion extends Error {
+}
+exports.UnsupportedStatisticsVersion = UnsupportedStatisticsVersion;
+function decodeStatistics(raw) {
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.version !== types_1.STATISTICS_PERSIST_VERSION) {
+        throw new UnsupportedStatisticsVersion("Unsupported statistics version; archive left unchanged");
     }
-    catch {
-        return emptyPersist();
+    if (!parsed.days || typeof parsed.days !== "object" || Array.isArray(parsed.days)) {
+        throw new Error("Invalid statistics days");
+    }
+    for (const [key, day] of Object.entries(parsed.days)) {
+        if (!validDateKey(key) || !day || day.dateKey !== key || !day.home || !day.mobility || !Array.isArray(day.publicSessions)) {
+            throw new Error(`Invalid statistics day: ${key}`);
+        }
+    }
+    parsed.runtime ??= emptyRuntime((0, compute_1.localDateKey)(new Date()));
+    parsed.monthRewardsBilling ??= {};
+    return parsed;
+}
+exports.decodeStatistics = decodeStatistics;
+function isMissing(error) {
+    return error?.code === "ENOENT";
+}
+/** Never truncate the only copy. Rename a flushed, same-directory temporary file. */
+async function atomicStatisticsWrite(path, raw) {
+    const temporary = `${path}.${(0, node_crypto_1.randomUUID)()}.tmp`;
+    const handle = await (0, promises_1.open)(temporary, "wx", 0o600);
+    try {
+        await handle.writeFile(raw, "utf8");
+        await handle.sync();
+        await handle.close();
+        await (0, promises_1.rename)(temporary, path);
+    }
+    finally {
+        await handle.close().catch(() => undefined);
+        await (0, promises_1.unlink)(temporary).catch((error) => { if (!isMissing(error))
+            throw error; });
+    }
+}
+exports.atomicStatisticsWrite = atomicStatisticsWrite;
+async function readStatisticsPersist(dir) {
+    const path = (0, node_path_1.join)(dir, exports.STATISTICS_PERSIST_FILE);
+    let primaryError;
+    try {
+        return decodeStatistics(await (0, promises_1.readFile)(path, "utf8"));
+    }
+    catch (error) {
+        if (error instanceof UnsupportedStatisticsVersion)
+            throw error;
+        primaryError = error;
+    }
+    try {
+        return decodeStatistics(await (0, promises_1.readFile)(`${path}.bak`, "utf8"));
+    }
+    catch (error) {
+        if (isMissing(primaryError) && isMissing(error))
+            return emptyPersist();
+        throw new Error("Statistics cannot be recovered; refusing to replace history with empty data", { cause: error });
     }
 }
 exports.readStatisticsPersist = readStatisticsPersist;
 async function writeStatisticsPersist(dir, data) {
     await (0, promises_1.mkdir)(dir, { recursive: true });
-    const anchor = validDateKey(data.runtime.dateKey) ? data.runtime.dateKey : (0, compute_1.localDateKey)(new Date());
-    const compacted = pruneStatisticsPersist(data, anchor);
-    /* Tick-Cache ebenfalls begrenzen; nicht erst nach Adapter-Neustart. */
-    data.days = compacted.days;
-    data.monthRewardsBilling = compacted.monthRewardsBilling;
-    data.generatedAt = new Date().toISOString();
-    await (0, promises_1.writeFile)((0, node_path_1.join)(dir, exports.STATISTICS_PERSIST_FILE), JSON.stringify(data, null, 2), "utf8");
+    const path = (0, node_path_1.join)(dir, exports.STATISTICS_PERSIST_FILE);
+    // Validate input before touching either durable copy. Historical days are not pruned.
+    const generatedAt = new Date().toISOString();
+    const raw = JSON.stringify({ ...data, generatedAt }, null, 2);
+    decodeStatistics(raw);
+    let previous;
+    try {
+        previous = await (0, promises_1.readFile)(path, "utf8");
+        decodeStatistics(previous);
+    }
+    catch (error) {
+        if (error instanceof UnsupportedStatisticsVersion)
+            throw error;
+        if (!isMissing(error)) {
+            // A corrupt primary must not replace a valid backup.
+            previous = await (0, promises_1.readFile)(`${path}.bak`, "utf8");
+            decodeStatistics(previous);
+        }
+    }
+    if (previous !== undefined)
+        await atomicStatisticsWrite(`${path}.bak`, previous);
+    await atomicStatisticsWrite(path, raw);
+    data.generatedAt = generatedAt;
 }
 exports.writeStatisticsPersist = writeStatisticsPersist;

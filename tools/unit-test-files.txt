@@ -311,6 +311,7 @@ build/statistics/energy.test.js
 build/statistics/reconcile.test.js
 build/statistics/vis_consistency.test.js
 build/statistics/persist.test.js
+build/statistics/archive.test.js
 build/storage_report.test.js
 build/learning/shadow_engine/simulate.test.js
 build/learning/shadow_engine/battery_model.test.js

@@ -1,6 +1,42 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { emptyDayRecord, emptyPersist, pruneStatisticsPersist } from "./persist";
+import { emptyDayRecord, emptyPersist, pruneStatisticsPersist, readStatisticsPersist, writeStatisticsPersist, STATISTICS_PERSIST_FILE } from "./persist";
+import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+describe("statistics durable writes", () => {
+	it("preserves historical days and recovers the previous complete generation", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "ems-statistics-"));
+		try {
+			const data = emptyPersist();
+			data.days["2000-01-01"] = emptyDayRecord("2000-01-01");
+			await writeStatisticsPersist(dir, data);
+			data.days["2026-09-27"] = emptyDayRecord("2026-09-27");
+			await writeStatisticsPersist(dir, data);
+			assert.equal(Object.keys((await readStatisticsPersist(dir)).days).length, 2);
+			await writeFile(join(dir, STATISTICS_PERSIST_FILE), "{interrupted");
+			const recovered = await readStatisticsPersist(dir);
+			assert.deepEqual(Object.keys(recovered.days), ["2000-01-01"]);
+			await writeStatisticsPersist(dir, recovered);
+			assert.deepEqual((await readStatisticsPersist(dir)).days, recovered.days);
+		} finally { await rm(dir, { recursive: true, force: true }); }
+	});
+	it("does not turn corrupt or future data into an empty archive", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "ems-statistics-"));
+		try {
+			assert.deepEqual((await readStatisticsPersist(dir)).days, {});
+			const path = join(dir, STATISTICS_PERSIST_FILE);
+			await writeFile(path, "broken");
+			await assert.rejects(readStatisticsPersist(dir));
+			await assert.rejects(writeStatisticsPersist(dir, emptyPersist()));
+			await writeFile(path, '{"version":999,"days":{}}');
+			await assert.rejects(readStatisticsPersist(dir), /Unsupported/);
+			await assert.rejects(writeStatisticsPersist(dir, emptyPersist()), /Unsupported/);
+			assert.equal(await readFile(path, "utf8"), '{"version":999,"days":{}}');
+		} finally { await rm(dir, { recursive: true, force: true }); }
+	});
+});
 
 describe("statistics persist retention", () => {
 	it("bounds ordinary daily accounting while preserving a pending invoice", () => {

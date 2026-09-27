@@ -43,6 +43,7 @@ function stableEqual(a: unknown, b: unknown): boolean {
 }
 
 /** Baut die restorefähige Native-Projektion aus validierten Backup-Dateien. */
+import { decodeStatistics } from "../statistics/persist";
 export function buildRestoreProjection(payloadMap: Map<string, Buffer>): RestoreProjection {
 	const adapter = parseJsonBuffer(payloadMap.get("config/adapter.json")!, "adapter.json") as AdapterConfigExport;
 	const mappings = parseJsonBuffer(payloadMap.get("config/mappings.json")!, "mappings.json") as Record<string, unknown>;
@@ -104,6 +105,9 @@ export function buildRestoreProjection(payloadMap: Map<string, Buffer>): Restore
 		}
 		if (!isKnownLearningKey(key)) {
 			throw new Error(`unknown learning key: ${key}`);
+		}
+		if (key === "statistics_v1.json") {
+			decodeStatistics(JSON.stringify(selectedState[key]));
 		}
 		learning[key] = selectedState[key];
 	}

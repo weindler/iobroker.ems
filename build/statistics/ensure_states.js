@@ -1,9 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureStatisticsStateTree = exports.STATISTICS_STATES = exports.STATISTICS_BASE = void 0;
+exports.ensureStatisticsStateTree = exports.STATISTICS_STATES = exports.statisticsEnergyState = exports.STATISTICS_ENERGY_FIELDS = exports.STATISTICS_BASE = void 0;
 const state_util_1 = require("../ems_light/state_util");
 const flat_states_1 = require("./flat_states");
 exports.STATISTICS_BASE = "statistics";
+exports.STATISTICS_ENERGY_FIELDS = ["pvGenerationKwh", "houseConsumptionKwh", "gridImportKwh", "gridExportKwh", "selfConsumptionKwh", "autonomyPct", "batteryChargedKwh", "batteryDischargedKwh", "evChargedKwh", "evPvKwh", "immersionEnergyKwh", "climateEnergyKwh", "batteryPvSharePct", "selfConsumptionPct", "batteryMeasuredLossKwh"];
+function statisticsEnergyState(scope, field) {
+    return `statistics.energy.${scope}.${field.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`)}`;
+}
+exports.statisticsEnergyState = statisticsEnergyState;
 exports.STATISTICS_STATES = {
     enabled: `${exports.STATISTICS_BASE}.enabled`,
     lastRunAt: `${exports.STATISTICS_BASE}.last_run_at`,
@@ -115,6 +120,10 @@ function mobilityFlatStates(ids, scopeDe) {
     ];
 }
 async function ensureStatisticsStateTree(host) {
+    await (0, state_util_1.ensureChannel)(host, "statistics.energy.today", "Energiebilanz heute");
+    await (0, state_util_1.ensureChannel)(host, "statistics.energy.period", "Energiebilanz gewählter Zeitraum");
+    await (0, state_util_1.ensureStates)(host, ["today", "period"].flatMap(scope => exports.STATISTICS_ENERGY_FIELDS.map(field => numState(statisticsEnergyState(scope, field), `Energie ${scope === "today" ? "heute" : "Zeitraum"}: ${field}`, field.endsWith("Pct") ? "%" : "kWh"))));
+    await (0, state_util_1.ensureStates)(host, [numState("statistics.energy.today.battery_min_soc_pct", "Gemessener Batterie-Tiefststand heute", "%"), strState("statistics.energy.today.battery_min_at", "Zeitpunkt des gemessenen Batterie-Tiefststands")]);
     await (0, state_util_1.ensureChannel)(host, exports.STATISTICS_BASE, "EMS-Light Statistik (Reporting)");
     await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.home`, "Statistik Haus / Tarifvergleich");
     await (0, state_util_1.ensureChannel)(host, `${exports.STATISTICS_BASE}.home.today`, "Haus heute (flache States)");

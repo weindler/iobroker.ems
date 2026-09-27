@@ -155,6 +155,7 @@ export interface EnergeticDayTotals {
 
 /** Roll-up über einen auswählbaren Zeitraum; Prozentwerte sind energiemengengewichtet. */
 export interface EnergeticPeriodSummary {
+	coveragePct?: number;
 	period: string;
 	periodLabelDe: string;
 	fromKey: string;
@@ -200,6 +201,9 @@ export interface EnergeticPeriodSummary {
 }
 
 export interface StatisticsDayRecord {
+	batteryMinimum?: { socPct: number; atIso: string };
+	boundaryEstimated?: boolean;
+	meter?: Partial<Record<"import" | "export", { firstKwh: number; firstAtIso: string; lastKwh: number; atIso: string; resetDetected: boolean }>>;
 	dateKey: string;
 	home: HomeDayTotals;
 	mobility: MobilityDayTotals;
@@ -210,6 +214,8 @@ export interface StatisticsDayRecord {
 }
 
 export interface StatisticsPersist {
+	/** Recovery of a complete preceding archive generation; shown until restart. */
+	archiveRecovery?: boolean;
 	version: typeof STATISTICS_PERSIST_VERSION;
 	generatedAt: string;
 	days: Record<string, StatisticsDayRecord>;

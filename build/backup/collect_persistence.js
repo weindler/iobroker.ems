@@ -28,6 +28,7 @@ const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const data_dir_1 = require("../learning/data_dir");
 const limits_1 = require("./limits");
+const archive_1 = require("../statistics/archive");
 const LEARNING_MIRROR_KEYS = [
     "battery_runtime_json",
     "house_load_json",
@@ -102,7 +103,9 @@ async function collectLearningPersistence(host) {
     const adapter = host;
     for (const art of LEARNING_FILE_ARTIFACTS) {
         const base = (0, data_dir_1.learningDataPath)(adapter, art.category);
-        const parsed = await readJsonFileSafe(path.join(base, art.fileName), limits_1.EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
+        const parsed = art.category === "statistics"
+            ? await (0, archive_1.exportStatisticsArchive)(base, limits_1.EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES)
+            : await readJsonFileSafe(path.join(base, art.fileName), limits_1.EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
         if (parsed != null) {
             out.files[art.fileName] = parsed;
         }
@@ -116,7 +119,9 @@ async function collectSelectedStateData(host) {
     const out = {};
     for (const art of exports.SELECTED_STATE_DATA_ARTIFACTS) {
         const base = (0, data_dir_1.learningDataPath)(adapter, art.category);
-        const parsed = await readJsonFileSafe(path.join(base, art.fileName), limits_1.EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
+        const parsed = art.category === "statistics"
+            ? await (0, archive_1.exportStatisticsArchive)(base, limits_1.EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES)
+            : await readJsonFileSafe(path.join(base, art.fileName), limits_1.EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
         if (parsed != null) {
             out[art.fileName] = parsed;
         }

@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { learningDataPath } from "../learning/data_dir";
 import { EXPORT_LIMITS } from "./limits";
 import type { ExportServiceHost } from "./types";
+import { exportStatisticsArchive } from "../statistics/archive";
 
 const LEARNING_MIRROR_KEYS = [
 	"battery_runtime_json",
@@ -82,7 +83,9 @@ export async function collectLearningPersistence(host: ExportServiceHost): Promi
 	const adapter = host as ioBroker.Adapter;
 	for (const art of LEARNING_FILE_ARTIFACTS) {
 		const base = learningDataPath(adapter, art.category);
-		const parsed = await readJsonFileSafe(path.join(base, art.fileName), EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
+		const parsed = art.category === "statistics"
+			? await exportStatisticsArchive(base, EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES)
+			: await readJsonFileSafe(path.join(base, art.fileName), EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
 		if (parsed != null) {
 			out.files[art.fileName] = parsed;
 		}
@@ -96,7 +99,9 @@ export async function collectSelectedStateData(host: ExportServiceHost): Promise
 	const out: Record<string, unknown> = {};
 	for (const art of SELECTED_STATE_DATA_ARTIFACTS) {
 		const base = learningDataPath(adapter, art.category);
-		const parsed = await readJsonFileSafe(path.join(base, art.fileName), EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
+		const parsed = art.category === "statistics"
+			? await exportStatisticsArchive(base, EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES)
+			: await readJsonFileSafe(path.join(base, art.fileName), EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
 		if (parsed != null) {
 			out[art.fileName] = parsed;
 		}

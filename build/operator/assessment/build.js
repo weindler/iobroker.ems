@@ -141,6 +141,8 @@ function dayPriceStats(input, day, timezone) {
     return { minCt, minStartIso: minStart, minEndIso: minEnd, pricedSlots: n };
 }
 function assessEv(input) {
+    if (input.ev?.sourceFresh === false)
+        return { status: "wait", text: "Fahrzeugdaten veraltet; Ladezustand und laufende Ladung sind aktuell nicht bestätigt.", next: null };
     const nowMs = input.now.getTime();
     const wb = input.plannerInput?.wallbox ?? null;
     const wbC = input.contributions.find((c) => c.contributionId === "wallbox.ev_session" || c.contributionId.startsWith("wallbox."));
@@ -166,14 +168,17 @@ function assessEv(input) {
         soc + NEAR_TARGET_SOC_PP >= target &&
         (need == null || need < MIN_EV_NEED_KWH);
     const noNeed = nearTarget || need == null || need < MIN_EV_NEED_KWH;
-    const socBit = soc != null && target != null
+    const batteryNeed = soc != null && target != null && wb?.vehicleCapacityKwh != null && wb.vehicleCapacityKwh > 0
+        ? Math.max(0, target - soc) * wb.vehicleCapacityKwh / 100 : null;
+    const needBit = batteryNeed == null ? "" : ` Noch ${fmtKwh(batteryNeed)} kWh bis zum Ziel (Fahrzeugbatterie).`;
+    const socBit = (soc != null && target != null
         ? `SOC ${roundPct(soc)} %, Ziel ${roundPct(target)} %.`
         : soc != null
             ? `SOC ${roundPct(soc)} %.`
-            : "";
+            : "") + needBit;
     if (input.ev?.gridRewardsActive === true) {
         return {
-            status: "active",
+            status: input.ev.charging === true ? "active" : "wait",
             text: `${input.ev.charging === true
                 ? "Tibber Grid Rewards steuert die aktuelle Autoladung."
                 : "Tibber Grid Rewards ist aktiv und entscheidet über Start oder Pause."} ${socBit}`.trim(),
@@ -292,6 +297,8 @@ function addOneDayKey(dateKey) {
     return `${yy}-${mm}-${dd}`;
 }
 function assessImmersion(input) {
+    if (input.winterActive)
+        return { status: "off", text: "Heizstab aus: Heizsaison aktiv, Wärmeversorgung durch externe Heizquelle.", next: null };
     const nowMs = input.now.getTime();
     const live = input.immersion;
     const ihC = input.contributions.find((c) => c.contributionId.startsWith("immersion_heater."));
@@ -388,7 +395,7 @@ function climateUnitsFrom(input) {
         if (boolDetail(c, "unitEnabled") === false)
             continue;
         const name = strDetail(c, "unitName") ?? `Klima ${idx}`;
-        if (input.climateMode === "off") {
+        if (input.climateMode === "off" || input.winterActive) {
             units.push({
                 unitIndex: idx,
                 name,
@@ -473,6 +480,8 @@ function climateUnitsFrom(input) {
 }
 function assessClimate(input) {
     const units = climateUnitsFrom(input);
+    if (input.winterActive)
+        return { text: "Heizsaison aktiv: Klimaanlagen aus, keine EMS-Planung.", units };
     if (input.climateMode === "off") {
         return { text: "Klimasteuerung ausgeschaltet.", units };
     }
@@ -493,13 +502,15 @@ function assessBattery(input) {
     const chargeToday = allocActive(input.plan, ["battery_charge"], nowMs, { today: true, timezone: input.timezone });
     const surplus = input.surplusW != null && input.surplusW >= 200;
     const full = soc != null && soc >= 99;
-    if (chargeNow) {
+    if (input.batteryLive?.stale === false && (input.batteryLive.chargingPowerW ?? 0) >= ON_W) {
         return {
             status: "active",
             text: soc != null ? `Batterie wird geladen (${roundPct(soc)} %).` : "Batterie wird geladen.",
             next: null,
         };
     }
+    if (chargeNow)
+        return { status: "planned", text: "Batterieladung im aktuellen Zeitfenster geplant; noch keine frische Ladeleistung bestätigt.", next: null };
     if (strat?.status === "hold") {
         return {
             status: "wait",
@@ -508,8 +519,8 @@ function assessBattery(input) {
         };
     }
     if (strat?.status === "reserve_protected" || (full && !chargeToday)) {
-        const reserve = full ? "Nachtreserve gesichert." : "Batterie wird heute für die Nacht geschont.";
-        const feed = surplus || full ? " PV-Überschuss wird derzeit eingespeist." : "";
+        const reserve = full ? "Batterie voll, Nachtreserve vorhanden." : "Nachtreserve wird berücksichtigt. Verfügbarer PV-Überschuss kann die Batterie weiter laden.";
+        const feed = "";
         return {
             status: "idle",
             text: `${soc != null ? `Batterie ${roundPct(soc)} %. ` : ""}${reserve}${feed}`.trim(),

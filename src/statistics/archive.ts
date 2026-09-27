@@ -4,12 +4,13 @@
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { atomicStatisticsWrite, decodeStatistics, readStatisticsPersist, STATISTICS_PERSIST_FILE } from "./persist";
 import type { StatisticsPersist, StatisticsDayRecord } from "./types";
 
 export const STATISTICS_INDEX_FILE = "statistics_index_v2.json";
+const archives = new WeakMap<StatisticsPersist, StatisticsArchive>();
 type MonthReference = { sha256: string; keys: string[] };
 type Index = {
 	version: 2;
@@ -50,7 +51,7 @@ export class StatisticsArchive {
 	private readonly cache = new Map<string, Record<string, StatisticsDayRecord>>();
 	private readonly keys = new Set<string>();
 	readonly data: StatisticsPersist;
-	private constructor(private readonly dir: string, private index: Index) {
+	private constructor(private readonly dir: string, private index: Index, private committed = false) {
 		for (const ref of Object.values(index.months)) for (const key of ref.keys) this.keys.add(key);
 		const days = new Proxy({} as StatisticsPersist["days"], {
 			ownKeys: () => [...this.keys].sort(),
@@ -68,6 +69,7 @@ export class StatisticsArchive {
 		});
 		this.data = { version: 1, generatedAt: index.generatedAt, days,
 			runtime: structuredClone(index.runtime), monthRewardsBilling: structuredClone(index.monthRewardsBilling) };
+		archives.set(this.data, this);
 	}
 	private month(key: string): Record<string, StatisticsDayRecord> {
 		let days = this.cache.get(key);
@@ -102,24 +104,42 @@ export class StatisticsArchive {
 		}
 		const raw = JSON.stringify({ payload: next, sha256: digest(JSON.stringify(next)) });
 		const path = join(this.dir, STATISTICS_INDEX_FILE);
-		try {
-			const previous = await readFile(path, "utf8");
-			decodeIndex(previous);
+		if (this.committed) {
+			const previous = JSON.stringify({ payload: this.index, sha256: digest(JSON.stringify(this.index)) });
 			await atomicStatisticsWrite(`${path}.bak`, previous);
-		} catch (error) { if (!missing(error)) throw error; }
+		}
 		await atomicStatisticsWrite(path, raw);
+		const retained = new Set([...Object.entries(this.index.months), ...Object.entries(next.months)]
+			.map(([month, ref]) => `${month}-${ref.sha256}.json`));
 		this.index = next;
+		this.committed = true;
 		this.data.generatedAt = next.generatedAt;
 		for (const month of this.cache.keys()) if (month !== this.data.runtime.dateKey.slice(0, 7)) this.cache.delete(month);
+		// Retain the current and preceding committed generations, never delete logical history.
+		for (const file of await readdir(join(this.dir, "months"))) {
+			if (/^\d{4}-\d{2}-[a-f0-9]{64}\.json$/.test(file) && !retained.has(file)) {
+				await unlink(join(this.dir, "months", file)).catch(() => undefined);
+			}
+		}
 	}
 	static async open(dir: string): Promise<StatisticsArchive> {
 		try {
 			const index = decodeIndex(await readFile(join(dir, STATISTICS_INDEX_FILE), "utf8"));
 			// Check all referenced generations, one month at a time, without retaining history in RAM.
 			for (const [month, ref] of Object.entries(index.months)) readMonth(dir, month, ref);
-			return new StatisticsArchive(dir, index);
+			return new StatisticsArchive(dir, index, true);
 		} catch (error) {
-			if (!missing(error)) throw error;
+			if (error instanceof Error && error.message.startsWith("Unsupported statistics index version")) throw error;
+			let backupPresent = false;
+			try {
+				const backupRaw = await readFile(join(dir, `${STATISTICS_INDEX_FILE}.bak`), "utf8");
+				backupPresent = true;
+				const backup = decodeIndex(backupRaw);
+				for (const [month, ref] of Object.entries(backup.months)) readMonth(dir, month, ref);
+				const archive = new StatisticsArchive(dir, backup, true);
+				archive.data.archiveRecovery = true;
+				return archive;
+			} catch (backupError) { if (backupPresent) throw backupError; if (!missing(backupError) || !missing(error)) throw error; }
 			// A missing referenced month must never be mistaken for an absent index.
 			try { await readFile(join(dir, STATISTICS_INDEX_FILE)); throw error; }
 			catch (indexError) { if (indexError === error || !missing(indexError)) throw indexError; }
@@ -140,4 +160,58 @@ export class StatisticsArchive {
 		await archive.commit();
 		return archive;
 	}
+}
+
+async function activeDirectory(dir: string): Promise<string> {
+	let raw: string;
+	try { raw = await readFile(join(dir, "statistics_restore_v1.json"), "utf8"); }
+	catch (error) { if (missing(error)) return dir; throw error; }
+	decodeStatistics(raw);
+	const restored = join(dir, "restores", digest(raw));
+	await mkdir(restored, { recursive: true });
+	try { await writeFile(join(restored, STATISTICS_PERSIST_FILE), raw, { flag: "wx", mode: 0o600 }); }
+	catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
+	return restored;
+}
+
+export async function openStatisticsArchive(dir: string): Promise<StatisticsPersist> {
+	return (await StatisticsArchive.open(await activeDirectory(dir))).data;
+}
+export async function commitStatisticsArchive(data: StatisticsPersist): Promise<void> {
+	const archive = archives.get(data);
+	if (!archive) throw new Error("Statistics archive not attached");
+	await archive.commit();
+}
+export function removeStatisticsDay(data: StatisticsPersist, key: string): void {
+	const archive = archives.get(data);
+	if (archive) archive.removeDay(key);
+	else delete data.days[key];
+}
+/** Secondary readers never migrate or write the active accounting archive. */
+export async function readCurrentStatistics(dir: string): Promise<StatisticsPersist> {
+	const active = await activeDirectory(dir);
+	try { await readFile(join(active, STATISTICS_INDEX_FILE)); }
+	catch (error) {
+		if (!missing(error)) throw error;
+		try { await readFile(join(active, `${STATISTICS_INDEX_FILE}.bak`)); }
+		catch (backupError) { if (missing(backupError)) return readStatisticsPersist(active); throw backupError; }
+	}
+	return (await StatisticsArchive.open(active)).data;
+}
+export async function exportStatisticsArchive(dir: string, maxBytes: number): Promise<StatisticsPersist | null> {
+	let exists = false;
+	for (const file of [STATISTICS_PERSIST_FILE, STATISTICS_INDEX_FILE, "statistics_restore_v1.json"]) {
+		try { await readFile(join(dir, file)); exists = true; break; }
+		catch (error) { if (!missing(error)) throw error; }
+	}
+	if (!exists) return null;
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const data = await readCurrentStatistics(dir);
+			const raw = JSON.stringify(data);
+			if (Buffer.byteLength(raw) > maxBytes) throw new Error("Statistics archive too large for this export; use full instance backup");
+			return decodeStatistics(raw);
+		} catch (error) { if (attempt === 2) throw error; }
+	}
+	throw new Error("Statistics export failed");
 }

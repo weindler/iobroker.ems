@@ -312,6 +312,9 @@ build/statistics/reconcile.test.js
 build/statistics/vis_consistency.test.js
 build/statistics/persist.test.js
 build/statistics/archive.test.js
+build/statistics/observations.test.js
+build/statistics/period_integration.test.js
+vis/v0424_display.test.mjs
 build/storage_report.test.js
 build/learning/shadow_engine/simulate.test.js
 build/learning/shadow_engine/battery_model.test.js

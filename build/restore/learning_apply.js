@@ -34,6 +34,7 @@ const schema_1 = require("../backup/schema");
 const learning_map_1 = require("./learning_map");
 const journal_1 = require("./journal");
 const apply_hooks_1 = require("./apply_hooks");
+const persist_1 = require("../statistics/persist");
 async function snapshotLearningFiles(host) {
     const adapter = host;
     const out = [];
@@ -79,6 +80,8 @@ async function applyLearningFromStaged(host, txDir, learning) {
     const middleIdx = Math.floor(learning_map_1.RESTORE_LEARNING_KEYS.length / 2);
     for (let i = 0; i < learning_map_1.RESTORE_LEARNING_KEYS.length; i++) {
         const key = learning_map_1.RESTORE_LEARNING_KEYS[i];
+        if (key === "statistics_v1.json" && learning[key] === undefined)
+            continue;
         const target = learning_map_1.RESTORE_LEARNING_TARGETS[key];
         const base = (0, data_dir_1.learningDataPath)(adapter, target.category);
         await fs.mkdir(base, { recursive: true, mode: 0o700 });
@@ -109,6 +112,10 @@ async function applyLearningFromStaged(host, txDir, learning) {
                 // staged fehlt — direkt aus Projektion
             }
             const tmp = path.join(base, `.tmp-${target.fileName}.${process.pid}`);
+            if (key === "statistics_v1.json") {
+                (0, persist_1.decodeStatistics)(JSON.stringify(payload));
+                payload = { ...payload, _restoreGeneration: (0, checksum_1.sha256Buffer)(Buffer.from(txDir)) };
+            }
             await fs.writeFile(tmp, (0, schema_1.stableJsonStringify)(payload), { mode: 0o600 });
             await fs.rename(tmp, dest);
             const verify = (0, checksum_1.sha256Buffer)(await fs.readFile(dest));

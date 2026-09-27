@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.tickEconomics = void 0;
 const time_1 = require("../operator/time");
 const persist_1 = require("../statistics/persist");
+const archive_1 = require("../statistics/archive");
 const period_1 = require("../statistics/period");
 const ensure_states_1 = require("../statistics/ensure_states");
 const config_1 = require("../statistics/config");
@@ -43,7 +44,7 @@ async function tickEconomics(host, now = new Date()) {
     const statsDir = host.getAbsolutePath(persist_1.STATISTICS_PERSIST_CATEGORY);
     const econDir = host.getAbsolutePath(persist_3.ECONOMICS_PERSIST_CATEGORY);
     const shadowDir = host.getAbsolutePath(shadow_engine_1.SHADOW_ENGINE_RESULTS_CATEGORY);
-    const statsPersist = await (0, persist_1.readStatisticsPersist)(statsDir);
+    const statsPersist = await (0, archive_1.readCurrentStatistics)(statsDir);
     let econPersist = await (0, persist_3.readEconomicsPersist)(econDir);
     let dirty = false;
     // --- abgeschlossene Tage EINMAL verbuchen (idempotent) ---

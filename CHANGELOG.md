@@ -8,6 +8,25 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.24] – 2026-09-27
+
+### Changed
+
+- Statistik dauerhaft in prüfsummengesicherten Monatsdateien mit atomarem Index gespeichert. Die ursprüngliche v1-Datei bleibt einschließlich Migrationssicherung erhalten. Alte Tage werden nicht automatisch gelöscht; Monatsdateien werden bedarfsgerecht geladen. Backup, Restore, manuelle Korrekturen und Auswertungen verwenden das aktive Archiv.
+- 32 feste Statistik-Datenpunkte ergänzen die JSON-Ansichten: Tages-/Zeitraumenergien sowie gemessener Batterie-Tiefststand mit Zeitpunkt. Kein wachsender Datenpunktbaum und keine InfluxDB erforderlich.
+- Smart-Meter-Ansicht zeigt gespeicherte Ablesungen, Vorperiodenwerte und Änderungen in kWh und Prozent. Netzbezug erscheint rot, Einspeisung grün. Laufende Zeiträume werden ausdrücklich als nicht uhrzeitgleich mit abgeschlossenen Vortagen gekennzeichnet.
+- Kompaktere Statistik mit zweispaltigen Karten, gemeinsamen Überschriften und Kennzahlen sowie aufklappbaren Eingaben. Klima und Heizstab zeigen bei Aus/Winter einen kompakten Zustand mit vorhandenen Messwerten.
+- Batterie erklärt den erwarteten Ladezustand bei PV-Ende aus dem gemeinsamen Plan. Gemessene Ladung, geplante Fenster, Eigenverbrauchsregelung und Nachtreserve sind getrennt. Fehlende Lernwerte werden nicht als vorhandene Messwerte ausgegeben.
+- Wallbox zeigt Energie bis zum Ladeziel aus Fahrzeugkapazität und SOC, mit gesondertem Ladeverlustbedarf bei bekanntem Wirkungsgrad. Externe Steuerung durch EVCC/Tibber wird ohne konkurrierenden EMS-Ladeplan dargestellt.
+- Rollierende 72 Stunden berücksichtigen angebrochene Zeitabschnitte anteilig. Teilzeiträume und verfügbare Ganztagesprognosen sind gekennzeichnet. Preise der nächsten Stunde erscheinen in Viertelstundenabschnitten mit den Diagrammfarben.
+
+### Fixed
+
+- Beschädigte oder unbekannte Statistikversionen führen nicht mehr stillschweigend zu leerer Historie. Tageswechsel erhalten kumulative Zählerbaselines; nicht exakt beobachtete Tagesgrenzen bleiben vorläufig.
+- Planfenster werden nicht als tatsächlich laufende Ladung ausgegeben. Ausgeschaltete Klima-/Heizstabsteuerung und Heizsaison haben Vorrang vor Bedarfsbeschreibungen und pausieren das zugehörige Lernen.
+- Negative Stromkosten und abgerechnete Rewards-Gutschriften werden ohne Nullbegrenzung bilanziert; geschätzte Rewards werden nicht vorzeitig abgezogen.
+- Saisonsteuerung liest konfigurierte Fremd-Datenpunkte korrekt und behält bei Ausfall den letzten bestätigten Zustand.
+
 ## [0.4.23] – 2026-09-26
 
 ### Fixed

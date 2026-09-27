@@ -173,6 +173,7 @@ async function snapshotHost(host: InjectionTestHost): Promise<PreRestoreSnapshot
 }
 
 async function writeLearning(host: InjectionTestHost, key: string, data: unknown): Promise<void> {
+	if (key === "statistics_v1.json") data = { ...(data as object), version: 1, days: {}, monthRewardsBilling: {} };
 	const target = RESTORE_LEARNING_TARGETS[key];
 	const base = learningDataPath(host as unknown as ioBroker.Adapter, target.category);
 	await fs.mkdir(base, { recursive: true });
@@ -655,7 +656,7 @@ describe("restore learning target paths", () => {
 			assert.ok(!paths.has(rel), `duplicate target for ${key}`);
 			paths.add(rel);
 		}
-		assert.equal(paths.size, 13);
+		assert.equal(paths.size, 14);
 	});
 
 	it("writes only to fixed targets and preserves unknown neighbor files", async () => {

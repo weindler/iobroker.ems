@@ -3,10 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleStatisticsStateChange = exports.isStatisticsRelatedState = exports.__resetStatisticsForTest = exports.tickStatistics = exports.legacyDailyChargesForKeys = void 0;
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
+const archive_1 = require("./archive");
+const observations_1 = require("./observations");
+const ensure_states_1 = require("./ensure_states");
 const compute_1 = require("./compute");
 const grid_rewards_1 = require("./grid_rewards");
 const period_1 = require("./period");
-const ensure_states_1 = require("./ensure_states");
+const ensure_states_2 = require("./ensure_states");
 const persist_1 = require("./persist");
 const public_charge_1 = require("./public_charge");
 const adjust_1 = require("./adjust");
@@ -36,7 +39,7 @@ async function loadPersist(host) {
         persistCache = (0, persist_1.emptyPersist)();
         return persistCache;
     }
-    persistCache = await (0, persist_1.readStatisticsPersist)(dir);
+    persistCache = await (0, archive_1.openStatisticsArchive)(dir);
     return persistCache;
 }
 async function flushPersist(host) {
@@ -45,7 +48,7 @@ async function flushPersist(host) {
     const dir = baseDir(host);
     if (!dir)
         return;
-    await (0, persist_1.writeStatisticsPersist)(dir, persistCache);
+    await (0, archive_1.commitStatisticsArchive)(persistCache);
     persistDirty = false;
 }
 async function readForeignNum(host, id) {
@@ -255,17 +258,22 @@ async function syncEnergeticTelemetry(host, persist, todayKey, feedInCtPerKwh) {
 function rolloverRuntimeIfNeeded(persist, dateKey) {
     if (persist.runtime.dateKey === dateKey)
         return;
+    const previous = persist.runtime;
     persist.runtime = (0, persist_1.emptyRuntime)(dateKey);
+    persist.runtime.gridImportEnergyBaselineKwh = previous.gridImportEnergyBaselineKwh;
+    persist.runtime.gridExportEnergyBaselineKwh = previous.gridExportEnergyBaselineKwh;
+    persist.runtime.meterCaptureSinceIso = previous.meterCaptureSinceIso;
+    ensureDay(persist, dateKey).boundaryEstimated = true;
     persistDirty = true;
 }
 async function handlePublicSubmit(host, persist, now) {
-    const st = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.publicSubmitRequest);
+    const st = await host.getStateAsync(ensure_states_2.STATISTICS_STATES.publicSubmitRequest);
     if (!st || st.ack === true)
         return;
     const submit = (0, public_charge_1.parsePublicInvoiceSubmit)(st.val);
-    await host.setStateAsync(ensure_states_1.STATISTICS_STATES.publicSubmitRequest, { val: "", ack: true });
+    await host.setStateAsync(ensure_states_2.STATISTICS_STATES.publicSubmitRequest, { val: "", ack: true });
     if (!submit) {
-        await setIfChanged(host, ensure_states_1.STATISTICS_STATES.publicSubmitAckDe, "Ungültiges JSON.");
+        await setIfChanged(host, ensure_states_2.STATISTICS_STATES.publicSubmitAckDe, "Ungültiges JSON.");
         return;
     }
     const dateKey = submit.date ?? (0, compute_1.localDateKey)(now);
@@ -273,7 +281,7 @@ async function handlePublicSubmit(host, persist, now) {
     const result = (0, public_charge_1.applyPublicInvoice)(day.publicSessions, submit, now.toISOString());
     day.publicSessions = result.sessions;
     persistDirty = true;
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.publicSubmitAckDe, result.ackDe);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.publicSubmitAckDe, result.ackDe);
     host.log?.info?.(`statistics public charge: ${result.ackDe}`);
 }
 async function recalculateMonthMobilityDays(host, persist, now, cfg, refDateKey) {
@@ -304,13 +312,13 @@ async function recalculateMonthMobilityDays(host, persist, now, cfg, refDateKey)
     }
 }
 async function handleAdjustSubmit(host, persist, now, cfg) {
-    const st = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.adjustRequest);
+    const st = await host.getStateAsync(ensure_states_2.STATISTICS_STATES.adjustRequest);
     if (!st || st.ack === true)
         return;
     const submit = (0, adjust_1.parseStatisticsAdjustSubmit)(st.val);
-    await host.setStateAsync(ensure_states_1.STATISTICS_STATES.adjustRequest, { val: "", ack: true });
+    await host.setStateAsync(ensure_states_2.STATISTICS_STATES.adjustRequest, { val: "", ack: true });
     if (!submit) {
-        await setIfChanged(host, ensure_states_1.STATISTICS_STATES.adjustAckDe, "Ungültiges JSON.");
+        await setIfChanged(host, ensure_states_2.STATISTICS_STATES.adjustAckDe, "Ungültiges JSON.");
         return;
     }
     const result = (0, adjust_1.applyStatisticsAdjust)(persist, submit, now);
@@ -340,13 +348,20 @@ async function handleAdjustSubmit(host, persist, now, cfg) {
     }
     persistDirty = true;
     await flushPersist(host);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.adjustAckDe, result.ackDe);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.adjustAckDe, result.ackDe);
     host.log?.info?.(`statistics adjust: ${result.ackDe}`);
 }
 /**
  * Ein Statistik-Tick — nur Reporting. Keine Gerätewrites, kein Planner-Eingriff.
  */
-async function tickStatistics(host, now = new Date()) {
+let statisticsQueue = Promise.resolve();
+function tickStatistics(host, now = new Date()) {
+    const next = statisticsQueue.then(() => tickStatisticsSerialized(host, now));
+    statisticsQueue = next.catch(() => undefined);
+    return next;
+}
+exports.tickStatistics = tickStatistics;
+async function tickStatisticsSerialized(host, now) {
     const cfg = (0, config_1.statisticsConfigFromAdapter)(host.config);
     const dateKey = (0, compute_1.localDateKey)(now);
     const persist = await loadPersist(host);
@@ -354,12 +369,16 @@ async function tickStatistics(host, now = new Date()) {
     await handlePublicSubmit(host, persist, now);
     await handleAdjustSubmit(host, persist, now, cfg);
     if (!cfg.enabled) {
-        await setIfChanged(host, ensure_states_1.STATISTICS_STATES.enabled, false);
-        await setIfChanged(host, ensure_states_1.STATISTICS_STATES.reasonDe, "Statistik deaktiviert (Admin).");
+        await setIfChanged(host, ensure_states_2.STATISTICS_STATES.enabled, false);
+        await setIfChanged(host, ensure_states_2.STATISTICS_STATES.reasonDe, "Statistik deaktiviert (Admin).");
         await flushPersist(host);
         return;
     }
     const reasonsHome = [];
+    if (persist.archiveRecovery)
+        reasonsHome.push("Statistik aus der letzten vollständig geprüften Archivgeneration wiederhergestellt; letzter unvollständiger Schreibstand wurde verworfen.");
+    if (persist.days[dateKey]?.boundaryEstimated)
+        reasonsHome.push("Tagesgrenze zwischen zwei Zählerablesungen: Zuordnung am Tageswechsel vorläufig.");
     const reasonsMob = [];
     await syncEnergeticTelemetry(host, persist, dateKey, cfg.feedInCtPerKwh);
     const day = ensureDay(persist, dateKey);
@@ -388,11 +407,14 @@ async function tickStatistics(host, now = new Date()) {
         readForeignBool(host, cfg.tibberGridRewardsActiveStateId),
     ]);
     void rewardsActive;
+    const socState = await host.getStateAsync("live.battery.soc_pct");
+    const socFresh = socState?.ts != null && nowMs - socState.ts >= -30_000 && nowMs - socState.ts <= 120_000;
+    (0, observations_1.observeDay)(day, now, socFresh ? (0, state_util_1.asNum)(socState?.val) : null, gridImportEnergy, gridExportEnergy);
     void (await readForeignRaw(host, cfg.externalVehicleChargeStateId));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterLivePowerW, gridImportPowerW ?? null);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterImport180Kwh, gridImportEnergy ?? null);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterExport280Kwh, gridExportEnergy ?? null);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterSourceDe, cfg.gridImportEnergyKwhStateId || cfg.gridExportEnergyKwhStateId
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.meterLivePowerW, gridImportPowerW ?? null);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.meterImport180Kwh, gridImportEnergy ?? null);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.meterExport280Kwh, gridExportEnergy ?? null);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.meterSourceDe, cfg.gridImportEnergyKwhStateId || cfg.gridExportEnergyKwhStateId
         ? "Reale kumulative Zählerstände; Tages- und Zeitraumwerte aus Differenzen"
         : "nicht konfiguriert");
     // --- Haus: Import-Energie ---
@@ -420,6 +442,8 @@ async function tickStatistics(host, now = new Date()) {
             rt.meterCaptureSinceIso = now.toISOString();
         const d = (0, compute_1.energyCounterDeltaKwh)(rt.gridExportEnergyBaselineKwh, gridExportEnergy);
         rt.gridExportEnergyBaselineKwh = d.newBaseline;
+        if (d.newBaseline !== null && day.home.gridExportKwh === null)
+            day.home.gridExportKwh = 0;
         if (d.deltaKwh !== null && d.deltaKwh > 0) {
             day.home.gridExportKwh =
                 Math.round(((day.home.gridExportKwh ?? 0) + d.deltaKwh) * 1000) / 1000;
@@ -431,7 +455,7 @@ async function tickStatistics(host, now = new Date()) {
     const tibberMonthlyFees = (0, compute_1.dailyBaseShareEur)(cfg.tibberMonthlyBaseEur, monthFrac) +
         (0, compute_1.dailyBaseShareEur)(cfg.tibberMonthlyGridFeeEur, monthFrac);
     let dynamicFromTibber = false;
-    if (dynamicCostMapped !== null && dynamicCostMapped >= 0) {
+    if (dynamicCostMapped !== null) {
         day.home.dynamicCostEur = (0, compute_1.tibberDayCostEur)({
             accumulatedCostEur: dynamicCostMapped,
             monthlyBaseEur: cfg.tibberMonthlyBaseEur,
@@ -446,8 +470,8 @@ async function tickStatistics(host, now = new Date()) {
             priceCtPerKwh: priceNowCt,
             dtSec,
         });
-        if (integ.costEur > 0 || rt.integratedDynamicCostEur > 0) {
-            if (integ.costEur > 0) {
+        if (integ.kwh > 0 || rt.integratedGridImportKwhFromPower > 0) {
+            if (integ.kwh > 0) {
                 rt.integratedDynamicCostEur += integ.costEur;
                 rt.integratedGridImportKwhFromPower += integ.kwh;
             }
@@ -468,7 +492,7 @@ async function tickStatistics(host, now = new Date()) {
     if (haveImport) {
         day.home.gridImportKwh = importKwhToday;
     }
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.meterCaptureSince, rt.meterCaptureSinceIso ?? "");
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.meterCaptureSince, rt.meterCaptureSinceIso ?? "");
     if (day.energy && (cfg.gridImportEnergyKwhStateId || cfg.gridExportEnergyKwhStateId)) {
         day.energy = (0, energy_1.reconcileEnergeticGridTruth)(day.energy, {
             gridImportKwh: day.home.gridImportKwh,
@@ -579,10 +603,9 @@ async function tickStatistics(host, now = new Date()) {
     const rewardsMob = todayRewards;
     const evCostRaw = rt.homePvCostEur +
         rt.homeGridCostEur +
-        invoiced.eur -
-        (rewardsMob.source !== "off" && rewardsMob.creditEur !== null ? rewardsMob.creditEur : 0);
+        invoiced.eur;
     const evCost = homeChargeKwh > 0 || invoiced.kwh > 0 || rewardsMob.creditEur !== null
-        ? Math.round(Math.max(0, evCostRaw) * 100) / 100
+        ? Math.round(evCostRaw * 100) / 100
         : null;
     day.mobility = (0, compute_1.applyMobilityGridRewards)({
         dateKey,
@@ -684,10 +707,10 @@ async function tickStatistics(host, now = new Date()) {
         evKwhPer100KmSource: evCons.source === "missing" ? null : evCons.source,
     }, monthRewards);
     const openSessions = day.publicSessions.filter((s) => s.status === "pending_invoice").length;
-    const periodIdRaw = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.periodId);
+    const periodIdRaw = await host.getStateAsync(ensure_states_2.STATISTICS_STATES.periodId);
     const periodId = (0, period_1.normalizePeriodId)(periodIdRaw?.val, "this_month");
     if (periodIdRaw?.val !== periodId) {
-        await host.setStateAsync(ensure_states_1.STATISTICS_STATES.periodId, { val: periodId, ack: true });
+        await host.setStateAsync(ensure_states_2.STATISTICS_STATES.periodId, { val: periodId, ack: true });
     }
     const jsonDailyRawForStart = jsonDailyRaw;
     const statisticsStartKey = (0, period_1.resolveStatisticsStartKey)({
@@ -953,32 +976,39 @@ async function tickStatistics(host, now = new Date()) {
         batteryWearCostCtPerKwh: cfg.batteryWearCostCtPerKwh,
         statisticsStartDate: cfg.statisticsStartDate,
     };
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.enabled, true);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.lastRunAt, now.toISOString());
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.configJson, JSON.stringify(safeCfg));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.periodOptionsJson, JSON.stringify(periodOptions));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeTodayJson, JSON.stringify(homeTodaySum));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeMonthJson, JSON.stringify(homeMonthSum));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homePeriodJson, JSON.stringify(homePeriodSum));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityTodayJson, JSON.stringify(mobTodaySum));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityMonthJson, JSON.stringify(mobMonthSum));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityPeriodJson, JSON.stringify(mobPeriodSum));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.energyTodayJson, JSON.stringify(day.energy ?? null));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.energyMonthJson, JSON.stringify(energyMonth));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.energyPeriodJson, JSON.stringify(energyPeriod));
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeTodaySavingsEur, homeTodaySum.savingsVsFixedEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homeMonthSavingsEur, homeMonthSum.savingsVsFixedEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.homePeriodSavingsEur, homePeriodSum.savingsVsFixedEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityTodaySavingsEur, mobTodaySum.savingsVsIceEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityMonthSavingsEur, mobMonthSum.savingsVsIceEur);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriodSum.savingsVsIceEur);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.enabled, true);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.lastRunAt, now.toISOString());
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.configJson, JSON.stringify(safeCfg));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.periodOptionsJson, JSON.stringify(periodOptions));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.homeTodayJson, JSON.stringify({ ...homeTodaySum, meterComparison: (0, observations_1.meterComparison)(persist, dateKey, dateKey, "today") }));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.homeMonthJson, JSON.stringify(homeMonthSum));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.homePeriodJson, JSON.stringify({ ...homePeriodSum, meterComparison: (0, observations_1.meterComparison)(persist, periodMeta.fromKey, periodMeta.toKey, periodId) }));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.mobilityTodayJson, JSON.stringify(mobTodaySum));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.mobilityMonthJson, JSON.stringify(mobMonthSum));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.mobilityPeriodJson, JSON.stringify(mobPeriodSum));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.energyTodayJson, JSON.stringify({ ...day.energy, batteryMinimum: day.batteryMinimum ?? null, boundaryEstimated: day.boundaryEstimated === true }));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.energyMonthJson, JSON.stringify(energyMonth));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.energyPeriodJson, JSON.stringify(energyPeriod));
+    for (const scope of ["today", "period"]) {
+        const energy = (scope === "today" ? day.energy : energyPeriod);
+        for (const field of ensure_states_1.STATISTICS_ENERGY_FIELDS)
+            await setIfChanged(host, (0, ensure_states_1.statisticsEnergyState)(scope, field), (0, state_util_1.asNum)(energy?.[field]));
+    }
+    await setIfChanged(host, "statistics.energy.today.battery_min_soc_pct", day.batteryMinimum?.socPct ?? null);
+    await setIfChanged(host, "statistics.energy.today.battery_min_at", day.batteryMinimum?.atIso ?? "");
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.homeTodaySavingsEur, homeTodaySum.savingsVsFixedEur);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.homeMonthSavingsEur, homeMonthSum.savingsVsFixedEur);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.homePeriodSavingsEur, homePeriodSum.savingsVsFixedEur);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.mobilityTodaySavingsEur, mobTodaySum.savingsVsIceEur);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.mobilityMonthSavingsEur, mobMonthSum.savingsVsIceEur);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.mobilityPeriodSavingsEur, mobPeriodSum.savingsVsIceEur);
     const flatSet = (id, val) => setIfChanged(host, id, val);
     await setIfChanged(host, flat_states_1.STATISTICS_FLAT.statisticsStartDate, statisticsStartKey ?? "");
     await (0, flat_states_1.publishHomeFlat)(flatSet, flat_states_1.STATISTICS_FLAT.homeToday, homeTodaySum, "Heute");
     await (0, flat_states_1.publishHomeFlat)(flatSet, flat_states_1.STATISTICS_FLAT.homePeriod, homePeriodSum, periodMeta.periodLabelDe);
     await (0, flat_states_1.publishMobilityFlat)(flatSet, flat_states_1.STATISTICS_FLAT.mobilityToday, mobTodaySum, "Heute");
     await (0, flat_states_1.publishMobilityFlat)(flatSet, flat_states_1.STATISTICS_FLAT.mobilityPeriod, mobPeriodSum, periodMeta.periodLabelDe);
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.publicPendingJson, JSON.stringify(day.publicSessions.filter((s) => s.status === "pending_invoice")));
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.publicPendingJson, JSON.stringify(day.publicSessions.filter((s) => s.status === "pending_invoice")));
     const reason = [
         homeTodaySum.savingsVsFixedEur !== null
             ? `Haus heute Tibber vs. Festtarif: ${homeTodaySum.savingsVsFixedEur.toFixed(2)} €.`
@@ -996,28 +1026,27 @@ async function tickStatistics(host, now = new Date()) {
     ]
         .filter(Boolean)
         .join(" ");
-    await setIfChanged(host, ensure_states_1.STATISTICS_STATES.reasonDe, reason);
+    await setIfChanged(host, ensure_states_2.STATISTICS_STATES.reasonDe, reason);
     await flushPersist(host);
 }
-exports.tickStatistics = tickStatistics;
 function __resetStatisticsForTest() {
     persistCache = null;
     persistDirty = false;
 }
 exports.__resetStatisticsForTest = __resetStatisticsForTest;
 function isStatisticsRelatedState(relativeId) {
-    return (relativeId === ensure_states_1.STATISTICS_STATES.publicSubmitRequest ||
-        relativeId === ensure_states_1.STATISTICS_STATES.adjustRequest ||
+    return (relativeId === ensure_states_2.STATISTICS_STATES.publicSubmitRequest ||
+        relativeId === ensure_states_2.STATISTICS_STATES.adjustRequest ||
         relativeId.startsWith("statistics."));
 }
 exports.isStatisticsRelatedState = isStatisticsRelatedState;
 async function handleStatisticsStateChange(host, relativeId, val, ack) {
     // period_id: VIS kann mit ack:true schreiben — trotzdem neu rechnen.
-    if (relativeId === ensure_states_1.STATISTICS_STATES.periodId) {
+    if (relativeId === ensure_states_2.STATISTICS_STATES.periodId) {
         const normalized = (0, period_1.normalizePeriodId)(val, "this_month");
-        const cur = await host.getStateAsync(ensure_states_1.STATISTICS_STATES.periodId);
+        const cur = await host.getStateAsync(ensure_states_2.STATISTICS_STATES.periodId);
         if (cur?.val !== normalized || cur?.ack !== true) {
-            await host.setStateAsync(ensure_states_1.STATISTICS_STATES.periodId, { val: normalized, ack: true });
+            await host.setStateAsync(ensure_states_2.STATISTICS_STATES.periodId, { val: normalized, ack: true });
         }
         await tickStatistics(host);
         try {
@@ -1031,8 +1060,8 @@ async function handleStatisticsStateChange(host, relativeId, val, ack) {
         }
         return true;
     }
-    if ((relativeId !== ensure_states_1.STATISTICS_STATES.publicSubmitRequest &&
-        relativeId !== ensure_states_1.STATISTICS_STATES.adjustRequest) ||
+    if ((relativeId !== ensure_states_2.STATISTICS_STATES.publicSubmitRequest &&
+        relativeId !== ensure_states_2.STATISTICS_STATES.adjustRequest) ||
         ack) {
         return relativeId.startsWith("statistics.");
     }

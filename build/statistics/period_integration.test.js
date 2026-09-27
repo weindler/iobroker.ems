@@ -11,6 +11,38 @@ const node_test_1 = require("node:test");
 const ensure_states_js_1 = require("./ensure_states.js");
 const tick_js_1 = require("./tick.js");
 const persist_js_1 = require("./persist.js");
+const archive_js_1 = require("./archive.js");
+(0, node_test_1.it)("carries real meter baselines across Berlin midnight and adapter restart", async () => {
+    const dir = await (0, promises_1.mkdtemp)((0, node_path_1.join)((0, node_os_1.tmpdir)(), "ems-midnight-"));
+    const states = new Map();
+    let meter = 100;
+    const host = {
+        config: { statistics_enabled: true, statistics_grid_import_energy_kwh_state: "meter.import" },
+        getAbsolutePath: (category = "") => (0, node_path_1.join)(dir, category),
+        getStateAsync: async (id) => states.get(id) ?? null,
+        getForeignStateAsync: async (id) => id === "meter.import" ? { val: meter } : null,
+        setStateAsync: async (id, state) => { states.set(id, state); },
+    };
+    try {
+        (0, tick_js_1.__resetStatisticsForTest)();
+        await (0, tick_js_1.tickStatistics)(host, new Date("2026-09-26T21:59:30Z"));
+        meter = 100.1;
+        await (0, tick_js_1.tickStatistics)(host, new Date("2026-09-26T22:00:30Z"));
+        let archive = await (0, archive_js_1.readCurrentStatistics)((0, node_path_1.join)(dir, "statistics"));
+        strict_1.default.equal(archive.days["2026-09-27"].home.gridImportKwh, 0.1);
+        strict_1.default.equal(archive.days["2026-09-27"].boundaryEstimated, true);
+        (0, tick_js_1.__resetStatisticsForTest)();
+        meter = 100.2;
+        await (0, tick_js_1.tickStatistics)(host, new Date("2026-09-26T22:01:30Z"));
+        archive = await (0, archive_js_1.readCurrentStatistics)((0, node_path_1.join)(dir, "statistics"));
+        strict_1.default.equal(archive.days["2026-09-27"].home.gridImportKwh, 0.2);
+        strict_1.default.equal(archive.days["2026-09-26"].home.gridImportKwh, 0);
+    }
+    finally {
+        (0, tick_js_1.__resetStatisticsForTest)();
+        await (0, promises_1.rm)(dir, { recursive: true, force: true });
+    }
+});
 (0, node_test_1.it)("berechnet Hausvergleich für alle auswählbaren Zeiträume aus gepaarten Tibber-Messwerten", async () => {
     const dir = await (0, promises_1.mkdtemp)((0, node_path_1.join)((0, node_os_1.tmpdir)(), "ems-stat-periods-"));
     const states = new Map();

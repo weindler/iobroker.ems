@@ -39,6 +39,7 @@ function stableEqual(a, b) {
     return (0, schema_1.stableJsonStringify)(a).trim() === (0, schema_1.stableJsonStringify)(b).trim();
 }
 /** Baut die restorefähige Native-Projektion aus validierten Backup-Dateien. */
+const persist_1 = require("../statistics/persist");
 function buildRestoreProjection(payloadMap) {
     const adapter = parseJsonBuffer(payloadMap.get("config/adapter.json"), "adapter.json");
     const mappings = parseJsonBuffer(payloadMap.get("config/mappings.json"), "mappings.json");
@@ -89,6 +90,9 @@ function buildRestoreProjection(payloadMap) {
         }
         if (!(0, learning_map_1.isKnownLearningKey)(key)) {
             throw new Error(`unknown learning key: ${key}`);
+        }
+        if (key === "statistics_v1.json") {
+            (0, persist_1.decodeStatistics)(JSON.stringify(selectedState[key]));
         }
         learning[key] = selectedState[key];
     }

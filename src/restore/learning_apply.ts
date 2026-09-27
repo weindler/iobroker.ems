@@ -9,6 +9,7 @@ import { RESTORE_LEARNING_TARGETS, RESTORE_LEARNING_KEYS } from "./learning_map"
 import { writeJsonFileAtomic } from "./journal";
 import { maybeInjectRestoreApplyFailure } from "./apply_hooks";
 import type { RestoreHost } from "./types";
+import { decodeStatistics } from "../statistics/persist";
 
 export interface LearningSnapshotEntry {
 	key: string;
@@ -66,6 +67,7 @@ export async function applyLearningFromStaged(
 	const middleIdx = Math.floor(RESTORE_LEARNING_KEYS.length / 2);
 	for (let i = 0; i < RESTORE_LEARNING_KEYS.length; i++) {
 		const key = RESTORE_LEARNING_KEYS[i]!;
+		if (key === "statistics_v1.json" && learning[key] === undefined) continue;
 		const target = RESTORE_LEARNING_TARGETS[key];
 		const base = learningDataPath(adapter, target.category);
 		await fs.mkdir(base, { recursive: true, mode: 0o700 });
@@ -95,6 +97,10 @@ export async function applyLearningFromStaged(
 				// staged fehlt — direkt aus Projektion
 			}
 			const tmp = path.join(base, `.tmp-${target.fileName}.${process.pid}`);
+			if (key === "statistics_v1.json") {
+				decodeStatistics(JSON.stringify(payload));
+				payload = { ...(payload as object), _restoreGeneration: sha256Buffer(Buffer.from(txDir)) };
+			}
 			await fs.writeFile(tmp, stableJsonStringify(payload), { mode: 0o600 });
 			await fs.rename(tmp, dest);
 			const verify = sha256Buffer(await fs.readFile(dest));

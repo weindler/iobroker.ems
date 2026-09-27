@@ -9,6 +9,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.formatOperatorOutlook72hDe = exports.buildOperatorOutlook72h = exports.OPERATOR_OUTLOOK_HOURS = exports.OPERATOR_OUTLOOK_72H_DE = exports.OPERATOR_OUTLOOK_72H_JSON = void 0;
 const time_1 = require("./time");
+const energy_scopes_1 = require("./daily_plan/unified/energy_scopes");
 exports.OPERATOR_OUTLOOK_72H_JSON = "operator.outlook_72h.json";
 exports.OPERATOR_OUTLOOK_72H_DE = "operator.outlook_72h_de";
 exports.OPERATOR_OUTLOOK_HOURS = 72;
@@ -181,7 +182,7 @@ function baseDecision(args) {
 function buildOutlookDecisions(args) {
     const decisions = [];
     const emptyAllocation = decisionAllocation([], args.nowMs);
-    const stateForAllocation = (allocation) => allocation.active ? "active" : allocation.firstStartIso ? "scheduled" : "unallocated";
+    const stateForAllocation = (allocation) => allocation.firstStartIso ? "scheduled" : "unallocated";
     const batteryAllocation = decisionAllocation(args.allocations.filter((cell) => cell.kind === "battery_charge"), args.nowMs);
     if (batteryAllocation.firstStartIso) {
         const state = stateForAllocation(batteryAllocation);
@@ -291,7 +292,7 @@ function buildOutlookDecisions(args) {
         if (wallboxAllocation.firstStartIso) {
             const firstMs = finiteMs(wallboxAllocation.firstStartIso);
             const state = wallboxAllocation.active
-                ? "active"
+                ? "scheduled"
                 : wallbox.connectedNow && firstMs !== null && firstMs > args.nowMs + 15 * 60_000
                     ? "deferred"
                     : "scheduled";
@@ -301,8 +302,8 @@ function buildOutlookDecisions(args) {
                 labelDe: "Auto / Wallbox",
                 state,
                 allocation: wallboxAllocation,
-                explanationDe: `Die Wallbox ${state === "active" ? "lädt im aktuellen Planfenster" : state === "deferred" ? "wartet auf das ausgewählte Ladefenster" : "ist eingeplant"}: ` +
-                    `${wallboxAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(wallboxAllocation.energySources)}${state === "active" ? "" : ` ab ${localWhenDe(wallboxAllocation.firstStartIso, args.timezone)}`}.`,
+                explanationDe: `Die Wallbox ${state === "deferred" ? "wartet auf das ausgewählte Ladefenster" : "ist eingeplant"}: ` +
+                    `${wallboxAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(wallboxAllocation.energySources)} ab ${localWhenDe(wallboxAllocation.firstStartIso, args.timezone)}. Eine geplante Freigabe bestätigt keine laufende Ladung.`,
             }));
         }
         else {
@@ -476,12 +477,26 @@ function buildOperatorOutlook72h(args) {
         daysByKey.set(dateKey, day);
     }
     const days = [];
+    const fraction = (startIso, endIso) => {
+        const start = Date.parse(startIso), end = Date.parse(endIso);
+        return end > start ? Math.max(0, Math.min(end, availableEndMs) - Math.max(start, nowMs)) / (end - start) : 0;
+    };
     for (const [dateKey, daySlots] of daysByKey) {
+        const bounds = (0, energy_scopes_1.localDayBoundsMs)(dateKey, args.timezone);
+        const fullPv = args.plannerInput.pv.slots.filter(s => Date.parse(s.slot.startIso) >= bounds.startMs && Date.parse(s.slot.endIso) <= bounds.endMs).sort((a, b) => a.slot.startIso.localeCompare(b.slot.startIso));
+        let cursor = bounds.startMs, fullPvSum = 0, fullPvKnown = true;
+        for (const s of fullPv) {
+            if (Date.parse(s.slot.startIso) !== cursor || s.energyKwh == null || !Number.isFinite(s.energyKwh))
+                fullPvKnown = false;
+            cursor = Date.parse(s.slot.endIso);
+            fullPvSum += s.energyKwh ?? 0;
+        }
         const dayStartKeys = new Set(daySlots.map((s) => s.startIso));
-        const pv = fullSeriesSum(daySlots.map((s) => pvByStart.get(s.startIso)));
-        const load = fullSeriesSum(daySlots.map((s) => loadByStart.get(s.startIso)));
+        const pv = fullSeriesSum(daySlots.map((s) => { const v = pvByStart.get(s.startIso); return v == null ? v : v * fraction(s.startIso, s.endIso); }));
+        const load = fullSeriesSum(daySlots.map((s) => { const v = loadByStart.get(s.startIso); return v == null ? v : v * fraction(s.startIso, s.endIso); }));
         const prices = priceSummary(daySlots.map((s) => priceByStart.get(s.startIso)), daySlots.length);
-        const allocations = allocationSummaries(allocationsInWindow.filter((allocation) => dayStartKeys.has(allocation.slot.startIso)));
+        const allocations = allocationSummaries(allocationsInWindow.filter((allocation) => dayStartKeys.has(allocation.slot.startIso))
+            .map(a => ({ ...a, allocatedEnergyKwh: a.allocatedEnergyKwh * fraction(a.slot.startIso, a.slot.endIso) })));
         const dayBatteryTrajectory = args.plan.batteryTrajectory
             .filter((point) => dayStartKeys.has(point.slotStartIso));
         const batteryPoints = dayBatteryTrajectory
@@ -503,10 +518,14 @@ function buildOperatorOutlook72h(args) {
         days.push({
             dateKey,
             dayLabelDe: dayLabelDe(dateKey, todayKey),
-            fromIso: daySlots[0].startIso,
-            toIso: daySlots[daySlots.length - 1].endIso,
+            fromIso: new Date(Math.max(nowMs, Date.parse(daySlots[0].startIso))).toISOString(),
+            toIso: new Date(Math.min(availableEndMs, Date.parse(daySlots[daySlots.length - 1].endIso))).toISOString(),
+            partialDay: (0, time_1.localDateKeyInTimezone)(new Date(Math.max(nowMs, Date.parse(daySlots[0].startIso)) - 1), args.timezone) === dateKey ||
+                (0, time_1.localDateKeyInTimezone)(new Date(Math.min(availableEndMs, Date.parse(daySlots[daySlots.length - 1].endIso))), args.timezone) === dateKey,
+            priceSlots: daySlots.map(s => ({ startIso: s.startIso, endIso: s.endIso, priceCtPerKwh: priceByStart.get(s.startIso) ?? null })),
             slotCount: daySlots.length,
             expectedPvKwh: pv.value,
+            expectedFullDayPvKwh: fullPvKnown && cursor === bounds.endMs ? round(fullPvSum) : null,
             pvKnownSlots: pv.known,
             expectedHouseLoadKwh: load.value,
             houseLoadKnownSlots: load.known,
@@ -517,6 +536,7 @@ function buildOperatorOutlook72h(args) {
                     projectedFirstSocPct: round(batteryPoints[0], 1),
                     projectedLastSocPct: round(batteryPoints[batteryPoints.length - 1], 1),
                     projectedMinSocPct: round(Math.min(...batteryPoints), 1),
+                    projectedMinAtIso: daySlots.find(s => batteryByStart.get(s.startIso) === Math.min(...batteryPoints))?.endIso ?? null,
                     projectedMaxSocPct: round(Math.max(...batteryPoints), 1),
                     pvStartIso: pvWindow?.startIso ?? null,
                     pvCoverageKnown: daySlots.every((s) => {
@@ -529,8 +549,8 @@ function buildOperatorOutlook72h(args) {
                     socAtPvEndPct: atEnd == null ? null : round(atEnd, 1),
                     midnightSocPct: midnight == null ? null : round(midnight, 1),
                     currentSocPct: dateKey === todayKey ? args.plannerInput.battery.socPct : null,
-                    chargedEnergyKwh: round(dayBatteryTrajectory.reduce((sum, point) => sum + point.chargeEnergyKwh, 0)),
-                    dischargedEnergyKwh: round(dayBatteryTrajectory.reduce((sum, point) => sum + point.dischargeEnergyKwh, 0)),
+                    chargedEnergyKwh: round(dayBatteryTrajectory.reduce((sum, point) => sum + point.chargeEnergyKwh * fraction(point.slotStartIso, daySlots.find(s => s.startIso === point.slotStartIso).endIso), 0)),
+                    dischargedEnergyKwh: round(dayBatteryTrajectory.reduce((sum, point) => sum + point.dischargeEnergyKwh * fraction(point.slotStartIso, daySlots.find(s => s.startIso === point.slotStartIso).endIso), 0)),
                     knownPoints: batteryPoints.length,
                 }
                 : null,
@@ -556,7 +576,13 @@ function buildOperatorOutlook72h(args) {
         input: args.plannerInput,
         allocations: allocationsInWindow,
     });
+    const wb = args.plannerInput.wallbox;
+    const batteryNeedKwh = wb && wb.vehicleSocPct != null && wb.targetSocPct != null && wb.targetSocPct > 0 && wb.vehicleCapacityKwh != null && wb.vehicleCapacityKwh > 0
+        ? Math.max(0, wb.targetSocPct - wb.vehicleSocPct) * wb.vehicleCapacityKwh / 100 : null;
+    const externallyManaged = wb?.managementMode === "externally_managed" || /^(active|active_without_plan|planned)$/.test(wb?.externalAuthorityState ?? "");
+    const acNeedKwh = batteryNeedKwh == null || !wb?.chargingEfficiency || wb.chargingEfficiency <= 0 || wb.chargingEfficiency > 1 ? null : batteryNeedKwh / wb.chargingEfficiency;
     return {
+        vehicleEnergy: { batteryNeedKwh, acNeedKwh, externallyManaged, plannedAcKwh: externallyManaged ? null : days.reduce((total, day) => total + day.allocations.filter(a => a.kind === "wallbox").reduce((sum, a) => sum + a.energyKwh, 0), 0) },
         schemaVersion: 1,
         generatedAtIso: args.now.toISOString(),
         timezone: args.timezone,

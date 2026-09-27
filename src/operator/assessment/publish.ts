@@ -149,6 +149,8 @@ export async function publishOperationalAssessment(
 			: null;
 
 	const buildInput: AssessmentBuildInput = {
+		winterActive: (await readBool(host, "global.winter_operation_active")) === true,
+		batteryLive: { chargingPowerW: await readNum(host, BAT.telemetry.chargingPowerW), stale: (await readBool(host, BAT.telemetry.stale)) !== false },
 		now: input.now,
 		timezone: input.timezone,
 		plan: input.plan,
@@ -197,6 +199,7 @@ export async function publishOperationalAssessment(
 		},
 	};
 
+	if (buildInput.ev) buildInput.ev.sourceFresh = await readBool(host, "addons.wallbox.status.ev_foundation.ev_execution_source_fresh");
 	const assessment = buildOperationalAssessment(buildInput);
 	const outlook = buildOperatorOutlook72h({
 		now: input.now,
@@ -205,6 +208,14 @@ export async function publishOperationalAssessment(
 		plannerInput: input.plannerInput,
 	});
 	const writer = host as unknown as StateHost;
+	const todayBattery = outlook.days[0]?.battery;
+	if ((await readStr(host, "addons.battery.mode")) === "off") {
+		assessment.battery = { status: "off", text: "EMS-Batteriesteuerung aus; Eigenverbrauchsregelung der Batterie bleibt separat.", next: null };
+	} else if (todayBattery?.pvCoverageKnown && todayBattery.socAtPvEndPct != null && todayBattery.pvEndIso && Date.parse(todayBattery.pvEndIso) > input.now.getTime()) {
+		const clock = new Intl.DateTimeFormat("de-DE", { timeZone: input.timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(todayBattery.pvEndIso));
+		const grid = outlook.days[0].allocations.some(a => a.kind === "battery_charge" && a.energySource === "grid" && a.energyKwh > 0.01);
+		assessment.battery.next = `Voraussichtlich ${Math.round(todayBattery.socAtPvEndPct)} % bei PV-Ende um ${clock}. ${grid ? "Netzladung eingeplant." : "Keine Netzladung eingeplant; verfügbarer PV-Überschuss nach den übrigen Verbrauchern wird berücksichtigt."}`;
+	}
 	await setStateIfChanged(writer, OPERATOR_ASSESSMENT_JSON, JSON.stringify(assessment));
 	await setStateIfChanged(writer, OPERATOR_ASSESSMENT_DE, formatOperationalAssessmentDe(assessment));
 	await setStateIfChanged(writer, OPERATOR_OUTLOOK_72H_JSON, JSON.stringify(outlook));

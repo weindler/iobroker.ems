@@ -6,6 +6,35 @@ import { it } from "node:test";
 import { STATISTICS_STATES } from "./ensure_states.js";
 import { __resetStatisticsForTest, tickStatistics, type StatisticsHost } from "./tick.js";
 import { emptyDayRecord, emptyPersist, writeStatisticsPersist } from "./persist.js";
+import { readCurrentStatistics } from "./archive.js";
+
+it("carries real meter baselines across Berlin midnight and adapter restart", async () => {
+	const dir = await mkdtemp(join(tmpdir(), "ems-midnight-"));
+	const states = new Map<string, ioBroker.State>();
+	let meter = 100;
+	const host: StatisticsHost = {
+		config: { statistics_enabled: true, statistics_grid_import_energy_kwh_state: "meter.import" },
+		getAbsolutePath: (category = "") => join(dir, category),
+		getStateAsync: async id => states.get(id) ?? null,
+		getForeignStateAsync: async id => id === "meter.import" ? ({ val: meter } as ioBroker.State) : null,
+		setStateAsync: async (id, state) => { states.set(id, state as ioBroker.State); },
+	};
+	try {
+		__resetStatisticsForTest();
+		await tickStatistics(host, new Date("2026-09-26T21:59:30Z"));
+		meter = 100.1;
+		await tickStatistics(host, new Date("2026-09-26T22:00:30Z"));
+		let archive = await readCurrentStatistics(join(dir, "statistics"));
+		assert.equal(archive.days["2026-09-27"].home.gridImportKwh, 0.1);
+		assert.equal(archive.days["2026-09-27"].boundaryEstimated, true);
+		__resetStatisticsForTest();
+		meter = 100.2;
+		await tickStatistics(host, new Date("2026-09-26T22:01:30Z"));
+		archive = await readCurrentStatistics(join(dir, "statistics"));
+		assert.equal(archive.days["2026-09-27"].home.gridImportKwh, 0.2);
+		assert.equal(archive.days["2026-09-26"].home.gridImportKwh, 0);
+	} finally { __resetStatisticsForTest(); await rm(dir, { recursive: true, force: true }); }
+});
 
 it("berechnet Hausvergleich für alle auswählbaren Zeiträume aus gepaarten Tibber-Messwerten", async () => {
 	const dir = await mkdtemp(join(tmpdir(), "ems-stat-periods-"));

@@ -8,6 +8,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sumEnergeticDays = exports.reconcileEnergeticGridTruth = exports.buildEnergeticDayTotals = exports.fastChargeAttribution = void 0;
 const quality_mask_1 = require("../learning/day_telemetry/quality_mask");
+const energy_scopes_1 = require("../operator/daily_plan/unified/energy_scopes");
 function finite(value) {
     return value != null && Number.isFinite(value);
 }
@@ -408,7 +409,7 @@ function reconcileEnergeticGridTruth(energy, input) {
     const selfConsumptionKwh = finite(pv) && finite(gridExportKwh) ? round3(Math.max(0, Math.min(pv, pv - gridExportKwh))) : null;
     const autonomyGrid = finite(house) && finite(gridImportKwh) ? Math.min(house, gridImportKwh) : null;
     const autonomyNonGrid = finite(house) && finite(autonomyGrid) ? Math.max(0, house - autonomyGrid) : null;
-    const captureAfterDayStart = input.captureSinceIso != null && Date.parse(input.captureSinceIso) > Date.parse(`${energy.dateKey}T00:00:00Z`);
+    const captureAfterDayStart = input.captureSinceIso != null && Date.parse(input.captureSinceIso) > (0, energy_scopes_1.localDayBoundsMs)(energy.dateKey, "Europe/Berlin").startMs;
     const autonomyComparable = !captureAfterDayStart && finite(house) && finite(gridImportKwh) && gridImportKwh <= house + 0.002;
     const notes = energy.notesDe.filter((note) => !note.startsWith("Netzwerte:"));
     notes.push(input.captureSinceIso
@@ -504,6 +505,12 @@ function sumEnergeticDays(days, meta) {
     }
     return {
         ...meta,
+        coveragePct: (() => {
+            const first = (0, energy_scopes_1.localDayBoundsMs)(meta.fromKey, "Europe/Berlin").startMs;
+            const last = (0, energy_scopes_1.localDayBoundsMs)(meta.toKey, "Europe/Berlin").endMs;
+            const observed = available.reduce((sum, day) => { const bounds = (0, energy_scopes_1.localDayBoundsMs)(day.dateKey, "Europe/Berlin"); return sum + (bounds.endMs - bounds.startMs) * Math.max(0, Math.min(100, day.coveragePct)) / 100; }, 0);
+            return last > first ? round1(observed / (last - first) * 100) : 0;
+        })(),
         daysTotal: expectedDays,
         daysWithTelemetry: available.length,
         daysEvaluable: available.filter((day) => day.complete && day.evaluable).length,

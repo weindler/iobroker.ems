@@ -129,11 +129,13 @@ async function runLearningTick(
 	learningTickInFlight = true;
 	try {
 		const seasonalPause = isWinterOperationActive();
+		const heaterPaused = seasonalPause || (await host.getStateAsync("addons.immersion_heater.mode"))?.val === "off";
+		const climatePaused = seasonalPause || (await host.getStateAsync("addons.air_conditioning.mode"))?.val === "off";
 		/*
 		 * Boiler zuerst: Live-Diagnose darf nicht hinter PV-Bias/House-Load/90-Tage-Puffer-History
 		 * in der gemeinsamen History-Queue stecken bleiben.
 		 */
-		if (!seasonalPause) {
+		if (!heaterPaused) {
 			try {
 				await runThermalBoilerLearning(host, { trigger: trigger === "startup" ? "startup" : "learning_tick" });
 			} catch (e) {
@@ -147,7 +149,7 @@ async function runLearningTick(
 		await ensurePowerRollupForLearning(host);
 		// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
 		await runHouseLoadLearning(host);
-		if (!seasonalPause) await runThermalRuntimeLearning(host);
+		if (!heaterPaused) await runThermalRuntimeLearning(host);
 		await runBatteryRuntimeLearning(host);
 		try {
 			const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
@@ -182,7 +184,7 @@ async function runLearningTick(
 		 * schreibt ausschließlich in seine eigene Persistenz/States — keine Fremd-Writes, kein
 		 * Einfluss auf andere Learning-Module. Läuft im selben langsamen Lern-Intervall.
 		 */
-		if (!seasonalPause) {
+		if (!climatePaused) {
 			try {
 				await runClimateSharedPowerLearning(host as unknown as ClimateSharedPowerHost);
 			} catch (e) {
@@ -194,7 +196,7 @@ async function runLearningTick(
 		 * schreibt ausschließlich eigene Persistenz/States. Kein Einfluss auf
 		 * planCooling / Runtime / Unified / Shared-Power-Steuerung.
 		 */
-		if (!seasonalPause) {
+		if (!climatePaused) {
 			try {
 				await runClimateThermalLearning(host as unknown as ClimateThermalHost);
 			} catch (e) {

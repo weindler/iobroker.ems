@@ -41,7 +41,7 @@ async function initSeasonControl(host) {
         return;
     }
     const previous = boolValue((await host.getStateAsync(exports.WINTER_RUNTIME_STATE))?.val);
-    const source = boolValue((await host.getStateAsync(configuredStateId))?.val);
+    const source = boolValue((await (host.getForeignStateAsync ?? host.getStateAsync).call(host, configuredStateId).catch(() => null))?.val);
     // Bei einem Ausfall nie eigenmächtig umschalten. Existiert noch kein
     // bestätigter Wert, ist Pausieren der sichere Erstzustand.
     await publish(host, source === null ? (previous ?? true) : (invertSignal ? !source : source));

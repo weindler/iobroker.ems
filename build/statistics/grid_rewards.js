@@ -57,7 +57,7 @@ function netHomeGridCostEur(homeGridCostEur, rewardsCreditEur) {
         return null;
     if (rewardsCreditEur === null || !(rewardsCreditEur > 0))
         return homeGridCostEur;
-    return round2(Math.max(0, homeGridCostEur - Math.min(rewardsCreditEur, homeGridCostEur)));
+    return round2(homeGridCostEur - rewardsCreditEur);
 }
 exports.netHomeGridCostEur = netHomeGridCostEur;
 function resolveTodayGridRewards(input) {

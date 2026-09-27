@@ -32,7 +32,7 @@ function dailyBaseShareEur(monthlyEur, monthFraction) {
 exports.dailyBaseShareEur = dailyBaseShareEur;
 /** Tibber-Tageskosten: Live-Wert + anteilige Monatsgebühren (Grundpreis + Netzentgelt). */
 function tibberDayCostEur(input) {
-    if (input.accumulatedCostEur === null || !(input.accumulatedCostEur >= 0)) {
+    if (input.accumulatedCostEur === null || !Number.isFinite(input.accumulatedCostEur)) {
         return null;
     }
     const fees = dailyBaseShareEur(input.monthlyBaseEur, input.monthFraction) +
@@ -63,6 +63,8 @@ function energyCounterDeltaKwh(previous, current) {
         // Zähler-Reset / Tageszähler-Neustart
         return { deltaKwh: 0, newBaseline: current };
     }
+    if (current < previous)
+        return { deltaKwh: 0, newBaseline: previous };
     return { deltaKwh: round3(current - previous), newBaseline: current };
 }
 exports.energyCounterDeltaKwh = energyCounterDeltaKwh;
@@ -91,7 +93,7 @@ function integrateImportCostEur(input) {
         input.priceCtPerKwh === null ||
         !(input.dtSec > 0) ||
         !(input.importPowerW > 0) ||
-        !(input.priceCtPerKwh >= 0)) {
+        !Number.isFinite(input.priceCtPerKwh)) {
         return { costEur: 0, kwh: 0 };
     }
     const kwh = (input.importPowerW / 1000) * (input.dtSec / 3600);
@@ -329,19 +331,20 @@ function reconcileCurrentMonthWithToday(input) {
             : Math.max(0, throughToday.gridImportKwh - (tibberToday.gridImportKwh ?? 0));
         const historicalCost = throughToday.dynamicCostEur === null
             ? null
-            : Math.max(0, throughToday.dynamicCostEur - (tibberToday.dynamicCostEur ?? 0));
+            : throughToday.dynamicCostEur - (tibberToday.dynamicCostEur ?? 0);
         if (historicalKwh !== null) {
             gridImportKwh = round3(historicalKwh + Math.max(tibberToday.gridImportKwh ?? 0, input.todayGridImportKwh ?? 0));
         }
         if (historicalCost !== null) {
-            dynamicCostEur = round2(historicalCost + Math.max(tibberToday.dynamicCostEur ?? 0, input.todayDynamicCostEur ?? 0));
+            dynamicCostEur = round2(historicalCost + ((input.todayGridImportKwh ?? -1) >= (tibberToday.gridImportKwh ?? -1)
+                ? input.todayDynamicCostEur ?? tibberToday.dynamicCostEur ?? 0 : tibberToday.dynamicCostEur ?? input.todayDynamicCostEur ?? 0));
         }
     }
     if (input.todayGridImportKwh !== null) {
         gridImportKwh = round3(Math.max(gridImportKwh ?? 0, input.todayGridImportKwh));
     }
-    if (input.todayDynamicCostEur !== null) {
-        dynamicCostEur = round2(Math.max(dynamicCostEur ?? 0, input.todayDynamicCostEur));
+    if (input.todayDynamicCostEur !== null && dynamicCostEur === null) {
+        dynamicCostEur = round2(input.todayDynamicCostEur);
     }
     return { gridImportKwh, dynamicCostEur };
 }
@@ -488,7 +491,7 @@ function applyMobilityGridRewards(mob, rewards) {
     const chargeKwh = (mob.homePvKwh ?? 0) + (mob.homeGridKwh ?? 0) + (mob.publicInvoicedKwh ?? 0);
     let evTotalCostEur = mob.evTotalCostEur;
     if (parts.length > 0 || credit > 0) {
-        evTotalCostEur = round2(Math.max(0, parts.reduce((a, b) => a + b, 0) - credit));
+        evTotalCostEur = round2(parts.reduce((a, b) => a + b, 0) - credit);
     }
     if (chargeKwh <= 0 && !(mob.publicInvoicedEur ?? 0) && credit <= 0) {
         evTotalCostEur = mob.evTotalCostEur;
@@ -606,7 +609,7 @@ function sumMobilityDays(days, monthFinalize, monthGridRewards) {
         monthGridRewards.creditEur !== null) {
         const grossParts = [homePvCostEur, homeGridCostEur, publicInvoicedEur].filter((v) => v !== null);
         if (grossParts.length > 0 || monthGridRewards.creditEur > 0) {
-            evCost = round2(Math.max(0, grossParts.reduce((a, b) => a + b, 0) - monthGridRewards.creditEur));
+            evCost = round2(grossParts.reduce((a, b) => a + b, 0) - monthGridRewards.creditEur);
         }
     }
     const totalChargeKwh = (homePvKwh ?? 0) + (homeGridKwh ?? 0) + (publicInvoicedKwh ?? 0);
@@ -679,7 +682,7 @@ function mobilityDayEvCostEur(d) {
     const raw = parts.reduce((a, b) => a + b, 0) - rewardDeduct;
     if (mobilityDayChargeKwh(d) <= 0 && (d.publicInvoicedEur ?? 0) <= 0)
         return null;
-    return round2(Math.max(0, raw));
+    return round2(raw);
 }
 function mobilityDayEstimatedKm(d, evKwhPer100) {
     if (d.estimatedKm !== null)
@@ -720,7 +723,7 @@ function finalizeMobilityDayTotals(mob, input) {
     const rewardDeduct = (0, grid_rewards_1.gridRewardsIsSettled)(mob.gridRewardsSource) ? (mob.gridRewardsCreditEur ?? 0) : 0;
     const evCostRaw = (mob.homePvCostEur ?? 0) + (mob.homeGridCostEur ?? 0) + (mob.publicInvoicedEur ?? 0) - rewardDeduct;
     if (totalChargeKwh > 0 || (mob.publicInvoicedEur ?? 0) > 0) {
-        mob.evTotalCostEur = round2(Math.max(0, evCostRaw));
+        mob.evTotalCostEur = round2(evCostRaw);
     }
     else {
         mob.evTotalCostEur = null;

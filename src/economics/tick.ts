@@ -7,7 +7,8 @@
  */
 
 import { localDateKeyInTimezone } from "../operator/time";
-import { readStatisticsPersist, STATISTICS_PERSIST_CATEGORY } from "../statistics/persist";
+import { STATISTICS_PERSIST_CATEGORY } from "../statistics/persist";
+import { readCurrentStatistics } from "../statistics/archive";
 import {
 	clipPeriodRangeToStart,
 	dayKeysInRange,
@@ -63,7 +64,7 @@ export async function tickEconomics(host: EconomicsHost, now: Date = new Date())
 	const econDir = host.getAbsolutePath(ECONOMICS_PERSIST_CATEGORY);
 	const shadowDir = host.getAbsolutePath(SHADOW_ENGINE_RESULTS_CATEGORY);
 
-	const statsPersist = await readStatisticsPersist(statsDir);
+	const statsPersist = await readCurrentStatistics(statsDir);
 	let econPersist: EconomicsPersist = await readEconomicsPersist(econDir);
 	let dirty = false;
 

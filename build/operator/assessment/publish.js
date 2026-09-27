@@ -100,6 +100,8 @@ async function publishOperationalAssessment(host, input) {
         })
         : null;
     const buildInput = {
+        winterActive: (await readBool(host, "global.winter_operation_active")) === true,
+        batteryLive: { chargingPowerW: await readNum(host, ensure_states_1.BAT.telemetry.chargingPowerW), stale: (await readBool(host, ensure_states_1.BAT.telemetry.stale)) !== false },
         now: input.now,
         timezone: input.timezone,
         plan: input.plan,
@@ -146,6 +148,8 @@ async function publishOperationalAssessment(host, input) {
             charging: evCharging,
         },
     };
+    if (buildInput.ev)
+        buildInput.ev.sourceFresh = await readBool(host, "addons.wallbox.status.ev_foundation.ev_execution_source_fresh");
     const assessment = (0, build_1.buildOperationalAssessment)(buildInput);
     const outlook = (0, outlook_72h_1.buildOperatorOutlook72h)({
         now: input.now,
@@ -154,6 +158,15 @@ async function publishOperationalAssessment(host, input) {
         plannerInput: input.plannerInput,
     });
     const writer = host;
+    const todayBattery = outlook.days[0]?.battery;
+    if ((await readStr(host, "addons.battery.mode")) === "off") {
+        assessment.battery = { status: "off", text: "EMS-Batteriesteuerung aus; Eigenverbrauchsregelung der Batterie bleibt separat.", next: null };
+    }
+    else if (todayBattery?.pvCoverageKnown && todayBattery.socAtPvEndPct != null && todayBattery.pvEndIso && Date.parse(todayBattery.pvEndIso) > input.now.getTime()) {
+        const clock = new Intl.DateTimeFormat("de-DE", { timeZone: input.timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(todayBattery.pvEndIso));
+        const grid = outlook.days[0].allocations.some(a => a.kind === "battery_charge" && a.energySource === "grid" && a.energyKwh > 0.01);
+        assessment.battery.next = `Voraussichtlich ${Math.round(todayBattery.socAtPvEndPct)} % bei PV-Ende um ${clock}. ${grid ? "Netzladung eingeplant." : "Keine Netzladung eingeplant; verfügbarer PV-Überschuss nach den übrigen Verbrauchern wird berücksichtigt."}`;
+    }
     await (0, state_write_1.setStateIfChanged)(writer, exports.OPERATOR_ASSESSMENT_JSON, JSON.stringify(assessment));
     await (0, state_write_1.setStateIfChanged)(writer, exports.OPERATOR_ASSESSMENT_DE, (0, build_1.formatOperationalAssessmentDe)(assessment));
     await (0, state_write_1.setStateIfChanged)(writer, outlook_72h_1.OPERATOR_OUTLOOK_72H_JSON, JSON.stringify(outlook));

@@ -1,5 +1,8 @@
 import { asBool, asNum } from "../ems_light/state_util";
 import { statisticsConfigFromAdapter, type StatisticsAdminConfig } from "./config";
+import { openStatisticsArchive, commitStatisticsArchive } from "./archive";
+import { observeDay, meterComparison } from "./observations";
+import { STATISTICS_ENERGY_FIELDS, statisticsEnergyState } from "./ensure_states";
 import {
 	daysInMonth,
 	energyCounterDeltaKwh,
@@ -50,9 +53,7 @@ import {
 	emptyDayRecord,
 	emptyPersist,
 	emptyRuntime,
-	readStatisticsPersist,
 	STATISTICS_PERSIST_CATEGORY,
-	writeStatisticsPersist,
 } from "./persist";
 import {
 	applyPublicInvoice,
@@ -114,7 +115,7 @@ async function loadPersist(host: StatisticsHost): Promise<StatisticsPersist> {
 		persistCache = emptyPersist();
 		return persistCache;
 	}
-	persistCache = await readStatisticsPersist(dir);
+	persistCache = await openStatisticsArchive(dir);
 	return persistCache;
 }
 
@@ -122,7 +123,7 @@ async function flushPersist(host: StatisticsHost): Promise<void> {
 	if (!persistDirty || !persistCache) return;
 	const dir = baseDir(host);
 	if (!dir) return;
-	await writeStatisticsPersist(dir, persistCache);
+	await commitStatisticsArchive(persistCache);
 	persistDirty = false;
 }
 
@@ -344,7 +345,12 @@ async function syncEnergeticTelemetry(
 
 function rolloverRuntimeIfNeeded(persist: StatisticsPersist, dateKey: string): void {
 	if (persist.runtime.dateKey === dateKey) return;
+	const previous = persist.runtime;
 	persist.runtime = emptyRuntime(dateKey);
+	persist.runtime.gridImportEnergyBaselineKwh = previous.gridImportEnergyBaselineKwh;
+	persist.runtime.gridExportEnergyBaselineKwh = previous.gridExportEnergyBaselineKwh;
+	persist.runtime.meterCaptureSinceIso = previous.meterCaptureSinceIso;
+	ensureDay(persist, dateKey).boundaryEstimated = true;
 	persistDirty = true;
 }
 
@@ -446,7 +452,13 @@ async function handleAdjustSubmit(
 /**
  * Ein Statistik-Tick — nur Reporting. Keine Gerätewrites, kein Planner-Eingriff.
  */
-export async function tickStatistics(host: StatisticsHost, now: Date = new Date()): Promise<void> {
+let statisticsQueue: Promise<void> = Promise.resolve();
+export function tickStatistics(host: StatisticsHost, now: Date = new Date()): Promise<void> {
+	const next = statisticsQueue.then(() => tickStatisticsSerialized(host, now));
+	statisticsQueue = next.catch(() => undefined);
+	return next;
+}
+async function tickStatisticsSerialized(host: StatisticsHost, now: Date): Promise<void> {
 	const cfg = statisticsConfigFromAdapter(host.config);
 	const dateKey = localDateKey(now);
 	const persist = await loadPersist(host);
@@ -463,6 +475,8 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	}
 
 	const reasonsHome: string[] = [];
+	if (persist.archiveRecovery) reasonsHome.push("Statistik aus der letzten vollständig geprüften Archivgeneration wiederhergestellt; letzter unvollständiger Schreibstand wurde verworfen.");
+	if (persist.days[dateKey]?.boundaryEstimated) reasonsHome.push("Tagesgrenze zwischen zwei Zählerablesungen: Zuordnung am Tageswechsel vorläufig.");
 	const reasonsMob: string[] = [];
 	await syncEnergeticTelemetry(host, persist, dateKey, cfg.feedInCtPerKwh);
 	const day = ensureDay(persist, dateKey);
@@ -510,6 +524,9 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		readForeignBool(host, cfg.tibberGridRewardsActiveStateId),
 	]);
 	void rewardsActive;
+	const socState = await host.getStateAsync("live.battery.soc_pct");
+	const socFresh = socState?.ts != null && nowMs - socState.ts >= -30_000 && nowMs - socState.ts <= 120_000;
+	observeDay(day, now, socFresh ? asNum(socState?.val) : null, gridImportEnergy, gridExportEnergy);
 	void (await readForeignRaw(host, cfg.externalVehicleChargeStateId));
 	await setIfChanged(host, STATISTICS_STATES.meterLivePowerW, gridImportPowerW ?? (null as unknown as number));
 	await setIfChanged(host, STATISTICS_STATES.meterImport180Kwh, gridImportEnergy ?? (null as unknown as number));
@@ -541,6 +558,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		if (gridExportEnergy !== null && rt.meterCaptureSinceIso === null) rt.meterCaptureSinceIso = now.toISOString();
 		const d = energyCounterDeltaKwh(rt.gridExportEnergyBaselineKwh, gridExportEnergy);
 		rt.gridExportEnergyBaselineKwh = d.newBaseline;
+		if (d.newBaseline !== null && day.home.gridExportKwh === null) day.home.gridExportKwh = 0;
 		if (d.deltaKwh !== null && d.deltaKwh > 0) {
 			day.home.gridExportKwh =
 				Math.round(((day.home.gridExportKwh ?? 0) + d.deltaKwh) * 1000) / 1000;
@@ -554,7 +572,7 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 		dailyBaseShareEur(cfg.tibberMonthlyBaseEur, monthFrac) +
 		dailyBaseShareEur(cfg.tibberMonthlyGridFeeEur, monthFrac);
 	let dynamicFromTibber = false;
-	if (dynamicCostMapped !== null && dynamicCostMapped >= 0) {
+	if (dynamicCostMapped !== null) {
 		day.home.dynamicCostEur = tibberDayCostEur({
 			accumulatedCostEur: dynamicCostMapped,
 			monthlyBaseEur: cfg.tibberMonthlyBaseEur,
@@ -568,8 +586,8 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 			priceCtPerKwh: priceNowCt,
 			dtSec,
 		});
-		if (integ.costEur > 0 || rt.integratedDynamicCostEur > 0) {
-			if (integ.costEur > 0) {
+		if (integ.kwh > 0 || rt.integratedGridImportKwhFromPower > 0) {
+			if (integ.kwh > 0) {
 				rt.integratedDynamicCostEur += integ.costEur;
 				rt.integratedGridImportKwhFromPower += integ.kwh;
 			}
@@ -720,11 +738,10 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	const evCostRaw =
 		rt.homePvCostEur +
 		rt.homeGridCostEur +
-		invoiced.eur -
-		(rewardsMob.source !== "off" && rewardsMob.creditEur !== null ? rewardsMob.creditEur : 0);
+		invoiced.eur;
 	const evCost =
 		homeChargeKwh > 0 || invoiced.kwh > 0 || rewardsMob.creditEur !== null
-			? Math.round(Math.max(0, evCostRaw) * 100) / 100
+			? Math.round(evCostRaw * 100) / 100
 			: null;
 
 	day.mobility = applyMobilityGridRewards(
@@ -1168,15 +1185,21 @@ export async function tickStatistics(host: StatisticsHost, now: Date = new Date(
 	await setIfChanged(host, STATISTICS_STATES.lastRunAt, now.toISOString());
 	await setIfChanged(host, STATISTICS_STATES.configJson, JSON.stringify(safeCfg));
 	await setIfChanged(host, STATISTICS_STATES.periodOptionsJson, JSON.stringify(periodOptions));
-	await setIfChanged(host, STATISTICS_STATES.homeTodayJson, JSON.stringify(homeTodaySum));
+	await setIfChanged(host, STATISTICS_STATES.homeTodayJson, JSON.stringify({ ...homeTodaySum, meterComparison: meterComparison(persist, dateKey, dateKey, "today") }));
 	await setIfChanged(host, STATISTICS_STATES.homeMonthJson, JSON.stringify(homeMonthSum));
-	await setIfChanged(host, STATISTICS_STATES.homePeriodJson, JSON.stringify(homePeriodSum));
+	await setIfChanged(host, STATISTICS_STATES.homePeriodJson, JSON.stringify({ ...homePeriodSum, meterComparison: meterComparison(persist, periodMeta.fromKey, periodMeta.toKey, periodId) }));
 	await setIfChanged(host, STATISTICS_STATES.mobilityTodayJson, JSON.stringify(mobTodaySum));
 	await setIfChanged(host, STATISTICS_STATES.mobilityMonthJson, JSON.stringify(mobMonthSum));
 	await setIfChanged(host, STATISTICS_STATES.mobilityPeriodJson, JSON.stringify(mobPeriodSum));
-	await setIfChanged(host, STATISTICS_STATES.energyTodayJson, JSON.stringify(day.energy ?? null));
+	await setIfChanged(host, STATISTICS_STATES.energyTodayJson, JSON.stringify({ ...day.energy, batteryMinimum: day.batteryMinimum ?? null, boundaryEstimated: day.boundaryEstimated === true }));
 	await setIfChanged(host, STATISTICS_STATES.energyMonthJson, JSON.stringify(energyMonth));
 	await setIfChanged(host, STATISTICS_STATES.energyPeriodJson, JSON.stringify(energyPeriod));
+	for (const scope of ["today", "period"] as const) {
+		const energy = (scope === "today" ? day.energy : energyPeriod) as unknown as Record<string, unknown> | null;
+		for (const field of STATISTICS_ENERGY_FIELDS) await setIfChanged(host, statisticsEnergyState(scope, field), asNum(energy?.[field]));
+	}
+	await setIfChanged(host, "statistics.energy.today.battery_min_soc_pct", day.batteryMinimum?.socPct ?? null);
+	await setIfChanged(host, "statistics.energy.today.battery_min_at", day.batteryMinimum?.atIso ?? "");
 	await setIfChanged(host, STATISTICS_STATES.homeTodaySavingsEur, homeTodaySum.savingsVsFixedEur);
 	await setIfChanged(host, STATISTICS_STATES.homeMonthSavingsEur, homeMonthSum.savingsVsFixedEur);
 	await setIfChanged(host, STATISTICS_STATES.homePeriodSavingsEur, homePeriodSum.savingsVsFixedEur);

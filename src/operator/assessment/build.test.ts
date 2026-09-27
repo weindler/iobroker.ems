@@ -612,6 +612,17 @@ describe("buildOperationalAssessment", () => {
 		assert.doesNotMatch(active.ev.text, /kein Laden/);
 	});
 
+	it("winter and telemetry override speculative schedules", () => {
+		const winter = buildOperationalAssessment(base({ winterActive: true }));
+		assert.equal(winter.immersion.status, "off");
+		assert.match(winter.climate.text, /Heizsaison/);
+		const planned = base({ plan: emptyPlan([cell("battery_charge", "2026-09-03T11:00:00.000Z", "2026-09-03T11:15:00.000Z")]) });
+		assert.equal(buildOperationalAssessment(planned).battery.status, "planned");
+		assert.equal(buildOperationalAssessment({ ...planned, batteryLive: { chargingPowerW: 1200, stale: false } }).battery.status, "active");
+		assert.equal(buildOperationalAssessment({ ...planned, batteryLive: { chargingPowerW: 1200, stale: true } }).battery.status, "planned");
+		const rewards = buildOperationalAssessment(base({ ev: { charging: false, gridRewardsActive: true } }));
+		assert.equal(rewards.ev.status, "wait");
+	});
 	it("Nutzersprache ohne Entwicklerfelder", () => {
 		const de = formatOperationalAssessmentDe(buildOperationalAssessment(base()));
 		assert.match(de, /EMS-Einschätzung/);

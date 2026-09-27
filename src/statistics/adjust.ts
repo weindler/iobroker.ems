@@ -1,4 +1,5 @@
 import { asNum } from "../ems_light/state_util";
+import { removeStatisticsDay } from "./archive";
 import { emptyDayRecord, emptyPersist, emptyRuntime } from "./persist";
 import type { HomeDayTotals, MobilityDayTotals, StatisticsDayRecord, StatisticsPersist } from "./types";
 import { localDateKey } from "./compute";
@@ -157,7 +158,7 @@ function syncRuntimeMobility(
 }
 
 function resetDay(persist: StatisticsPersist, dateKey: string): void {
-	delete persist.days[dateKey];
+	removeStatisticsDay(persist, dateKey);
 	if (persist.runtime.dateKey === dateKey) {
 		persist.runtime = emptyRuntime(dateKey);
 	}
@@ -192,7 +193,7 @@ export function applyStatisticsAdjust(
 
 	if (submit.resetAll) {
 		const fresh = emptyPersist(now);
-		persist.days = fresh.days;
+		for (const key of Object.keys(persist.days)) removeStatisticsDay(persist, key);
 		persist.runtime = fresh.runtime;
 		persist.monthRewardsBilling = fresh.monthRewardsBilling;
 		persist.generatedAt = fresh.generatedAt;
@@ -207,7 +208,7 @@ export function applyStatisticsAdjust(
 		const prefix = monthPrefix(dateKey);
 		for (const key of Object.keys(persist.days)) {
 			if (key.startsWith(prefix)) {
-				delete persist.days[key];
+				removeStatisticsDay(persist, key);
 			}
 		}
 		if (persist.runtime.dateKey.startsWith(prefix)) {

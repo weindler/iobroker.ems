@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StatisticsArchive = exports.STATISTICS_INDEX_FILE = void 0;
+exports.exportStatisticsArchive = exports.readCurrentStatistics = exports.removeStatisticsDay = exports.commitStatisticsArchive = exports.openStatisticsArchive = exports.StatisticsArchive = exports.STATISTICS_INDEX_FILE = void 0;
 /** Monthly, content-addressed accounting archive. Index activation is the commit point.
  * Old generations are deliberately retained: an interrupted write cannot damage them.
  * Only explicitly requested months enter the working cache; no date-specific states.
@@ -11,6 +11,7 @@ const promises_1 = require("node:fs/promises");
 const node_path_1 = require("node:path");
 const persist_1 = require("./persist");
 exports.STATISTICS_INDEX_FILE = "statistics_index_v2.json";
+const archives = new WeakMap();
 const digest = (raw) => (0, node_crypto_1.createHash)("sha256").update(raw).digest("hex");
 const missing = (error) => error?.code === "ENOENT";
 const monthPath = (dir, month, hash) => (0, node_path_1.join)(dir, "months", `${month}-${hash}.json`);
@@ -42,12 +43,14 @@ function readMonth(dir, month, ref) {
 class StatisticsArchive {
     dir;
     index;
+    committed;
     cache = new Map();
     keys = new Set();
     data;
-    constructor(dir, index) {
+    constructor(dir, index, committed = false) {
         this.dir = dir;
         this.index = index;
+        this.committed = committed;
         for (const ref of Object.values(index.months))
             for (const key of ref.keys)
                 this.keys.add(key);
@@ -68,6 +71,7 @@ class StatisticsArchive {
         });
         this.data = { version: 1, generatedAt: index.generatedAt, days,
             runtime: structuredClone(index.runtime), monthRewardsBilling: structuredClone(index.monthRewardsBilling) };
+        archives.set(this.data, this);
     }
     month(key) {
         let days = this.cache.get(key);
@@ -103,21 +107,25 @@ class StatisticsArchive {
         }
         const raw = JSON.stringify({ payload: next, sha256: digest(JSON.stringify(next)) });
         const path = (0, node_path_1.join)(this.dir, exports.STATISTICS_INDEX_FILE);
-        try {
-            const previous = await (0, promises_1.readFile)(path, "utf8");
-            decodeIndex(previous);
+        if (this.committed) {
+            const previous = JSON.stringify({ payload: this.index, sha256: digest(JSON.stringify(this.index)) });
             await (0, persist_1.atomicStatisticsWrite)(`${path}.bak`, previous);
         }
-        catch (error) {
-            if (!missing(error))
-                throw error;
-        }
         await (0, persist_1.atomicStatisticsWrite)(path, raw);
+        const retained = new Set([...Object.entries(this.index.months), ...Object.entries(next.months)]
+            .map(([month, ref]) => `${month}-${ref.sha256}.json`));
         this.index = next;
+        this.committed = true;
         this.data.generatedAt = next.generatedAt;
         for (const month of this.cache.keys())
             if (month !== this.data.runtime.dateKey.slice(0, 7))
                 this.cache.delete(month);
+        // Retain the current and preceding committed generations, never delete logical history.
+        for (const file of await (0, promises_1.readdir)((0, node_path_1.join)(this.dir, "months"))) {
+            if (/^\d{4}-\d{2}-[a-f0-9]{64}\.json$/.test(file) && !retained.has(file)) {
+                await (0, promises_1.unlink)((0, node_path_1.join)(this.dir, "months", file)).catch(() => undefined);
+            }
+        }
     }
     static async open(dir) {
         try {
@@ -125,11 +133,28 @@ class StatisticsArchive {
             // Check all referenced generations, one month at a time, without retaining history in RAM.
             for (const [month, ref] of Object.entries(index.months))
                 readMonth(dir, month, ref);
-            return new StatisticsArchive(dir, index);
+            return new StatisticsArchive(dir, index, true);
         }
         catch (error) {
-            if (!missing(error))
+            if (error instanceof Error && error.message.startsWith("Unsupported statistics index version"))
                 throw error;
+            let backupPresent = false;
+            try {
+                const backupRaw = await (0, promises_1.readFile)((0, node_path_1.join)(dir, `${exports.STATISTICS_INDEX_FILE}.bak`), "utf8");
+                backupPresent = true;
+                const backup = decodeIndex(backupRaw);
+                for (const [month, ref] of Object.entries(backup.months))
+                    readMonth(dir, month, ref);
+                const archive = new StatisticsArchive(dir, backup, true);
+                archive.data.archiveRecovery = true;
+                return archive;
+            }
+            catch (backupError) {
+                if (backupPresent)
+                    throw backupError;
+                if (!missing(backupError) || !missing(error))
+                    throw error;
+            }
             // A missing referenced month must never be mistaken for an absent index.
             try {
                 await (0, promises_1.readFile)((0, node_path_1.join)(dir, exports.STATISTICS_INDEX_FILE));
@@ -172,3 +197,96 @@ class StatisticsArchive {
     }
 }
 exports.StatisticsArchive = StatisticsArchive;
+async function activeDirectory(dir) {
+    let raw;
+    try {
+        raw = await (0, promises_1.readFile)((0, node_path_1.join)(dir, "statistics_restore_v1.json"), "utf8");
+    }
+    catch (error) {
+        if (missing(error))
+            return dir;
+        throw error;
+    }
+    (0, persist_1.decodeStatistics)(raw);
+    const restored = (0, node_path_1.join)(dir, "restores", digest(raw));
+    await (0, promises_1.mkdir)(restored, { recursive: true });
+    try {
+        await (0, promises_1.writeFile)((0, node_path_1.join)(restored, persist_1.STATISTICS_PERSIST_FILE), raw, { flag: "wx", mode: 0o600 });
+    }
+    catch (error) {
+        if (error.code !== "EEXIST")
+            throw error;
+    }
+    return restored;
+}
+async function openStatisticsArchive(dir) {
+    return (await StatisticsArchive.open(await activeDirectory(dir))).data;
+}
+exports.openStatisticsArchive = openStatisticsArchive;
+async function commitStatisticsArchive(data) {
+    const archive = archives.get(data);
+    if (!archive)
+        throw new Error("Statistics archive not attached");
+    await archive.commit();
+}
+exports.commitStatisticsArchive = commitStatisticsArchive;
+function removeStatisticsDay(data, key) {
+    const archive = archives.get(data);
+    if (archive)
+        archive.removeDay(key);
+    else
+        delete data.days[key];
+}
+exports.removeStatisticsDay = removeStatisticsDay;
+/** Secondary readers never migrate or write the active accounting archive. */
+async function readCurrentStatistics(dir) {
+    const active = await activeDirectory(dir);
+    try {
+        await (0, promises_1.readFile)((0, node_path_1.join)(active, exports.STATISTICS_INDEX_FILE));
+    }
+    catch (error) {
+        if (!missing(error))
+            throw error;
+        try {
+            await (0, promises_1.readFile)((0, node_path_1.join)(active, `${exports.STATISTICS_INDEX_FILE}.bak`));
+        }
+        catch (backupError) {
+            if (missing(backupError))
+                return (0, persist_1.readStatisticsPersist)(active);
+            throw backupError;
+        }
+    }
+    return (await StatisticsArchive.open(active)).data;
+}
+exports.readCurrentStatistics = readCurrentStatistics;
+async function exportStatisticsArchive(dir, maxBytes) {
+    let exists = false;
+    for (const file of [persist_1.STATISTICS_PERSIST_FILE, exports.STATISTICS_INDEX_FILE, "statistics_restore_v1.json"]) {
+        try {
+            await (0, promises_1.readFile)((0, node_path_1.join)(dir, file));
+            exists = true;
+            break;
+        }
+        catch (error) {
+            if (!missing(error))
+                throw error;
+        }
+    }
+    if (!exists)
+        return null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const data = await readCurrentStatistics(dir);
+            const raw = JSON.stringify(data);
+            if (Buffer.byteLength(raw) > maxBytes)
+                throw new Error("Statistics archive too large for this export; use full instance backup");
+            return (0, persist_1.decodeStatistics)(raw);
+        }
+        catch (error) {
+            if (attempt === 2)
+                throw error;
+        }
+    }
+    throw new Error("Statistics export failed");
+}
+exports.exportStatisticsArchive = exportStatisticsArchive;

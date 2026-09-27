@@ -160,6 +160,8 @@ async function snapshotHost(host) {
     };
 }
 async function writeLearning(host, key, data) {
+    if (key === "statistics_v1.json")
+        data = { ...data, version: 1, days: {}, monthRewardsBilling: {} };
     const target = learning_map_js_1.RESTORE_LEARNING_TARGETS[key];
     const base = (0, data_dir_js_1.learningDataPath)(host, target.category);
     await fs.mkdir(base, { recursive: true });
@@ -581,7 +583,7 @@ async function assertNoDeviceWritesDuring(fn) {
             strict_1.default.ok(!paths.has(rel), `duplicate target for ${key}`);
             paths.add(rel);
         }
-        strict_1.default.equal(paths.size, 13);
+        strict_1.default.equal(paths.size, 14);
     });
     (0, node_test_1.it)("writes only to fixed targets and preserves unknown neighbor files", async () => {
         const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "ems-restore-learn-"));

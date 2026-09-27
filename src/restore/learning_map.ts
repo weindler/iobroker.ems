@@ -1,6 +1,7 @@
 /** Feste Mappingtabelle Backup-Key → Learning-Ziel (kein freier Pfad aus JSON). */
 
 export const RESTORE_LEARNING_TARGETS: Readonly<Record<string, { category: string; fileName: string }>> = {
+	"statistics_v1.json": { category: "statistics", fileName: "statistics_restore_v1.json" },
 	"battery_runtime_learning_v1.json": { category: "learning/battery_runtime", fileName: "battery_runtime_learning_v1.json" },
 	"house_load_learning_v1.json": { category: "learning/house_load", fileName: "house_load_learning_v1.json" },
 	"thermal_runtime_learning_v1.json": { category: "learning/thermal_runtime", fileName: "thermal_runtime_learning_v1.json" },

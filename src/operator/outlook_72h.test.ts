@@ -7,6 +7,19 @@ import { buildOperatorOutlook72h, formatOperatorOutlook72hDe } from "./outlook_7
 
 const NOW = new Date("2026-09-03T00:00:00.000Z");
 
+it("counts only the remaining quarter, marks clipped days and retains independent full-day PV", () => {
+	const input = input80h();
+	const plan = allocateUnifiedDayPlan(input);
+	const outlook = buildOperatorOutlook72h({ now: new Date("2026-09-03T00:07:30Z"), timezone: "UTC", plan, plannerInput: input });
+	assert.equal(outlook.days[0].expectedPvKwh, 23.875);
+	assert.equal(outlook.days[0].expectedFullDayPvKwh, 24);
+	assert.equal(outlook.days[0].partialDay, true);
+	assert.equal(outlook.days[1].partialDay, false);
+	assert.equal(outlook.days.at(-1)?.partialDay, true);
+	assert.ok(outlook.days[0].priceSlots?.length);
+	assert.ok(outlook.decisions.every(d => d.state !== "active"));
+});
+
 function input80h(withMissingPv = false): UnifiedDayPlannerInput {
 	const base = golden001Input();
 	const slots = buildSlots(NOW.toISOString(), 80);

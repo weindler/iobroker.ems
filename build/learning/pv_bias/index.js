@@ -106,11 +106,13 @@ async function runLearningTick(host, trigger = "interval") {
     learningTickInFlight = true;
     try {
         const seasonalPause = (0, season_control_1.isWinterOperationActive)();
+        const heaterPaused = seasonalPause || (await host.getStateAsync("addons.immersion_heater.mode"))?.val === "off";
+        const climatePaused = seasonalPause || (await host.getStateAsync("addons.air_conditioning.mode"))?.val === "off";
         /*
          * Boiler zuerst: Live-Diagnose darf nicht hinter PV-Bias/House-Load/90-Tage-Puffer-History
          * in der gemeinsamen History-Queue stecken bleiben.
          */
-        if (!seasonalPause) {
+        if (!heaterPaused) {
             try {
                 await (0, thermal_boiler_1.runThermalBoilerLearning)(host, { trigger: trigger === "startup" ? "startup" : "learning_tick" });
             }
@@ -125,7 +127,7 @@ async function runLearningTick(host, trigger = "interval") {
         await (0, power_rollup_1.ensurePowerRollupForLearning)(host);
         // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
         await (0, house_load_1.runHouseLoadLearning)(host);
-        if (!seasonalPause)
+        if (!heaterPaused)
             await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
         await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
         try {
@@ -164,7 +166,7 @@ async function runLearningTick(host, trigger = "interval") {
          * schreibt ausschließlich in seine eigene Persistenz/States — keine Fremd-Writes, kein
          * Einfluss auf andere Learning-Module. Läuft im selben langsamen Lern-Intervall.
          */
-        if (!seasonalPause) {
+        if (!climatePaused) {
             try {
                 await (0, climate_shared_power_1.runClimateSharedPowerLearning)(host);
             }
@@ -177,7 +179,7 @@ async function runLearningTick(host, trigger = "interval") {
          * schreibt ausschließlich eigene Persistenz/States. Kein Einfluss auf
          * planCooling / Runtime / Unified / Shared-Power-Steuerung.
          */
-        if (!seasonalPause) {
+        if (!climatePaused) {
             try {
                 await (0, climate_thermal_1.runClimateThermalLearning)(host);
             }

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.applyStatisticsAdjust = exports.parseStatisticsAdjustSubmit = void 0;
 const state_util_1 = require("../ems_light/state_util");
+const archive_1 = require("./archive");
 const persist_1 = require("./persist");
 const compute_1 = require("./compute");
 function parseDateKey(raw) {
@@ -120,7 +121,7 @@ function syncRuntimeMobility(persist, patch) {
     rt.wallboxSessionEnergyBaselineKwh = null;
 }
 function resetDay(persist, dateKey) {
-    delete persist.days[dateKey];
+    (0, archive_1.removeStatisticsDay)(persist, dateKey);
     if (persist.runtime.dateKey === dateKey) {
         persist.runtime = (0, persist_1.emptyRuntime)(dateKey);
     }
@@ -148,7 +149,8 @@ function applyStatisticsAdjust(persist, submit, now) {
     }
     if (submit.resetAll) {
         const fresh = (0, persist_1.emptyPersist)(now);
-        persist.days = fresh.days;
+        for (const key of Object.keys(persist.days))
+            (0, archive_1.removeStatisticsDay)(persist, key);
         persist.runtime = fresh.runtime;
         persist.monthRewardsBilling = fresh.monthRewardsBilling;
         persist.generatedAt = fresh.generatedAt;
@@ -162,7 +164,7 @@ function applyStatisticsAdjust(persist, submit, now) {
         const prefix = monthPrefix(dateKey);
         for (const key of Object.keys(persist.days)) {
             if (key.startsWith(prefix)) {
-                delete persist.days[key];
+                (0, archive_1.removeStatisticsDay)(persist, key);
             }
         }
         if (persist.runtime.dateKey.startsWith(prefix)) {

@@ -57,7 +57,7 @@ function wallboxLabelDe(s) {
         case "scheduled":
             return "Ladung geplant";
         case "charging":
-            return "Ladung aktiv (Plan)";
+            return "Aktuelles Ladefenster geplant";
         case "goal_satisfied":
             return "Ziel erreicht";
         default:
@@ -161,8 +161,8 @@ function deriveWallboxStrategicStatus(input) {
     let status;
     let reasonDe;
     if (current) {
-        status = "charging";
-        reasonDe = "Unified alloziert aktuell Fahrzeugladung.";
+        status = "scheduled";
+        reasonDe = "Aktuelles Ladefenster geplant; tatsächliche Ladung wird separat gemessen.";
     }
     else if (goal?.met === true && !any) {
         status = "goal_satisfied";
@@ -199,13 +199,11 @@ function deriveWallboxStrategicStatus(input) {
         ? `${labelDe} · kein Ladeplan erforderlich`
         : status === "scheduled"
             ? `${labelDe}${deadline ? " · Ziel/Deadline gesetzt" : ""}`
-            : status === "charging"
+            : status === "goal_satisfied"
                 ? `${labelDe}`
-                : status === "goal_satisfied"
+                : status === "waiting_for_goal"
                     ? `${labelDe}`
-                    : status === "waiting_for_goal"
-                        ? `${labelDe}`
-                        : labelDe;
+                    : labelDe;
     return {
         status,
         labelDe,

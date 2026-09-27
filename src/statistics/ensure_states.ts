@@ -2,6 +2,10 @@ import { ensureChannel, ensureStates, type StateHost } from "../ems_light/state_
 import { STATISTICS_FLAT, type HomeFlatIds, type MobilityFlatIds } from "./flat_states";
 
 export const STATISTICS_BASE = "statistics";
+export const STATISTICS_ENERGY_FIELDS = ["pvGenerationKwh", "houseConsumptionKwh", "gridImportKwh", "gridExportKwh", "selfConsumptionKwh", "autonomyPct", "batteryChargedKwh", "batteryDischargedKwh", "evChargedKwh", "evPvKwh", "immersionEnergyKwh", "climateEnergyKwh", "batteryPvSharePct", "selfConsumptionPct", "batteryMeasuredLossKwh"] as const;
+export function statisticsEnergyState(scope: "today" | "period", field: string): string {
+	return `statistics.energy.${scope}.${field.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`)}`;
+}
 
 export const STATISTICS_STATES = {
 	enabled: `${STATISTICS_BASE}.enabled`,
@@ -120,6 +124,10 @@ function mobilityFlatStates(ids: MobilityFlatIds, scopeDe: string) {
 }
 
 export async function ensureStatisticsStateTree(host: StateHost): Promise<void> {
+	await ensureChannel(host, "statistics.energy.today", "Energiebilanz heute");
+	await ensureChannel(host, "statistics.energy.period", "Energiebilanz gewählter Zeitraum");
+	await ensureStates(host, (["today", "period"] as const).flatMap(scope => STATISTICS_ENERGY_FIELDS.map(field => numState(statisticsEnergyState(scope, field), `Energie ${scope === "today" ? "heute" : "Zeitraum"}: ${field}`, field.endsWith("Pct") ? "%" : "kWh"))));
+	await ensureStates(host, [numState("statistics.energy.today.battery_min_soc_pct", "Gemessener Batterie-Tiefststand heute", "%"), strState("statistics.energy.today.battery_min_at", "Zeitpunkt des gemessenen Batterie-Tiefststands")]);
 	await ensureChannel(host, STATISTICS_BASE, "EMS-Light Statistik (Reporting)");
 	await ensureChannel(host, `${STATISTICS_BASE}.home`, "Statistik Haus / Tarifvergleich");
 	await ensureChannel(host, `${STATISTICS_BASE}.home.today`, "Haus heute (flache States)");

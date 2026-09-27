@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.23",
+		"version": "0.4.24",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": [],
 		"protectedNative": [],
 		"news": {
+			"0.4.24": {
+				"en": "Adds a verified monthly statistics archive with backup/restore integration, persistent meter readings and daily SOC minima. Distinguishes schedules from measured charging, respects winter/off/external control in displays, and improves compact statistics and rolling forecasts.",
+				"de": "Prüfsummengesichertes Monatsarchiv mit Backup/Restore, gespeicherten Zählerständen und täglichem SOC-Tiefststand. Anzeige trennt Plan und gemessene Ladung, berücksichtigt Winter/Aus/Fremdsteuerung und zeigt kompaktere Statistiken sowie zeitlich korrekte Restprognosen."
+			},
 			"0.4.23": {
 				"en": "Restores older EMS charging-day totals in August and retains measured charging runs even when historical price or PV data is incomplete; unknown costs remain unset.",
 				"de": "Zeigt ältere EMS-Ladetage aus dem August wieder an und erhält gemessene Ladeabschnitte auch bei lückenhaften historischen Preis- oder PV-Daten; unbekannte Kosten bleiben offen."

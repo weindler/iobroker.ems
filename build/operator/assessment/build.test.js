@@ -528,6 +528,17 @@ function base(over = {}) {
         strict_1.default.match(active.ev.text, /lädt aktuell/);
         strict_1.default.doesNotMatch(active.ev.text, /kein Laden/);
     });
+    (0, node_test_1.it)("winter and telemetry override speculative schedules", () => {
+        const winter = (0, build_1.buildOperationalAssessment)(base({ winterActive: true }));
+        strict_1.default.equal(winter.immersion.status, "off");
+        strict_1.default.match(winter.climate.text, /Heizsaison/);
+        const planned = base({ plan: emptyPlan([cell("battery_charge", "2026-09-03T11:00:00.000Z", "2026-09-03T11:15:00.000Z")]) });
+        strict_1.default.equal((0, build_1.buildOperationalAssessment)(planned).battery.status, "planned");
+        strict_1.default.equal((0, build_1.buildOperationalAssessment)({ ...planned, batteryLive: { chargingPowerW: 1200, stale: false } }).battery.status, "active");
+        strict_1.default.equal((0, build_1.buildOperationalAssessment)({ ...planned, batteryLive: { chargingPowerW: 1200, stale: true } }).battery.status, "planned");
+        const rewards = (0, build_1.buildOperationalAssessment)(base({ ev: { charging: false, gridRewardsActive: true } }));
+        strict_1.default.equal(rewards.ev.status, "wait");
+    });
     (0, node_test_1.it)("Nutzersprache ohne Entwicklerfelder", () => {
         const de = (0, build_1.formatOperationalAssessmentDe)((0, build_1.buildOperationalAssessment)(base()));
         strict_1.default.match(de, /EMS-Einschätzung/);

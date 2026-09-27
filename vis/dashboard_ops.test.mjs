@@ -942,7 +942,7 @@ describe("VIS battery / grid / GB presentation", () => {
 				chargingNow: true,
 				emsChargeAction: false,
 			}),
-			["Batterie 84 % → Plan 100 % · noch 3,2 kWh bis 100 %", "Kein Ladebedarf · SOC 84 %", "lädt gerade ohne EMS-Fenster"],
+			["Batterie 84 % → Plan 100 % · noch 3,2 kWh bis 100 %", "Kein Ladebedarf · SOC 84 %", "Batterie lädt über die Eigenverbrauchsregelung"],
 		);
 		assert.deepEqual(
 			ops.visCarDayLines({ connected: false, socPct: 86, targetSocPct: 90, strategyDe: "Wartet auf Fahrzeug · kein Ladeplan erforderlich" }),

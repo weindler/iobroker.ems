@@ -5,7 +5,7 @@ let invertSignal = false;
 
 export const WINTER_RUNTIME_STATE = "global.winter_operation_active";
 
-type Host = Pick<ioBroker.Adapter, "config" | "getStateAsync" | "setStateAsync" | "setObjectNotExistsAsync" | "subscribeForeignStatesAsync" | "log">;
+type Host = Pick<ioBroker.Adapter, "config" | "getStateAsync" | "setStateAsync" | "setObjectNotExistsAsync" | "subscribeForeignStatesAsync" | "log"> & Partial<Pick<ioBroker.Adapter, "getForeignStateAsync">>;
 
 function config(host: Host): Record<string, unknown> {
 	return host.config as unknown as Record<string, unknown>;
@@ -43,7 +43,7 @@ export async function initSeasonControl(host: Host): Promise<void> {
 		return;
 	}
 	const previous = boolValue((await host.getStateAsync(WINTER_RUNTIME_STATE))?.val);
-	const source = boolValue((await host.getStateAsync(configuredStateId))?.val);
+	const source = boolValue((await (host.getForeignStateAsync ?? host.getStateAsync).call(host, configuredStateId).catch(() => null))?.val);
 	// Bei einem Ausfall nie eigenmächtig umschalten. Existiert noch kein
 	// bestätigter Wert, ist Pausieren der sichere Erstzustand.
 	await publish(host, source === null ? (previous ?? true) : (invertSignal ? !source : source));

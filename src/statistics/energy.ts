@@ -8,6 +8,7 @@
 import { DOMAIN_QUALITY, TELEMETRY_DOMAIN, decodeDomainQuality } from "../learning/day_telemetry/quality_mask";
 import type { DayTelemetryDayRecord } from "../learning/day_telemetry/types";
 import type { EnergeticDayTotals, EnergeticPeriodSummary } from "./types";
+import { localDayBoundsMs } from "../operator/daily_plan/unified/energy_scopes";
 
 function finite(value: number | null | undefined): value is number {
 	return value != null && Number.isFinite(value);
@@ -439,7 +440,7 @@ export function reconcileEnergeticGridTruth(
 	const selfConsumptionKwh = finite(pv) && finite(gridExportKwh) ? round3(Math.max(0, Math.min(pv, pv - gridExportKwh))) : null;
 	const autonomyGrid = finite(house) && finite(gridImportKwh) ? Math.min(house, gridImportKwh) : null;
 	const autonomyNonGrid = finite(house) && finite(autonomyGrid) ? Math.max(0, house - autonomyGrid) : null;
-	const captureAfterDayStart = input.captureSinceIso != null && Date.parse(input.captureSinceIso) > Date.parse(`${energy.dateKey}T00:00:00Z`);
+	const captureAfterDayStart = input.captureSinceIso != null && Date.parse(input.captureSinceIso) > localDayBoundsMs(energy.dateKey, "Europe/Berlin").startMs;
 	const autonomyComparable = !captureAfterDayStart && finite(house) && finite(gridImportKwh) && gridImportKwh <= house + 0.002;
 	const notes = energy.notesDe.filter((note) => !note.startsWith("Netzwerte:"));
 	notes.push(input.captureSinceIso
@@ -545,6 +546,12 @@ export function sumEnergeticDays(
 
 	return {
 		...meta,
+		coveragePct: (() => {
+			const first = localDayBoundsMs(meta.fromKey, "Europe/Berlin").startMs;
+			const last = localDayBoundsMs(meta.toKey, "Europe/Berlin").endMs;
+			const observed = available.reduce((sum, day) => { const bounds = localDayBoundsMs(day.dateKey, "Europe/Berlin"); return sum + (bounds.endMs - bounds.startMs) * Math.max(0, Math.min(100, day.coveragePct)) / 100; }, 0);
+			return last > first ? round1(observed / (last - first) * 100) : 0;
+		})(),
 		daysTotal: expectedDays,
 		daysWithTelemetry: available.length,
 		daysEvaluable: available.filter((day) => day.complete && day.evaluable).length,

@@ -9,6 +9,18 @@ const allocate_1 = require("./daily_plan/unified/allocate");
 const fixtures_1 = require("./daily_plan/unified/fixtures");
 const outlook_72h_1 = require("./outlook_72h");
 const NOW = new Date("2026-09-03T00:00:00.000Z");
+(0, node_test_1.it)("counts only the remaining quarter, marks clipped days and retains independent full-day PV", () => {
+    const input = input80h();
+    const plan = (0, allocate_1.allocateUnifiedDayPlan)(input);
+    const outlook = (0, outlook_72h_1.buildOperatorOutlook72h)({ now: new Date("2026-09-03T00:07:30Z"), timezone: "UTC", plan, plannerInput: input });
+    strict_1.default.equal(outlook.days[0].expectedPvKwh, 23.875);
+    strict_1.default.equal(outlook.days[0].expectedFullDayPvKwh, 24);
+    strict_1.default.equal(outlook.days[0].partialDay, true);
+    strict_1.default.equal(outlook.days[1].partialDay, false);
+    strict_1.default.equal(outlook.days.at(-1)?.partialDay, true);
+    strict_1.default.ok(outlook.days[0].priceSlots?.length);
+    strict_1.default.ok(outlook.decisions.every(d => d.state !== "active"));
+});
 function input80h(withMissingPv = false) {
     const base = (0, fixtures_1.golden001Input)();
     const slots = (0, fixtures_1.buildSlots)(NOW.toISOString(), 80);

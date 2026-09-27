@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.25] – 2026-09-27
+
+### Fixed
+
+- Vollständige Sicherungen erlauben wachsende Learning- und Statistikdaten bis 8 MiB je Datei. Die Statistik liegt nur noch in `selected_state_data.json`, damit das Backup die Historie nicht doppelt speichert. Das Gesamtsicherungslimit beträgt 32 MiB; Wiederherstellung prüft dieselben Grenzen.
+
 ## [0.4.24] – 2026-09-27
 
 ### Changed

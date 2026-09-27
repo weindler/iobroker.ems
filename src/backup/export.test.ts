@@ -434,6 +434,21 @@ describe("backup export v0.1.141", () => {
 		]);
 	});
 
+	it("exports and validates a growing learning file beyond the old 2 MiB limit", async () => {
+		const { validateRestoreArchiveBuffer } = await import("../restore/validate_archive.js");
+		const dir = path.join(tmp, "learning/energy_daily_rollup");
+		await fs.mkdir(dir, { recursive: true });
+		await fs.writeFile(path.join(dir, "energy_daily_v1.json"), JSON.stringify({
+			rows: Array.from({ length: 5000 }, (_, i) => `${i}:` + "x".repeat(435)),
+		}));
+		const result = await runBackupExport(new ExportTestHost(tmp));
+		assert.equal(result.ok, true, result.ok ? undefined : result.error);
+		if (!result.ok) return;
+		const archive = validateRestoreArchiveBuffer(await fs.readFile(result.filePath));
+		const selected = JSON.parse(archive.payloadMap.get("persistence/selected_state_data.json")!.toString("utf8"));
+		assert.equal(selected["energy_daily_v1.json"].rows.length, 5000);
+	});
+
 	it("excludes active runtime state from restore files", async () => {
 		const cfg = {
 			global_execution_mode: "live",
@@ -638,7 +653,7 @@ describe("export trigger completion", () => {
 		await fs.mkdir(path.join(tmp, "learning/battery_runtime"), { recursive: true });
 		await fs.writeFile(
 			path.join(tmp, "learning/battery_runtime", "battery_runtime_learning_v1.json"),
-			"x".repeat(3 * 1024 * 1024),
+			"x".repeat(9 * 1024 * 1024),
 		);
 		await handleBackupExportRequest(host, true, false);
 		const trig = await host.getStateAsync(BACKUP_STATES.exportRequest);

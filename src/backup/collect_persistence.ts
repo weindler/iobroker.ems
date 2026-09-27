@@ -82,10 +82,10 @@ export async function collectLearningPersistence(host: ExportServiceHost): Promi
 
 	const adapter = host as ioBroker.Adapter;
 	for (const art of LEARNING_FILE_ARTIFACTS) {
+		// Statistics is restored from selected_state_data.json; avoid duplicating the growing history.
+		if (art.category === "statistics") continue;
 		const base = learningDataPath(adapter, art.category);
-		const parsed = art.category === "statistics"
-			? await exportStatisticsArchive(base, EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES)
-			: await readJsonFileSafe(path.join(base, art.fileName), EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
+		const parsed = await readJsonFileSafe(path.join(base, art.fileName), EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
 		if (parsed != null) {
 			out.files[art.fileName] = parsed;
 		}

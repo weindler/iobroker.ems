@@ -388,6 +388,21 @@ class ExportTestHost {
             "override_ledger_v1.json",
         ]);
     });
+    (0, node_test_1.it)("exports and validates a growing learning file beyond the old 2 MiB limit", async () => {
+        const { validateRestoreArchiveBuffer } = await import("../restore/validate_archive.js");
+        const dir = path.join(tmp, "learning/energy_daily_rollup");
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(path.join(dir, "energy_daily_v1.json"), JSON.stringify({
+            rows: Array.from({ length: 5000 }, (_, i) => `${i}:` + "x".repeat(435)),
+        }));
+        const result = await (0, service_js_1.runBackupExport)(new ExportTestHost(tmp));
+        strict_1.default.equal(result.ok, true, result.ok ? undefined : result.error);
+        if (!result.ok)
+            return;
+        const archive = validateRestoreArchiveBuffer(await fs.readFile(result.filePath));
+        const selected = JSON.parse(archive.payloadMap.get("persistence/selected_state_data.json").toString("utf8"));
+        strict_1.default.equal(selected["energy_daily_v1.json"].rows.length, 5000);
+    });
     (0, node_test_1.it)("excludes active runtime state from restore files", async () => {
         const cfg = {
             global_execution_mode: "live",
@@ -556,7 +571,7 @@ class ExportTestHost {
     (0, node_test_1.it)("backup failure resets trigger to ack=true val=false", async () => {
         const host = new ExportTestHost(tmp, { global_execution_mode: "dryrun" });
         await fs.mkdir(path.join(tmp, "learning/battery_runtime"), { recursive: true });
-        await fs.writeFile(path.join(tmp, "learning/battery_runtime", "battery_runtime_learning_v1.json"), "x".repeat(3 * 1024 * 1024));
+        await fs.writeFile(path.join(tmp, "learning/battery_runtime", "battery_runtime_learning_v1.json"), "x".repeat(9 * 1024 * 1024));
         await (0, export_handler_js_1.handleBackupExportRequest)(host, true, false);
         const trig = await host.getStateAsync(ensure_states_js_1.BACKUP_STATES.exportRequest);
         strict_1.default.equal(trig?.val, false);

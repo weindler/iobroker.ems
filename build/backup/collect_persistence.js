@@ -102,10 +102,11 @@ async function collectLearningPersistence(host) {
     }
     const adapter = host;
     for (const art of LEARNING_FILE_ARTIFACTS) {
+        // Statistics is restored from selected_state_data.json; avoid duplicating the growing history.
+        if (art.category === "statistics")
+            continue;
         const base = (0, data_dir_1.learningDataPath)(adapter, art.category);
-        const parsed = art.category === "statistics"
-            ? await (0, archive_1.exportStatisticsArchive)(base, limits_1.EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES)
-            : await readJsonFileSafe(path.join(base, art.fileName), limits_1.EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
+        const parsed = await readJsonFileSafe(path.join(base, art.fileName), limits_1.EXPORT_LIMITS.MAX_PERSIST_FILE_READ_BYTES);
         if (parsed != null) {
             out.files[art.fileName] = parsed;
         }

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.applyMobilityGridRewards = exports.applyHomeGridRewards = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.reconcileCurrentMonthWithToday = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.sumTibberPairedRange = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForRange = exports.earliestTibberJsonDailyDateKey = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
+exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.applyMobilityGridRewards = exports.applyHomeGridRewards = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.reconcileCurrentMonthWithToday = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.sumTibberPairedRange = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForRange = exports.earliestTibberJsonDailyDateKey = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.isCounterGap = exports.COUNTER_MAX_GAP_MS = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
 const grid_rewards_1 = require("./grid_rewards");
 function round3(n) {
     return Math.round(n * 1000) / 1000;
@@ -51,6 +51,18 @@ function savingsVsFixedEur(fixedTariffCostEurVal, dynamicCostEur, _rewardsCredit
     return round2(fixedTariffCostEurVal - dynamicCostEur);
 }
 exports.savingsVsFixedEur = savingsVsFixedEur;
+/** Längste Pause zwischen zwei Zählerablesungen, die noch dem laufenden Tag zugerechnet wird. */
+exports.COUNTER_MAX_GAP_MS = 30 * 60 * 1000;
+/**
+ * War der Adapter zwischen zwei Ablesungen länger aus, gehört die Zählerdifferenz nicht dem
+ * heutigen Tag. Ohne bekannte letzte Ablesung wird nicht als Lücke gewertet.
+ */
+function isCounterGap(lastSeenMs, nowMs, maxGapMs = exports.COUNTER_MAX_GAP_MS) {
+    if (lastSeenMs === null || lastSeenMs === undefined || !Number.isFinite(lastSeenMs))
+        return false;
+    return nowMs - lastSeenMs > maxGapMs;
+}
+exports.isCounterGap = isCounterGap;
 /** Energie-Delta aus Zählerständen; Reset (neuer Tag / kleiner) → null (kein negativer Sprung). */
 function energyCounterDeltaKwh(previous, current) {
     if (current === null) {

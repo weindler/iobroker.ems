@@ -323,3 +323,4 @@ build/learning/climate_shared_power/math.test.js
 vis/immersion_fault_labels.test.mjs
 vis/ai_vis_semantics.test.mjs
 vis/dashboard_ops.test.mjs
+build/statistics/compute_gap.test.js

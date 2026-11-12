@@ -69,6 +69,22 @@ export function savingsVsFixedEur(
 	return round2(fixedTariffCostEurVal - dynamicCostEur);
 }
 
+/** Längste Pause zwischen zwei Zählerablesungen, die noch dem laufenden Tag zugerechnet wird. */
+export const COUNTER_MAX_GAP_MS = 30 * 60 * 1000;
+
+/**
+ * War der Adapter zwischen zwei Ablesungen länger aus, gehört die Zählerdifferenz nicht dem
+ * heutigen Tag. Ohne bekannte letzte Ablesung wird nicht als Lücke gewertet.
+ */
+export function isCounterGap(
+	lastSeenMs: number | null | undefined,
+	nowMs: number,
+	maxGapMs: number = COUNTER_MAX_GAP_MS,
+): boolean {
+	if (lastSeenMs === null || lastSeenMs === undefined || !Number.isFinite(lastSeenMs)) return false;
+	return nowMs - lastSeenMs > maxGapMs;
+}
+
 /** Energie-Delta aus Zählerständen; Reset (neuer Tag / kleiner) → null (kein negativer Sprung). */
 export function energyCounterDeltaKwh(
 	previous: number | null,

@@ -263,6 +263,8 @@ function rolloverRuntimeIfNeeded(persist, dateKey) {
     persist.runtime.gridImportEnergyBaselineKwh = previous.gridImportEnergyBaselineKwh;
     persist.runtime.gridExportEnergyBaselineKwh = previous.gridExportEnergyBaselineKwh;
     persist.runtime.meterCaptureSinceIso = previous.meterCaptureSinceIso;
+    // Letzte Ablesung über den Tageswechsel erhalten, damit eine Adapter-Pause erkennbar bleibt.
+    persist.runtime.meterLastSeenMs = previous.meterLastSeenMs ?? previous.lastTickMs;
     ensureDay(persist, dateKey).boundaryEstimated = true;
     persistDirty = true;
 }
@@ -389,6 +391,12 @@ async function tickStatisticsSerialized(host, now) {
         : 0;
     if (rt.meterCaptureSinceIso === undefined)
         rt.meterCaptureSinceIso = null;
+    // Adapter war länger aus: Zählerdifferenz der Pause nicht dem heutigen Tag zurechnen.
+    const counterGap = (0, compute_1.isCounterGap)(rt.meterLastSeenMs ?? rt.lastTickMs, nowMs);
+    if (counterGap) {
+        reasonsHome.push("Adapter war zwischenzeitlich nicht aktiv: Zählerdifferenz der Pause wird dem heutigen Tag nicht zugerechnet.");
+        host.log?.warn?.("statistics: Pause seit letzter Zählerablesung erkannt — Differenz wird nicht dem laufenden Tag zugerechnet");
+    }
     const [gridImportEnergy, gridExportEnergy, gridImportPowerW, dynamicCostMapped, rewardsCreditDay, rewardsCreditMonth, fuelMapped, evConsMapped, sessionEnergy, sessionPricePerKwh, wbConnected, vehicleSoc, priceNowCt, capacityKwh, rewardsActive,] = await Promise.all([
         readForeignNum(host, cfg.gridImportEnergyKwhStateId),
         readForeignNum(host, cfg.gridExportEnergyKwhStateId),
@@ -423,7 +431,9 @@ async function tickStatisticsSerialized(host, now) {
     if (cfg.gridImportEnergyKwhStateId) {
         if (gridImportEnergy !== null && rt.meterCaptureSinceIso === null)
             rt.meterCaptureSinceIso = now.toISOString();
-        const d = (0, compute_1.energyCounterDeltaKwh)(rt.gridImportEnergyBaselineKwh, gridImportEnergy);
+        const d = counterGap && gridImportEnergy !== null
+            ? { deltaKwh: 0, newBaseline: gridImportEnergy }
+            : (0, compute_1.energyCounterDeltaKwh)(rt.gridImportEnergyBaselineKwh, gridImportEnergy);
         rt.gridImportEnergyBaselineKwh = d.newBaseline;
         if (d.deltaKwh !== null && d.deltaKwh > 0) {
             importKwhToday = Math.round((importKwhToday + d.deltaKwh) * 1000) / 1000;
@@ -440,7 +450,9 @@ async function tickStatisticsSerialized(host, now) {
     if (cfg.gridExportEnergyKwhStateId) {
         if (gridExportEnergy !== null && rt.meterCaptureSinceIso === null)
             rt.meterCaptureSinceIso = now.toISOString();
-        const d = (0, compute_1.energyCounterDeltaKwh)(rt.gridExportEnergyBaselineKwh, gridExportEnergy);
+        const d = counterGap && gridExportEnergy !== null
+            ? { deltaKwh: 0, newBaseline: gridExportEnergy }
+            : (0, compute_1.energyCounterDeltaKwh)(rt.gridExportEnergyBaselineKwh, gridExportEnergy);
         rt.gridExportEnergyBaselineKwh = d.newBaseline;
         if (d.newBaseline !== null && day.home.gridExportKwh === null)
             day.home.gridExportKwh = 0;
@@ -574,6 +586,7 @@ async function tickStatisticsSerialized(host, now) {
     rt.lastVehicleSocPct = vehicleSoc;
     rt.lastWallboxConnected = wbConnected;
     rt.lastTickMs = nowMs;
+    rt.meterLastSeenMs = nowMs;
     const evCons = (0, compute_1.resolveEvKwhPer100)({
         mapped: evConsMapped,
         fallback: cfg.evConsumptionFallbackKwhPer100,

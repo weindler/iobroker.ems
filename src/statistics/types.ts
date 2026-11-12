@@ -237,6 +237,11 @@ export interface StatisticsPersist {
 		lastVehicleSocPct: number | null;
 		lastWallboxConnected: boolean | null;
 		meterCaptureSinceIso?: string | null;
+		/**
+		 * Zeitpunkt der letzten verarbeiteten Zählerablesung; bleibt über den Tageswechsel erhalten.
+		 * Dient der Lückenerkennung (Adapter war zwischenzeitlich aus). Additiv, alte Dateien ohne Feld.
+		 */
+		meterLastSeenMs?: number | null;
 	};
 }
 

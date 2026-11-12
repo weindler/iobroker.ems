@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.28] – 2026-11-12
+
+### Fixed
+
+- Die Statistik rechnet die Zählerdifferenz einer längeren Adapter-Pause (mehr als 30 Minuten seit der letzten Ablesung) nicht mehr dem laufenden Tag zu. Nach einem langen Stillstand erschien sonst der gesamte Zählerzuwachs als Tages- und Monatsverbrauch, einschließlich falschem Tarifvergleich. Die Pause wird in der Statistik vermerkt, der Zählerstand dient nur als neuer Ausgangswert.
+
 ## [0.4.27] – 2026-09-27
 
 ### Fixed

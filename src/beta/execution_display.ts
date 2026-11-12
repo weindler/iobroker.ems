@@ -158,6 +158,8 @@ export function operationFromWallboxStrategy(
 			return { kind: "waiting", labelDe: "Wartet auf Ladeziel", detailDe: "Ziel/Deadline fehlt." };
 		case "goal_satisfied":
 			return { kind: "ready", labelDe: "Ziel erreicht", detailDe: "Kein weiterer Ladebedarf." };
+		case "externally_managed":
+			return { kind: "waiting", labelDe: "Keine EMS-Planung", detailDe: "Ladung wird extern geführt (EVCC)." };
 		default:
 			return { kind: "idle", labelDe: "Kein Bedarf", detailDe: "Kein Wallbox-Ladebedarf." };
 	}

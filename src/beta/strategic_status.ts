@@ -25,6 +25,8 @@ export type WallboxStrategicStatus =
 	| "scheduled"
 	| "charging"
 	| "goal_satisfied"
+	/** Ladung wird extern geführt (EVCC/Grid Rewards) oder Fahrzeug nicht verfügbar: EMS plant nicht parallel. */
+	| "externally_managed"
 	| "idle_no_need";
 
 export type BatteryStrategicSnapshot = {
@@ -109,6 +111,8 @@ function wallboxLabelDe(s: WallboxStrategicStatus): string {
 			return "Aktuelles Ladefenster geplant";
 		case "goal_satisfied":
 			return "Ziel erreicht";
+		case "externally_managed":
+			return "Keine EMS-Ladeplanung";
 		default:
 			return "Kein Ladebedarf";
 	}
@@ -238,7 +242,9 @@ export function deriveWallboxStrategicStatus(input: {
 	if (current) {
 		status = "scheduled";
 		reasonDe = "Aktuelles Ladefenster geplant; tatsächliche Ladung wird separat gemessen.";
-	} else if (goal?.met === true && !any) {
+	} else if (goal?.met === true && !any && need == null && connected !== false) {
+		// "Ziel erreicht" nur, wenn wirklich kein Energiebedarf mehr besteht. Ein nicht verbundenes
+		// oder extern geführtes Fahrzeug mit offenem Bedarf hat sein Ziel nicht erreicht.
 		status = "goal_satisfied";
 		reasonDe = goal.detailDe || "Fahrzeug-Ladeziel im Plan erreicht.";
 	} else if (future || any) {
@@ -249,6 +255,9 @@ export function deriveWallboxStrategicStatus(input: {
 	} else if (connected === false && !input.hasHardFuturePresence) {
 		status = "waiting_for_vehicle";
 		reasonDe = "Kein Fahrzeug verbunden — kein Ladeplan erforderlich.";
+	} else if (goal?.met === true && !any && need != null) {
+		status = "externally_managed";
+		reasonDe = goal.detailDe || "Ladung wird extern geführt — EMS plant nicht parallel.";
 	} else if (connected === true && need == null && !deadline) {
 		status = "waiting_for_goal";
 		reasonDe = "Fahrzeug da, aber kein belastbares Ladeziel/Deadline.";

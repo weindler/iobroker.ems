@@ -105,6 +105,35 @@ function emptyPlan(overrides = {}) {
     });
 });
 (0, node_test_1.describe)("Beta-Befund 003 — Wallbox strategic status", () => {
+    (0, node_test_1.it)("extern geführt + offener Bedarf → externally_managed, nicht 'Ziel erreicht'", () => {
+        const s = (0, strategic_status_1.deriveWallboxStrategicStatus)({
+            plan: emptyPlan({
+                goalStatuses: [
+                    { consumerId: "wallbox", goalId: "energy", met: true, detailDe: "Fahrzeug extern verwaltet." },
+                ],
+            }),
+            connectedNow: true,
+            requiredEnergyKwh: 20,
+            deadlineIso: null,
+            hasHardFuturePresence: false,
+            nowMs: Date.parse("2026-08-08T14:00:00.000Z"),
+        });
+        strict_1.default.equal(s.status, "externally_managed");
+        strict_1.default.doesNotMatch(s.summaryDe, /Ziel erreicht/);
+    });
+    (0, node_test_1.it)("kein Bedarf + verbunden + Ziel met → goal_satisfied", () => {
+        const s = (0, strategic_status_1.deriveWallboxStrategicStatus)({
+            plan: emptyPlan({
+                goalStatuses: [{ consumerId: "wallbox", goalId: "energy", met: true, detailDe: "Kein Bedarf." }],
+            }),
+            connectedNow: true,
+            requiredEnergyKwh: null,
+            deadlineIso: null,
+            hasHardFuturePresence: false,
+            nowMs: Date.parse("2026-08-08T14:00:00.000Z"),
+        });
+        strict_1.default.equal(s.status, "goal_satisfied");
+    });
     (0, node_test_1.it)("ohne Fahrzeug → waiting_for_vehicle", () => {
         const s = (0, strategic_status_1.deriveWallboxStrategicStatus)({
             plan: emptyPlan(),

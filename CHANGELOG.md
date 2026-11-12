@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.29] – 2026-11-12
+
+### Fixed
+
+- Wallbox-Status: „Ziel erreicht“ wird nur noch angezeigt, wenn wirklich kein Ladebedarf besteht. Bei extern geführter Ladung (EVCC) oder nicht verbundenem Fahrzeug mit offenem Bedarf erscheint stattdessen „Keine EMS-Ladeplanung“ (VIS: „Extern“).
+
 ## [0.4.28] – 2026-11-12
 
 ### Fixed

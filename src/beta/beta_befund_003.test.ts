@@ -121,6 +121,37 @@ describe("Beta-Befund 003 — Battery strategic status", () => {
 });
 
 describe("Beta-Befund 003 — Wallbox strategic status", () => {
+	it("extern geführt + offener Bedarf → externally_managed, nicht 'Ziel erreicht'", () => {
+		const s = deriveWallboxStrategicStatus({
+			plan: emptyPlan({
+				goalStatuses: [
+					{ consumerId: "wallbox", goalId: "energy", met: true, detailDe: "Fahrzeug extern verwaltet." },
+				],
+			}),
+			connectedNow: true,
+			requiredEnergyKwh: 20,
+			deadlineIso: null,
+			hasHardFuturePresence: false,
+			nowMs: Date.parse("2026-08-08T14:00:00.000Z"),
+		});
+		assert.equal(s.status, "externally_managed");
+		assert.doesNotMatch(s.summaryDe, /Ziel erreicht/);
+	});
+
+	it("kein Bedarf + verbunden + Ziel met → goal_satisfied", () => {
+		const s = deriveWallboxStrategicStatus({
+			plan: emptyPlan({
+				goalStatuses: [{ consumerId: "wallbox", goalId: "energy", met: true, detailDe: "Kein Bedarf." }],
+			}),
+			connectedNow: true,
+			requiredEnergyKwh: null,
+			deadlineIso: null,
+			hasHardFuturePresence: false,
+			nowMs: Date.parse("2026-08-08T14:00:00.000Z"),
+		});
+		assert.equal(s.status, "goal_satisfied");
+	});
+
 	it("ohne Fahrzeug → waiting_for_vehicle", () => {
 		const s = deriveWallboxStrategicStatus({
 			plan: emptyPlan(),

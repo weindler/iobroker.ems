@@ -1030,6 +1030,7 @@ function opBadgeFromStrategy(kind,status,hwActive){
 	if(status==="waiting_for_vehicle")return{cls:"idle",label:"Wartet"};
 	if(status==="waiting_for_goal")return{cls:"idle",label:"Ziel?"};
 	if(status==="goal_satisfied")return{cls:"plan",label:"Ziel ok"};
+	if(status==="externally_managed")return{cls:"idle",label:"Extern"};
 	return{cls:"idle",label:"Kein Bedarf"};
 }
 function execNowLine(phase,plannerW,hardwareLabel){

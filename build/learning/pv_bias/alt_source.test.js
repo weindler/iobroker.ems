@@ -8,6 +8,7 @@ const node_test_1 = require("node:test");
 const alt_source_1 = require("./alt_source");
 const alt_source_run_1 = require("./alt_source_run");
 const daily_persist_1 = require("./daily_persist");
+const alt_source_2 = require("./alt_source");
 (0, node_test_1.describe)("pv_bias Zweitquelle — Guard", () => {
     (0, node_test_1.it)("Fall 13.11.: morgen 19,56 vs 9,66 bei schwachem Modell → niedrigerer Wert", () => {
         const r = (0, alt_source_1.applyAltSourceGuard)({
@@ -108,5 +109,22 @@ const daily_persist_1 = require("./daily_persist");
         strict_1.default.equal((0, alt_source_run_1.shouldCaptureAlt)(at(8, 59), "06:00", false), true);
         strict_1.default.equal((0, alt_source_run_1.shouldCaptureAlt)(at(9, 1), "06:00", false), false); // Tageswert nicht mehr vergleichbar
         strict_1.default.equal((0, alt_source_run_1.shouldCaptureAlt)(at(6, 30), "06:00", true), false);
+    });
+});
+(0, node_test_1.describe)("pv_bias Zweitquelle — heute nur eingefroren", () => {
+    (0, node_test_1.it)("nutzt den eingefrorenen Tageswert, nie einen Live-Rest", () => {
+        let p = (0, daily_persist_1.emptyDailyPersist)();
+        strict_1.default.equal((0, alt_source_2.altTodayForGuard)(p, "2026-11-13"), null);
+        p = (0, daily_persist_1.upsertDailyRecord)(p, {
+            date: "2026-11-13",
+            actualKwh: null,
+            actualCapturedAt: null,
+            forecastKwh: 8.06,
+            forecastCapturedAt: null,
+            altForecastKwh: 6.329,
+        });
+        strict_1.default.equal((0, alt_source_2.altTodayForGuard)(p, "2026-11-13"), 6.329);
+        strict_1.default.equal((0, alt_source_2.altTodayForGuard)(p, "2026-11-14"), null);
+        strict_1.default.equal((0, alt_source_2.altTodayForGuard)(null, "2026-11-13"), null);
     });
 });

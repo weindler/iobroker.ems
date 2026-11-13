@@ -9,6 +9,7 @@ import {
 } from "./alt_source";
 import { shouldCaptureAlt } from "./alt_source_run";
 import { emptyDailyPersist, upsertDailyRecord } from "./daily_persist";
+import { altTodayForGuard } from "./alt_source";
 
 describe("pv_bias Zweitquelle — Guard", () => {
 	it("Fall 13.11.: morgen 19,56 vs 9,66 bei schwachem Modell → niedrigerer Wert", () => {
@@ -117,5 +118,23 @@ describe("pv_bias Zweitquelle — Vergleich und Capture", () => {
 		assert.equal(shouldCaptureAlt(at(8, 59), "06:00", false), true);
 		assert.equal(shouldCaptureAlt(at(9, 1), "06:00", false), false); // Tageswert nicht mehr vergleichbar
 		assert.equal(shouldCaptureAlt(at(6, 30), "06:00", true), false);
+	});
+});
+
+describe("pv_bias Zweitquelle — heute nur eingefroren", () => {
+	it("nutzt den eingefrorenen Tageswert, nie einen Live-Rest", () => {
+		let p = emptyDailyPersist();
+		assert.equal(altTodayForGuard(p, "2026-11-13"), null);
+		p = upsertDailyRecord(p, {
+			date: "2026-11-13",
+			actualKwh: null,
+			actualCapturedAt: null,
+			forecastKwh: 8.06,
+			forecastCapturedAt: null,
+			altForecastKwh: 6.329,
+		});
+		assert.equal(altTodayForGuard(p, "2026-11-13"), 6.329);
+		assert.equal(altTodayForGuard(p, "2026-11-14"), null);
+		assert.equal(altTodayForGuard(null, "2026-11-13"), null);
 	});
 });

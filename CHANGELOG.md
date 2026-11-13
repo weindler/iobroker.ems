@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.31] – 2026-11-13
+
+### Fixed
+
+- PV-Zweitquellen-Guard: Für „heute“ wird nur noch der zur Freeze-Zeit eingefrorene Zweitquellen-Wert verwendet. Der Live-Tageswert (BrightSky `daily.00`) schrumpft im Tagesverlauf auf den Resttag und hatte abends `corrected_today_kwh` fälschlich auf 1,35 kWh gesetzt. Ohne eingefrorenen Wert greift der Guard für heute nicht.
+
 ## [0.4.30] – 2026-11-13
 
 ### Added

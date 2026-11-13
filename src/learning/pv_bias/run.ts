@@ -11,7 +11,8 @@ import {
 } from "./snapshot";
 import type { HistoryQueryHost } from "../history_query";
 import type { PvBiasComputeResult } from "./types";
-import { altSourceConfigFromAdapter, applyAltSourceGuard, buildSourceCompare } from "./alt_source";
+import { altSourceConfigFromAdapter, altTodayForGuard, applyAltSourceGuard, buildSourceCompare } from "./alt_source";
+import { localDateKey } from "./dates";
 import { readAltLive, runAltSourceCapture } from "./alt_source_run";
 
 export type PvBiasRunHost = SnapshotHost &
@@ -103,7 +104,8 @@ async function publishAltSourceInfo(
 		const guard = applyAltSourceGuard({
 			correctedTodayKwh: result.correctedTodayKwh,
 			correctedTomorrowKwh: result.correctedTomorrowKwh,
-			altTodayKwh: alt.today,
+			// Heute: nur eingefrorener Wert (Live-Tageswert schrumpft im Tagesverlauf).
+			altTodayKwh: altTodayForGuard(persist, localDateKey(new Date())),
 			altTomorrowKwh: alt.tomorrow,
 			confidencePct: result.confidencePct,
 			sampleDays14d: result.sampleDays14d,

@@ -43,6 +43,15 @@ export function altSourceConfigFromAdapter(config: unknown): AltSourceConfig {
 	};
 }
 
+/**
+ * Alt-Quelle für "heute" im Guard: nur der zur Freeze-Zeit eingefrorene Wert. Der Live-Tageswert
+ * (z. B. BrightSky daily.00) schrumpft im Tagesverlauf auf den Rest des Tages und ist ungeeignet.
+ */
+export function altTodayForGuard(persist: PvBiasDailyPersist | null, dateKey: string): number | null {
+	const v = persist?.days?.[dateKey]?.altForecastKwh;
+	return v !== undefined && v !== null && Number.isFinite(v) && v > 0 ? v : null;
+}
+
 export type AltGuardInput = {
 	correctedTodayKwh: number | null;
 	correctedTomorrowKwh: number | null;

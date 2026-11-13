@@ -11,6 +11,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ALT_COMPARE_MAX_DAYS = exports.ALT_GUARD_WEAK_SAMPLE_DAYS_14D = exports.ALT_GUARD_WEAK_CONFIDENCE_PCT = exports.ALT_GUARD_RATIO = exports.DEFAULT_ALT_TOMORROW_STATE = exports.DEFAULT_ALT_TODAY_STATE = void 0;
 exports.altSourceConfigFromAdapter = altSourceConfigFromAdapter;
+exports.altTodayForGuard = altTodayForGuard;
 exports.modelIsWeak = modelIsWeak;
 exports.applyAltSourceGuard = applyAltSourceGuard;
 exports.buildSourceCompare = buildSourceCompare;
@@ -36,6 +37,14 @@ function altSourceConfigFromAdapter(config) {
         tomorrowStateId: strField(c, "learning_pv_alt_tomorrow_state") || exports.DEFAULT_ALT_TOMORROW_STATE,
         guardEnabled,
     };
+}
+/**
+ * Alt-Quelle für "heute" im Guard: nur der zur Freeze-Zeit eingefrorene Wert. Der Live-Tageswert
+ * (z. B. BrightSky daily.00) schrumpft im Tagesverlauf auf den Rest des Tages und ist ungeeignet.
+ */
+function altTodayForGuard(persist, dateKey) {
+    const v = persist?.days?.[dateKey]?.altForecastKwh;
+    return v !== undefined && v !== null && Number.isFinite(v) && v > 0 ? v : null;
 }
 function validPos(n) {
     return n !== null && Number.isFinite(n) && n > 0;

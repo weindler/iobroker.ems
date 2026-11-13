@@ -8,6 +8,7 @@ const history_1 = require("./history");
 const math_1 = require("./math");
 const snapshot_1 = require("./snapshot");
 const alt_source_1 = require("./alt_source");
+const dates_1 = require("./dates");
 const alt_source_run_1 = require("./alt_source_run");
 async function readForeignNum(host, stateId) {
     return (0, history_1.readStateNum)(host, stateId);
@@ -71,7 +72,8 @@ async function publishAltSourceInfo(host, result, altCfg) {
         const guard = (0, alt_source_1.applyAltSourceGuard)({
             correctedTodayKwh: result.correctedTodayKwh,
             correctedTomorrowKwh: result.correctedTomorrowKwh,
-            altTodayKwh: alt.today,
+            // Heute: nur eingefrorener Wert (Live-Tageswert schrumpft im Tagesverlauf).
+            altTodayKwh: (0, alt_source_1.altTodayForGuard)(persist, (0, dates_1.localDateKey)(new Date())),
             altTomorrowKwh: alt.tomorrow,
             confidencePct: result.confidencePct,
             sampleDays14d: result.sampleDays14d,

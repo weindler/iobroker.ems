@@ -11,6 +11,8 @@ import {
 } from "./snapshot";
 import type { HistoryQueryHost } from "../history_query";
 import type { PvBiasComputeResult } from "./types";
+import { altSourceConfigFromAdapter, applyAltSourceGuard, buildSourceCompare } from "./alt_source";
+import { readAltLive, runAltSourceCapture } from "./alt_source_run";
 
 export type PvBiasRunHost = SnapshotHost &
 	HistoryQueryHost & {
@@ -76,6 +78,57 @@ async function writePvBiasResult(
 	await host.setStateAsync("learning.pv_bias.reason", { val: result.reason, ack: true });
 }
 
+/**
+ * Zweitquelle: Live-Werte, Quellenvergleich und Guard. Der Guard ersetzt nur die korrigierten
+ * Planungswerte (corrected_*_kwh) durch den niedrigeren Wert, wenn das Bias-Modell schwach belegt ist.
+ */
+async function publishAltSourceInfo(
+	host: PvBiasRunHost,
+	result: PvBiasComputeResult,
+	altCfg: ReturnType<typeof altSourceConfigFromAdapter>,
+): Promise<void> {
+	const alt = await readAltLive(host, altCfg);
+	await setNumIfValid(host, "learning.pv_bias.alt_today_kwh", alt.today);
+	await setNumIfValid(host, "learning.pv_bias.alt_tomorrow_kwh", alt.tomorrow);
+
+	const persist = await loadDailyPersist(host);
+	const cmp = buildSourceCompare(persist);
+	const unguardedToday = result.correctedTodayKwh;
+	const unguardedTomorrow = result.correctedTomorrowKwh;
+
+	let guardStatus = "none";
+	if (!altCfg.guardEnabled) {
+		guardStatus = "none: Guard in Admin deaktiviert";
+	} else {
+		const guard = applyAltSourceGuard({
+			correctedTodayKwh: result.correctedTodayKwh,
+			correctedTomorrowKwh: result.correctedTomorrowKwh,
+			altTodayKwh: alt.today,
+			altTomorrowKwh: alt.tomorrow,
+			confidencePct: result.confidencePct,
+			sampleDays14d: result.sampleDays14d,
+		});
+		if (guard.guardToday) await setNumIfValid(host, "learning.pv_bias.corrected_today_kwh", guard.correctedTodayKwh);
+		if (guard.guardTomorrow) await setNumIfValid(host, "learning.pv_bias.corrected_tomorrow_kwh", guard.correctedTomorrowKwh);
+		guardStatus = guard.guardToday || guard.guardTomorrow ? `active: ${guard.reasonDe}` : `none: ${guard.reasonDe}`;
+		if (guard.guardToday || guard.guardTomorrow) host.log.debug?.(`PV-Guard: ${guard.reasonDe}`);
+	}
+	await host.setStateAsync("learning.pv_bias.guard_status", { val: guardStatus, ack: true });
+	await host.setStateAsync("learning.pv_bias.compare_json", {
+		val: JSON.stringify({
+			pairedDays: cmp.pairedDays,
+			mainMapePct: cmp.mainMapePct,
+			altMapePct: cmp.altMapePct,
+			mainBiasPct: cmp.mainBiasPct,
+			altBiasPct: cmp.altBiasPct,
+			unguardedTodayKwh: unguardedToday,
+			unguardedTomorrowKwh: unguardedTomorrow,
+			days: cmp.days,
+		}),
+		ack: true,
+	});
+}
+
 export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 	const cfg = pvBiasConfigFromAdapter(host.config);
 
@@ -103,6 +156,12 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 		await runForecastFreeze(host, cfg);
 		await backfillDailyPersist(host, cfg);
 		await runActualDailySnapshot(host, cfg);
+		const altCfg = altSourceConfigFromAdapter(host.config);
+		try {
+			await runAltSourceCapture(host, cfg, altCfg);
+		} catch (e) {
+			host.log.warn(`PV-Zweitquelle: Erfassung fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);
+		}
 
 		const rawTodayKwh = await readLiveRawForecast(
 			host,
@@ -165,6 +224,11 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			pairs.find((p) => p.dayOffset === 0)?.actualKwh ??
 			(await readStateNum(host, cfg.historyActualStateId));
 		await writePvBiasResult(host, result, todayActual);
+		try {
+			await publishAltSourceInfo(host, result, altCfg);
+		} catch (e) {
+			host.log.warn(`PV-Zweitquelle: Auswertung fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);
+		}
 		host.log.debug?.(
 			`PV-Bias: 14d=${result.bias14dPct ?? "—"}% 90d=${result.bias90dPct ?? "—"}% model=${result.modelBiasPct ?? "—"}% applied=${result.appliedBiasPct ?? "—"}% conf=${result.confidencePct}% samples=${result.sampleDays90d} freeze=${cfg.freezeEnabled}`,
 		);

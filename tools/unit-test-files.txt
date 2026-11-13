@@ -118,6 +118,7 @@ build/learning/pv_bias/math.test.js
 build/learning/pv_bias/freeze.test.js
 build/learning/pv_bias/history.test.js
 build/learning/pv_bias/snapshot.test.js
+build/learning/pv_bias/alt_source.test.js
 build/learning/pv_horizon/math.test.js
 build/learning/weather/math.test.js
 build/learning/weather/history.test.js

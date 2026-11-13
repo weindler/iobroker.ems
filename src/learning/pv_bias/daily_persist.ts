@@ -13,6 +13,10 @@ export interface PvBiasDailyRecord {
 	forecastCapturedAt: string | null;
 	actualSource?: string;
 	forecastSource?: string;
+	/** Zweitquelle (z. B. BrightSky solar_estimate), zur Freeze-Zeit eingefroren — nur Vergleich/Guard. */
+	altForecastKwh?: number | null;
+	altCapturedAt?: string | null;
+	altSource?: string;
 }
 
 export interface PvBiasDailyPersist {

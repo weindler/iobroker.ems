@@ -52,6 +52,10 @@ export async function ensurePvBiasStates(host: StateHost): Promise<void> {
 		numState("learning.pv_bias.frozen_today_kwh", "PV eingefrorener Forecast heute", "kWh"),
 		numState("learning.pv_bias.frozen_tomorrow_kwh", "PV eingefrorener Forecast morgen", "kWh"),
 		strState("learning.pv_bias.freeze_status", "PV-Bias Freeze-Status", "waiting"),
+		numState("learning.pv_bias.alt_today_kwh", "PV Zweitquelle heute (live)", "kWh"),
+		numState("learning.pv_bias.alt_tomorrow_kwh", "PV Zweitquelle morgen (live)", "kWh"),
+		strState("learning.pv_bias.guard_status", "Zweitquellen-Guard (none oder Hinweis)", "none"),
+		strState("learning.pv_bias.compare_json", "Quellenvergleich Haupt/Zweit/Ist (JSON)"),
 	];
 
 	await ensureStates(host, defs);

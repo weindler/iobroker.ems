@@ -10902,6 +10902,46 @@
 					"lg": 4,
 					"xl": 4
 				},
+				"hPvAltSource": {
+					"type": "header",
+					"size": 2,
+					"text": "Zweitquelle PV (z. B. BrightSky) — Quellenvergleich und vorsichtiger Planungswert",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"learning_pv_alt_today_state": {
+					"type": "text",
+					"label": "Zweitquelle heute (kWh) — leer = brightsky.0.daily.00.solar_estimate",
+					"default": "",
+					"xs": 12,
+					"sm": 6,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_alt_tomorrow_state": {
+					"type": "text",
+					"label": "Zweitquelle morgen (kWh) — leer = brightsky.0.daily.01.solar_estimate",
+					"default": "",
+					"xs": 12,
+					"sm": 6,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"learning_pv_alt_guard_enabled": {
+					"type": "checkbox",
+					"label": "Guard: bei schwachem Bias-Modell und deutlich niedrigerer Zweitquelle den niedrigeren Wert verwenden",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"hPvBiasActualSnapshot": {
 					"type": "header",
 					"size": 2,

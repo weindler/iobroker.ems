@@ -1,12 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runPvBiasLearning = void 0;
+exports.runPvBiasLearning = runPvBiasLearning;
 const state_util_1 = require("../../ems_light/state_util");
 const config_1 = require("./config");
 const freeze_1 = require("./freeze");
 const history_1 = require("./history");
 const math_1 = require("./math");
 const snapshot_1 = require("./snapshot");
+const alt_source_1 = require("./alt_source");
+const alt_source_run_1 = require("./alt_source_run");
 async function readForeignNum(host, stateId) {
     return (0, history_1.readStateNum)(host, stateId);
 }
@@ -49,6 +51,54 @@ async function writePvBiasResult(host, result, actualTodayKwh) {
     await host.setStateAsync("learning.pv_bias.status", { val: result.status, ack: true });
     await host.setStateAsync("learning.pv_bias.reason", { val: result.reason, ack: true });
 }
+/**
+ * Zweitquelle: Live-Werte, Quellenvergleich und Guard. Der Guard ersetzt nur die korrigierten
+ * Planungswerte (corrected_*_kwh) durch den niedrigeren Wert, wenn das Bias-Modell schwach belegt ist.
+ */
+async function publishAltSourceInfo(host, result, altCfg) {
+    const alt = await (0, alt_source_run_1.readAltLive)(host, altCfg);
+    await setNumIfValid(host, "learning.pv_bias.alt_today_kwh", alt.today);
+    await setNumIfValid(host, "learning.pv_bias.alt_tomorrow_kwh", alt.tomorrow);
+    const persist = await (0, snapshot_1.loadDailyPersist)(host);
+    const cmp = (0, alt_source_1.buildSourceCompare)(persist);
+    const unguardedToday = result.correctedTodayKwh;
+    const unguardedTomorrow = result.correctedTomorrowKwh;
+    let guardStatus = "none";
+    if (!altCfg.guardEnabled) {
+        guardStatus = "none: Guard in Admin deaktiviert";
+    }
+    else {
+        const guard = (0, alt_source_1.applyAltSourceGuard)({
+            correctedTodayKwh: result.correctedTodayKwh,
+            correctedTomorrowKwh: result.correctedTomorrowKwh,
+            altTodayKwh: alt.today,
+            altTomorrowKwh: alt.tomorrow,
+            confidencePct: result.confidencePct,
+            sampleDays14d: result.sampleDays14d,
+        });
+        if (guard.guardToday)
+            await setNumIfValid(host, "learning.pv_bias.corrected_today_kwh", guard.correctedTodayKwh);
+        if (guard.guardTomorrow)
+            await setNumIfValid(host, "learning.pv_bias.corrected_tomorrow_kwh", guard.correctedTomorrowKwh);
+        guardStatus = guard.guardToday || guard.guardTomorrow ? `active: ${guard.reasonDe}` : `none: ${guard.reasonDe}`;
+        if (guard.guardToday || guard.guardTomorrow)
+            host.log.debug?.(`PV-Guard: ${guard.reasonDe}`);
+    }
+    await host.setStateAsync("learning.pv_bias.guard_status", { val: guardStatus, ack: true });
+    await host.setStateAsync("learning.pv_bias.compare_json", {
+        val: JSON.stringify({
+            pairedDays: cmp.pairedDays,
+            mainMapePct: cmp.mainMapePct,
+            altMapePct: cmp.altMapePct,
+            mainBiasPct: cmp.mainBiasPct,
+            altBiasPct: cmp.altBiasPct,
+            unguardedTodayKwh: unguardedToday,
+            unguardedTomorrowKwh: unguardedTomorrow,
+            days: cmp.days,
+        }),
+        ack: true,
+    });
+}
 async function runPvBiasLearning(host) {
     const cfg = (0, config_1.pvBiasConfigFromAdapter)(host.config);
     if (!cfg.enabled) {
@@ -73,6 +123,13 @@ async function runPvBiasLearning(host) {
         await (0, freeze_1.runForecastFreeze)(host, cfg);
         await (0, snapshot_1.backfillDailyPersist)(host, cfg);
         await (0, snapshot_1.runActualDailySnapshot)(host, cfg);
+        const altCfg = (0, alt_source_1.altSourceConfigFromAdapter)(host.config);
+        try {
+            await (0, alt_source_run_1.runAltSourceCapture)(host, cfg, altCfg);
+        }
+        catch (e) {
+            host.log.warn(`PV-Zweitquelle: Erfassung fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);
+        }
         const rawTodayKwh = await readLiveRawForecast(host, cfg.rawTodayStateId, "forecast.pv.today_kwh");
         const rawTomorrowKwh = await readLiveRawForecast(host, cfg.rawTomorrowStateId, "forecast.pv.tomorrow_kwh");
         const frozen = cfg.freezeEnabled ? await (0, freeze_1.readFrozenForecast)(host) : { today: null, tomorrow: null };
@@ -111,6 +168,12 @@ async function runPvBiasLearning(host) {
         const todayActual = pairs.find((p) => p.dayOffset === 0)?.actualKwh ??
             (await (0, history_1.readStateNum)(host, cfg.historyActualStateId));
         await writePvBiasResult(host, result, todayActual);
+        try {
+            await publishAltSourceInfo(host, result, altCfg);
+        }
+        catch (e) {
+            host.log.warn(`PV-Zweitquelle: Auswertung fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);
+        }
         host.log.debug?.(`PV-Bias: 14d=${result.bias14dPct ?? "—"}% 90d=${result.bias90dPct ?? "—"}% model=${result.modelBiasPct ?? "—"}% applied=${result.appliedBiasPct ?? "—"}% conf=${result.confidencePct}% samples=${result.sampleDays90d} freeze=${cfg.freezeEnabled}`);
     }
     catch (e) {
@@ -123,4 +186,3 @@ async function runPvBiasLearning(host) {
         });
     }
 }
-exports.runPvBiasLearning = runPvBiasLearning;

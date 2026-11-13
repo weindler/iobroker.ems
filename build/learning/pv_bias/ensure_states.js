@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensurePvBiasStates = void 0;
+exports.ensurePvBiasStates = ensurePvBiasStates;
 const state_util_1 = require("../../ems_light/state_util");
 function strState(id, name, def) {
     return {
@@ -51,7 +51,10 @@ async function ensurePvBiasStates(host) {
         numState("learning.pv_bias.frozen_today_kwh", "PV eingefrorener Forecast heute", "kWh"),
         numState("learning.pv_bias.frozen_tomorrow_kwh", "PV eingefrorener Forecast morgen", "kWh"),
         strState("learning.pv_bias.freeze_status", "PV-Bias Freeze-Status", "waiting"),
+        numState("learning.pv_bias.alt_today_kwh", "PV Zweitquelle heute (live)", "kWh"),
+        numState("learning.pv_bias.alt_tomorrow_kwh", "PV Zweitquelle morgen (live)", "kWh"),
+        strState("learning.pv_bias.guard_status", "Zweitquellen-Guard (none oder Hinweis)", "none"),
+        strState("learning.pv_bias.compare_json", "Quellenvergleich Haupt/Zweit/Ist (JSON)"),
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensurePvBiasStates = ensurePvBiasStates;

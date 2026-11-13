@@ -8,6 +8,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.30] – 2026-11-13
+
+### Added
+
+- PV-Zweitquelle (Standard: BrightSky `daily.00/01.solar_estimate`, in Admin änderbar): wird zur Freeze-Zeit eingefroren und in `pv_bias_daily_v1.json` neben Hauptforecast und Ist abgelegt. `learning.pv_bias.compare_json` zeigt mittleren Fehler und Bias je Quelle.
+- Guard: Ist das Bias-Modell schwach belegt (Confidence < 60 % oder < 5 gültige Tage in 14d) und liegt der korrigierte Hauptforecast mehr als 25 % über der Zweitquelle, rechnet die Planung mit dem niedrigeren Wert (`corrected_*_kwh`; Status in `learning.pv_bias.guard_status`, abschaltbar in Admin). Nur Dryrun-sichere Planungswerte, keine Geräte-Writes.
+
 ## [0.4.29] – 2026-11-12
 
 ### Fixed

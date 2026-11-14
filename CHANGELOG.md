@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.47] – 2026-11-14
+
+### Behoben
+- PV-Kachel: Die Tageskorrektur („Rest des Tages × Faktor") samt Begründung wird jetzt angezeigt; die Oberfläche hatte die Datenpunkte nicht abonniert. Begründungstext mit Dezimalkomma.
+
 ## [0.4.46] – 2026-11-14
 
 ### Behoben

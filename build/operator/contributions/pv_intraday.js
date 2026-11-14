@@ -80,7 +80,7 @@ function computeIntradayFactor(todaySlots, actualTodayKwh, nowMs, recent = null)
         if (expectedRecent >= exports.INTRADAY_RECENT_MIN_EXPECTED_KWH) {
             const recentRatio = recent.deltaKwh / expectedRecent;
             ratio = (1 - exports.INTRADAY_RECENT_WEIGHT) * ratio + exports.INTRADAY_RECENT_WEIGHT * recentRatio;
-            recentNote = ` Letzte Stunde ${recent.deltaKwh.toFixed(2)} kWh gegen erwartet ${expectedRecent.toFixed(2)} kWh.`;
+            recentNote = ` Letzte Stunde ${recent.deltaKwh.toFixed(2).replace(".", ",")} kWh gegen erwartet ${expectedRecent.toFixed(2).replace(".", ",")} kWh.`;
         }
     }
     const weight = Math.min(1, expected / exports.INTRADAY_FULL_WEIGHT_KWH);
@@ -95,7 +95,7 @@ function computeIntradayFactor(todaySlots, actualTodayKwh, nowMs, recent = null)
         weight: Math.round(weight * 1000) / 1000,
         active,
         reasonDe: active
-            ? `Ist ${actualTodayKwh.toFixed(2)} kWh gegen erwartet ${expected.toFixed(2)} kWh.${recentNote} → Rest des Tages × ${rounded}.`
+            ? `Ist ${actualTodayKwh.toFixed(2).replace(".", ",")} kWh gegen erwartet ${expected.toFixed(2).replace(".", ",")} kWh.${recentNote} → Rest des Tages × ${String(rounded).replace(".", ",")}.`
             : "Ist-Ertrag liegt im Rahmen der Prognose.",
     };
 }

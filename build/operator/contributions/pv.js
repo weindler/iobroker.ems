@@ -153,6 +153,7 @@ function buildPvContribution(input) {
             intradayExpectedSoFarKwh: intradayResult ? intradayResult.expectedSoFarKwh : null,
             intradayActualSoFarKwh: intradayResult ? intradayResult.actualSoFarKwh : null,
             intradayReasonDe: intradayResult ? intradayResult.reasonDe : null,
+            pvProfileNoteDe: input.shape?.siteProfile?.noteDe ?? null,
             slotResolution: shapeActive ? "weather_shaped_15min" : "daily_only",
             slotNoteDe: shapeActive
                 ? "15-Minuten-PV-Form aus Sonnenstand + Bewölkung/Solar-Schätzung, normiert auf gelernte Tages-kWh."

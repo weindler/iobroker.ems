@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.65] – 2026-11-14
+
+### Behoben
+- PV-Profil: Der Lernstand wurde nicht an die Status-Anzeige weitergereicht (Feld fehlte in den PV-Details).
+
 ## [0.4.64] – 2026-11-14
 
 ### Behoben

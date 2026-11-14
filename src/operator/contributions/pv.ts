@@ -210,6 +210,7 @@ export function buildPvContribution(input: PvContributionBuildInput): PlanContri
 			intradayExpectedSoFarKwh: intradayResult ? (intradayResult as IntradayResult).expectedSoFarKwh : null,
 			intradayActualSoFarKwh: intradayResult ? (intradayResult as IntradayResult).actualSoFarKwh : null,
 			intradayReasonDe: intradayResult ? (intradayResult as IntradayResult).reasonDe : null,
+			pvProfileNoteDe: input.shape?.siteProfile?.noteDe ?? null,
 			slotResolution: shapeActive ? "weather_shaped_15min" : "daily_only",
 			slotNoteDe: shapeActive
 				? "15-Minuten-PV-Form aus Sonnenstand + Bewölkung/Solar-Schätzung, normiert auf gelernte Tages-kWh."

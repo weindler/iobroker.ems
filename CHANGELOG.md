@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.53] – 2026-11-14
+
+### Behoben
+- Statistik/Mobilität: Der Verbrenner-Vergleich je einzelner Ladung nutzt den Spritpreis des Ladetags statt des heutigen Live-Preises (Tankerkönig). Tages-, Wochen- und Monatssummen nutzten schon die Tagespreise.
+
 ## [0.4.52] – 2026-11-14
 
 ### Geändert

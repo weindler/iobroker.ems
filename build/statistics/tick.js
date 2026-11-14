@@ -919,11 +919,13 @@ async function tickStatisticsSerialized(host, now) {
         mappedMonthEur: rewardsCreditMonth, monthRewardsBilling: persist.monthRewardsBilling ?? {},
         dayCredits: energyPeriodKeys.map((key) => ({ dateKey: key,
             creditEur: persist.days[key].home.gridRewardsCreditEur })) })));
-    const measuredChargeRows = energyPeriodKeys.flatMap((key) => persist.days[key]?.chargeRuns ?? [])
-        .map((run) => {
+    const measuredChargeRows = energyPeriodKeys.flatMap((key) => (persist.days[key]?.chargeRuns ?? [])
+        .map((run) => ({ run, dayFuelPrice: persist.days[key]?.mobility?.iceFuelPriceEurPerL ?? fuelPrice })))
+        .map(({ run, dayFuelPrice }) => {
         const km = evCons.value && evCons.value > 0 ? run.chargedKwh * 100 / evCons.value : null;
+        // Spritpreis des Ladetags, nicht der heutige: vergangene Ladungen behalten ihren damaligen Vergleich.
         const iceEur = (0, compute_1.iceCostForKm)({ km, lPer100Km: cfg.iceLPer100Km,
-            fuelPriceEurPerL: fuelPrice }).costEur;
+            fuelPriceEurPerL: dayFuelPrice }).costEur;
         return { ...run, kmEquivalent: km === null ? null : Math.round(km),
             iceCostEur: iceEur,
             advantageEur: iceEur === null || run.costEur === null ? null : Math.round((iceEur - run.costEur) * 100) / 100 };

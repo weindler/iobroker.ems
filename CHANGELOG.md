@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.58] – 2026-11-14
+
+### Geändert
+- **Netzausgleich ohne Opportunity-Sperre:** Die Sperre „Batterie später voraussichtlich wertvoller“ gilt nicht mehr für den Netzausgleich (es geht nur um den Rest von ca. 35 W). Entscheidend ist die Preisschwelle (dynamisch aus den Ersatzkosten oder fest). Anlass: Live-Befund, dass der Netzausgleich bei 37,7 ct wegen einer Opportunity-Cost von 47,1 ct zurückgestellt wurde.
+
 ## [0.4.57] – 2026-11-14
 
 ### Neu

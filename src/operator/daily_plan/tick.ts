@@ -679,7 +679,8 @@ export async function runDailyPlanTick(
 		socPct,
 		requiredSocAtPvEndPct: centralReserve.requiredSocAtPvEndPct,
 		configuredMaxDischargeW: batCfgModes.gridBalance.maxTargetW,
-		opportunityCostCtPerKwh: batCfgModes.gridBalance.dynamicPrice && batteryOpportunity.usable ? batteryOpportunity.opportunityCostCtPerKwh : null,
+		// Kein Opportunity-Gate für den Netzausgleich: es geht nur um den kleinen Rest (~35 W); entscheidend ist die Preisschwelle.
+		opportunityCostCtPerKwh: null,
 		economics: economicsInput,
 	};
 	const baselineBatteryDischargeAuthorization = resolveBatteryDischargeAuthorization(

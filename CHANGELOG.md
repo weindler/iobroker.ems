@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.32] – 2026-11-14
+
+### Fixed
+
+- PV-Quellenvergleich: Fehlende Ist-Werte vergangener Tage kommen aus dem Energie-Tages-Rollup (wie bei der Bias-Paarbildung). Der 23:58-Snapshot greift bei stündlichem Lernintervall meist nicht, dadurch blieb `compare_json` leer.
+
 ## [0.4.31] – 2026-11-13
 
 ### Fixed

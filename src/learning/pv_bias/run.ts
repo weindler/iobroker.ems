@@ -13,7 +13,7 @@ import type { HistoryQueryHost } from "../history_query";
 import type { PvBiasComputeResult } from "./types";
 import { altSourceConfigFromAdapter, altTodayForGuard, applyAltSourceGuard, buildSourceCompare } from "./alt_source";
 import { localDateKey } from "./dates";
-import { readAltLive, runAltSourceCapture } from "./alt_source_run";
+import { readAltLive, runAltSourceCapture, withRollupActuals } from "./alt_source_run";
 
 export type PvBiasRunHost = SnapshotHost &
 	HistoryQueryHost & {
@@ -87,13 +87,16 @@ async function publishAltSourceInfo(
 	host: PvBiasRunHost,
 	result: PvBiasComputeResult,
 	altCfg: ReturnType<typeof altSourceConfigFromAdapter>,
+	actualStateId: string,
 ): Promise<void> {
 	const alt = await readAltLive(host, altCfg);
 	await setNumIfValid(host, "learning.pv_bias.alt_today_kwh", alt.today);
 	await setNumIfValid(host, "learning.pv_bias.alt_tomorrow_kwh", alt.tomorrow);
 
 	const persist = await loadDailyPersist(host);
-	const cmp = buildSourceCompare(persist);
+	const cmp = buildSourceCompare(
+		await withRollupActuals(host, persist, actualStateId, localDateKey(new Date())),
+	);
 	const unguardedToday = result.correctedTodayKwh;
 	const unguardedTomorrow = result.correctedTomorrowKwh;
 
@@ -227,7 +230,7 @@ export async function runPvBiasLearning(host: PvBiasRunHost): Promise<void> {
 			(await readStateNum(host, cfg.historyActualStateId));
 		await writePvBiasResult(host, result, todayActual);
 		try {
-			await publishAltSourceInfo(host, result, altCfg);
+			await publishAltSourceInfo(host, result, altCfg, cfg.historyActualStateId);
 		} catch (e) {
 			host.log.warn(`PV-Zweitquelle: Auswertung fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);
 		}

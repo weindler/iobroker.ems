@@ -56,12 +56,12 @@ async function writePvBiasResult(host, result, actualTodayKwh) {
  * Zweitquelle: Live-Werte, Quellenvergleich und Guard. Der Guard ersetzt nur die korrigierten
  * Planungswerte (corrected_*_kwh) durch den niedrigeren Wert, wenn das Bias-Modell schwach belegt ist.
  */
-async function publishAltSourceInfo(host, result, altCfg) {
+async function publishAltSourceInfo(host, result, altCfg, actualStateId) {
     const alt = await (0, alt_source_run_1.readAltLive)(host, altCfg);
     await setNumIfValid(host, "learning.pv_bias.alt_today_kwh", alt.today);
     await setNumIfValid(host, "learning.pv_bias.alt_tomorrow_kwh", alt.tomorrow);
     const persist = await (0, snapshot_1.loadDailyPersist)(host);
-    const cmp = (0, alt_source_1.buildSourceCompare)(persist);
+    const cmp = (0, alt_source_1.buildSourceCompare)(await (0, alt_source_run_1.withRollupActuals)(host, persist, actualStateId, (0, dates_1.localDateKey)(new Date())));
     const unguardedToday = result.correctedTodayKwh;
     const unguardedTomorrow = result.correctedTomorrowKwh;
     let guardStatus = "none";
@@ -171,7 +171,7 @@ async function runPvBiasLearning(host) {
             (await (0, history_1.readStateNum)(host, cfg.historyActualStateId));
         await writePvBiasResult(host, result, todayActual);
         try {
-            await publishAltSourceInfo(host, result, altCfg);
+            await publishAltSourceInfo(host, result, altCfg, cfg.historyActualStateId);
         }
         catch (e) {
             host.log.warn(`PV-Zweitquelle: Auswertung fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);

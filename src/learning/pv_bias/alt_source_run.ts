@@ -1,6 +1,13 @@
 import { asNum } from "../../ems_light/state_util";
+import { fetchRollupDayKwh } from "../energy_daily_rollup/read";
 import type { AltSourceConfig } from "./alt_source";
-import { dailyRecord, readDailyPersist, upsertDailyRecord, writeDailyPersist } from "./daily_persist";
+import {
+	dailyRecord,
+	readDailyPersist,
+	upsertDailyRecord,
+	writeDailyPersist,
+	type PvBiasDailyPersist,
+} from "./daily_persist";
 import { freezeInstantMs, localDateKey } from "./dates";
 import { readStateNum } from "./history";
 import type { SnapshotHost } from "./snapshot";
@@ -60,4 +67,28 @@ export async function runAltSourceCapture(
 	await writeDailyPersist(dir, updated);
 	host.log.debug?.(`PV-Zweitquelle: ${value} kWh für ${dateKey} eingefroren (${alt.todayStateId}).`);
 	return true;
+}
+
+/**
+ * Ergänzt fehlende Ist-Werte vergangener Tage (der 23:58-Snapshot greift bei stündlichem Lernintervall
+ * oft nicht) aus dem Energie-Tages-Rollup — dieselbe Quelle wie die Bias-Paarbildung.
+ * Nur Kopie für den Vergleich, die Persist-Datei bleibt unverändert.
+ */
+export async function withRollupActuals(
+	host: SnapshotHost,
+	persist: PvBiasDailyPersist | null,
+	actualStateId: string,
+	todayKey: string,
+	maxDays = 21,
+): Promise<PvBiasDailyPersist | null> {
+	if (!persist || !actualStateId) return persist;
+	const keys = Object.keys(persist.days).sort().slice(-maxDays);
+	const days = { ...persist.days };
+	for (const key of keys) {
+		const row = days[key];
+		if (!row || key >= todayKey || row.actualKwh != null || row.altForecastKwh == null) continue;
+		const actual = await fetchRollupDayKwh(host, actualStateId, key);
+		if (actual !== null && actual > 0) days[key] = { ...row, actualKwh: actual };
+	}
+	return { ...persist, days };
 }

@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EF_RETRY_429_MS = exports.EF_RETRY_MS = exports.EF_FETCH_INTERVAL_MS = void 0;
 exports.energyforecastConfigFromAdapter = energyforecastConfigFromAdapter;
 exports.fetchDue = fetchDue;
+exports.frozenForecastFromSnapshots = frozenForecastFromSnapshots;
+exports.getEnergyforecastFrozenForecast = getEnergyforecastFrozenForecast;
 exports.getEnergyforecastPrice15MinSlots = getEnergyforecastPrice15MinSlots;
 exports.runEnergyforecast = runEnergyforecast;
 exports.resetEnergyforecastRunState = resetEnergyforecastRunState;
@@ -36,6 +38,19 @@ async function setState(host, id, val) {
 }
 let comparedOnce = false;
 let memorySlots = [];
+let memoryFrozen = new Map();
+/** Je Viertelstunde die zuletzt festgehaltene Prognose (ct/kWh) — für den Vergleich mit dem echten Preis. */
+function frozenForecastFromSnapshots(snapshots) {
+    const out = new Map();
+    for (const snap of [...snapshots].sort((a, b) => a.atMs - b.atMs)) {
+        for (const [start, ct] of snap.slots)
+            out.set(start, ct);
+    }
+    return out;
+}
+function getEnergyforecastFrozenForecast() {
+    return memoryFrozen;
+}
 /**
  * Preis-Slots für die Planung (Gesamtpreis ct/kWh, ab `fromMs`). Leer, solange Energyforecast aus ist,
  * kein Token da ist oder noch nichts abgerufen wurde. Prognose-Slots tragen `origin: "forecast"`.
@@ -124,6 +139,7 @@ async function runEnergyforecast(host, nowMs = Date.now(), fetchFn) {
     if (fetched || !comparedOnce) {
         comparedOnce = true;
         const file = await (0, persist_1.readSnapshots)(dir);
+        memoryFrozen = frozenForecastFromSnapshots(file.snapshots);
         const result = (0, compare_1.compareSnapshots)(file.snapshots, file.actual);
         await setState(host, "compare_json", JSON.stringify({ updatedIso: new Date(nowMs).toISOString(), snapshots: file.snapshots.length, ...result }));
     }
@@ -132,4 +148,5 @@ async function runEnergyforecast(host, nowMs = Date.now(), fetchFn) {
 function resetEnergyforecastRunState() {
     comparedOnce = false;
     memorySlots = [];
+    memoryFrozen = new Map();
 }

@@ -8,6 +8,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.48] – 2026-11-14
+
+### Hinzugefügt
+- Preisgrafik: Wurde ein Tag inzwischen von Tibber veröffentlicht, bleibt die früher festgehaltene Energyforecast-Prognose als dünne gepunktete Linie hinter dem echten Preis stehen („früher prognostiziert"), so sieht man die Abweichung direkt.
+- Preisgrafik besser lesbar: höher, Achse eng am Preisbereich (statt viel Leerraum), Gitterlinien mit ct-Werten, Tiefst- und Höchstpreis beschriftet, Mouseover zeigt Zeit, Preis und Abweichung zur früheren Prognose.
+- Planungsseite: Satz zur Energyforecast-Genauigkeit (durchschnittliche Abweichung, Anteil richtig getroffener günstigster Stunden) aus der bestehenden Auswertung.
+
 ## [0.4.47] – 2026-11-14
 
 ### Behoben

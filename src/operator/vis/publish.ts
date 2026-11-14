@@ -6,7 +6,7 @@
 import { ALLOCATION_ADDON_STATE_IDS } from "../daily_plan/states";
 import { GRID_SUPPLY_STATE_IDS } from "../supply/grid_states";
 import { getForecastOnlyPriceStarts } from "../supply/grid_read";
-import { getEnergyforecastPrice15MinSlots } from "../../learning/energyforecast/run";
+import { getEnergyforecastFrozenForecast, getEnergyforecastPrice15MinSlots } from "../../learning/energyforecast/run";
 import { asNum, type StateHost } from "../../ems_light/state_util";
 import { setStateIfChanged } from "../../policy/core/state_write";
 import { BAT } from "../../addons/battery/ensure_states";
@@ -104,6 +104,7 @@ export async function publishVisPriceTimeline(host: StateHost, now = new Date())
 			gbPriceAllowed,
 			gridSlots: mergeForecastSlots(asGridSlots(gridSlotsRaw), now),
 			forecastStartsMs: getForecastOnlyPriceStarts(),
+			frozenForecastCt: getEnergyforecastFrozenForecast(),
 			batteryAlloc: asAlloc(batteryAlloc),
 			wallboxAlloc: asAlloc(wallboxAlloc),
 			immersionAlloc: asAlloc(immersionAlloc),

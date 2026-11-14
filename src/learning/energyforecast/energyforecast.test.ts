@@ -223,3 +223,43 @@ describe("energyforecast Lauf", () => {
 		assert.equal(localDay(new Date("2026-11-14T09:20:00").getTime()), "2026-11-14");
 	});
 });
+
+import { frozenForecastFromSnapshots } from "./run";
+import { buildVisPriceTimeline } from "../../operator/vis/price_timeline";
+
+describe("festgehaltene Prognose im Preisdiagramm", () => {
+	it("nimmt je Viertelstunde den neuesten Snapshot", () => {
+		const m = frozenForecastFromSnapshots([
+			{ atMs: 2, slots: [[100, 30]] },
+			{ atMs: 1, slots: [[100, 20], [200, 25]] },
+		]);
+		assert.equal(m.get(100), 30);
+		assert.equal(m.get(200), 25);
+	});
+
+	it("hängt forecastCt nur an echte Preise, nicht an Prognose-Slots", () => {
+		const now = new Date("2026-11-14T12:00:00.000Z");
+		const t0 = Date.parse("2026-11-14T13:00:00.000Z");
+		const t1 = t0 + 15 * 60_000;
+		const board = buildVisPriceTimeline({
+			now,
+			currentPriceCt: 30,
+			gbMinPriceCt: null,
+			gbPriceAllowed: null,
+			gridSlots: [
+				{ startIso: new Date(t0).toISOString(), priceCtPerKwh: 33 },
+				{ startIso: new Date(t1).toISOString(), priceCtPerKwh: 34 },
+			],
+			forecastStartsMs: new Set([t1]),
+			frozenForecastCt: new Map([[t0, 30.123], [t1, 31]]),
+			batteryAlloc: [],
+			wallboxAlloc: [],
+			immersionAlloc: [],
+			climateAlloc: [],
+		});
+		const a = board.slots.find((s) => Date.parse(s.startIso) === t0);
+		const b = board.slots.find((s) => Date.parse(s.startIso) === t1);
+		assert.equal(a?.forecastCt, 30.12);
+		assert.equal(b?.forecastCt, undefined);
+	});
+});

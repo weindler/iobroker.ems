@@ -118,6 +118,7 @@ function buildVisPriceTimeline(input) {
     const maxAheadMs = exports.VIS_PRICE_MAX_AHEAD_HOURS * 3600_000;
     const quarterAheadMs = exports.VIS_PRICE_QUARTER_AHEAD_HOURS * 3600_000;
     const forecastStarts = input.forecastStartsMs ?? new Set();
+    const frozen = input.frozenForecastCt ?? new Map();
     const priced = [];
     for (const raw of input.gridSlots) {
         const startIso = typeof raw.startIso === "string" ? raw.startIso : "";
@@ -174,6 +175,9 @@ function buildVisPriceTimeline(input) {
             gbPriceOk,
             actions,
             ...(forecastStarts.has(s.startMs) ? { forecast: true } : {}),
+            ...(!forecastStarts.has(s.startMs) && s.priceCt !== null && frozen.has(s.startMs)
+                ? { forecastCt: Math.round(frozen.get(s.startMs) * 100) / 100 }
+                : {}),
         });
     }
     // Weit in der Zukunft: Stundenmittel statt Viertelstunden, damit der Datenpunkt klein bleibt.

@@ -400,8 +400,8 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /function visPriceBand/);
 		assert.match(visHtml, /grid-template-columns:minmax\(310px,410px\) minmax\(200px,1fr\) minmax\(220px,28%\)/);
 		assert.match(visHtml, /html,body\{height:100%;overflow:hidden\}/);
-		assert.match(visHtml, /\.ems-price-svg\{width:100%;height:150px/);
-		assert.match(visHtml, /var W=1000,H=150/);
+		assert.match(visHtml, /\.ems-price-svg\{width:100%;height:190px/);
+		assert.match(visHtml, /var W=1000,H=190/);
 		assert.match(visHtml, /display="flex"/);
 		assert.match(visHtml, /ems-tiles-dense/);
 	});

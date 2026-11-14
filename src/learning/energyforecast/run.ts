@@ -1,6 +1,6 @@
 import type { StateHost } from "../../ems_light/state_util";
 import { EnergyforecastHttpError, fetchEnergyforecast } from "./client";
-import { compareSnapshots } from "./compare";
+import { compareSnapshots, type EfSnapshot } from "./compare";
 import {
 	addFetchToSnapshots,
 	readCache,
@@ -49,6 +49,20 @@ async function setState(host: EnergyforecastHost, id: string, val: ioBroker.Stat
 
 let comparedOnce = false;
 let memorySlots: EfSlot[] = [];
+let memoryFrozen: ReadonlyMap<number, number> = new Map();
+
+/** Je Viertelstunde die zuletzt festgehaltene Prognose (ct/kWh) — für den Vergleich mit dem echten Preis. */
+export function frozenForecastFromSnapshots(snapshots: EfSnapshot[]): Map<number, number> {
+	const out = new Map<number, number>();
+	for (const snap of [...snapshots].sort((a, b) => a.atMs - b.atMs)) {
+		for (const [start, ct] of snap.slots) out.set(start, ct);
+	}
+	return out;
+}
+
+export function getEnergyforecastFrozenForecast(): ReadonlyMap<number, number> {
+	return memoryFrozen;
+}
 
 /**
  * Preis-Slots für die Planung (Gesamtpreis ct/kWh, ab `fromMs`). Leer, solange Energyforecast aus ist,
@@ -138,6 +152,7 @@ export async function runEnergyforecast(
 	if (fetched || !comparedOnce) {
 		comparedOnce = true;
 		const file = await readSnapshots(dir);
+		memoryFrozen = frozenForecastFromSnapshots(file.snapshots);
 		const result = compareSnapshots(file.snapshots, file.actual);
 		await setState(
 			host,
@@ -151,4 +166,5 @@ export async function runEnergyforecast(
 export function resetEnergyforecastRunState(): void {
 	comparedOnce = false;
 	memorySlots = [];
+	memoryFrozen = new Map();
 }

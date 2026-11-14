@@ -240,3 +240,40 @@ function dayRows(date, origin, base, shape = 1) {
         strict_1.default.equal((0, parse_1.localDay)(new Date("2026-11-14T09:20:00").getTime()), "2026-11-14");
     });
 });
+const run_2 = require("./run");
+const price_timeline_1 = require("../../operator/vis/price_timeline");
+(0, node_test_1.describe)("festgehaltene Prognose im Preisdiagramm", () => {
+    (0, node_test_1.it)("nimmt je Viertelstunde den neuesten Snapshot", () => {
+        const m = (0, run_2.frozenForecastFromSnapshots)([
+            { atMs: 2, slots: [[100, 30]] },
+            { atMs: 1, slots: [[100, 20], [200, 25]] },
+        ]);
+        strict_1.default.equal(m.get(100), 30);
+        strict_1.default.equal(m.get(200), 25);
+    });
+    (0, node_test_1.it)("hängt forecastCt nur an echte Preise, nicht an Prognose-Slots", () => {
+        const now = new Date("2026-11-14T12:00:00.000Z");
+        const t0 = Date.parse("2026-11-14T13:00:00.000Z");
+        const t1 = t0 + 15 * 60_000;
+        const board = (0, price_timeline_1.buildVisPriceTimeline)({
+            now,
+            currentPriceCt: 30,
+            gbMinPriceCt: null,
+            gbPriceAllowed: null,
+            gridSlots: [
+                { startIso: new Date(t0).toISOString(), priceCtPerKwh: 33 },
+                { startIso: new Date(t1).toISOString(), priceCtPerKwh: 34 },
+            ],
+            forecastStartsMs: new Set([t1]),
+            frozenForecastCt: new Map([[t0, 30.123], [t1, 31]]),
+            batteryAlloc: [],
+            wallboxAlloc: [],
+            immersionAlloc: [],
+            climateAlloc: [],
+        });
+        const a = board.slots.find((s) => Date.parse(s.startIso) === t0);
+        const b = board.slots.find((s) => Date.parse(s.startIso) === t1);
+        strict_1.default.equal(a?.forecastCt, 30.12);
+        strict_1.default.equal(b?.forecastCt, undefined);
+    });
+});

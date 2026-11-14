@@ -30,6 +30,8 @@ export interface VisPriceTimelineSlot {
 	currentHour: boolean;
 	/** true = nur Prognose (Energyforecast), noch kein veröffentlichter Tibber-Preis. */
 	forecast?: boolean;
+	/** Früher festgehaltene Energyforecast-Prognose für diese Zeit (nur wenn der echte Preis inzwischen feststeht). */
+	forecastCt?: number;
 	/** Price ≥ GB min — allowance only, not an EMS action. */
 	gbPriceOk: boolean;
 	actions: VisPriceActionKind[];
@@ -79,6 +81,8 @@ export interface BuildVisPriceTimelineInput {
 	gridSlots: VisPriceGridSlot[];
 	/** Startzeiten (ms) von Preisslots, die nur aus der Prognose stammen. */
 	forecastStartsMs?: ReadonlySet<number>;
+	/** Startzeit (ms) → früher festgehaltene Energyforecast-Prognose (ct/kWh). */
+	frozenForecastCt?: ReadonlyMap<number, number>;
 	batteryAlloc: VisPriceAllocEntry[];
 	wallboxAlloc: VisPriceAllocEntry[];
 	immersionAlloc: VisPriceAllocEntry[];
@@ -180,6 +184,7 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 	const maxAheadMs = VIS_PRICE_MAX_AHEAD_HOURS * 3600_000;
 	const quarterAheadMs = VIS_PRICE_QUARTER_AHEAD_HOURS * 3600_000;
 	const forecastStarts = input.forecastStartsMs ?? new Set<number>();
+	const frozen = input.frozenForecastCt ?? new Map<number, number>();
 
 	const priced: Array<{ startIso: string; endIso: string; startMs: number; endMs: number; priceCt: number | null }> = [];
 	for (const raw of input.gridSlots) {
@@ -240,6 +245,9 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 			gbPriceOk,
 			actions,
 			...(forecastStarts.has(s.startMs) ? { forecast: true } : {}),
+			...(!forecastStarts.has(s.startMs) && s.priceCt !== null && frozen.has(s.startMs)
+				? { forecastCt: Math.round((frozen.get(s.startMs) as number) * 100) / 100 }
+				: {}),
 		});
 	}
 

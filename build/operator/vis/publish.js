@@ -88,6 +88,7 @@ async function publishVisPriceTimeline(host, now = new Date()) {
             gbPriceAllowed,
             gridSlots: mergeForecastSlots(asGridSlots(gridSlotsRaw), now),
             forecastStartsMs: (0, grid_read_1.getForecastOnlyPriceStarts)(),
+            frozenForecastCt: (0, run_1.getEnergyforecastFrozenForecast)(),
             batteryAlloc: asAlloc(batteryAlloc),
             wallboxAlloc: asAlloc(wallboxAlloc),
             immersionAlloc: asAlloc(immersionAlloc),

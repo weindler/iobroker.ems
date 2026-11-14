@@ -1,7 +1,7 @@
 "use strict";
 /** Herstellerübergreifender, read-only Gerätekatalog für Setup/UI/App. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildDeviceTemplateCatalog = void 0;
+exports.buildDeviceTemplateCatalog = buildDeviceTemplateCatalog;
 const registry_1 = require("../addons/air_conditioning/profiles/registry");
 const registry_2 = require("../addons/battery/profiles/registry");
 const CLASS_LABELS = {
@@ -170,4 +170,3 @@ function buildDeviceTemplateCatalog() {
         classes: hierarchy(entries),
     };
 }
-exports.buildDeviceTemplateCatalog = buildDeviceTemplateCatalog;

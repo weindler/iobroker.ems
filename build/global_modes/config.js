@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.globalModeDefaultFromConfig = exports.isGlobalMode = void 0;
+exports.isGlobalMode = isGlobalMode;
+exports.globalModeDefaultFromConfig = globalModeDefaultFromConfig;
 const constants_1 = require("./constants");
 const constants_2 = require("./constants");
 function strField(config, key) {
@@ -10,7 +11,6 @@ function strField(config, key) {
 function isGlobalMode(raw) {
     return constants_2.GLOBAL_MODES.includes(raw);
 }
-exports.isGlobalMode = isGlobalMode;
 function globalModeDefaultFromConfig(config) {
     if (!config || typeof config !== "object") {
         return constants_1.DEFAULT_GLOBAL_MODE;
@@ -21,4 +21,3 @@ function globalModeDefaultFromConfig(config) {
     }
     return constants_1.DEFAULT_GLOBAL_MODE;
 }
-exports.globalModeDefaultFromConfig = globalModeDefaultFromConfig;

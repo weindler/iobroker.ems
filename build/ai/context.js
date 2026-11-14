@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildAiOptimizationContext = exports.buildSituationBrief = exports.buildLearningDigest = exports.addonFlexPowerInSlot = exports.resolveAllowedAddonIds = void 0;
+exports.resolveAllowedAddonIds = resolveAllowedAddonIds;
+exports.addonFlexPowerInSlot = addonFlexPowerInSlot;
+exports.buildLearningDigest = buildLearningDigest;
+exports.buildSituationBrief = buildSituationBrief;
+exports.buildAiOptimizationContext = buildAiOptimizationContext;
 const registry_1 = require("../addons/governance/registry");
 const config_1 = require("../addons/governance/config");
 const ensure_evcc_states_1 = require("../addons/wallbox/ensure_evcc_states");
@@ -15,7 +19,6 @@ const config_2 = require("../learning/battery_runtime/config");
 function resolveAllowedAddonIds(config) {
     return (0, registry_1.governedAddonIds)().filter((id) => (0, config_1.isAddonEnabled)(config, id) && (0, config_1.isAddonAiOptimizationAllowed)(config, id));
 }
-exports.resolveAllowedAddonIds = resolveAllowedAddonIds;
 /** Summe der flexiblen (nicht-mandatory) Allokation eines Add-on-Präfixes in einem Slot. */
 function addonFlexPowerInSlot(slot, contributionPrefix) {
     let sum = 0;
@@ -28,7 +31,6 @@ function addonFlexPowerInSlot(slot, contributionPrefix) {
     }
     return sum;
 }
-exports.addonFlexPowerInSlot = addonFlexPowerInSlot;
 function addonAnyPowerInSlot(slot, contributionPrefix) {
     let sum = 0;
     for (const a of slot.allocations) {
@@ -243,7 +245,6 @@ async function buildLearningDigest(host, timezone = "Europe/Berlin") {
         houseLoadStatus: houseStatus,
     };
 }
-exports.buildLearningDigest = buildLearningDigest;
 /** Live + Horizont-Situation — fehlende Werte bleiben null (nie erfundene 0). */
 async function buildSituationBrief(host, plan, learning) {
     const [pvPowerW, houseLoadW, surplusW, deficitW, wbConnected, wbCharging, wbMode, wbSoc, wbRemaining, wbLimitSoc, wbPlanActive, wbDeadlineRaw, bufferTempLive, bufferTempRuntime, boilerTempLive, boilerTempRuntime, climate1Running, climate1Temp, climate2Running, climate2Temp, priceNowCt,] = await Promise.all([
@@ -314,7 +315,6 @@ async function buildSituationBrief(host, plan, learning) {
         nextHours: nextHoursFromPlan(plan),
     };
 }
-exports.buildSituationBrief = buildSituationBrief;
 /** Nur ausgewählte, unkritische Policy-Kennzahlen — kein voller Snapshot. */
 function pickPolicyHighlights(policy) {
     const limits = policy.limits;
@@ -342,4 +342,3 @@ async function buildAiOptimizationContext(host, plan, triggerReason) {
         triggerReason,
     };
 }
-exports.buildAiOptimizationContext = buildAiOptimizationContext;

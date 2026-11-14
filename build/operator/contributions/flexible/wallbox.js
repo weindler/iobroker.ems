@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildWallboxEvSessionContribution = exports.resolveWallboxTargetSocPct = void 0;
+exports.resolveWallboxTargetSocPct = resolveWallboxTargetSocPct;
+exports.buildWallboxEvSessionContribution = buildWallboxEvSessionContribution;
 const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const contributor_1 = require("../../contributor");
@@ -21,7 +22,6 @@ function resolveWallboxTargetSocPct(input) {
     }
     return null;
 }
-exports.resolveWallboxTargetSocPct = resolveWallboxTargetSocPct;
 function requiredEnergyKwh(input) {
     if (input.remainingEnergyKwh !== null && Number.isFinite(input.remainingEnergyKwh)) {
         return (0, types_2.round3)(Math.max(0, input.remainingEnergyKwh));
@@ -194,4 +194,3 @@ function buildWallboxEvSessionContribution(input) {
             : [],
     });
 }
-exports.buildWallboxEvSessionContribution = buildWallboxEvSessionContribution;

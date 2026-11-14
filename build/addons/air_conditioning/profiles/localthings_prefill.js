@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scheduleLocalthingsPrefillPersist = exports.clearLocalthingsPrefillPersistTimer = exports.mergeLocalthingsPrefillIntoConfig = exports.buildLocalthingsPrefillPatch = void 0;
+exports.buildLocalthingsPrefillPatch = buildLocalthingsPrefillPatch;
+exports.mergeLocalthingsPrefillIntoConfig = mergeLocalthingsPrefillIntoConfig;
+exports.clearLocalthingsPrefillPersistTimer = clearLocalthingsPrefillPersistTimer;
+exports.scheduleLocalthingsPrefillPersist = scheduleLocalthingsPrefillPersist;
 const constants_1 = require("../constants");
 const barrier_1 = require("../../../bootstrap/barrier");
 const registry_1 = require("./registry");
@@ -93,7 +96,6 @@ function buildLocalthingsPrefillPatch(config) {
     }
     return Object.keys(patch).length > 0 ? patch : null;
 }
-exports.buildLocalthingsPrefillPatch = buildLocalthingsPrefillPatch;
 function mergeLocalthingsPrefillIntoConfig(config) {
     const c = { ...configRecord(config) };
     const patch = buildLocalthingsPrefillPatch(c);
@@ -101,7 +103,6 @@ function mergeLocalthingsPrefillIntoConfig(config) {
         return c;
     return { ...c, ...patch };
 }
-exports.mergeLocalthingsPrefillIntoConfig = mergeLocalthingsPrefillIntoConfig;
 let prefillPersistTimer = null;
 /** Tests / Stop: ausstehenden Prefill-Persist abbrechen. */
 function clearLocalthingsPrefillPersistTimer() {
@@ -110,7 +111,6 @@ function clearLocalthingsPrefillPersistTimer() {
         prefillPersistTimer = null;
     }
 }
-exports.clearLocalthingsPrefillPersistTimer = clearLocalthingsPrefillPersistTimer;
 /**
  * updateConfig erst NACH Bootstrap — sonst stirbt die Instanz mitten in ems-light runtime
  * (Redis „DB closed“, Host null).
@@ -137,4 +137,3 @@ function scheduleLocalthingsPrefillPersist(host, mergedConfig) {
     // Kurze Pause nach Bootstrap-Ende, damit post-bootstrap fertig werden kann.
     prefillPersistTimer = setTimeout(attempt, 2_000);
 }
-exports.scheduleLocalthingsPrefillPersist = scheduleLocalthingsPrefillPersist;

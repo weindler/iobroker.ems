@@ -4,7 +4,10 @@
  * invalidieren — kein Warten auf den nächsten Daily-Plan-Tick.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stripAddonFromDailyPlan = exports.stripAddonFromUnifiedPlan = exports.unifiedKindsForAddon = exports.isAddonContributionId = void 0;
+exports.isAddonContributionId = isAddonContributionId;
+exports.unifiedKindsForAddon = unifiedKindsForAddon;
+exports.stripAddonFromUnifiedPlan = stripAddonFromUnifiedPlan;
+exports.stripAddonFromDailyPlan = stripAddonFromDailyPlan;
 const authority_1 = require("./unified/authority");
 function isAddonContributionId(addonId, contributionId) {
     switch (addonId) {
@@ -20,7 +23,6 @@ function isAddonContributionId(addonId, contributionId) {
             return false;
     }
 }
-exports.isAddonContributionId = isAddonContributionId;
 function unifiedKindsForAddon(addonId) {
     switch (addonId) {
         case "immersion_heater":
@@ -35,14 +37,12 @@ function unifiedKindsForAddon(addonId) {
             return new Set();
     }
 }
-exports.unifiedKindsForAddon = unifiedKindsForAddon;
 /** Entfernt aktive EMS-Fenster des Add-ons aus dem Unified-Plan (in-memory). */
 function stripAddonFromUnifiedPlan(plan, addonId) {
     const kinds = unifiedKindsForAddon(addonId);
     const allocations = plan.allocations.filter((a) => !kinds.has(a.kind));
     return { ...plan, allocations };
 }
-exports.stripAddonFromUnifiedPlan = stripAddonFromUnifiedPlan;
 /** Entfernt Addon-Slices aus dem publizierten Daily Plan. */
 function stripAddonFromDailyPlan(plan, addonId) {
     const keep = (a) => !isAddonContributionId(addonId, a.contributionId);
@@ -53,4 +53,3 @@ function stripAddonFromDailyPlan(plan, addonId) {
     }));
     return { ...plan, allocations, slots };
 }
-exports.stripAddonFromDailyPlan = stripAddonFromDailyPlan;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureAiValidatorStates = exports.AI_VALIDATOR_STATES = exports.AI_VALIDATOR_BASE = void 0;
+exports.AI_VALIDATOR_STATES = exports.AI_VALIDATOR_BASE = void 0;
+exports.ensureAiValidatorStates = ensureAiValidatorStates;
 const state_util_1 = require("../../ems_light/state_util");
 function numState(id, name) {
     return { id, common: { name, type: "number", role: "value", read: true, write: false } };
@@ -34,4 +35,3 @@ async function ensureAiValidatorStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureAiValidatorStates = ensureAiValidatorStates;

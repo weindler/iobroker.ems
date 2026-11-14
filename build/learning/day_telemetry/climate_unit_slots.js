@@ -4,7 +4,9 @@
  * Keine erfundenen Werte, keine operative Steuerung.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.climateOverrideActive = exports.climateSlotDemandUrgency01 = exports.normalizeClimateModePurpose = void 0;
+exports.normalizeClimateModePurpose = normalizeClimateModePurpose;
+exports.climateSlotDemandUrgency01 = climateSlotDemandUrgency01;
+exports.climateOverrideActive = climateOverrideActive;
 const hard_off_worth_it_1 = require("../../addons/air_conditioning/runtime/hard_off_worth_it");
 function normalizeClimateModePurpose(raw) {
     const s = (raw ?? "").trim().toLowerCase();
@@ -18,7 +20,6 @@ function normalizeClimateModePurpose(raw) {
         return "dehumidify";
     return "unknown";
 }
-exports.normalizeClimateModePurpose = normalizeClimateModePurpose;
 /**
  * Dringlichkeit nur wenn die zugrunde liegenden Sensorwerte da sind.
  * coolingDemandUrgency01 liefert bei fehlender Raumtemperatur 0 — das wäre hier erfunden.
@@ -36,7 +37,6 @@ function climateSlotDemandUrgency01(input) {
     }
     return null;
 }
-exports.climateSlotDemandUrgency01 = climateSlotDemandUrgency01;
 function climateOverrideActive(owner, overrideUntilIso, nowMs) {
     if (owner == null && overrideUntilIso == null)
         return null;
@@ -49,4 +49,3 @@ function climateOverrideActive(owner, overrideUntilIso, nowMs) {
     }
     return false;
 }
-exports.climateOverrideActive = climateOverrideActive;

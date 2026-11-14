@@ -5,7 +5,24 @@
  * Feste Uhrzeiten nur Fallback — Winter/Sommer verschieben die Brücke um Stunden.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.average = exports.integratePowerKwh = exports.gridBalanceHasSamplesInWindow = exports.weightedAverage = exports.recencyWeight = exports.hasInterimRecharge = exports.findMinSocInRange = exports.findMinSocPointInRange = exports.findSocAtOrBefore = exports.findNearestSoc = exports.findPvHouseNightBridges = exports.findSustainedNonDeficitStart = exports.findSustainedSurplusStart = exports.findSustainedDeficitStart = exports.buildBatteryDeficitSeries = exports.buildPvHouseNetSeries = exports.bucketPowerSeries = exports.NIGHT_BRIDGE_DEFICIT_W = exports.NIGHT_BRIDGE_BUCKET_MS = exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = void 0;
+exports.NIGHT_BRIDGE_DEFICIT_W = exports.NIGHT_BRIDGE_BUCKET_MS = exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = void 0;
+exports.bucketPowerSeries = bucketPowerSeries;
+exports.buildPvHouseNetSeries = buildPvHouseNetSeries;
+exports.buildBatteryDeficitSeries = buildBatteryDeficitSeries;
+exports.findSustainedDeficitStart = findSustainedDeficitStart;
+exports.findSustainedSurplusStart = findSustainedSurplusStart;
+exports.findSustainedNonDeficitStart = findSustainedNonDeficitStart;
+exports.findPvHouseNightBridges = findPvHouseNightBridges;
+exports.findNearestSoc = findNearestSoc;
+exports.findSocAtOrBefore = findSocAtOrBefore;
+exports.findMinSocPointInRange = findMinSocPointInRange;
+exports.findMinSocInRange = findMinSocInRange;
+exports.hasInterimRecharge = hasInterimRecharge;
+exports.recencyWeight = recencyWeight;
+exports.weightedAverage = weightedAverage;
+exports.gridBalanceHasSamplesInWindow = gridBalanceHasSamplesInWindow;
+exports.integratePowerKwh = integratePowerKwh;
+exports.average = average;
 const constants_1 = require("./constants");
 const time_1 = require("./time");
 exports.DEFAULT_NIGHT_BRIDGE_FLUTTER_MS = 10 * 60_000;
@@ -20,7 +37,6 @@ function average(values) {
         return null;
     return round2(values.reduce((a, b) => a + b, 0) / values.length);
 }
-exports.average = average;
 /** Rohserie → 10-Min-Buckets (Mittel). */
 function bucketPowerSeries(points, bucketMs = exports.NIGHT_BRIDGE_BUCKET_MS) {
     if (points.length === 0)
@@ -39,7 +55,6 @@ function bucketPowerSeries(points, bucketMs = exports.NIGHT_BRIDGE_BUCKET_MS) {
         .sort((a, b) => a[0] - b[0])
         .map(([, v]) => ({ ts: v.ts, powerW: v.sum / v.n }));
 }
-exports.bucketPowerSeries = bucketPowerSeries;
 /**
  * Netto = PV − Hauslast. Negativ = Defizit (Batterie hilft).
  * Hauslast führt das Raster (dicht); PV per Bucket / Nachbar / Last-Known (onchange hält Wert).
@@ -79,7 +94,6 @@ function buildPvHouseNetSeries(pvPoints, housePoints, bucketMs = exports.NIGHT_B
     }
     return out;
 }
-exports.buildPvHouseNetSeries = buildPvHouseNetSeries;
 function inferBucketMs(a, b, preferred) {
     const pts = [...a, ...b].sort((x, y) => x.ts - y.ts);
     if (pts.length < 4)
@@ -107,7 +121,6 @@ function buildBatteryDeficitSeries(batteryPoints, bucketMs = exports.NIGHT_BRIDG
         netW: p.powerW,
     }));
 }
-exports.buildBatteryDeficitSeries = buildBatteryDeficitSeries;
 function localHourFromTs(ts) {
     return new Date(ts).getHours();
 }
@@ -137,7 +150,6 @@ function findSustainedDeficitStart(series, searchFromTs, searchToTs, opts) {
     }
     return null;
 }
-exports.findSustainedDeficitStart = findSustainedDeficitStart;
 /**
  * Erste stabile Surplus-Phase (netW ≥ +deficitW) ab searchFromTs.
  */
@@ -163,7 +175,6 @@ function findSustainedSurplusStart(series, searchFromTs, searchToTs, opts) {
     }
     return null;
 }
-exports.findSustainedSurplusStart = findSustainedSurplusStart;
 /**
  * Erste stabile Phase ohne Defizit (netW > −deficitW) — Batterie-Fallback morgens
  * (PV-Haus nutzt Surplus; Batterie oft nur „nicht mehr entladen“).
@@ -190,7 +201,6 @@ function findSustainedNonDeficitStart(series, searchFromTs, searchToTs, opts) {
     }
     return null;
 }
-exports.findSustainedNonDeficitStart = findSustainedNonDeficitStart;
 /**
  * Pro Abend-Tag eine Brücke: nach lokalem Mittag Defizit → bis Surplus am Folgemorgen.
  * Flattern ist in der Erkennung eingerechnet (mind. flutterMs stabil).
@@ -236,7 +246,6 @@ function findPvHouseNightBridges(series, opts) {
     }
     return out;
 }
-exports.findPvHouseNightBridges = findPvHouseNightBridges;
 function findNearestSoc(points, targetTs, maxDeltaMs) {
     let best = null;
     let bestDelta = Number.POSITIVE_INFINITY;
@@ -251,7 +260,6 @@ function findNearestSoc(points, targetTs, maxDeltaMs) {
         return null;
     return best.socPct;
 }
-exports.findNearestSoc = findNearestSoc;
 /** Letzter SOC ≤ targetTs (innerhalb maxDelta) — Abend-Start ohne schon entladenen Nachbarpunkt. */
 function findSocAtOrBefore(points, targetTs, maxDeltaMs) {
     let best = null;
@@ -267,7 +275,6 @@ function findSocAtOrBefore(points, targetTs, maxDeltaMs) {
     }
     return best ? best.socPct : null;
 }
-exports.findSocAtOrBefore = findSocAtOrBefore;
 /**
  * Tiefster SOC-Punkt im Brückenfenster (mit Zeitstempel) — verhindert Unterschätzung, wenn das
  * Fensterende schon in die Morgenladung fällt und „nächster SOC“ wieder höher ist. Der Zeitstempel
@@ -285,12 +292,10 @@ function findMinSocPointInRange(points, startTs, endTs) {
     }
     return min;
 }
-exports.findMinSocPointInRange = findMinSocPointInRange;
 /** Tiefster SOC im Brückenfenster (nur Wert) — dünner Wrapper um `findMinSocPointInRange`. */
 function findMinSocInRange(points, startTs, endTs) {
     return findMinSocPointInRange(points, startTs, endTs)?.socPct ?? null;
 }
-exports.findMinSocInRange = findMinSocInRange;
 /**
  * Zwischenladung erkannt: Summe der SOC-Anstiege zwischen Fensterstart und dem Tiefpunkt
  * überschreitet die Rauschschwelle. Ein Anstieg NACH dem Tiefpunkt (normale Morgen-/
@@ -309,7 +314,6 @@ function hasInterimRecharge(points, startTs, minPointTs, thresholdPct = 3) {
     }
     return recharge >= thresholdPct;
 }
-exports.hasInterimRecharge = hasInterimRecharge;
 /**
  * Gewichtetes Mittel: jüngere Nächte stärker (Halbwertszeit ~10 Tage).
  * Sonst bleibt der Sommer-Schnitt bei längeren Herbst-/Winternächten hängen.
@@ -319,7 +323,6 @@ function recencyWeight(ageDays, halfLifeDays = 10) {
         return 0;
     return Math.exp((-Math.LN2 * ageDays) / Math.max(1, halfLifeDays));
 }
-exports.recencyWeight = recencyWeight;
 function weightedAverage(values, weights) {
     if (values.length === 0 || values.length !== weights.length)
         return null;
@@ -336,7 +339,6 @@ function weightedAverage(values, weights) {
         return null;
     return round2(sx / sw);
 }
-exports.weightedAverage = weightedAverage;
 /**
  * Integriert eine Leistungsserie (W) über [startTs, endTs] zu kWh. Jeder Punkt repräsentiert
  * den Zeitraum bis zur Mitte zum Nachbarn (funktioniert für dichte 10-Min- wie für sparsame
@@ -366,7 +368,6 @@ function gridBalanceHasSamplesInWindow(points, startTs, endTs) {
     }
     return false;
 }
-exports.gridBalanceHasSamplesInWindow = gridBalanceHasSamplesInWindow;
 function integratePowerKwh(points, startTs, endTs) {
     if (!(endTs > startTs) || points.length === 0)
         return null;
@@ -396,4 +397,3 @@ function integratePowerKwh(points, startTs, endTs) {
         return null;
     return round2(kwh);
 }
-exports.integratePowerKwh = integratePowerKwh;

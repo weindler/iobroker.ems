@@ -8,7 +8,9 @@
  * ausschließlich in die eigene Persistenz/States dieses Moduls — kein Fremd-Write.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadClimateSharedPowerStats = exports.runClimateSharedPowerLearning = exports.CLIMATE_SHARED_POWER_PERSIST_CATEGORY = void 0;
+exports.CLIMATE_SHARED_POWER_PERSIST_CATEGORY = void 0;
+exports.runClimateSharedPowerLearning = runClimateSharedPowerLearning;
+exports.loadClimateSharedPowerStats = loadClimateSharedPowerStats;
 const constants_1 = require("../day_telemetry/constants");
 const persist_1 = require("../day_telemetry/persist");
 const time_1 = require("../../operator/time");
@@ -96,9 +98,7 @@ async function runClimateSharedPowerLearning(host, opts = {}) {
     }
     return persisted;
 }
-exports.runClimateSharedPowerLearning = runClimateSharedPowerLearning;
 async function loadClimateSharedPowerStats(host) {
     const persistDir = host.getAbsolutePath(exports.CLIMATE_SHARED_POWER_PERSIST_CATEGORY);
     return (0, persist_2.readClimateSharedPowerPersist)(persistDir);
 }
-exports.loadClimateSharedPowerStats = loadClimateSharedPowerStats;

@@ -4,7 +4,12 @@
  * Priorität: live > explicit > predicted > unknown.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectPresenceReasonCodes = exports.vehicleSlotAllocatable = exports.evaluateVehicleGoalFeasibility = exports.presenceDigest = exports.buildVehicleAvailabilityWindows = exports.normalizePresenceWindow = void 0;
+exports.normalizePresenceWindow = normalizePresenceWindow;
+exports.buildVehicleAvailabilityWindows = buildVehicleAvailabilityWindows;
+exports.presenceDigest = presenceDigest;
+exports.evaluateVehicleGoalFeasibility = evaluateVehicleGoalFeasibility;
+exports.vehicleSlotAllocatable = vehicleSlotAllocatable;
+exports.collectPresenceReasonCodes = collectPresenceReasonCodes;
 const vehicle_presence_1 = require("../../../learning/vehicle_presence");
 const reason_codes_1 = require("./reason_codes");
 const ev_energy_1 = require("./ev_energy");
@@ -24,7 +29,6 @@ function normalizePresenceWindow(w) {
         hard,
     };
 }
-exports.normalizePresenceWindow = normalizePresenceWindow;
 function inWindow(iso, startIso, endIso) {
     const t = Date.parse(iso);
     return t >= Date.parse(startIso) && t < Date.parse(endIso);
@@ -133,7 +137,6 @@ function buildVehicleAvailabilityWindows(args) {
     }
     return mergeWindows(windows);
 }
-exports.buildVehicleAvailabilityWindows = buildVehicleAvailabilityWindows;
 function presenceDigest(windows) {
     return JSON.stringify(windows.map((w) => {
         const n = normalizePresenceWindow(w);
@@ -147,7 +150,6 @@ function presenceDigest(windows) {
         };
     }));
 }
-exports.presenceDigest = presenceDigest;
 function energyFromPowerW(powerW) {
     return (powerW / 1000) * SLOT_H;
 }
@@ -314,7 +316,6 @@ function evaluateVehicleGoalFeasibility(input, opts) {
         reasonCodes,
     };
 }
-exports.evaluateVehicleGoalFeasibility = evaluateVehicleGoalFeasibility;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -330,7 +331,6 @@ function vehicleSlotAllocatable(wb, slotStartIso) {
     }
     return false;
 }
-exports.vehicleSlotAllocatable = vehicleSlotAllocatable;
 function collectPresenceReasonCodes(windows) {
     const codes = new Set();
     for (const w of windows) {
@@ -352,4 +352,3 @@ function collectPresenceReasonCodes(windows) {
     }
     return [...codes];
 }
-exports.collectPresenceReasonCodes = collectPresenceReasonCodes;

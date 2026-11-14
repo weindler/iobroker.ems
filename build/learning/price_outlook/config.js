@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.priceOutlookConfigFromAdapter = void 0;
+exports.priceOutlookConfigFromAdapter = priceOutlookConfigFromAdapter;
 function boolField(c, key, fallback) {
     const value = c[key];
     if (typeof value === "boolean")
@@ -38,4 +38,3 @@ function priceOutlookConfigFromAdapter(config) {
         tomorrowJsonStateId: strField(c, "learning_price_forecast_tomorrow_json_state"),
     };
 }
-exports.priceOutlookConfigFromAdapter = priceOutlookConfigFromAdapter;

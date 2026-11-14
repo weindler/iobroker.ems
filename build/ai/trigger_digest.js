@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.aiTriggerDigestPayload = exports.aiMaterialFlexFamilies = exports.priceStructureDigestFromPlan = exports.medianGridPriceCtPerKwh = exports.AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT = exports.AI_TRIGGER_PV_BUCKET_KWH = exports.AI_TRIGGER_ENERGY_BUCKET_KWH = void 0;
+exports.AI_TRIGGER_PRICE_MEDIAN_BUCKET_CT = exports.AI_TRIGGER_PV_BUCKET_KWH = exports.AI_TRIGGER_ENERGY_BUCKET_KWH = void 0;
+exports.medianGridPriceCtPerKwh = medianGridPriceCtPerKwh;
+exports.priceStructureDigestFromPlan = priceStructureDigestFromPlan;
+exports.aiMaterialFlexFamilies = aiMaterialFlexFamilies;
+exports.aiTriggerDigestPayload = aiTriggerDigestPayload;
 /** Grobes Energie-Raster (kWh) — Änderungen unterhalb gelten als Rauschen, nicht als neuer Plan. */
 exports.AI_TRIGGER_ENERGY_BUCKET_KWH = 0.3;
 /** Grobes PV-Tagesprognose-Raster (kWh) — deutlich größer, da Tagessummen im zweistelligen kWh-Bereich liegen. */
@@ -28,7 +32,6 @@ function medianGridPriceCtPerKwh(plan) {
     prices.sort((a, b) => a - b);
     return prices[Math.floor(prices.length / 2)];
 }
-exports.medianGridPriceCtPerKwh = medianGridPriceCtPerKwh;
 /**
  * Kompakter Preisstruktur-Digest: Median-Bucket + Lage günstiger/teurer Bereiche.
  * Erkennt Verschiebungen günstiger Fenster bei ähnlichem Median — ohne fixe Nachtregel.
@@ -70,7 +73,6 @@ function priceStructureDigestFromPlan(plan) {
         dearHours,
     });
 }
-exports.priceStructureDigestFromPlan = priceStructureDigestFromPlan;
 /**
  * Welche KI-relevanten Contribution-Familien im Plan aktiv sind (Vehicle angesteckt,
  * Batterie-Ladebedarf, IH/Klima flex) — grober Material-Change ohne Slot-Watt-Rauschen.
@@ -89,7 +91,6 @@ function aiMaterialFlexFamilies(plan) {
     }
     return [...families].sort();
 }
-exports.aiMaterialFlexFamilies = aiMaterialFlexFamilies;
 /**
  * Bewusst grober "hat sich wirklich etwas geändert?"-Fingerabdruck für die automatische
  * KI-Auslösung — getrennt von `dailyPlanRevisionPayload` (Operator-Revision).
@@ -126,4 +127,3 @@ function aiTriggerDigestPayload(plan) {
         priceStructure: priceStructureDigestFromPlan(plan),
     });
 }
-exports.aiTriggerDigestPayload = aiTriggerDigestPayload;

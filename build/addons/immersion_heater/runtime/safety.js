@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.canResetFault = exports.isRelayChatter = exports.recordChatterEvent = exports.checkPowerFault = void 0;
+exports.checkPowerFault = checkPowerFault;
+exports.recordChatterEvent = recordChatterEvent;
+exports.isRelayChatter = isRelayChatter;
+exports.canResetFault = canResetFault;
 function checkPowerFault(input) {
     const none = { faultCode: "none", faultMessage: "", mismatchSinceMs: input.mismatchSinceMs, lockout: false };
     // Dryrun: EMS besitzt das Relais nicht → keine Power-/Feedback-Faults.
@@ -83,17 +86,14 @@ function checkPowerFault(input) {
     }
     return { ...none, mismatchSinceMs: null };
 }
-exports.checkPowerFault = checkPowerFault;
 function recordChatterEvent(tracker, nowMs, windowSec) {
     const windowMs = windowSec * 1000;
     const kept = tracker.timestampsMs.filter((t) => nowMs - t <= windowMs);
     return { timestampsMs: [...kept, nowMs] };
 }
-exports.recordChatterEvent = recordChatterEvent;
 function isRelayChatter(tracker, maxChanges) {
     return tracker.timestampsMs.length > maxChanges;
 }
-exports.isRelayChatter = isRelayChatter;
 function canResetFault(input) {
     if (!input.configValid)
         return { ok: false, reason: "invalid_config" };
@@ -109,4 +109,3 @@ function canResetFault(input) {
     }
     return { ok: true, reason: "reset_ok" };
 }
-exports.canResetFault = canResetFault;

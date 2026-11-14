@@ -1,13 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.missingForecastResult = exports.disabledResult = exports.computePriceForecastLearning = exports.healthFromMetrics = exports.computeForecastConfidence = exports.stabilityFromDailyAccuracy = exports.accuracyFromAvgErrorCt = exports.stdDev = exports.meanOrNull = void 0;
+exports.meanOrNull = meanOrNull;
+exports.stdDev = stdDev;
+exports.accuracyFromAvgErrorCt = accuracyFromAvgErrorCt;
+exports.stabilityFromDailyAccuracy = stabilityFromDailyAccuracy;
+exports.computeForecastConfidence = computeForecastConfidence;
+exports.healthFromMetrics = healthFromMetrics;
+exports.computePriceForecastLearning = computePriceForecastLearning;
+exports.disabledResult = disabledResult;
+exports.missingForecastResult = missingForecastResult;
+exports.errorResult = errorResult;
 const constants_1 = require("./constants");
 function meanOrNull(values) {
     if (values.length === 0)
         return null;
     return values.reduce((a, b) => a + b, 0) / values.length;
 }
-exports.meanOrNull = meanOrNull;
 function stdDev(values) {
     if (values.length < 2)
         return null;
@@ -17,14 +25,12 @@ function stdDev(values) {
     const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
     return Math.sqrt(variance);
 }
-exports.stdDev = stdDev;
 /** Einfache transparente Accuracy: 100 − avgAbsErrorCt × 10 (geclippt 0–100). */
 function accuracyFromAvgErrorCt(avgErrorCt) {
     if (avgErrorCt === null || !Number.isFinite(avgErrorCt))
         return null;
     return Math.round(Math.max(0, Math.min(100, 100 - avgErrorCt * constants_1.ACCURACY_ERROR_SCALE)));
 }
-exports.accuracyFromAvgErrorCt = accuracyFromAvgErrorCt;
 function stabilityFromDailyAccuracy(dailyAccuracies) {
     if (dailyAccuracies.length < 3)
         return "unknown";
@@ -37,7 +43,6 @@ function stabilityFromDailyAccuracy(dailyAccuracies) {
         return "normal";
     return "volatile";
 }
-exports.stabilityFromDailyAccuracy = stabilityFromDailyAccuracy;
 function pairsWithinDays(pairs, maxDayOffset, now) {
     const cutoff = new Date(now);
     cutoff.setHours(0, 0, 0, 0);
@@ -74,7 +79,6 @@ function computeForecastConfidence(params) {
         score += 2;
     return Math.round(Math.max(0, Math.min(100, score)));
 }
-exports.computeForecastConfidence = computeForecastConfidence;
 function healthFromMetrics(sampleDays, coveragePct) {
     if (sampleDays >= 30 && coveragePct >= 80)
         return "ok";
@@ -83,7 +87,6 @@ function healthFromMetrics(sampleDays, coveragePct) {
     // Zu wenig/zu junge Historie ist kein Fehler — "error" bleibt echten Störungen vorbehalten.
     return "degraded";
 }
-exports.healthFromMetrics = healthFromMetrics;
 function computePriceForecastLearning(allPairs, lookbackDays, forecastSource, actualSource, now) {
     const groups = dailyGroups(allPairs);
     const validDates = validSampleDays(groups);
@@ -141,19 +144,15 @@ function computePriceForecastLearning(allPairs, lookbackDays, forecastSource, ac
         error: "",
     };
 }
-exports.computePriceForecastLearning = computePriceForecastLearning;
 function disabledResult() {
     return emptyResult("disabled", "", "", "Price Forecast Learning in Admin deaktiviert.");
 }
-exports.disabledResult = disabledResult;
 function missingForecastResult() {
     return emptyResult("missing_forecast", "", "", "Forecast- und Ist-State konfigurieren (PricesToday/PricesTomorrow.json + CurrentPrice.total).");
 }
-exports.missingForecastResult = missingForecastResult;
 function errorResult(forecastSource, actualSource, message) {
     return emptyResult("error", forecastSource, actualSource, message);
 }
-exports.errorResult = errorResult;
 function emptyResult(status, forecastSource, actualSource, error) {
     return {
         status,

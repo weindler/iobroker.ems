@@ -4,7 +4,7 @@
  * Bevorzugt Cycle-Durchschnitt; sonst Newton-Instantanrate; sonst emptyAt-Linearisierung.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.effectiveCoolingRateCPerH = void 0;
+exports.effectiveCoolingRateCPerH = effectiveCoolingRateCPerH;
 const constants_1 = require("../../../learning/thermal_runtime/constants");
 /**
  * Belastbare °C/h für resolveThermalPlannerEnergy.
@@ -46,4 +46,3 @@ function effectiveCoolingRateCPerH(input) {
     }
     return null;
 }
-exports.effectiveCoolingRateCPerH = effectiveCoolingRateCPerH;

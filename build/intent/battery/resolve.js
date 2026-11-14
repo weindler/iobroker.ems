@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyBatteryClearFields = exports.resolveBatteryIntent = void 0;
+exports.resolveBatteryIntent = resolveBatteryIntent;
+exports.applyBatteryClearFields = applyBatteryClearFields;
 const resolver_1 = require("../core/resolver");
 const validation_1 = require("../core/validation");
 const validation_2 = require("./validation");
@@ -53,7 +54,6 @@ function resolveBatteryIntent(input) {
     const resolvedAt = previous && (0, validation_2.nextBatteryRevision)(previous, draft) === previous.revision ? previous.resolved_at : now.toISOString();
     return { ...draft, revision, resolved_at: resolvedAt };
 }
-exports.resolveBatteryIntent = resolveBatteryIntent;
 function addFieldCandidate(field, scope, list, activeOverride) {
     if (!field)
         return;
@@ -112,4 +112,3 @@ function applyBatteryClearFields(snapshot, clearFields) {
     }
     return out;
 }
-exports.applyBatteryClearFields = applyBatteryClearFields;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emptyGlobalPolicyAdminConfig = exports.globalPolicyConfigFromAdapter = void 0;
+exports.globalPolicyConfigFromAdapter = globalPolicyConfigFromAdapter;
+exports.emptyGlobalPolicyAdminConfig = emptyGlobalPolicyAdminConfig;
 const state_util_1 = require("../../ems_light/state_util");
 const normalize_1 = require("../core/normalize");
 function numFromConfig(config, key) {
@@ -55,8 +56,6 @@ function globalPolicyConfigFromAdapter(config) {
         gridImportAllowed,
     };
 }
-exports.globalPolicyConfigFromAdapter = globalPolicyConfigFromAdapter;
 function emptyGlobalPolicyAdminConfig() {
     return globalPolicyConfigFromAdapter({});
 }
-exports.emptyGlobalPolicyAdminConfig = emptyGlobalPolicyAdminConfig;

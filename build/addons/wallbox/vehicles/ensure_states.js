@@ -1,13 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.wallboxVehicleStatePaths = exports.ensureWallboxVehicleProfileStates = exports.vehicleStatePaths = exports.vehicleBasePath = exports.WALLBOX_VEHICLES_BASE = void 0;
+exports.WALLBOX_VEHICLES_BASE = void 0;
+exports.vehicleBasePath = vehicleBasePath;
+exports.vehicleStatePaths = vehicleStatePaths;
+exports.wallboxVehicleStatePaths = vehicleStatePaths;
+exports.ensureWallboxVehicleProfileStates = ensureWallboxVehicleProfileStates;
 const tree_paths_1 = require("../../../tree_paths");
 const state_util_1 = require("../../../ems_light/state_util");
 exports.WALLBOX_VEHICLES_BASE = `${(0, tree_paths_1.addonBase)("wallbox")}.vehicles`;
 function vehicleBasePath(vehicleId) {
     return `${exports.WALLBOX_VEHICLES_BASE}.${vehicleId}`;
 }
-exports.vehicleBasePath = vehicleBasePath;
 function vehicleChannelPath(vehicleId, channel) {
     return `${vehicleBasePath(vehicleId)}.${channel}`;
 }
@@ -84,8 +87,6 @@ function vehicleStatePaths(vehicleId) {
         runtimeStatus: `${runtime}.status`,
     };
 }
-exports.vehicleStatePaths = vehicleStatePaths;
-exports.wallboxVehicleStatePaths = vehicleStatePaths;
 function strState(id, name, def = "") {
     return {
         id,
@@ -196,4 +197,3 @@ async function ensureWallboxVehicleProfileStates(host, profiles) {
         await (0, state_util_1.ensureStates)(host, vehicleStateDefs(profile.vehicleId, profile.displayName));
     }
 }
-exports.ensureWallboxVehicleProfileStates = ensureWallboxVehicleProfileStates;

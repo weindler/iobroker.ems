@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runCommandPipeline = void 0;
+exports.runCommandPipeline = runCommandPipeline;
 const governance_1 = require("./addons/governance");
 const registry_1 = require("./addons/registry");
 const execution_mode_1 = require("./execution_mode");
@@ -168,7 +168,6 @@ async function runCommandPipeline(intent, ctx) {
         addon_mode: mode,
     };
 }
-exports.runCommandPipeline = runCommandPipeline;
 function scalarForForeignWrite(command, plannedValue, requestValue) {
     if (command === "set_charge_power_w") {
         if (typeof plannedValue === "object" && plannedValue !== null) {

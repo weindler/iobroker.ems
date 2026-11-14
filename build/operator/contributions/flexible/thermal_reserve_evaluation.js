@@ -22,7 +22,9 @@
  * über `buildImmersionMandatoryContribution` — unverändert und unabhängig von dieser Datei.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateThermalReserveDiagnostics = exports.resolveNextPvHeatOpportunityIso = exports.gateBatteryInputsForThermalPrecharge = void 0;
+exports.gateBatteryInputsForThermalPrecharge = gateBatteryInputsForThermalPrecharge;
+exports.resolveNextPvHeatOpportunityIso = resolveNextPvHeatOpportunityIso;
+exports.evaluateThermalReserveDiagnostics = evaluateThermalReserveDiagnostics;
 const immersion_night_bridge_1 = require("./immersion_night_bridge");
 /**
  * Blendet Batterie-Signale für die Vorladung aus, wenn die Policy dem Heizstab die Batterie
@@ -49,7 +51,6 @@ function gateBatteryInputsForThermalPrecharge(input) {
                 : "Kein Batterie-Ladeziel bekannt.",
     };
 }
-exports.gateBatteryInputsForThermalPrecharge = gateBatteryInputsForThermalPrecharge;
 /**
  * Nächstes verlässliches PV-/Energiefenster für die thermische Vorladung — reine Priorität
  * bestehender Quellen, keine neue Berechnung:
@@ -64,7 +65,6 @@ function resolveNextPvHeatOpportunityIso(input) {
         return input.pvDeficitBridgeUntilIso;
     return (0, immersion_night_bridge_1.nextBridgeUntilIso)(input.now, input.timezone?.trim() || "Europe/Berlin");
 }
-exports.resolveNextPvHeatOpportunityIso = resolveNextPvHeatOpportunityIso;
 function round1(n) {
     return Math.round(n * 10) / 10;
 }
@@ -131,4 +131,3 @@ function evaluateThermalReserveDiagnostics(input) {
         reasonDe: parts.join(" — ") + ".",
     };
 }
-exports.evaluateThermalReserveDiagnostics = evaluateThermalReserveDiagnostics;

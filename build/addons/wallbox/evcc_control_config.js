@@ -1,6 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectConfiguredControlTargetStateIds = exports.evccModeHoldValue = exports.evccModeChargeValue = exports.evccControlTargetForRole = exports.resolveWallboxControlModel = exports.hasEvccControlWriteMapping = exports.resolveControlContractModel = exports.resolveEvccControlContractV1 = exports.matchesEvccControlSuffix = exports.strConfigField = exports.WALLBOX_EVCC_CONTROL_ROLES = exports.WALLBOX_CONTROL_MODELS = exports.WB_EVCC_MODE_HOLD_VALUE = exports.WB_EVCC_MODE_CHARGE_VALUE = exports.EVCC_BUTTON_SUFFIXES = exports.EVCC_CONTROL_V1_SUFFIXES = exports.WB_EVCC_CONTROL_NOW = exports.WB_EVCC_CONTROL_MIN = exports.WB_EVCC_CONTROL_PV = exports.WB_EVCC_CONTROL_OFF = exports.WB_EVCC_MODE_CONTROL = exports.WB_EVCC_CONTROL_PHASES_CONFIGURED = exports.WB_EVCC_CONTROL_MAX_CURRENT = exports.WB_EVCC_CONTROL_PV_CONTROL = exports.WB_EVCC_SET_PHASE = exports.WB_EVCC_SET_MAX_CURRENT_A = exports.WB_EVCC_SET_MODE = exports.WB_CONTROL_MODEL = void 0;
+exports.WALLBOX_EVCC_CONTROL_ROLES = exports.WALLBOX_CONTROL_MODELS = exports.WB_EVCC_MODE_HOLD_VALUE = exports.WB_EVCC_MODE_CHARGE_VALUE = exports.EVCC_BUTTON_SUFFIXES = exports.EVCC_CONTROL_V1_SUFFIXES = exports.WB_EVCC_CONTROL_NOW = exports.WB_EVCC_CONTROL_MIN = exports.WB_EVCC_CONTROL_PV = exports.WB_EVCC_CONTROL_OFF = exports.WB_EVCC_MODE_CONTROL = exports.WB_EVCC_CONTROL_PHASES_CONFIGURED = exports.WB_EVCC_CONTROL_MAX_CURRENT = exports.WB_EVCC_CONTROL_PV_CONTROL = exports.WB_EVCC_SET_PHASE = exports.WB_EVCC_SET_MAX_CURRENT_A = exports.WB_EVCC_SET_MODE = exports.WB_CONTROL_MODEL = void 0;
+exports.strConfigField = strConfigField;
+exports.matchesEvccControlSuffix = matchesEvccControlSuffix;
+exports.resolveEvccControlContractV1 = resolveEvccControlContractV1;
+exports.resolveControlContractModel = resolveControlContractModel;
+exports.hasEvccControlWriteMapping = hasEvccControlWriteMapping;
+exports.resolveWallboxControlModel = resolveWallboxControlModel;
+exports.evccControlTargetForRole = evccControlTargetForRole;
+exports.evccModeChargeValue = evccModeChargeValue;
+exports.evccModeHoldValue = evccModeHoldValue;
+exports.collectConfiguredControlTargetStateIds = collectConfiguredControlTargetStateIds;
 const evcc_config_1 = require("./evcc_config");
 const mapping_config_1 = require("../../mapping_config");
 /** Auswahl des Wallbox-Steuerpfads (Admin: wb_control_model). */
@@ -43,7 +53,6 @@ function strTarget(c, key) {
 function strConfigField(c, key) {
     return strTarget(c, key);
 }
-exports.strConfigField = strConfigField;
 function rejectDirectGoeId(stateId) {
     const id = stateId.trim();
     if (!id)
@@ -59,7 +68,6 @@ function matchesEvccControlSuffix(stateId, suffix) {
     const s = suffix.trim().replace(/\.+/g, ".").toLowerCase();
     return id.endsWith(`.${s}`) || id.endsWith(s);
 }
-exports.matchesEvccControlSuffix = matchesEvccControlSuffix;
 function pickControlV1Id(c, dedicatedKey, suffix, fallbackKey) {
     const dedicated = rejectDirectGoeId(strTarget(c, dedicatedKey));
     if (dedicated && matchesEvccControlSuffix(dedicated, suffix))
@@ -96,7 +104,6 @@ function resolveEvccControlContractV1(config) {
         usesLegacyGoeFallback: false,
     };
 }
-exports.resolveEvccControlContractV1 = resolveEvccControlContractV1;
 function resolveControlContractModel(controlModel, contractV1Ready, stringModeComplete) {
     if (controlModel === "none")
         return "none";
@@ -108,7 +115,6 @@ function resolveControlContractModel(controlModel, contractV1Ready, stringModeCo
         return "evcc_string_mode";
     return "evcc_control_v1";
 }
-exports.resolveControlContractModel = resolveControlContractModel;
 function hasEvccControlWriteMapping(config) {
     const c = config && typeof config === "object" ? config : {};
     const keys = [
@@ -125,7 +131,6 @@ function hasEvccControlWriteMapping(config) {
     ];
     return keys.some((k) => strTarget(c, k).length > 0);
 }
-exports.hasEvccControlWriteMapping = hasEvccControlWriteMapping;
 function resolveWallboxControlModel(config) {
     const c = config && typeof config === "object" ? config : {};
     const explicit = c[exports.WB_CONTROL_MODEL];
@@ -137,7 +142,6 @@ function resolveWallboxControlModel(config) {
     }
     return "evcc";
 }
-exports.resolveWallboxControlModel = resolveWallboxControlModel;
 function evccControlTargetForRole(config, role) {
     const keyMap = {
         set_mode: exports.WB_EVCC_SET_MODE,
@@ -146,15 +150,12 @@ function evccControlTargetForRole(config, role) {
     };
     return strTarget(config, keyMap[role]);
 }
-exports.evccControlTargetForRole = evccControlTargetForRole;
 function evccModeChargeValue(config) {
     return strTarget(config, exports.WB_EVCC_MODE_CHARGE_VALUE);
 }
-exports.evccModeChargeValue = evccModeChargeValue;
 function evccModeHoldValue(config) {
     return strTarget(config, exports.WB_EVCC_MODE_HOLD_VALUE);
 }
-exports.evccModeHoldValue = evccModeHoldValue;
 /** Sammelt konfigurierte Write-Ziel-IDs für read-only Objektprüfung (ohne Snapshot). */
 function collectConfiguredControlTargetStateIds(config) {
     const model = resolveWallboxControlModel(config);
@@ -190,4 +191,3 @@ function collectConfiguredControlTargetStateIds(config) {
     }
     return ids;
 }
-exports.collectConfiguredControlTargetStateIds = collectConfiguredControlTargetStateIds;

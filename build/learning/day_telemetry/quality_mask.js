@@ -4,7 +4,11 @@
  * 0 = ok, 1 = partial, 2 = missing, 3 = n/a
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.worstDomainQuality = exports.encodeQualityMask = exports.decodeDomainQuality = exports.encodeDomainQuality = exports.TELEMETRY_DOMAIN_COUNT = exports.DOMAIN_QUALITY = exports.TELEMETRY_DOMAIN = void 0;
+exports.TELEMETRY_DOMAIN_COUNT = exports.DOMAIN_QUALITY = exports.TELEMETRY_DOMAIN = void 0;
+exports.encodeDomainQuality = encodeDomainQuality;
+exports.decodeDomainQuality = decodeDomainQuality;
+exports.encodeQualityMask = encodeQualityMask;
+exports.worstDomainQuality = worstDomainQuality;
 exports.TELEMETRY_DOMAIN = {
     PV: 0,
     HOUSE: 1,
@@ -29,12 +33,10 @@ function encodeDomainQuality(mask, domain, quality) {
     const cleared = mask & ~(0b11 << shift);
     return cleared | ((quality & 0b11) << shift);
 }
-exports.encodeDomainQuality = encodeDomainQuality;
 function decodeDomainQuality(mask, domain) {
     const shift = domain * 2;
     return ((mask >> shift) & 0b11);
 }
-exports.decodeDomainQuality = decodeDomainQuality;
 /** Setzt mehrere Domänen in einer Maske. */
 function encodeQualityMask(parts) {
     let mask = 0;
@@ -46,7 +48,6 @@ function encodeQualityMask(parts) {
     }
     return mask;
 }
-exports.encodeQualityMask = encodeQualityMask;
 function worstDomainQuality(mask) {
     let worst = exports.DOMAIN_QUALITY.ok;
     for (let d = 0; d < exports.TELEMETRY_DOMAIN_COUNT; d++) {
@@ -58,4 +59,3 @@ function worstDomainQuality(mask) {
     }
     return worst;
 }
-exports.worstDomainQuality = worstDomainQuality;

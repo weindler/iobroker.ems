@@ -1,7 +1,10 @@
 "use strict";
 /** Hilfen zum Anlegen von States (nur setObjectNotExists, Defaults nur wenn leer). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.asBool = exports.asNum = exports.ensureStates = exports.ensureChannel = void 0;
+exports.ensureChannel = ensureChannel;
+exports.ensureStates = ensureStates;
+exports.asNum = asNum;
+exports.asBool = asBool;
 async function ensureChannel(host, channelId, nameDe) {
     await host.setObjectNotExistsAsync(channelId, {
         type: "channel",
@@ -9,7 +12,6 @@ async function ensureChannel(host, channelId, nameDe) {
         native: {},
     });
 }
-exports.ensureChannel = ensureChannel;
 async function ensureStates(host, defs) {
     for (const def of defs) {
         await host.setObjectNotExistsAsync(def.id, {
@@ -33,7 +35,6 @@ async function ensureStates(host, defs) {
         }
     }
 }
-exports.ensureStates = ensureStates;
 function asNum(v) {
     if (v === null || v === undefined || v === "" || typeof v === "boolean") {
         return null;
@@ -41,7 +42,6 @@ function asNum(v) {
     const n = typeof v === "number" ? v : parseFloat(String(v).replace(",", "."));
     return Number.isFinite(n) ? n : null;
 }
-exports.asNum = asNum;
 function asBool(v) {
     if (typeof v === "boolean")
         return v;
@@ -54,4 +54,3 @@ function asBool(v) {
         return false;
     return null;
 }
-exports.asBool = asBool;

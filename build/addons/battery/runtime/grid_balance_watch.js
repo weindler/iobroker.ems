@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearGridBalanceWatch = exports.scheduleGridBalanceTick = exports.isGridBalanceWatchState = exports.setupGridBalanceWatch = void 0;
+exports.setupGridBalanceWatch = setupGridBalanceWatch;
+exports.isGridBalanceWatchState = isGridBalanceWatchState;
+exports.scheduleGridBalanceTick = scheduleGridBalanceTick;
+exports.clearGridBalanceWatch = clearGridBalanceWatch;
 const DEBOUNCE_MS = 500;
 let debounceTimer = null;
 const watchedStateIds = new Set();
@@ -20,11 +23,9 @@ async function setupGridBalanceWatch(adapter, table) {
         }
     }
 }
-exports.setupGridBalanceWatch = setupGridBalanceWatch;
 function isGridBalanceWatchState(stateId) {
     return watchedStateIds.has(stateId);
 }
-exports.isGridBalanceWatchState = isGridBalanceWatchState;
 /** Debounced tick — wie früher runGridBalanceOnConsumptionChange (on change). */
 function scheduleGridBalanceTick(host, runTick) {
     if (debounceTimer) {
@@ -35,7 +36,6 @@ function scheduleGridBalanceTick(host, runTick) {
         void runTick(host).catch((e) => host.log.error(`battery grid_balance tick: ${e}`));
     }, DEBOUNCE_MS);
 }
-exports.scheduleGridBalanceTick = scheduleGridBalanceTick;
 function clearGridBalanceWatch() {
     if (debounceTimer) {
         clearTimeout(debounceTimer);
@@ -43,4 +43,3 @@ function clearGridBalanceWatch() {
     }
     watchedStateIds.clear();
 }
-exports.clearGridBalanceWatch = clearGridBalanceWatch;

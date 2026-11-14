@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sortIssuesDeterministic = exports.normalizeMutualExclusions = exports.normalizeEnergyPriority = exports.normalizeTriState = exports.sortKeysDeep = void 0;
+exports.sortKeysDeep = sortKeysDeep;
+exports.normalizeTriState = normalizeTriState;
+exports.normalizeEnergyPriority = normalizeEnergyPriority;
+exports.normalizeMutualExclusions = normalizeMutualExclusions;
+exports.sortIssuesDeterministic = sortIssuesDeterministic;
 /** Stabile Key-Sortierung für Objekte (rekursiv). */
 function sortKeysDeep(value) {
     if (value === null || typeof value !== "object") {
@@ -19,7 +23,6 @@ function sortKeysDeep(value) {
     }
     return sorted;
 }
-exports.sortKeysDeep = sortKeysDeep;
 function normalizeTriState(raw) {
     if (raw === true || raw === "true" || raw === 1 || raw === "yes") {
         return true;
@@ -29,7 +32,6 @@ function normalizeTriState(raw) {
     }
     return "unknown";
 }
-exports.normalizeTriState = normalizeTriState;
 /** energyPriority: Reihenfolge = Priorität — Duplikate entfernen, erste Vorkommen behalten. */
 function normalizeEnergyPriority(list) {
     if (!Array.isArray(list)) {
@@ -50,7 +52,6 @@ function normalizeEnergyPriority(list) {
     }
     return out;
 }
-exports.normalizeEnergyPriority = normalizeEnergyPriority;
 /** mutualExclusions: nach id stabil sortieren. */
 function normalizeMutualExclusions(rules) {
     if (!Array.isArray(rules)) {
@@ -82,7 +83,6 @@ function normalizeMutualExclusions(rules) {
     }
     return out.sort((a, b) => a.id.localeCompare(b.id));
 }
-exports.normalizeMutualExclusions = normalizeMutualExclusions;
 function sortIssuesDeterministic(issues) {
     return [...issues].sort((a, b) => {
         const sev = { error: 0, warning: 1, info: 2 }[a.severity] -
@@ -103,4 +103,3 @@ function sortIssuesDeterministic(issues) {
         return a.message.localeCompare(b.message);
     });
 }
-exports.sortIssuesDeterministic = sortIssuesDeterministic;

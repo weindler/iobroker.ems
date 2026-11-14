@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evccTokensMatch = exports.normalizeEvccMatchToken = exports.vehicleIdFromEvccTechnicalId = exports.sanitizeVehicleId = void 0;
+exports.sanitizeVehicleId = sanitizeVehicleId;
+exports.vehicleIdFromEvccTechnicalId = vehicleIdFromEvccTechnicalId;
+exports.normalizeEvccMatchToken = normalizeEvccMatchToken;
+exports.evccTokensMatch = evccTokensMatch;
 const node_crypto_1 = require("node:crypto");
 const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/i;
 const SAFE_ID_PATTERN = /^[a-z0-9_]{1,64}$/;
@@ -40,24 +43,20 @@ function sanitizeVehicleId(raw) {
     }
     return { valid: true, id, reason: null };
 }
-exports.sanitizeVehicleId = sanitizeVehicleId;
 /** Stable anonymized id from a technical EVCC vehicle id (never exposes raw id in paths). */
 function vehicleIdFromEvccTechnicalId(technicalId) {
     const trimmed = technicalId.trim();
     const digest = (0, node_crypto_1.createHash)("sha256").update(trimmed, "utf8").digest("hex").slice(0, 12);
     return `evcc_${digest}`;
 }
-exports.vehicleIdFromEvccTechnicalId = vehicleIdFromEvccTechnicalId;
 function normalizeEvccMatchToken(raw) {
     if (raw === null || raw === undefined)
         return null;
     const s = String(raw).trim().toLowerCase();
     return s || null;
 }
-exports.normalizeEvccMatchToken = normalizeEvccMatchToken;
 function evccTokensMatch(profileToken, detected) {
     if (!profileToken || !detected)
         return false;
     return profileToken === detected.trim().toLowerCase();
 }
-exports.evccTokensMatch = evccTokensMatch;

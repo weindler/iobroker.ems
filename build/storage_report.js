@@ -15,15 +15,30 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.storageReportHtml = exports.storageReportText = exports.buildStorageReport = exports.growthPerDay = exports.ensureStorageReportStates = exports.STORAGE_REPORT_HTML_STATE = void 0;
+exports.STORAGE_REPORT_HTML_STATE = void 0;
+exports.ensureStorageReportStates = ensureStorageReportStates;
+exports.growthPerDay = growthPerDay;
+exports.buildStorageReport = buildStorageReport;
+exports.storageReportText = storageReportText;
+exports.storageReportHtml = storageReportHtml;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const state_util_1 = require("./ems_light/state_util");
@@ -37,7 +52,6 @@ async function ensureStorageReportStates(host) {
             defaultVal: "<div>Noch keine Berechnung durchgeführt.</div>",
         }]);
 }
-exports.ensureStorageReportStates = ensureStorageReportStates;
 function retentionForCategory(category) {
     const key = category.toLowerCase().replace(/[^a-z0-9]+/g, "_");
     if (key.includes("day_telemetry") || key.includes("daily_evaluator") || key.includes("shadow"))
@@ -139,7 +153,6 @@ function growthPerDay(samples) {
     const days = (last.ts - first.ts) / 86_400_000;
     return days < 2 ? null : Math.max(0, (last.bytes - first.bytes) / days);
 }
-exports.growthPerDay = growthPerDay;
 async function buildStorageReport(root, now = new Date(), durableRoot) {
     await fs.mkdir(root, { recursive: true });
     const measured = await scan(root, durableRoot);
@@ -152,13 +165,11 @@ async function buildStorageReport(root, now = new Date(), durableRoot) {
     const statusDe = ratio >= 0.8 ? "Speicher könnte knapp werden" : ratio >= 0.35 ? "beobachten" : "unkritisch";
     return { ...measured, freeBytes, growthBytesPerDay, projectedBytes, statusDe, calculatedAtIso: now.toISOString() };
 }
-exports.buildStorageReport = buildStorageReport;
 function storageReportText(report) {
     const mb = (v) => v === null ? "noch nicht berechenbar" : `${Math.round(v / 1024 / 1024 * 10) / 10} MB`;
     const gb = (v) => `${Math.round(v / 1024 / 1024 / 1024 * 10) / 10} GB`;
     return `EMS aktuell: ${mb(report.bytes)} in ${report.files} Dateien · Datenträger frei: ${gb(report.freeBytes)} · Wachstum pro Tag: ${mb(report.growthBytesPerDay)} · Bewertung: ${report.statusDe}`;
 }
-exports.storageReportText = storageReportText;
 function storageReportHtml(report) {
     const esc = (value) => String(value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
     const mb = (v) => v === null ? "Noch nicht genügend Daten für eine Hochrechnung" : `${Math.round(v / 1024 / 1024 * 10) / 10} MB`;
@@ -168,4 +179,3 @@ function storageReportHtml(report) {
     const categoryRows = Object.entries(report.categories).sort((a, b) => b[1].bytes - a[1].bytes).map(([name, item]) => `<tr><td>${esc(name)}</td><td>${esc(mb(item.bytes))}</td><td>${item.files}</td><td>${esc(item.retentionDe)}</td><td>${esc(item.oldestIso ? new Date(item.oldestIso).toLocaleDateString("de-DE") : "—")} – ${esc(item.newestIso ? new Date(item.newestIso).toLocaleDateString("de-DE") : "—")}</td></tr>`).join("") || `<tr><td colspan="5">Noch keine EMS-Dateien gefunden.</td></tr>`;
     return `<div style="border:1px solid #bbb;border-left:5px solid ${color};border-radius:5px;padding:12px;margin-top:8px"><div style="font-size:18px;font-weight:700">Speicherbericht: <span style="color:${color}">${esc(report.statusDe)}</span></div><table><tbody>${row("Aktuell belegt", `${mb(report.bytes)} in ${report.files} Dateien`)}${row("Datenträger frei", gb(report.freeBytes))}${row("Wachstum pro Tag", mb(report.growthBytesPerDay))}${row("Hochrechnung 30/90/365/730 Tage", `${mb(report.projectedBytes["30"])} / ${mb(report.projectedBytes["90"])} / ${mb(report.projectedBytes["365"])} / ${mb(report.projectedBytes["730"])}`)}${row("Letzte Berechnung", new Date(report.calculatedAtIso).toLocaleString("de-DE"))}</tbody></table><div style="font-size:16px;font-weight:700;margin-top:12px">Belegung nach Datenart</div><table style="width:100%"><thead><tr><th>Datenart</th><th>Größe</th><th>Dateien</th><th>Aufbewahrung</th><th>älteste – neueste Datei</th></tr></thead><tbody>${categoryRows}</tbody></table><div style="margin-top:6px;color:${report.errors.length ? "#d32f2f" : "#2e7d32"}">${report.errors.length ? `Lesefehler: ${esc(report.errors.join("; "))}` : "Alle EMS-Verzeichnisse konnten gelesen werden."}</div></div>`;
 }
-exports.storageReportHtml = storageReportHtml;

@@ -1,22 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseContributorRef = exports.serializeContributorRef = exports.contributorRefKey = exports.systemContributorRef = exports.addonContributorRef = void 0;
+exports.addonContributorRef = addonContributorRef;
+exports.systemContributorRef = systemContributorRef;
+exports.contributorRefKey = contributorRefKey;
+exports.serializeContributorRef = serializeContributorRef;
+exports.parseContributorRef = parseContributorRef;
 function addonContributorRef(addonId) {
     return { type: "addon", id: addonId, addonId };
 }
-exports.addonContributorRef = addonContributorRef;
 function systemContributorRef(id) {
     return { type: "system", id, addonId: null };
 }
-exports.systemContributorRef = systemContributorRef;
 function contributorRefKey(ref) {
     return `${ref.type}:${ref.id}`;
 }
-exports.contributorRefKey = contributorRefKey;
 function serializeContributorRef(ref) {
     return JSON.stringify(ref);
 }
-exports.serializeContributorRef = serializeContributorRef;
 function parseContributorRef(raw) {
     try {
         const parsed = JSON.parse(raw);
@@ -34,4 +34,3 @@ function parseContributorRef(raw) {
         return null;
     }
 }
-exports.parseContributorRef = parseContributorRef;

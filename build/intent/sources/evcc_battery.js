@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readEvccBatteryIntentSnapshot = void 0;
+exports.readEvccBatteryIntentSnapshot = readEvccBatteryIntentSnapshot;
 const evcc_config_1 = require("../../addons/wallbox/evcc_config");
 async function readForeign(host, objectId) {
     if (!objectId)
@@ -86,4 +86,3 @@ async function readEvccBatteryIntentSnapshot(host, cfg, now) {
     const fields = constraintFieldsFromMode(mode, observedAt, modeSt?.val);
     return { observed_at: observedAt, ...fields };
 }
-exports.readEvccBatteryIntentSnapshot = readEvccBatteryIntentSnapshot;

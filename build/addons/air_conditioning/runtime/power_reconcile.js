@@ -12,7 +12,13 @@
  * Alle Units gebündelt in einem updateConfig. Nie automatisch während Global Live.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.flushQueuedAcPowerConfigReconcile = exports.isSafeForAcConfigRestart = exports.queueAcPowerConfigReconcile = exports.getPendingAcPowerReconcileForTests = exports.resetAcPowerReconcileMemoryForTests = exports.evaluateAcPowerConfigReconcile = exports.AC_POWER_RECONCILE_COOLDOWN_MS = exports.AC_POWER_RECONCILE_MIN_REL_DELTA = exports.AC_POWER_RECONCILE_MIN_ABS_DELTA_W = exports.AC_POWER_RECONCILE_MAX_REL_SPAN = exports.AC_POWER_RECONCILE_MIN_SAMPLE_DAYS = void 0;
+exports.AC_POWER_RECONCILE_COOLDOWN_MS = exports.AC_POWER_RECONCILE_MIN_REL_DELTA = exports.AC_POWER_RECONCILE_MIN_ABS_DELTA_W = exports.AC_POWER_RECONCILE_MAX_REL_SPAN = exports.AC_POWER_RECONCILE_MIN_SAMPLE_DAYS = void 0;
+exports.evaluateAcPowerConfigReconcile = evaluateAcPowerConfigReconcile;
+exports.resetAcPowerReconcileMemoryForTests = resetAcPowerReconcileMemoryForTests;
+exports.getPendingAcPowerReconcileForTests = getPendingAcPowerReconcileForTests;
+exports.queueAcPowerConfigReconcile = queueAcPowerConfigReconcile;
+exports.isSafeForAcConfigRestart = isSafeForAcConfigRestart;
+exports.flushQueuedAcPowerConfigReconcile = flushQueuedAcPowerConfigReconcile;
 const learned_power_1 = require("../../../learning/consumer_stats/learned_power");
 const execution_mode_1 = require("../../../execution_mode");
 const barrier_1 = require("../../../restore/barrier");
@@ -123,7 +129,6 @@ function evaluateAcPowerConfigReconcile(input) {
         reasonDe: `Config ${configPowerW} W → gelernt ${learnedPowerW} W (${sampleDays} stabile Tage).`,
     };
 }
-exports.evaluateAcPowerConfigReconcile = evaluateAcPowerConfigReconcile;
 /** Vorgemerkte Admin-Writes — warten auf Non-Live + Idle. */
 const pendingByUnit = new Map();
 const lastReconcileByUnit = new Map();
@@ -131,11 +136,9 @@ function resetAcPowerReconcileMemoryForTests() {
     pendingByUnit.clear();
     lastReconcileByUnit.clear();
 }
-exports.resetAcPowerReconcileMemoryForTests = resetAcPowerReconcileMemoryForTests;
 function getPendingAcPowerReconcileForTests() {
     return new Map(pendingByUnit);
 }
-exports.getPendingAcPowerReconcileForTests = getPendingAcPowerReconcileForTests;
 /** Merkt Unit vor; schreibt NICHT (kein Restart). */
 function queueAcPowerConfigReconcile(input) {
     const prev = lastReconcileByUnit.get(input.unitIndex);
@@ -162,7 +165,6 @@ function queueAcPowerConfigReconcile(input) {
     });
     return { ...decision, queued: true };
 }
-exports.queueAcPowerConfigReconcile = queueAcPowerConfigReconcile;
 /**
  * Hartes Flush-Gate für updateConfig-Neustart.
  * Global Live und Restore blockieren immer — auch bei idle AC/Heizstab.
@@ -208,7 +210,6 @@ async function isSafeForAcConfigRestart(host) {
         reasonDe: "Non-Live + Idle — gebündelter Config-Write erlaubt (Neustart folgt).",
     };
 }
-exports.isSafeForAcConfigRestart = isSafeForAcConfigRestart;
 /**
  * Schreibt alle vorgemerkten ac_u*_estimated_power_w in EINEM updateConfig.
  * Global Live / Restore können nicht per Override umgangen werden.
@@ -277,4 +278,3 @@ async function flushQueuedAcPowerConfigReconcile(input) {
     input.host.log?.info?.(msg);
     return { wrote: true, deferred: false, reasonDe: msg, units };
 }
-exports.flushQueuedAcPowerConfigReconcile = flushQueuedAcPowerConfigReconcile;

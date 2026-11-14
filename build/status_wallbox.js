@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureWallboxStatusStates = exports.WALLBOX_STATUS_STATES = void 0;
+exports.WALLBOX_STATUS_STATES = void 0;
+exports.ensureWallboxStatusStates = ensureWallboxStatusStates;
 const tree_paths_1 = require("./tree_paths");
 /** Failsafe-/Erreichbarkeits-Spiegel für VIS und Safety — keine Telemetrie-Duplikate. */
 const STATUS = (0, tree_paths_1.addonStatusBase)("wallbox");
@@ -97,4 +98,3 @@ async function ensureWallboxStatusStates(adapter) {
         }
     }
 }
-exports.ensureWallboxStatusStates = ensureWallboxStatusStates;

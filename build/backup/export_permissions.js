@@ -15,15 +15,30 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.adapterFileDownloadPath = exports.applyReadableExportPermissions = exports.applyReadableExportDirs = exports.ensureDirReadable = exports.chmodExportPath = exports.EXPORT_FILE_MODE = exports.EXPORT_DIR_MODE = void 0;
+exports.EXPORT_FILE_MODE = exports.EXPORT_DIR_MODE = void 0;
+exports.chmodExportPath = chmodExportPath;
+exports.ensureDirReadable = ensureDirReadable;
+exports.applyReadableExportDirs = applyReadableExportDirs;
+exports.applyReadableExportPermissions = applyReadableExportPermissions;
+exports.adapterFileDownloadPath = adapterFileDownloadPath;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../persistence/atomic_write");
@@ -35,12 +50,10 @@ exports.EXPORT_FILE_MODE = atomic_write_1.DIAGNOSTIC_FILE_MODE;
 async function chmodExportPath(fullPath, dir) {
     await fs.chmod(fullPath, dir ? exports.EXPORT_DIR_MODE : exports.EXPORT_FILE_MODE).catch(() => undefined);
 }
-exports.chmodExportPath = chmodExportPath;
 async function ensureDirReadable(dirPath) {
     await fs.mkdir(dirPath, { recursive: true, mode: exports.EXPORT_DIR_MODE });
     await chmodExportPath(dirPath, true);
 }
-exports.ensureDirReadable = ensureDirReadable;
 async function walkExportTree(root) {
     let entries;
     try {
@@ -76,13 +89,10 @@ async function applyReadableExportDirs(roots) {
         await walkExportTree(root);
     }
 }
-exports.applyReadableExportDirs = applyReadableExportDirs;
 /** Backup-, Support- und Restore-Inbox-Bäume auf 0755/0644 setzen (bestehende Dateien inkl.). */
 async function applyReadableExportPermissions(input) {
     await applyReadableExportDirs([(0, retention_1.backupDir)(input), (0, retention_1.supportDir)(input), (0, source_1.restoreInboxDir)(input)]);
 }
-exports.applyReadableExportPermissions = applyReadableExportPermissions;
 function adapterFileDownloadPath(namespace, kind, fileName) {
     return `/files/${namespace}/${kind}/${fileName}`;
 }
-exports.adapterFileDownloadPath = adapterFileDownloadPath;

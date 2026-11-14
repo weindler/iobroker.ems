@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureEmsMirrorAliveState = exports.EMS_MIRROR_ALIVE_AT = void 0;
+exports.EMS_MIRROR_ALIVE_AT = void 0;
+exports.ensureEmsMirrorAliveState = ensureEmsMirrorAliveState;
 /** Optionaler EMS-Spiegel: ISO-Timestamp (EMS kann 1×/60 s schreiben). */
 exports.EMS_MIRROR_ALIVE_AT = "ems_mirror.alive_at";
 async function ensureEmsMirrorAliveState(host) {
@@ -16,4 +17,3 @@ async function ensureEmsMirrorAliveState(host) {
         native: {},
     });
 }
-exports.ensureEmsMirrorAliveState = ensureEmsMirrorAliveState;

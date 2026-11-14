@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acMappingCommandsForConfiguredUnits = exports.isAcMappingRoleConfigured = exports.configuredAcUnitIndexes = exports.isAcUnitConfigured = exports.acUnitHasMappingTarget = void 0;
+exports.acUnitHasMappingTarget = acUnitHasMappingTarget;
+exports.isAcUnitConfigured = isAcUnitConfigured;
+exports.configuredAcUnitIndexes = configuredAcUnitIndexes;
+exports.isAcMappingRoleConfigured = isAcMappingRoleConfigured;
+exports.acMappingCommandsForConfiguredUnits = acMappingCommandsForConfiguredUnits;
 /**
  * When an AC unit slot gets state-tree objects.
  * Slots 1..AC_UNIT_COUNT remain Admin UI capacity — only enabled units get objects.
@@ -21,7 +25,6 @@ function acUnitHasMappingTarget(config, index) {
     }
     return false;
 }
-exports.acUnitHasMappingTarget = acUnitHasMappingTarget;
 /**
  * Configured for ensure/cleanup = Unit in Admin aktiviert (`ac_uN_enabled`).
  * Nur aktivierte Units bekommen Runtime-/Mapping-States.
@@ -32,7 +35,6 @@ function isAcUnitConfigured(config, index) {
     }
     return (0, config_1.acUnitConfigFromAdapter)(config, index).enabled === true;
 }
-exports.isAcUnitConfigured = isAcUnitConfigured;
 function configuredAcUnitIndexes(config) {
     const out = [];
     for (let i = 1; i <= constants_1.AC_UNIT_COUNT; i++) {
@@ -42,7 +44,6 @@ function configuredAcUnitIndexes(config) {
     }
     return out;
 }
-exports.configuredAcUnitIndexes = configuredAcUnitIndexes;
 /** True if this unit+role has target or explicit enabled in native config. */
 function isAcMappingRoleConfigured(config, index, role) {
     const c = configRecord(config);
@@ -53,7 +54,6 @@ function isAcMappingRoleConfigured(config, index, role) {
     const hasEnabled = typeof en === "boolean";
     return hasTarget || hasEnabled;
 }
-exports.isAcMappingRoleConfigured = isAcMappingRoleConfigured;
 /**
  * Mapping commands for ensure/cleanup: enabled units × roles that are actually mapped in Admin.
  * Empty slots do not get mapping leaves (lightweight surface).
@@ -69,4 +69,3 @@ function acMappingCommandsForConfiguredUnits(config) {
     }
     return cmds;
 }
-exports.acMappingCommandsForConfiguredUnits = acMappingCommandsForConfiguredUnits;

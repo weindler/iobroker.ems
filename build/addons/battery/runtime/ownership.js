@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isForeignManualControl = exports.canSafeRestore = exports.emptyOwnership = void 0;
+exports.emptyOwnership = emptyOwnership;
+exports.canSafeRestore = canSafeRestore;
+exports.isForeignManualControl = isForeignManualControl;
 function emptyOwnership() {
     return {
         active: false,
@@ -10,12 +12,10 @@ function emptyOwnership() {
         manualModeWritten: false,
     };
 }
-exports.emptyOwnership = emptyOwnership;
 /** Safe Restore nur, wenn EMS die Batterie selbst in den manuellen Modus versetzt hat. */
 function canSafeRestore(ownership) {
     return ownership.active && ownership.manualModeWritten;
 }
-exports.canSafeRestore = canSafeRestore;
 /**
  * Fremde manuelle Steuerung: Gerät steht im manuellen Modus, ohne dass aktuelle
  * EMS-Ownership nachweisbar ist. EMS darf das nicht ungefragt überschreiben.
@@ -23,4 +23,3 @@ exports.canSafeRestore = canSafeRestore;
 function isForeignManualControl(input) {
     return input.currentMode === input.manualModeValue && !input.ownership.active;
 }
-exports.isForeignManualControl = isForeignManualControl;

@@ -4,7 +4,7 @@
  * Reine Funktion, keine I/O — Persistenz/Batch liegen in persist.ts/batch.ts.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateDay = void 0;
+exports.evaluateDay = evaluateDay;
 const constants_1 = require("./constants");
 const eligibility_1 = require("./eligibility");
 const battery_findings_1 = require("./battery_findings");
@@ -90,4 +90,3 @@ function evaluateDay(input) {
     };
     return { record, findings };
 }
-exports.evaluateDay = evaluateDay;

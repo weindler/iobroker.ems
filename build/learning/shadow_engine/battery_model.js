@@ -14,7 +14,7 @@
  * gezählt statt eine 0 zu erfinden.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.simulateGreedyBatterySelfConsumption = void 0;
+exports.simulateGreedyBatterySelfConsumption = simulateGreedyBatterySelfConsumption;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -80,4 +80,3 @@ function simulateGreedyBatterySelfConsumption(input) {
     }
     return out;
 }
-exports.simulateGreedyBatterySelfConsumption = simulateGreedyBatterySelfConsumption;

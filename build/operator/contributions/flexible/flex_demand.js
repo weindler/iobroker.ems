@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildFlexibleDemandSlot = exports.estimateImmersionRequiredEnergyKwh = exports.IMMERSION_DEFAULT_KWH_PER_DEGREE_C = void 0;
+exports.IMMERSION_DEFAULT_KWH_PER_DEGREE_C = void 0;
+exports.estimateImmersionRequiredEnergyKwh = estimateImmersionRequiredEnergyKwh;
+exports.buildFlexibleDemandSlot = buildFlexibleDemandSlot;
 const types_1 = require("./types");
 /** Conservative electrical kWh per °C (~300 L buffer) when no volume is configured. */
 exports.IMMERSION_DEFAULT_KWH_PER_DEGREE_C = 0.38;
@@ -32,7 +34,6 @@ function estimateImmersionRequiredEnergyKwh(bufferTempC, targetTempC, maxPowerW,
     }
     return kwh;
 }
-exports.estimateImmersionRequiredEnergyKwh = estimateImmersionRequiredEnergyKwh;
 function buildFlexibleDemandSlot(input) {
     if (!input.available ||
         input.requiredEnergyKwh === null ||
@@ -63,4 +64,3 @@ function buildFlexibleDemandSlot(input) {
         },
     ];
 }
-exports.buildFlexibleDemandSlot = buildFlexibleDemandSlot;

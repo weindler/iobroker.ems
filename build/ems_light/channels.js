@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureEmsLightChannels = exports.EMS_LIGHT_CHANNEL_IDS = void 0;
+exports.EMS_LIGHT_CHANNEL_IDS = void 0;
+exports.ensureEmsLightChannels = ensureEmsLightChannels;
 const state_util_1 = require("./state_util");
 /** EMS-Light Kanäle (Phase 1) — ergänzt bestehenden Baum, löscht nichts. */
 exports.EMS_LIGHT_CHANNEL_IDS = [
@@ -31,4 +32,3 @@ async function ensureEmsLightChannels(host) {
         await (0, state_util_1.ensureChannel)(host, ch.id, ch.nameDe);
     }
 }
-exports.ensureEmsLightChannels = ensureEmsLightChannels;

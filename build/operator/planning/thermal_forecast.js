@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveThermalForecastTarget = void 0;
+exports.resolveThermalForecastTarget = resolveThermalForecastTarget;
 /**
  * Soft-Pufferziel zwischen aktuellem Puffer und Puffer-Max.
  * planningMinTempC ist kein Warmwasser-Hard und kein tägliches Boiler-Hochheizen.
@@ -76,4 +76,3 @@ function resolveThermalForecastTarget(input) {
         forecastActive: true,
     };
 }
-exports.resolveThermalForecastTarget = resolveThermalForecastTarget;

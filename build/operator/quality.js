@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergeOperatorQuality = exports.operatorQuality = void 0;
+exports.operatorQuality = operatorQuality;
+exports.mergeOperatorQuality = mergeOperatorQuality;
 function operatorQuality(status, reasonDe, confidencePct = null) {
     return {
         status,
@@ -8,7 +9,6 @@ function operatorQuality(status, reasonDe, confidencePct = null) {
         reasonDe,
     };
 }
-exports.operatorQuality = operatorQuality;
 function mergeOperatorQuality(a, b) {
     const rank = {
         invalid: 7,
@@ -26,4 +26,3 @@ function mergeOperatorQuality(a, b) {
         reasonDe: pick.reasonDe || a.reasonDe || b.reasonDe,
     };
 }
-exports.mergeOperatorQuality = mergeOperatorQuality;

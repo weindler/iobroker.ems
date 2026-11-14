@@ -1,6 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.computeUnknownHouseLoadW = exports.pruneOldDays = exports.resolveSlotPeriods = exports.sumDaysForPrefix = exports.skipPowerIntegrationGap = exports.applyPowerIntegrationSample = exports.applyEnergyStateSample = exports.padSlotIndex = exports.round1 = exports.round3 = void 0;
+exports.round3 = round3;
+exports.round1 = round1;
+exports.padSlotIndex = padSlotIndex;
+exports.applyEnergyStateSample = applyEnergyStateSample;
+exports.applyPowerIntegrationSample = applyPowerIntegrationSample;
+exports.skipPowerIntegrationGap = skipPowerIntegrationGap;
+exports.sumDaysForPrefix = sumDaysForPrefix;
+exports.resolveSlotPeriods = resolveSlotPeriods;
+exports.pruneOldDays = pruneOldDays;
+exports.computeUnknownHouseLoadW = computeUnknownHouseLoadW;
 /**
  * Reine Rechenlogik für den messenden Verbraucherblock.
  * Keine I/O, keine State-IDs — nur Energie-Akkumulation, Zählerreset-Erkennung
@@ -11,15 +20,12 @@ const compute_1 = require("../../statistics/compute");
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
-exports.round3 = round3;
 function round1(n) {
     return Math.round(n * 10) / 10;
 }
-exports.round1 = round1;
 function padSlotIndex(index) {
     return String(index).padStart(2, "0");
 }
-exports.padSlotIndex = padSlotIndex;
 function addDayDelta(slot, dateKey, deltaKwh) {
     if (!(deltaKwh > 0))
         return;
@@ -64,7 +70,6 @@ function applyEnergyStateSample(slot, rawKwh, initialEnergyKwh, dateKey) {
         slot.rawEnergyBaselineKwh = rawKwh;
     }
 }
-exports.applyEnergyStateSample = applyEnergyStateSample;
 /**
  * Fall B: kein Energiezähler — Integration aus Leistung × echter Zeitdifferenz.
  * - Erstes Sample: nur Zeitbasis setzen (+ initialEnergyKwh übernehmen), kein Delta.
@@ -93,14 +98,12 @@ function applyPowerIntegrationSample(slot, powerW, nowMs, initialEnergyKwh, date
     slot.totalKwh = round3(slot.totalKwh + deltaKwh);
     addDayDelta(slot, dateKey, deltaKwh);
 }
-exports.applyPowerIntegrationSample = applyPowerIntegrationSample;
 /** Überspringt eine Lücke (ungültiges Sample) ohne Energie zu addieren; verhindert Phantomsprünge danach. */
 function skipPowerIntegrationGap(slot, nowMs) {
     if (slot.initialized) {
         slot.lastPowerTsMs = nowMs;
     }
 }
-exports.skipPowerIntegrationGap = skipPowerIntegrationGap;
 function sumDaysForPrefix(days, prefix) {
     let sum = 0;
     for (const [k, v] of Object.entries(days)) {
@@ -109,7 +112,6 @@ function sumDaysForPrefix(days, prefix) {
     }
     return round3(sum);
 }
-exports.sumDaysForPrefix = sumDaysForPrefix;
 function resolveSlotPeriods(slot, todayKey, yesterdayKey) {
     const monthPrefix = todayKey.slice(0, 7);
     const yearPrefix = todayKey.slice(0, 4);
@@ -121,7 +123,6 @@ function resolveSlotPeriods(slot, todayKey, yesterdayKey) {
         yearKwh: sumDaysForPrefix(slot.days, yearPrefix),
     };
 }
-exports.resolveSlotPeriods = resolveSlotPeriods;
 /** Entfernt Tages-Einträge älter als `retentionDays` relativ zu `todayDateKey` (kappt Dateiwachstum). */
 function pruneOldDays(days, todayDateKey, retentionDays) {
     const todayMs = Date.parse(`${todayDateKey}T00:00:00Z`);
@@ -137,7 +138,6 @@ function pruneOldDays(days, todayDateKey, retentionDays) {
     }
     return out;
 }
-exports.pruneOldDays = pruneOldDays;
 /**
  * Unbekannte Restlast = Hausverbrauch minus Summe der gemessenen (aktiven, gültigen)
  * Verbraucher — niemals negativ, niemals Addition zum Hausverbrauch.
@@ -147,4 +147,3 @@ function computeUnknownHouseLoadW(houseLoadW, measuredTotalW) {
         return null;
     return Math.max(0, round1(houseLoadW - measuredTotalW));
 }
-exports.computeUnknownHouseLoadW = computeUnknownHouseLoadW;

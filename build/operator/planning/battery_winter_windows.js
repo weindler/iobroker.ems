@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isNowInWinterChargeWindow = exports.planBatteryWinterPriceWindows = exports.groupContiguousSlotWindows = void 0;
+exports.groupContiguousSlotWindows = groupContiguousSlotWindows;
+exports.planBatteryWinterPriceWindows = planBatteryWinterPriceWindows;
+exports.isNowInWinterChargeWindow = isNowInWinterChargeWindow;
 const tibber_parse_1 = require("../../learning/price_forecast/tibber_parse");
 function slotEndMs(slot) {
     return slot.slotStartMs + tibber_parse_1.MS_PER_15MIN;
@@ -67,7 +69,6 @@ function groupContiguousSlotWindows(slots, strategy) {
         groups.push(current);
     return groups.map((g) => toWindow(g, strategy));
 }
-exports.groupContiguousSlotWindows = groupContiguousSlotWindows;
 function planBatteryWinterPriceWindows(input) {
     const needed = Math.max(1, Math.round(input.slotsNeeded));
     const eligible = eligibleSlots(input);
@@ -90,7 +91,6 @@ function planBatteryWinterPriceWindows(input) {
     }
     return [];
 }
-exports.planBatteryWinterPriceWindows = planBatteryWinterPriceWindows;
 function isNowInWinterChargeWindow(nowMs, windows) {
     for (const w of windows) {
         const start = Date.parse(w.start_iso);
@@ -103,4 +103,3 @@ function isNowInWinterChargeWindow(nowMs, windows) {
     }
     return null;
 }
-exports.isNowInWinterChargeWindow = isNowInWinterChargeWindow;

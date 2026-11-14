@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.snapshotToManualOverride = exports.processIobrokerWallboxRequest = exports.parseIobrokerRequest = void 0;
+exports.parseIobrokerRequest = parseIobrokerRequest;
+exports.processIobrokerWallboxRequest = processIobrokerWallboxRequest;
+exports.snapshotToManualOverride = snapshotToManualOverride;
 const iobroker_request_shared_1 = require("../core/iobroker_request_shared");
 const normalize_1 = require("../wallbox/normalize");
 const resolve_1 = require("../wallbox/resolve");
@@ -27,7 +29,6 @@ function parseIobrokerRequest(raw) {
     }
     return { ok: false, errors: gate.result.errors };
 }
-exports.parseIobrokerRequest = parseIobrokerRequest;
 function processIobrokerWallboxRequest(input) {
     const { raw, ack, now, admin, lastRequestId, currentRevision, existingSnapshot } = input;
     const gate = (0, iobroker_request_shared_1.gateIobrokerRequest)({ raw, ack, now, lastRequestId, currentRevision });
@@ -98,11 +99,9 @@ function processIobrokerWallboxRequest(input) {
         accepted: true,
     };
 }
-exports.processIobrokerWallboxRequest = processIobrokerWallboxRequest;
 function snapshotToManualOverride(snapshot) {
     if (!snapshot?.manual_override?.active) {
         return null;
     }
     return snapshot.manual_override;
 }
-exports.snapshotToManualOverride = snapshotToManualOverride;

@@ -3,7 +3,7 @@
  * PHASE 4 — kompakte, strukturierte Tageszusammenfassung für die KI (kein Rohtelemetrie-Dump).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildAiAnalystContext = void 0;
+exports.buildAiAnalystContext = buildAiAnalystContext;
 const MAX_FINDINGS_IN_CONTEXT = 60;
 function buildAiAnalystContext(input) {
     const scores = input.record.scores.map((s) => ({ topic: s.topic, value: s.value, sampleCount: s.sampleCount }));
@@ -56,4 +56,3 @@ function buildAiAnalystContext(input) {
         },
     };
 }
-exports.buildAiAnalystContext = buildAiAnalystContext;

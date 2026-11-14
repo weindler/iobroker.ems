@@ -22,7 +22,9 @@
  * Override pro Gerät/Unit.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isOwnershipOverrideActive = exports.evaluateDeviceOwnership = exports.emptyDeviceOwnershipState = void 0;
+exports.emptyDeviceOwnershipState = emptyDeviceOwnershipState;
+exports.evaluateDeviceOwnership = evaluateDeviceOwnership;
+exports.isOwnershipOverrideActive = isOwnershipOverrideActive;
 function emptyDeviceOwnershipState() {
     return {
         owner: "ems",
@@ -32,7 +34,6 @@ function emptyDeviceOwnershipState() {
         lastMismatchKind: "",
     };
 }
-exports.emptyDeviceOwnershipState = emptyDeviceOwnershipState;
 function normalizeKind(kind) {
     return kind === "manual_on" || kind === "manual_off" ? kind : "";
 }
@@ -122,11 +123,9 @@ function evaluateDeviceOwnership(input) {
     }
     return emptyDeviceOwnershipState();
 }
-exports.evaluateDeviceOwnership = evaluateDeviceOwnership;
 function isOwnershipOverrideActive(state, nowMs) {
     if (state.overrideUntilIso === null)
         return false;
     const untilMs = Date.parse(state.overrideUntilIso);
     return Number.isFinite(untilMs) && untilMs > nowMs;
 }
-exports.isOwnershipOverrideActive = isOwnershipOverrideActive;

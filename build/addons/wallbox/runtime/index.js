@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isWallboxFeedbackStatusTerminal = exports.tickWallboxFeedback = exports.planWallboxSafeRestore = exports.faultCodeForFeedbackStatus = exports.clearWallboxFault = exports.raiseWallboxFault = exports.emptyWallboxFault = exports.canSafeRestoreWallbox = exports.grantWallboxOwnership = exports.emptyWallboxOwnership = exports.WALLBOX_LIVE_WRITE_RELEASED = exports.resolveWallboxRuntimePhase = exports.runWallboxLiveFoundation = exports.executeWallboxWrite = exports.wallboxFeedbackConfigFromAdapter = exports.countWallboxFeedbackExpectations = exports.normalizeWallboxFeedbackValue = exports.evaluateWallboxFeedback = exports.buildWallboxFeedbackContract = exports.buildWallboxWritePlan = exports.WB_CONTROL_MODEL = exports.hasEvccControlWriteMapping = exports.resolveWallboxControlModel = exports.metaFromObject = exports.resolveWallboxControlObjectMetas = exports.collectConfiguredControlTargetStateIds = exports.buildWallboxControlMappingSnapshot = exports.buildWallboxCommandCandidate = exports.runWallboxDryrunDispatch = exports.resetWallboxDispatchCache = exports.buildWallboxDispatchIntent = exports.telemetryInputFromSnapshot = exports.resolveWallboxDailyPlanDecision = exports.resetWallboxDailyPlanCache = exports.ensureWallboxRuntimeStates = exports.publishWallboxSafetyStates = exports.publishWallboxLiveFoundationStates = exports.publishWallboxDispatchStates = exports.publishWallboxRuntimeStates = void 0;
+exports.isWallboxFeedbackStatusTerminal = exports.tickWallboxFeedback = exports.planWallboxSafeRestore = exports.faultCodeForFeedbackStatus = exports.clearWallboxFault = exports.raiseWallboxFault = exports.emptyWallboxFault = exports.canSafeRestoreWallbox = exports.grantWallboxOwnership = exports.emptyWallboxOwnership = exports.WALLBOX_LIVE_WRITE_RELEASED = exports.resolveWallboxRuntimePhase = exports.runWallboxLiveFoundation = exports.executeWallboxWrite = exports.wallboxFeedbackConfigFromAdapter = exports.countWallboxFeedbackExpectations = exports.normalizeWallboxFeedbackValue = exports.evaluateWallboxFeedback = exports.buildWallboxFeedbackContract = exports.buildWallboxWritePlan = exports.WB_CONTROL_MODEL = exports.hasEvccControlWriteMapping = exports.resolveWallboxControlModel = exports.metaFromObject = exports.resolveWallboxControlObjectMetas = exports.collectConfiguredControlTargetStateIds = exports.buildWallboxControlMappingSnapshot = exports.buildWallboxCommandCandidate = exports.runWallboxDryrunDispatch = exports.resetWallboxDispatchCache = exports.buildWallboxDispatchIntent = exports.telemetryInputFromSnapshot = exports.resolveWallboxDailyPlanDecision = exports.resetWallboxDailyPlanCache = exports.ensureWallboxRuntimeStates = void 0;
+exports.publishWallboxRuntimeStates = publishWallboxRuntimeStates;
+exports.publishWallboxDispatchStates = publishWallboxDispatchStates;
+exports.publishWallboxLiveFoundationStates = publishWallboxLiveFoundationStates;
+exports.publishWallboxSafetyStates = publishWallboxSafetyStates;
 const state_write_1 = require("../../../policy/core/state_write");
 const states_1 = require("./states");
 const feedback_1 = require("./feedback");
@@ -13,11 +17,9 @@ async function publishWallboxRuntimeStates(host, decision, _governanceAllowed) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.energySource, decision.energySource);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.writeAllowed, false);
 }
-exports.publishWallboxRuntimeStates = publishWallboxRuntimeStates;
 async function publishWallboxDispatchStates(_host, _decision, _dispatch) {
     /* Dispatch-Details bleiben intern; öffentliche Runtime schreibt writeAllowed/detail_json. */
 }
-exports.publishWallboxDispatchStates = publishWallboxDispatchStates;
 async function publishWallboxLiveFoundationStates(host, foundation) {
     const candidate = foundation.candidate;
     const plan = foundation.writePlan;
@@ -65,14 +67,12 @@ async function publishWallboxLiveFoundationStates(host, foundation) {
     };
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.detailJson, JSON.stringify(detail));
 }
-exports.publishWallboxLiveFoundationStates = publishWallboxLiveFoundationStates;
 async function publishWallboxSafetyStates(host, ownership, fault) {
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.ownershipActive, ownership.active);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.faultActive, fault.active);
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.faultCode, fault.code ?? "");
     await (0, state_write_1.setStateIfChanged)(host, states_1.WALLBOX_RUNTIME_STATES.faultMessage, fault.message ?? "");
 }
-exports.publishWallboxSafetyStates = publishWallboxSafetyStates;
 var ensure_states_1 = require("./ensure_states");
 Object.defineProperty(exports, "ensureWallboxRuntimeStates", { enumerable: true, get: function () { return ensure_states_1.ensureWallboxRuntimeStates; } });
 var daily_plan_1 = require("./daily_plan");

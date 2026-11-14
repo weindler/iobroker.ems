@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryConfigFromAdapter = exports.batteryProfileIdFromConfig = void 0;
+exports.batteryProfileIdFromConfig = batteryProfileIdFromConfig;
+exports.batteryConfigFromAdapter = batteryConfigFromAdapter;
 const limits_1 = require("./core/limits");
 const grid_balance_contract_1 = require("./grid_balance_contract");
 const grid_balance_power_1 = require("./grid_balance_power");
@@ -48,7 +49,6 @@ function batteryProfileIdFromConfig(config) {
     // Default to read-only safety when unknown.
     return raw === "" ? "sonnen_em" : "generic_readonly";
 }
-exports.batteryProfileIdFromConfig = batteryProfileIdFromConfig;
 function migrateGridBalanceMinPriceCt(c) {
     const neu = c.bat_grid_balance_min_price_ct_per_kwh;
     if (neu !== undefined && neu !== null && neu !== "") {
@@ -106,4 +106,3 @@ function batteryConfigFromAdapter(config) {
         },
     };
 }
-exports.batteryConfigFromAdapter = batteryConfigFromAdapter;

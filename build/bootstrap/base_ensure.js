@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureAddonBasisStates = exports.ensureCommandBaseStates = exports.CORE_ADDON_BASIS_IDS = void 0;
+exports.CORE_ADDON_BASIS_IDS = void 0;
+exports.ensureCommandBaseStates = ensureCommandBaseStates;
+exports.ensureAddonBasisStates = ensureAddonBasisStates;
 const registry_1 = require("../addons/governance/registry");
 const governance_1 = require("../addons/governance");
 const states_1 = require("../states");
@@ -70,7 +72,6 @@ async function ensureCommandBaseStates(host) {
         }
     }
 }
-exports.ensureCommandBaseStates = ensureCommandBaseStates;
 /** Phase B — Add-on enabled/available Basisstates (nur Kern-Add-ons). */
 async function ensureAddonBasisStates(host) {
     for (const addonId of exports.CORE_ADDON_BASIS_IDS) {
@@ -94,4 +95,3 @@ async function ensureAddonBasisStates(host) {
         }, true);
     }
 }
-exports.ensureAddonBasisStates = ensureAddonBasisStates;

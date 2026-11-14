@@ -1,6 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.computePvBias = exports.correctForecastKwh = exports.confidencePct = exports.stdDevPct = exports.sampleConfidenceFactor = exports.medianAbsoluteDeviationPct = exports.energyBiasPct = exports.meanBiasPct = exports.dayBiasPct = void 0;
+exports.dayBiasPct = dayBiasPct;
+exports.meanBiasPct = meanBiasPct;
+exports.energyBiasPct = energyBiasPct;
+exports.medianAbsoluteDeviationPct = medianAbsoluteDeviationPct;
+exports.sampleConfidenceFactor = sampleConfidenceFactor;
+exports.stdDevPct = stdDevPct;
+exports.confidencePct = confidencePct;
+exports.correctForecastKwh = correctForecastKwh;
+exports.computePvBias = computePvBias;
 /** Tagesbias in %; forecast ≤ 0 oder ungültige Werte → Tag ignorieren (null). */
 function dayBiasPct(actualKwh, forecastKwh) {
     if (!Number.isFinite(actualKwh) || !Number.isFinite(forecastKwh) || forecastKwh <= 0) {
@@ -8,7 +16,6 @@ function dayBiasPct(actualKwh, forecastKwh) {
     }
     return ((actualKwh - forecastKwh) / forecastKwh) * 100;
 }
-exports.dayBiasPct = dayBiasPct;
 function meanBiasPct(pairs) {
     const biases = [];
     for (const p of pairs) {
@@ -23,7 +30,6 @@ function meanBiasPct(pairs) {
     const sum = biases.reduce((a, b) => a + b, 0);
     return { biasPct: sum / biases.length, sampleDays: biases.length };
 }
-exports.meanBiasPct = meanBiasPct;
 /** Energiegewichteter Bias: Summe Ist gegen Summe Forecast. */
 function energyBiasPct(pairs) {
     const valid = pairs.filter((p) => Number.isFinite(p.actualKwh) && Number.isFinite(p.forecastKwh) && p.forecastKwh > 0);
@@ -35,7 +41,6 @@ function energyBiasPct(pairs) {
         ? { biasPct: ((actual - forecast) / forecast) * 100, sampleDays: valid.length }
         : { biasPct: null, sampleDays: 0 };
 }
-exports.energyBiasPct = energyBiasPct;
 function median(values) {
     if (values.length === 0)
         return null;
@@ -51,7 +56,6 @@ function medianAbsoluteDeviationPct(pairs) {
         return null;
     return median(values.map((v) => Math.abs(v - center)));
 }
-exports.medianAbsoluteDeviationPct = medianAbsoluteDeviationPct;
 function sampleConfidenceFactor(sampleDays) {
     if (sampleDays < 7)
         return 0;
@@ -61,7 +65,6 @@ function sampleConfidenceFactor(sampleDays) {
         return 1;
     return 0.6 + ((sampleDays - 14) / 16) * 0.4;
 }
-exports.sampleConfidenceFactor = sampleConfidenceFactor;
 function stdDevPct(values) {
     if (values.length < 2) {
         return null;
@@ -70,7 +73,6 @@ function stdDevPct(values) {
     const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
     return Math.sqrt(variance);
 }
-exports.stdDevPct = stdDevPct;
 /**
  * Confidence sinkt bei wenig Historie, hoher Streuung und Lücken im 30-Tage-Fenster.
  * Skala orientiert sich an den Vertrags-Richtwerten (0–95 %).
@@ -116,7 +118,6 @@ function confidencePct(sampleDays30, sampleDays7, stdDevBias) {
     }
     return Math.round(Math.max(0, Math.min(95, base)));
 }
-exports.confidencePct = confidencePct;
 /** Korrigierter Forecast = Rohforecast × (1 + bias/100). */
 function correctForecastKwh(rawKwh, biasPct) {
     if (!Number.isFinite(rawKwh) || !Number.isFinite(biasPct)) {
@@ -124,7 +125,6 @@ function correctForecastKwh(rawKwh, biasPct) {
     }
     return rawKwh * (1 + biasPct / 100);
 }
-exports.correctForecastKwh = correctForecastKwh;
 function computePvBias(pairs, rawTodayKwh, rawTomorrowKwh) {
     const todayPairs = pairs.filter((p) => p.dayOffset === 0);
     // Unvollständiger heutiger Tag verfälscht Mittelwerte — nur abgestellte Tage zählen.
@@ -185,4 +185,3 @@ function computePvBias(pairs, rawTodayKwh, rawTomorrowKwh) {
         reason,
     };
 }
-exports.computePvBias = computePvBias;

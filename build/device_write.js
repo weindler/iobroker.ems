@@ -1,7 +1,9 @@
 "use strict";
 /** Read-before-write: kein Geräte-Write wenn Zielwert bereits aktiv ist. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeForeignIfChanged = exports.deviceValuesMatch = exports.normalizeDeviceValue = void 0;
+exports.normalizeDeviceValue = normalizeDeviceValue;
+exports.deviceValuesMatch = deviceValuesMatch;
+exports.writeForeignIfChanged = writeForeignIfChanged;
 const barrier_1 = require("./restore/barrier");
 function normalizeDeviceValue(val) {
     if (val === null || val === undefined || val === "") {
@@ -26,7 +28,6 @@ function normalizeDeviceValue(val) {
     }
     return val;
 }
-exports.normalizeDeviceValue = normalizeDeviceValue;
 function deviceValuesMatch(current, requested, options = {}) {
     const cur = normalizeDeviceValue(current);
     const req = normalizeDeviceValue(requested);
@@ -51,7 +52,6 @@ function deviceValuesMatch(current, requested, options = {}) {
     }
     return String(cur) === String(req);
 }
-exports.deviceValuesMatch = deviceValuesMatch;
 /**
  * Liest den aktuellen Geräte-State und schreibt nur bei Abweichung.
  * skipped=true ohne blocked bedeutet: Ziel bereits erreicht, kein Bus-Traffic nötig.
@@ -87,4 +87,3 @@ async function writeForeignIfChanged(host, params) {
     await host.setForeignStateAsync(params.stateId, { val: params.value, ack: false });
     return { written: true, skipped: false, currentValue: current };
 }
-exports.writeForeignIfChanged = writeForeignIfChanged;

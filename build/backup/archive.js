@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readZipEntryData = exports.readZipEntryNames = exports.buildZipArchive = void 0;
+exports.buildZipArchive = buildZipArchive;
+exports.readZipEntryNames = readZipEntryNames;
+exports.readZipEntryData = readZipEntryData;
 const manifest_validate_1 = require("./manifest_validate");
 /** CRC32 für ZIP (IEEE). */
 function crc32(buf) {
@@ -90,7 +92,6 @@ function buildZipArchive(entries) {
     end.writeUInt16LE(0, 20);
     return Buffer.concat([localData, centralDir, end]);
 }
-exports.buildZipArchive = buildZipArchive;
 function readZipEntryNames(archive) {
     const names = [];
     let pos = 0;
@@ -109,7 +110,6 @@ function readZipEntryNames(archive) {
     }
     return names;
 }
-exports.readZipEntryNames = readZipEntryNames;
 function readZipEntryData(archive, entryName) {
     let pos = 0;
     const target = entryName.replace(/\\/g, "/");
@@ -131,4 +131,3 @@ function readZipEntryData(archive, entryName) {
     }
     return null;
 }
-exports.readZipEntryData = readZipEntryData;

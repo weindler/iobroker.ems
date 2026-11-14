@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.setStatesIfRevisionChanged = exports.setOptionalNumberIfChanged = exports.setStateIfChanged = void 0;
+exports.setStateIfChanged = setStateIfChanged;
+exports.setOptionalNumberIfChanged = setOptionalNumberIfChanged;
+exports.setStatesIfRevisionChanged = setStatesIfRevisionChanged;
 async function setStateIfChanged(host, id, val) {
     const cur = await host.getStateAsync(id);
     const curVal = cur?.val;
@@ -13,13 +15,11 @@ async function setStateIfChanged(host, id, val) {
     await host.setStateAsync(id, { val, ack: true });
     return true;
 }
-exports.setStateIfChanged = setStateIfChanged;
 /** Optional number: null clears the state value (no -1 sentinel). */
 async function setOptionalNumberIfChanged(host, id, val) {
     const writeVal = val === null || val === undefined ? null : val;
     return setStateIfChanged(host, id, writeVal);
 }
-exports.setOptionalNumberIfChanged = setOptionalNumberIfChanged;
 async function setStatesIfRevisionChanged(host, revisionStateId, newRevision, writes, updatedAtId, updatedAt) {
     const curRev = await host.getStateAsync(revisionStateId);
     const prevRevision = curRev?.val != null ? String(curRev.val) : "";
@@ -37,4 +37,3 @@ async function setStatesIfRevisionChanged(host, revisionStateId, newRevision, wr
     await setStateIfChanged(host, updatedAtId, updatedAt);
     return { changed: true, writes: writeCount };
 }
-exports.setStatesIfRevisionChanged = setStatesIfRevisionChanged;

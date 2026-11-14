@@ -15,13 +15,23 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -423,8 +433,9 @@ function assertCoreCategories(adapter) {
          * Historisch 350–550. Stand Aug 2026 (leere Config): ~604 States.
          * Phasen 4–7 plus GB-Economics (α/β, C_replace, Shadow-Dreiteilung)
          * addieren schlanke Transparenz-States; JSON-Dumps bleiben in Dateien.
-         * Obergrenze 767: zusätzlich 32 feste Statistik-Spiegelwerte; keine datumsbezogenen States.
+         * Obergrenze 769: zusätzlich 32 feste Statistik-Spiegelwerte; keine datumsbezogenen States.
          * +6 für Energyforecast (learning.energyforecast: Status, Hinweis, Tarif, Tage, Preis jetzt, Vergleichs-JSON).
+         * +2 für PV-Korrektur im Tagesverlauf (Faktor, Begründung).
          * +4 für PV-Zweitquelle (alt heute/morgen, Guard-Status, Vergleichs-JSON) in learning.pv_bias.
          * Zusätzlich zu den EV-/Tibber- und PV-Horizon-States
          * bleiben drei für die Batterie-Preisbrücke benötigte Laufzeit-States erhalten;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyAiPreferencesToDailyPlan = void 0;
+exports.applyAiPreferencesToDailyPlan = applyAiPreferencesToDailyPlan;
 const registry_1 = require("../../addons/governance/registry");
 const slots_1 = require("../../operator/daily_plan/slots");
 const build_1 = require("../compare/build");
@@ -174,4 +174,3 @@ function applyAiPreferencesToDailyPlan(plan, allowedAddonIds, slotPreferences, o
         `Plan B angewendet auf Allocation (ΔKosten ${compare.delta.deltaCostCt.toFixed(1)} ct).`;
     return { plan: next, compare, writebackApplied: true };
 }
-exports.applyAiPreferencesToDailyPlan = applyAiPreferencesToDailyPlan;

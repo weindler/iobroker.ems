@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.meterComparison = exports.observeDay = void 0;
+exports.observeDay = observeDay;
+exports.meterComparison = meterComparison;
 function observeDay(day, now, soc, importReading, exportReading) {
     const atIso = now.toISOString();
     if (soc !== null && Number.isFinite(soc) && soc >= 0 && soc <= 100 &&
@@ -17,7 +18,6 @@ function observeDay(day, now, soc, importReading, exportReading) {
             lastKwh: value, atIso, resetDetected: old?.resetDetected === true || !!(old && value < old.lastKwh - 0.05) };
     }
 }
-exports.observeDay = observeDay;
 const shiftDay = (key, amount) => {
     const date = new Date(`${key}T12:00:00Z`);
     date.setUTCDate(date.getUTCDate() + amount);
@@ -56,4 +56,3 @@ function meterComparison(persist, fromKey, toKey, period) {
         provisional: toKey === persist.runtime.dateKey,
         noteDe: toKey === persist.runtime.dateKey ? "Laufender Zeitraum; Vergleich mit abgeschlossenen Tagen des Vorzeitraums, nicht uhrzeitgleich." : "Vergleich abgeschlossener Kalendertage; fehlende Werte bleiben offen." };
 }
-exports.meterComparison = meterComparison;

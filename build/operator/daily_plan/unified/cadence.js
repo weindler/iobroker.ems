@@ -6,7 +6,7 @@
  * Kein zweiter Scheduler: der ~60-s-Tick prüft nur, ob ein neuer Plan fachlich nötig ist.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unifiedPlanCadenceDigest = void 0;
+exports.unifiedPlanCadenceDigest = unifiedPlanCadenceDigest;
 const trigger_digest_1 = require("../../../ai/trigger_digest");
 function bucket(value, size) {
     if (value === null || value === undefined || !Number.isFinite(value) || size <= 0)
@@ -24,4 +24,3 @@ function unifiedPlanCadenceDigest(plan) {
         houseLoadEnergyKwhBucket: bucket(plan.totals.fixedHouseLoadEnergyKwh, trigger_digest_1.AI_TRIGGER_ENERGY_BUCKET_KWH),
     });
 }
-exports.unifiedPlanCadenceDigest = unifiedPlanCadenceDigest;

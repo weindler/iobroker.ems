@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildBatteryLearningSignal = void 0;
+exports.buildBatteryLearningSignal = buildBatteryLearningSignal;
 /**
  * `status` kommt direkt aus `runBatteryRuntimeLearning` (`src/learning/battery_runtime/run.ts`).
  * `ready` → valid. `insufficient_data`/`partial` → degraded (nutzbar, aber wenig Historie).
@@ -48,4 +48,3 @@ function buildBatteryLearningSignal(input) {
         reasonDe: reasonDeForStatus(status, input.sampleDays),
     };
 }
-exports.buildBatteryLearningSignal = buildBatteryLearningSignal;

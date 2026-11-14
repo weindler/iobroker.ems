@@ -12,7 +12,8 @@
  * zurückgegeben; der Aufrufer verwendet dann automatisch wieder `originalValue`/baseConfig).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isSafetyImmutableParameter = exports.AI_OVERRIDE_SAFETY_DENYLIST_PATTERNS = void 0;
+exports.AI_OVERRIDE_SAFETY_DENYLIST_PATTERNS = void 0;
+exports.isSafetyImmutableParameter = isSafetyImmutableParameter;
 exports.AI_OVERRIDE_SAFETY_DENYLIST_PATTERNS = [
     /soc_hard_min/i,
     /hw_max_charge/i,
@@ -36,4 +37,3 @@ exports.AI_OVERRIDE_SAFETY_DENYLIST_PATTERNS = [
 function isSafetyImmutableParameter(parameter) {
     return exports.AI_OVERRIDE_SAFETY_DENYLIST_PATTERNS.some((re) => re.test(parameter));
 }
-exports.isSafetyImmutableParameter = isSafetyImmutableParameter;

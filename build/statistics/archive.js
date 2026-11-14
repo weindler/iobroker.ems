@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exportStatisticsArchive = exports.readCurrentStatistics = exports.removeStatisticsDay = exports.commitStatisticsArchive = exports.openStatisticsArchive = exports.StatisticsArchive = exports.STATISTICS_INDEX_FILE = void 0;
+exports.StatisticsArchive = exports.STATISTICS_INDEX_FILE = void 0;
+exports.openStatisticsArchive = openStatisticsArchive;
+exports.commitStatisticsArchive = commitStatisticsArchive;
+exports.removeStatisticsDay = removeStatisticsDay;
+exports.readCurrentStatistics = readCurrentStatistics;
+exports.exportStatisticsArchive = exportStatisticsArchive;
 /** Monthly, content-addressed accounting archive. Index activation is the commit point.
  * Old generations are deliberately retained: an interrupted write cannot damage them.
  * Only explicitly requested months enter the working cache; no date-specific states.
@@ -222,14 +227,12 @@ async function activeDirectory(dir) {
 async function openStatisticsArchive(dir) {
     return (await StatisticsArchive.open(await activeDirectory(dir))).data;
 }
-exports.openStatisticsArchive = openStatisticsArchive;
 async function commitStatisticsArchive(data) {
     const archive = archives.get(data);
     if (!archive)
         throw new Error("Statistics archive not attached");
     await archive.commit();
 }
-exports.commitStatisticsArchive = commitStatisticsArchive;
 function removeStatisticsDay(data, key) {
     const archive = archives.get(data);
     if (archive)
@@ -237,7 +240,6 @@ function removeStatisticsDay(data, key) {
     else
         delete data.days[key];
 }
-exports.removeStatisticsDay = removeStatisticsDay;
 /** Secondary readers never migrate or write the active accounting archive. */
 async function readCurrentStatistics(dir) {
     const active = await activeDirectory(dir);
@@ -258,7 +260,6 @@ async function readCurrentStatistics(dir) {
     }
     return (await StatisticsArchive.open(active)).data;
 }
-exports.readCurrentStatistics = readCurrentStatistics;
 async function exportStatisticsArchive(dir, maxBytes) {
     let exists = false;
     for (const file of [persist_1.STATISTICS_PERSIST_FILE, exports.STATISTICS_INDEX_FILE, "statistics_restore_v1.json"]) {
@@ -289,4 +290,3 @@ async function exportStatisticsArchive(dir, maxBytes) {
     }
     throw new Error("Statistics export failed");
 }
-exports.exportStatisticsArchive = exportStatisticsArchive;

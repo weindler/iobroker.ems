@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emptyResolvedBatteryIntent = void 0;
+exports.emptyResolvedBatteryIntent = emptyResolvedBatteryIntent;
 const constants_1 = require("../core/constants");
 function emptyResolvedBatteryIntent(now, targetId) {
     const iso = now.toISOString();
@@ -27,4 +27,3 @@ function emptyResolvedBatteryIntent(now, targetId) {
         source_summary: [],
     };
 }
-exports.emptyResolvedBatteryIntent = emptyResolvedBatteryIntent;

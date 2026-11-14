@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bufferToHourRecord = exports.ingestRollupSample = exports.ingestUnidirectionalAvgSample = exports.ingestBidirectionalSample = exports.emptyHourBuffer = void 0;
+exports.emptyHourBuffer = emptyHourBuffer;
+exports.ingestBidirectionalSample = ingestBidirectionalSample;
+exports.ingestUnidirectionalAvgSample = ingestUnidirectionalAvgSample;
+exports.ingestRollupSample = ingestRollupSample;
+exports.bufferToHourRecord = bufferToHourRecord;
 const history_1 = require("../battery_runtime/history");
 const constants_1 = require("../house_load/constants");
 const hour_1 = require("./hour");
@@ -33,7 +37,6 @@ function emptyHourBuffer(hourKey, rollupMode) {
         lastSampleTs: 0,
     };
 }
-exports.emptyHourBuffer = emptyHourBuffer;
 function ingestBidirectionalSample(buffer, ts, rawW, powerInvert) {
     const hourKey = (0, hour_1.localHourKey)(ts);
     let next = buffer;
@@ -62,7 +65,6 @@ function ingestBidirectionalSample(buffer, ts, rawW, powerInvert) {
     }
     return updated;
 }
-exports.ingestBidirectionalSample = ingestBidirectionalSample;
 function ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit) {
     const hourKey = (0, hour_1.localHourKey)(ts);
     let next = buffer;
@@ -80,14 +82,12 @@ function ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit) {
         lastSampleTs: ts,
     };
 }
-exports.ingestUnidirectionalAvgSample = ingestUnidirectionalAvgSample;
 function ingestRollupSample(buffer, ts, rawW, rollupMode, powerInvert, powerUnit) {
     if (rollupMode === "unidirectional_avg") {
         return ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit);
     }
     return ingestBidirectionalSample(buffer, ts, rawW, powerInvert);
 }
-exports.ingestRollupSample = ingestRollupSample;
 function bufferToHourRecord(buffer) {
     if (buffer.sampleCount === 0) {
         return null;
@@ -116,4 +116,3 @@ function bufferToHourRecord(buffer) {
         maxDischargeW: buffer.maxDischargeW,
     };
 }
-exports.bufferToHourRecord = bufferToHourRecord;

@@ -1,6 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.disabledResult = exports.noSourceResult = exports.withPowerDiagnostics = exports.computeBatteryRuntimeLearning = exports.estimateRuntimeDays = exports.computeTopoffStatus = exports.calendarDaysSince = exports.findLastFullCharge = exports.resolveLastFullCharge = exports.fullChargeFromSecondsSince = exports.computePowerStats = exports.computeSocRates = exports.computeNightHouseLoadDiagnostic = exports.computeNightDischarges = exports.expandBridgeWithClockEnvelope = void 0;
+exports.expandBridgeWithClockEnvelope = expandBridgeWithClockEnvelope;
+exports.computeNightDischarges = computeNightDischarges;
+exports.computeNightHouseLoadDiagnostic = computeNightHouseLoadDiagnostic;
+exports.computeSocRates = computeSocRates;
+exports.computePowerStats = computePowerStats;
+exports.fullChargeFromSecondsSince = fullChargeFromSecondsSince;
+exports.resolveLastFullCharge = resolveLastFullCharge;
+exports.findLastFullCharge = findLastFullCharge;
+exports.calendarDaysSince = calendarDaysSince;
+exports.computeTopoffStatus = computeTopoffStatus;
+exports.estimateRuntimeDays = estimateRuntimeDays;
+exports.computeBatteryRuntimeLearning = computeBatteryRuntimeLearning;
+exports.withPowerDiagnostics = withPowerDiagnostics;
+exports.noSourceResult = noSourceResult;
+exports.disabledResult = disabledResult;
+exports.errorResult = errorResult;
 const constants_1 = require("./constants");
 const night_bridge_1 = require("./night_bridge");
 const time_1 = require("./time");
@@ -90,7 +105,6 @@ function expandBridgeWithClockEnvelope(bridge, nightStart, nightEnd, astroDaily)
         return { startTs: bridge.startTs, endTs: bridge.endTs };
     return { startTs, endTs };
 }
-exports.expandBridgeWithClockEnvelope = expandBridgeWithClockEnvelope;
 /**
  * Nachtentladung über Brückenfenster (PV/Haus, Batterie, Astro oder feste Uhr).
  * Alle Kandidaten werden bewertet — dünnes pv_house (1 Nacht / 1 kWh) darf die
@@ -385,7 +399,6 @@ function computeNightDischarges(params) {
         nightSamples: best.nightSamples,
     };
 }
-exports.computeNightDischarges = computeNightDischarges;
 /** Verwirft Nächte mit `pct` oberhalb von 2.5× Median (Sondernächte mit extremem Verbrauch). */
 function trimNightOutliers(nights) {
     if (nights.length < 4)
@@ -425,7 +438,6 @@ function computeNightHouseLoadDiagnostic(params) {
     }
     return { avgKwh: (0, night_bridge_1.weightedAverage)(values, weights), validNights: values.length };
 }
-exports.computeNightHouseLoadDiagnostic = computeNightHouseLoadDiagnostic;
 function computeSocRates(socPoints) {
     const chargeRates = [];
     const dischargeRates = [];
@@ -448,7 +460,6 @@ function computeSocRates(socPoints) {
         avgDischargeRatePctH: average(dischargeRates),
     };
 }
-exports.computeSocRates = computeSocRates;
 function computePowerStats(powerPoints) {
     const charge = [];
     const discharge = [];
@@ -465,12 +476,10 @@ function computePowerStats(powerPoints) {
         maxDischargePowerW: discharge.length ? Math.max(...discharge) : null,
     };
 }
-exports.computePowerStats = computePowerStats;
 /** Zeitpunkt der letzten Vollladung aus Geräte-Counter (Sekunden seit Voll). */
 function fullChargeFromSecondsSince(seconds, now) {
     return new Date(now.getTime() - seconds * 1000).toISOString();
 }
-exports.fullChargeFromSecondsSince = fullChargeFromSecondsSince;
 function resolveLastFullCharge(params) {
     if (params.secondsSinceFull !== null) {
         return {
@@ -486,7 +495,6 @@ function resolveLastFullCharge(params) {
         fullChargeSource: params.socPointsForFullCharge.length > 0 || live ? "soc_history" : null,
     };
 }
-exports.resolveLastFullCharge = resolveLastFullCharge;
 function findLastFullCharge(socPoints, fullChargeSoc, live) {
     let lastTs = null;
     for (const p of socPoints) {
@@ -499,7 +507,6 @@ function findLastFullCharge(socPoints, fullChargeSoc, live) {
     }
     return lastTs !== null ? new Date(lastTs).toISOString() : null;
 }
-exports.findLastFullCharge = findLastFullCharge;
 /** Kalendertage (lokal) zwischen Vollladung und jetzt — „gestern voll“ = 1. */
 function calendarDaysSince(isoTs, now) {
     const lastMs = Date.parse(isoTs);
@@ -512,7 +519,6 @@ function calendarDaysSince(isoTs, now) {
     nowDay.setHours(0, 0, 0, 0);
     return Math.round((nowDay.getTime() - lastDay.getTime()) / constants_1.MS_PER_DAY);
 }
-exports.calendarDaysSince = calendarDaysSince;
 function computeTopoffStatus(params) {
     if (!params.lastFullCharge) {
         return { daysSinceFull: null, topoffDaysRemaining: null, topoffDue: null };
@@ -528,7 +534,6 @@ function computeTopoffStatus(params) {
         topoffDue: daysSinceFull >= params.topoffIntervalDays,
     };
 }
-exports.computeTopoffStatus = computeTopoffStatus;
 function estimateRuntimeDays(currentSocPct, avgNightDischargePct) {
     if (currentSocPct === null ||
         avgNightDischargePct === null ||
@@ -538,7 +543,6 @@ function estimateRuntimeDays(currentSocPct, avgNightDischargePct) {
     }
     return round2(currentSocPct / avgNightDischargePct);
 }
-exports.estimateRuntimeDays = estimateRuntimeDays;
 function computeBatteryRuntimeLearning(params) {
     const night = computeNightDischarges({
         socPoints: params.socPoints,
@@ -672,7 +676,6 @@ function computeBatteryRuntimeLearning(params) {
         nightSamples: night.nightSamples,
     };
 }
-exports.computeBatteryRuntimeLearning = computeBatteryRuntimeLearning;
 const EMPTY_POWER_DIAGNOSTICS = {
     powerHistoryRawRows: null,
     powerHistoryNormalizedRows: null,
@@ -706,7 +709,6 @@ function withPowerDiagnostics(result, meta) {
         powerHistoryMode: meta.powerHistoryMode,
     };
 }
-exports.withPowerDiagnostics = withPowerDiagnostics;
 function noSourceResult(cfg) {
     return {
         status: "no_source",
@@ -744,7 +746,6 @@ function noSourceResult(cfg) {
         ...EMPTY_POWER_DIAGNOSTICS,
     };
 }
-exports.noSourceResult = noSourceResult;
 function disabledResult(cfg) {
     return {
         ...noSourceResult(cfg),
@@ -752,7 +753,6 @@ function disabledResult(cfg) {
         lastError: "Battery Runtime Learning in Admin deaktiviert.",
     };
 }
-exports.disabledResult = disabledResult;
 function errorResult(message, cfg, sources) {
     return {
         ...noSourceResult(cfg),
@@ -762,4 +762,3 @@ function errorResult(message, cfg, sources) {
         lastError: message,
     };
 }
-exports.errorResult = errorResult;

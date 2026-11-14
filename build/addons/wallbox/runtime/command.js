@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildWallboxCommandCandidate = void 0;
+exports.buildWallboxCommandCandidate = buildWallboxCommandCandidate;
 function isFiniteNonNegative(n) {
     return n !== null && Number.isFinite(n) && n >= 0;
 }
@@ -96,4 +96,3 @@ function buildWallboxCommandCandidate(input) {
         blockReason: chargeCheck.reason,
     };
 }
-exports.buildWallboxCommandCandidate = buildWallboxCommandCandidate;

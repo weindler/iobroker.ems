@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureImmersionStatusStates = exports.IMMERSION_STATUS_STATES = void 0;
+exports.IMMERSION_STATUS_STATES = void 0;
+exports.ensureImmersionStatusStates = ensureImmersionStatusStates;
 const tree_paths_1 = require("../../tree_paths");
 const STATUS = (0, tree_paths_1.addonStatusBase)("immersion_heater");
 exports.IMMERSION_STATUS_STATES = {
@@ -83,4 +84,3 @@ async function ensureImmersionStatusStates(adapter) {
         }
     }
 }
-exports.ensureImmersionStatusStates = ensureImmersionStatusStates;

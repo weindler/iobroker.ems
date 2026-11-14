@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensurePriceOutlookStates = void 0;
+exports.ensurePriceOutlookStates = ensurePriceOutlookStates;
 const state_util_1 = require("../../ems_light/state_util");
 function state(id, name, type, unit, def) {
     return {
@@ -26,4 +26,3 @@ async function ensurePriceOutlookStates(host) {
         ...Array.from({ length: 7 }, (_, index) => state(`learning.price_outlook.local_pv_day${index + 1}_raw_kwh`, `Lokale PV-Rohprognose Tag ${index + 1}`, "number", "kWh")),
     ]);
 }
-exports.ensurePriceOutlookStates = ensurePriceOutlookStates;

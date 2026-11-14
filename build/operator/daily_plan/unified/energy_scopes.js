@@ -7,7 +7,12 @@
  * Horizon = vollständiger belastbarer Unified-Planungshorizont (~bis 7 Tage)
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.localDateKeyFromIso = exports.sumEnergyHorizon = exports.sumEnergyToDeadline = exports.sumEnergyForLocalDay = exports.localDayBoundsMs = exports.energyOverlapKwh = void 0;
+exports.energyOverlapKwh = energyOverlapKwh;
+exports.localDayBoundsMs = localDayBoundsMs;
+exports.sumEnergyForLocalDay = sumEnergyForLocalDay;
+exports.sumEnergyToDeadline = sumEnergyToDeadline;
+exports.sumEnergyHorizon = sumEnergyHorizon;
+exports.localDateKeyFromIso = localDateKeyFromIso;
 const slots_1 = require("../slots");
 const time_1 = require("../../time");
 /** Anteil der Slot-Energie, der im Intervall [rangeStartMs, rangeEndMs) liegt. */
@@ -28,13 +33,11 @@ function energyOverlapKwh(startIso, endIso, energyKwh, rangeStartMs, rangeEndMs)
         return 0;
     return energyKwh * ((overlapEnd - overlapStart) / (e - s));
 }
-exports.energyOverlapKwh = energyOverlapKwh;
 function localDayBoundsMs(dateKey, timezone) {
     const startMs = Date.parse((0, time_1.isoAtTimezoneLocal)(dateKey, 0, 0, timezone));
     const endMs = Date.parse((0, slots_1.endOfLocalDayIso)(dateKey, timezone));
     return { startMs, endMs };
 }
-exports.localDayBoundsMs = localDayBoundsMs;
 /** Day Scope: Summe der Slot-Energie im lokalen Kalendertag (anteilig an Grenzen). */
 function sumEnergyForLocalDay(slots, dateKey, timezone) {
     const { startMs, endMs } = localDayBoundsMs(dateKey, timezone);
@@ -47,7 +50,6 @@ function sumEnergyForLocalDay(slots, dateKey, timezone) {
     }
     return Math.round(sum * 1000) / 1000;
 }
-exports.sumEnergyForLocalDay = sumEnergyForLocalDay;
 /** Goal Scope: Summe bis Deadline (Slot-Start < deadline; anteilig wenn Slot über Deadline geht). */
 function sumEnergyToDeadline(slots, deadlineIso) {
     if (!deadlineIso)
@@ -67,7 +69,6 @@ function sumEnergyToDeadline(slots, deadlineIso) {
     }
     return Math.round(sum * 1000) / 1000;
 }
-exports.sumEnergyToDeadline = sumEnergyToDeadline;
 /** Horizon Scope: Summe aller gegebenen Slots (z. B. Rest-Horizon nach Trim). */
 function sumEnergyHorizon(slots) {
     let sum = 0;
@@ -79,11 +80,9 @@ function sumEnergyHorizon(slots) {
     }
     return Math.round(sum * 1000) / 1000;
 }
-exports.sumEnergyHorizon = sumEnergyHorizon;
 function localDateKeyFromIso(iso, timezone) {
     const ms = Date.parse(iso);
     if (!Number.isFinite(ms))
         return iso.slice(0, 10);
     return (0, time_1.localDateKeyInTimezone)(new Date(ms), timezone);
 }
-exports.localDateKeyFromIso = localDateKeyFromIso;

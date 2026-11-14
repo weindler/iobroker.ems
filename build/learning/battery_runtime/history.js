@@ -1,6 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.distinctSocSampleDays = exports.readSecondsSinceFullCharge = exports.readLiveSoc = exports.readLiveCapacityKwh = exports.fetchPowerHistory = exports.fetchGridBalanceDischargePowerHistory = exports.fetchSitePowerFromEnergyCounter = exports.energyKwhSeriesToHourlyPowerW = exports.MIN_NIGHT_BRIDGE_SITE_POINTS = exports.fetchSitePowerSeries = exports.aggregatePowerPointsByHour = exports.resolveEffectivePowerInvert = exports.fetchSocHistoryRaw = exports.fetchSocHistory = exports.normalizeBatteryPowerW = exports.isValidCapacityKwh = exports.isValidSoc = exports.mergeDailyAstroTimes = exports.buildDailyAstroTimes = exports.fetchAstroTimeHistory = exports.parseAstroTimeValue = void 0;
+exports.MIN_NIGHT_BRIDGE_SITE_POINTS = void 0;
+exports.parseAstroTimeValue = parseAstroTimeValue;
+exports.fetchAstroTimeHistory = fetchAstroTimeHistory;
+exports.buildDailyAstroTimes = buildDailyAstroTimes;
+exports.mergeDailyAstroTimes = mergeDailyAstroTimes;
+exports.isValidSoc = isValidSoc;
+exports.isValidCapacityKwh = isValidCapacityKwh;
+exports.normalizeBatteryPowerW = normalizeBatteryPowerW;
+exports.fetchSocHistory = fetchSocHistory;
+exports.fetchSocHistoryRaw = fetchSocHistoryRaw;
+exports.resolveEffectivePowerInvert = resolveEffectivePowerInvert;
+exports.aggregatePowerPointsByHour = aggregatePowerPointsByHour;
+exports.fetchSitePowerSeries = fetchSitePowerSeries;
+exports.energyKwhSeriesToHourlyPowerW = energyKwhSeriesToHourlyPowerW;
+exports.fetchSitePowerFromEnergyCounter = fetchSitePowerFromEnergyCounter;
+exports.fetchGridBalanceDischargePowerHistory = fetchGridBalanceDischargePowerHistory;
+exports.fetchPowerHistory = fetchPowerHistory;
+exports.readLiveCapacityKwh = readLiveCapacityKwh;
+exports.readLiveSoc = readLiveSoc;
+exports.readSecondsSinceFullCharge = readSecondsSinceFullCharge;
+exports.distinctSocSampleDays = distinctSocSampleDays;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const power_rollup_1 = require("../power_rollup");
@@ -20,7 +40,6 @@ function parseAstroTimeValue(raw) {
         return null;
     return { hour, minute };
 }
-exports.parseAstroTimeValue = parseAstroTimeValue;
 async function fetchAstroTimeHistory(host, stateId, lookbackDays) {
     const points = [];
     const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
@@ -39,7 +58,6 @@ async function fetchAstroTimeHistory(host, stateId, lookbackDays) {
     points.sort((a, b) => a.ts - b.ts);
     return points;
 }
-exports.fetchAstroTimeHistory = fetchAstroTimeHistory;
 /** Pro Kalendertag die zuletzt geschriebene Astro-Zeit (tägliches JS-Update). */
 function buildDailyAstroTimes(points) {
     const startByDate = new Map();
@@ -49,13 +67,11 @@ function buildDailyAstroTimes(points) {
     }
     return { startByDate, endByDate };
 }
-exports.buildDailyAstroTimes = buildDailyAstroTimes;
 function mergeDailyAstroTimes(startPoints, endPoints) {
     const start = buildDailyAstroTimes(startPoints);
     const end = buildDailyAstroTimes(endPoints);
     return { startByDate: start.startByDate, endByDate: end.endByDate };
 }
-exports.mergeDailyAstroTimes = mergeDailyAstroTimes;
 function hourBucket(ts) {
     return Math.floor(ts / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
 }
@@ -64,13 +80,11 @@ function isValidSoc(value) {
         return false;
     return value >= constants_1.SOC_MIN && value <= constants_1.SOC_MAX;
 }
-exports.isValidSoc = isValidSoc;
 function isValidCapacityKwh(value) {
     if (value === null || !Number.isFinite(value))
         return false;
     return value > 0 && value <= 500;
 }
-exports.isValidCapacityKwh = isValidCapacityKwh;
 /**
  * Nach Normalisierung: positiv = laden, negativ = entladen.
  * @param invert Quell-Vorzeichen umdrehen (z. B. Sonnen pacTotal: + entladen, − laden).
@@ -85,7 +99,6 @@ function normalizeBatteryPowerW(raw, invert = false) {
         return null;
     return Math.round(signed);
 }
-exports.normalizeBatteryPowerW = normalizeBatteryPowerW;
 async function fetchHistoryPoints(host, stateId, lookbackDays, parseVal) {
     const byHour = new Map();
     let lastValidTs = null;
@@ -117,7 +130,6 @@ async function fetchSocHistory(host, stateId, lookbackDays) {
         lastValidTs,
     };
 }
-exports.fetchSocHistory = fetchSocHistory;
 /** Alle gültigen SOC-Punkte ohne Stunden-Dedup — für Vollladungs-Erkennung (Peaks zwischen Stunden). */
 async function fetchSocHistoryRaw(host, stateId, lookbackDays) {
     const rows = await (0, history_query_1.fetchHistoryRowsLookback)(host, stateId, lookbackDays, history_query_1.HISTORY_ROWS_PER_DAY, history_query_1.HISTORY_CHUNK_TIMEOUT_MS);
@@ -132,7 +144,6 @@ async function fetchSocHistoryRaw(host, stateId, lookbackDays) {
     points.sort((a, b) => a.ts - b.ts);
     return points;
 }
-exports.fetchSocHistoryRaw = fetchSocHistoryRaw;
 /** Sonnen pacTotal: + entladen dominiert, − laden — Auto-Invert wenn Admin-Checkbox aus. */
 function resolveEffectivePowerInvert(configuredInvert, rawRows) {
     if (configuredInvert) {
@@ -156,7 +167,6 @@ function resolveEffectivePowerInvert(configuredInvert, rawRows) {
     }
     return { invert: false, autoDetected: false };
 }
-exports.resolveEffectivePowerInvert = resolveEffectivePowerInvert;
 /**
  * Pro Stunde max. Lade- und max. Entladeleistung behalten (nicht nur letzter Wert).
  * Kurze PV-Ladespitzen gehen sonst verloren, wenn die Stunde mit Standby/Entladen endet.
@@ -226,7 +236,6 @@ function aggregatePowerPointsByHour(rows, powerInvert) {
         },
     };
 }
-exports.aggregatePowerPointsByHour = aggregatePowerPointsByHour;
 function rowsToSitePowerPoints(rows, powerUnit) {
     const points = [];
     for (const row of rows) {
@@ -283,7 +292,6 @@ async function fetchSitePowerSeries(host, stateId, lookbackDays) {
     /** Letzter Fallback: Tages-only-Rollup besser als leer. */
     return fromRollup?.points ?? [];
 }
-exports.fetchSitePowerSeries = fetchSitePowerSeries;
 /** Mindestpunkte für belastbare PV/Haus-Nachtbrücke (≈ 2 Tage à 12 h). */
 exports.MIN_NIGHT_BRIDGE_SITE_POINTS = 48;
 /**
@@ -320,7 +328,6 @@ function energyKwhSeriesToHourlyPowerW(samples) {
         powerW: Math.round(v.sumW / Math.max(1, v.n)),
     }));
 }
-exports.energyKwhSeriesToHourlyPowerW = energyKwhSeriesToHourlyPowerW;
 function detectEnergyUnitIsWh(values) {
     const positive = values.filter((v) => v > 0);
     if (positive.length < 4)
@@ -354,7 +361,6 @@ async function fetchSitePowerFromEnergyCounter(host, energyStateId, lookbackDays
     }
     return energyKwhSeriesToHourlyPowerW(samples);
 }
-exports.fetchSitePowerFromEnergyCounter = fetchSitePowerFromEnergyCounter;
 /**
  * Rohe, ungeglättete Historie der Netzausgleichs-Entladeleistung (`addons.battery.grid_balance.
  * effective_power_w`, ≥ 0 W) — EMS-eigener, bereits berechneter Steuerwert, kein Hardware-Peak.
@@ -378,7 +384,6 @@ async function fetchGridBalanceDischargePowerHistory(host, stateId, lookbackDays
     points.sort((a, b) => a.ts - b.ts);
     return points;
 }
-exports.fetchGridBalanceDischargePowerHistory = fetchGridBalanceDischargePowerHistory;
 async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = false) {
     const rollup = await (0, power_rollup_1.fetchRollupPowerHistory)(host, stateId, lookbackDays);
     if (rollup) {
@@ -402,7 +407,6 @@ async function fetchPowerHistory(host, stateId, lookbackDays, powerInvert = fals
         },
     };
 }
-exports.fetchPowerHistory = fetchPowerHistory;
 async function readLiveCapacityKwh(host, stateId) {
     if (!stateId)
         return null;
@@ -417,7 +421,6 @@ async function readLiveCapacityKwh(host, stateId) {
         return null;
     }
 }
-exports.readLiveCapacityKwh = readLiveCapacityKwh;
 async function readLiveSoc(host, stateId) {
     if (!stateId)
         return null;
@@ -432,7 +435,6 @@ async function readLiveSoc(host, stateId) {
         return null;
     }
 }
-exports.readLiveSoc = readLiveSoc;
 /** Geräte-State: Sekunden seit letzter Vollladung (Sonnen: latestData.secondsSinceFullCharge). */
 async function readSecondsSinceFullCharge(host, stateId) {
     if (!stateId) {
@@ -452,8 +454,6 @@ async function readSecondsSinceFullCharge(host, stateId) {
         return null;
     }
 }
-exports.readSecondsSinceFullCharge = readSecondsSinceFullCharge;
 function distinctSocSampleDays(points) {
     return new Set(points.map((p) => new Date(p.ts).toISOString().slice(0, 10))).size;
 }
-exports.distinctSocSampleDays = distinctSocSampleDays;

@@ -4,7 +4,15 @@
  * Keine physikalischen Konstanten, keine erfundenen 0-Werte, keine Steuerung.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.thermalTestSegment = exports.computeClimateThermalModels = exports.computeClimateThermalUnitModel = exports.collectInertiaSamples = exports.collectDehumidifyHumiditySamples = exports.collectActiveTempSamples = exports.collectPassiveTempSamples = exports.trimOutliersIqr = exports.CLIMATE_THERMAL_FRESHNESS_ZERO_DAYS = exports.CLIMATE_THERMAL_FRESHNESS_FULL_DAYS = exports.CLIMATE_THERMAL_MAX_IQR_RH_PER_H = exports.CLIMATE_THERMAL_MAX_IQR_TEMP_K_PER_H = exports.CLIMATE_THERMAL_MIN_CONFIDENCE_USABLE = exports.CLIMATE_THERMAL_TARGET_SAMPLES = exports.CLIMATE_THERMAL_MIN_SAMPLES = exports.CLIMATE_THERMAL_MAX_JUMP_RH = exports.CLIMATE_THERMAL_MAX_JUMP_K = exports.CLIMATE_THERMAL_SLOT_GAP_MAX_SEC = exports.CLIMATE_THERMAL_SLOT_GAP_MIN_SEC = exports.CLIMATE_THERMAL_INERTIA_MAX_SEC = exports.CLIMATE_THERMAL_INERTIA_MIN_SEC = exports.CLIMATE_THERMAL_MIN_ACTIVE_SEC = exports.CLIMATE_THERMAL_MIN_PASSIVE_SEC = void 0;
+exports.CLIMATE_THERMAL_FRESHNESS_ZERO_DAYS = exports.CLIMATE_THERMAL_FRESHNESS_FULL_DAYS = exports.CLIMATE_THERMAL_MAX_IQR_RH_PER_H = exports.CLIMATE_THERMAL_MAX_IQR_TEMP_K_PER_H = exports.CLIMATE_THERMAL_MIN_CONFIDENCE_USABLE = exports.CLIMATE_THERMAL_TARGET_SAMPLES = exports.CLIMATE_THERMAL_MIN_SAMPLES = exports.CLIMATE_THERMAL_MAX_JUMP_RH = exports.CLIMATE_THERMAL_MAX_JUMP_K = exports.CLIMATE_THERMAL_SLOT_GAP_MAX_SEC = exports.CLIMATE_THERMAL_SLOT_GAP_MIN_SEC = exports.CLIMATE_THERMAL_INERTIA_MAX_SEC = exports.CLIMATE_THERMAL_INERTIA_MIN_SEC = exports.CLIMATE_THERMAL_MIN_ACTIVE_SEC = exports.CLIMATE_THERMAL_MIN_PASSIVE_SEC = void 0;
+exports.trimOutliersIqr = trimOutliersIqr;
+exports.collectPassiveTempSamples = collectPassiveTempSamples;
+exports.collectActiveTempSamples = collectActiveTempSamples;
+exports.collectDehumidifyHumiditySamples = collectDehumidifyHumiditySamples;
+exports.collectInertiaSamples = collectInertiaSamples;
+exports.computeClimateThermalUnitModel = computeClimateThermalUnitModel;
+exports.computeClimateThermalModels = computeClimateThermalModels;
+exports.thermalTestSegment = thermalTestSegment;
 const constants_1 = require("../day_telemetry/constants");
 const climate_unit_slots_1 = require("../day_telemetry/climate_unit_slots");
 const types_1 = require("./types");
@@ -56,7 +64,6 @@ function trimOutliersIqr(values) {
     const kept = values.filter((v) => v >= lo && v <= hi);
     return kept.length > 0 ? kept : values;
 }
-exports.trimOutliersIqr = trimOutliersIqr;
 function median(values) {
     if (values.length === 0)
         return null;
@@ -220,7 +227,6 @@ function collectPassiveTempSamples(days, unitIndex) {
     }
     return out;
 }
-exports.collectPassiveTempSamples = collectPassiveTempSamples;
 function segmentModePurpose(mode) {
     return (0, climate_unit_slots_1.normalizeClimateModePurpose)(mode);
 }
@@ -259,7 +265,6 @@ function collectActiveTempSamples(days, unitIndex, purpose) {
     }
     return out;
 }
-exports.collectActiveTempSamples = collectActiveTempSamples;
 function collectDehumidifyHumiditySamples(days, unitIndex) {
     const out = [];
     for (const day of days) {
@@ -289,7 +294,6 @@ function collectDehumidifyHumiditySamples(days, unitIndex) {
     }
     return out;
 }
-exports.collectDehumidifyHumiditySamples = collectDehumidifyHumiditySamples;
 /**
  * Residualrate in der ersten Stunde nach einem aktiven Segment — nur wenn messbar.
  * Keine erzwungene Zeitkonstante.
@@ -350,7 +354,6 @@ function collectInertiaSamples(days, unitIndex) {
     }
     return out;
 }
-exports.collectInertiaSamples = collectInertiaSamples;
 function finishPassive(samples, nowMs) {
     const base = finishEffect(samples, nowMs, "temp", false, "", "Passive Raumdynamik noch nicht auswertbar (zu wenig Climate-AUS-Abschnitte).");
     const auto = samples.filter((s) => !s.override);
@@ -410,7 +413,6 @@ function computeClimateThermalUnitModel(days, availability, nowMs) {
         lastRunIso,
     };
 }
-exports.computeClimateThermalUnitModel = computeClimateThermalUnitModel;
 function computeClimateThermalModels(days, units, nowMs) {
     const out = {};
     for (const u of units) {
@@ -421,7 +423,6 @@ function computeClimateThermalModels(days, units, nowMs) {
     }
     return out;
 }
-exports.computeClimateThermalModels = computeClimateThermalModels;
 /** Für Tests: Segment-Hilfsbauer. */
 function thermalTestSegment(overrides = {}) {
     const unitIndex = overrides.unitIndex ?? 1;
@@ -454,4 +455,3 @@ function thermalTestSegment(overrides = {}) {
         thermalRejectReason: overrides.thermalRejectReason ?? null,
     };
 }
-exports.thermalTestSegment = thermalTestSegment;

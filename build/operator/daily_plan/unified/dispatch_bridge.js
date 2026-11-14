@@ -5,7 +5,12 @@
  * Battery: nur charge (kein Discharge-Live). Wallbox: Intent für EVCC-Runtime.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildUnifiedDispatchPublish = exports.buildUnifiedIhAcDispatchPublish = exports.unifiedPlanToWallboxAllocations = exports.unifiedPlanToBatteryAllocations = exports.unifiedPlanToClimateAllocations = exports.unifiedPlanToImmersionAllocations = void 0;
+exports.unifiedPlanToImmersionAllocations = unifiedPlanToImmersionAllocations;
+exports.unifiedPlanToClimateAllocations = unifiedPlanToClimateAllocations;
+exports.unifiedPlanToBatteryAllocations = unifiedPlanToBatteryAllocations;
+exports.unifiedPlanToWallboxAllocations = unifiedPlanToWallboxAllocations;
+exports.buildUnifiedIhAcDispatchPublish = buildUnifiedIhAcDispatchPublish;
+exports.buildUnifiedDispatchPublish = buildUnifiedDispatchPublish;
 const contribution_ids_1 = require("../../contribution_ids");
 const ev_energy_1 = require("./ev_energy");
 const addon_plan_publish_1 = require("../addon_plan_publish");
@@ -97,7 +102,6 @@ function unifiedPlanToImmersionAllocations(plan) {
     }
     return (0, addon_plan_publish_1.filterRunnableAllocations)(filterExecutableGeometry([...byKey.values()]), addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
-exports.unifiedPlanToImmersionAllocations = unifiedPlanToImmersionAllocations;
 /** Klima: air_conditioning.unit_N — Multi-Hour / Energy-Inkonsistenz nie publizieren. */
 function unifiedPlanToClimateAllocations(plan) {
     const out = [];
@@ -122,7 +126,6 @@ function unifiedPlanToClimateAllocations(plan) {
     }
     return (0, addon_plan_publish_1.filterRunnableAllocations)(out, addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
-exports.unifiedPlanToClimateAllocations = unifiedPlanToClimateAllocations;
 /**
  * Battery Charge only — Discharge-Zellen werden bewusst nicht als Live-Dispatch publiziert
  * (Sonnen EM: discharge_unverified / unsupported).
@@ -136,7 +139,6 @@ function unifiedPlanToBatteryAllocations(plan) {
     }
     return (0, addon_plan_publish_1.filterRunnableAllocations)(filterExecutableGeometry(out), addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
-exports.unifiedPlanToBatteryAllocations = unifiedPlanToBatteryAllocations;
 /** Wallbox → wallbox.ev_session für bestehende EVCC-Runtime. Phase 4: kein Dispatch bei externer Hoheit / Takeover-Kandidat. */
 function unifiedPlanToWallboxAllocations(plan) {
     const mode = plan.evPlanner?.managementMode ??
@@ -163,7 +165,6 @@ function unifiedPlanToWallboxAllocations(plan) {
     }
     return (0, addon_plan_publish_1.filterRunnableAllocations)(filterExecutableGeometry(out), addon_plan_publish_1.RUNNABLE_ALLOCATION_FLOOR_W);
 }
-exports.unifiedPlanToWallboxAllocations = unifiedPlanToWallboxAllocations;
 function buildUnifiedIhAcDispatchPublish(plan) {
     const immersionEntries = unifiedPlanToImmersionAllocations(plan);
     const climateEntries = unifiedPlanToClimateAllocations(plan);
@@ -180,7 +181,6 @@ function buildUnifiedIhAcDispatchPublish(plan) {
             : "Unified Day Plan: kein fahrbares Klima-Fenster.",
     };
 }
-exports.buildUnifiedIhAcDispatchPublish = buildUnifiedIhAcDispatchPublish;
 function buildUnifiedDispatchPublish(plan) {
     const ihAc = buildUnifiedIhAcDispatchPublish(plan);
     const batteryEntries = unifiedPlanToBatteryAllocations(plan);
@@ -199,4 +199,3 @@ function buildUnifiedDispatchPublish(plan) {
             : "Unified Day Plan: kein fahrbares Wallbox-Fenster.",
     };
 }
-exports.buildUnifiedDispatchPublish = buildUnifiedDispatchPublish;

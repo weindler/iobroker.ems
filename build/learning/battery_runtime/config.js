@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sourceLabelFromStateId = exports.nightAstroConfigReady = exports.batteryRuntimeConfigFromAdapter = void 0;
+exports.batteryRuntimeConfigFromAdapter = batteryRuntimeConfigFromAdapter;
+exports.nightAstroConfigReady = nightAstroConfigReady;
+exports.sourceLabelFromStateId = sourceLabelFromStateId;
 const constants_1 = require("./constants");
 function strField(config, key) {
     const v = config[key];
@@ -51,15 +53,12 @@ function batteryRuntimeConfigFromAdapter(config) {
         nightEndStateId: strField(c, "learning_battery_runtime_night_end_state"),
     };
 }
-exports.batteryRuntimeConfigFromAdapter = batteryRuntimeConfigFromAdapter;
 function nightAstroConfigReady(cfg) {
     return cfg.nightAstroEnabled && Boolean(cfg.nightStartStateId && cfg.nightEndStateId);
 }
-exports.nightAstroConfigReady = nightAstroConfigReady;
 function sourceLabelFromStateId(stateId) {
     if (!stateId)
         return "none";
     const m = stateId.match(/^([a-z0-9_-]+)\.\d+\./i);
     return m ? m[1] : stateId.split(".")[0] || "unknown";
 }
-exports.sourceLabelFromStateId = sourceLabelFromStateId;

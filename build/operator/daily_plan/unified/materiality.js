@@ -4,7 +4,11 @@
  * Wiederverwendet die AI-Digest-Bucket-Größen wo sinnvoll (PV 2 kWh, Preis 5 ct).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateMaterialReplan = exports.pvRevisionContext = exports.thermalEmptyAtBucket = exports.replanCooldownMs = exports.REPLAN_COOLDOWN_MS = exports.REPLAN_COOLDOWN_DAY_MS = exports.REPLAN_COOLDOWN_NIGHT_MS = exports.MATERIAL_VEHICLE_ENERGY_KWH = exports.MATERIAL_THERMAL_TEMP_K = exports.MATERIAL_THERMAL_HEADROOM_KWH = exports.MATERIAL_BATTERY_SOC_PP = exports.MATERIAL_HOUSE_LOAD_KWH = void 0;
+exports.REPLAN_COOLDOWN_MS = exports.REPLAN_COOLDOWN_DAY_MS = exports.REPLAN_COOLDOWN_NIGHT_MS = exports.MATERIAL_VEHICLE_ENERGY_KWH = exports.MATERIAL_THERMAL_TEMP_K = exports.MATERIAL_THERMAL_HEADROOM_KWH = exports.MATERIAL_BATTERY_SOC_PP = exports.MATERIAL_HOUSE_LOAD_KWH = void 0;
+exports.replanCooldownMs = replanCooldownMs;
+exports.thermalEmptyAtBucket = thermalEmptyAtBucket;
+exports.pvRevisionContext = pvRevisionContext;
+exports.evaluateMaterialReplan = evaluateMaterialReplan;
 const trigger_digest_1 = require("../../../ai/trigger_digest");
 const reason_codes_1 = require("./reason_codes");
 /** Hauslast-Tagesabweichung / kumuliert — grober als AI-Flex-Bucket. */
@@ -35,7 +39,6 @@ function replanCooldownMs(nowMs, timezoneOffsetMinutes) {
     const localHour = localHourFromMs(nowMs, timezoneOffsetMinutes);
     return localHour >= 6 && localHour < 21 ? exports.REPLAN_COOLDOWN_DAY_MS : exports.REPLAN_COOLDOWN_NIGHT_MS;
 }
-exports.replanCooldownMs = replanCooldownMs;
 /** emptyAt auf 2h-Bucket — Minuten-Drift aus Newton nicht jeden Tick replanen. */
 function thermalEmptyAtBucket(iso) {
     if (!iso || !iso.trim())
@@ -45,7 +48,6 @@ function thermalEmptyAtBucket(iso) {
         return "";
     return String(Math.floor(ms / (2 * 3600_000)));
 }
-exports.thermalEmptyAtBucket = thermalEmptyAtBucket;
 function absDiff(a, b) {
     if (a === null || b === null || !Number.isFinite(a) || !Number.isFinite(b))
         return null;
@@ -68,7 +70,6 @@ function pvRevisionContext(baseline, actual) {
     }
     return { previousExpectedDayKwh, newExpectedDayKwh, realizedKwh, remainingExpectedKwh };
 }
-exports.pvRevisionContext = pvRevisionContext;
 function evaluateMaterialReplan(baseline, actual, opts) {
     const reasons = [];
     let hard = false;
@@ -262,4 +263,3 @@ function evaluateMaterialReplan(baseline, actual, opts) {
     }
     return { shouldReplan: true, reasons: unique, hard };
 }
-exports.evaluateMaterialReplan = evaluateMaterialReplan;

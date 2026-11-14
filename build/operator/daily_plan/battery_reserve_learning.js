@@ -16,7 +16,9 @@
  * Opportunity-Margen-Schwelle, die ohnehin schon additiv/optional ist.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toBatteryReserveLearningExplanation = exports.calibrateBatteryOpportunityMargin = exports.BATTERY_LEARNING_EXTRA_MARGIN_MAX_CT_PER_KWH = exports.BATTERY_LEARNING_FULL_TRUST_ACCURACY_PCT = exports.BATTERY_LEARNING_MIN_CONFIDENCE_PCT = exports.BATTERY_LEARNING_MIN_SAMPLE_COUNT = void 0;
+exports.BATTERY_LEARNING_EXTRA_MARGIN_MAX_CT_PER_KWH = exports.BATTERY_LEARNING_FULL_TRUST_ACCURACY_PCT = exports.BATTERY_LEARNING_MIN_CONFIDENCE_PCT = exports.BATTERY_LEARNING_MIN_SAMPLE_COUNT = void 0;
+exports.calibrateBatteryOpportunityMargin = calibrateBatteryOpportunityMargin;
+exports.toBatteryReserveLearningExplanation = toBatteryReserveLearningExplanation;
 const learning_gate_1 = require("./unified/learning_gate");
 exports.BATTERY_LEARNING_MIN_SAMPLE_COUNT = 10;
 exports.BATTERY_LEARNING_MIN_CONFIDENCE_PCT = 50;
@@ -62,7 +64,6 @@ function calibrateBatteryOpportunityMargin(metric) {
     const extraMarginCtPerKwh = (0, learning_gate_1.clampToBounds)((deficit / exports.BATTERY_LEARNING_FULL_TRUST_ACCURACY_PCT) * exports.BATTERY_LEARNING_EXTRA_MARGIN_MAX_CT_PER_KWH, 0, exports.BATTERY_LEARNING_EXTRA_MARGIN_MAX_CT_PER_KWH);
     return { usable: true, gateReason: null, value, sampleCount, confidencePct, extraMarginCtPerKwh };
 }
-exports.calibrateBatteryOpportunityMargin = calibrateBatteryOpportunityMargin;
 /**
  * Baut die gemeinsame Explainability-Struktur aus der Kalibrierung + den tatsächlichen
  * Baseline-/Adjusted-Entscheidungen (beide vom Aufrufer 1:1 aus dem echten Decision-Pfad
@@ -89,4 +90,3 @@ function toBatteryReserveLearningExplanation(calibration, baselineOpportunityAll
         ],
     };
 }
-exports.toBatteryReserveLearningExplanation = toBatteryReserveLearningExplanation;

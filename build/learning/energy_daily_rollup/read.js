@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchRollupDayKwh = void 0;
+exports.fetchRollupDayKwh = fetchRollupDayKwh;
 const persist_1 = require("./persist");
 const PERSIST_CATEGORY = "learning/energy_daily_rollup";
 async function fetchRollupDayKwh(host, stateId, dateKey) {
@@ -20,4 +20,3 @@ async function fetchRollupDayKwh(host, stateId, dateKey) {
     }
     return null;
 }
-exports.fetchRollupDayKwh = fetchRollupDayKwh;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildProvenanceMap = void 0;
+exports.buildProvenanceMap = buildProvenanceMap;
 function collectFromSection(section, out, prefix) {
     for (const key of Object.keys(section).sort()) {
         const pv = section[key];
@@ -20,4 +20,3 @@ function buildProvenanceMap(snapshot) {
     collectFromSection(snapshot.economics, out, "economics");
     return out;
 }
-exports.buildProvenanceMap = buildProvenanceMap;

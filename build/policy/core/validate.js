@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.failClosedCapabilities = exports.validatePolicySnapshot = void 0;
+exports.validatePolicySnapshot = validatePolicySnapshot;
+exports.failClosedCapabilities = failClosedCapabilities;
 const constants_1 = require("./constants");
 const normalize_1 = require("./normalize");
 const value_1 = require("./value");
@@ -126,7 +127,6 @@ function validatePolicySnapshot(snapshot, opts) {
     }
     return { valid, status, issues: sorted };
 }
-exports.validatePolicySnapshot = validatePolicySnapshot;
 function failClosedCapabilities() {
     return {
         flexibleOptimization: {
@@ -137,4 +137,3 @@ function failClosedCapabilities() {
         },
     };
 }
-exports.failClosedCapabilities = failClosedCapabilities;

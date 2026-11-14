@@ -1,6 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finalizeRestoreTransactionFence = exports.beginRestoreTransactionFence = exports.manifestMatchesInstance = exports.validateManifest = exports.writeManifestAtomic = exports.createInitialManifest = exports.newCheckpointId = exports.newDataEpoch = exports.PERSISTENCE_SCHEMA_VERSION = exports.MANIFEST_FORMAT_VERSION = exports.MANIFEST_FORMAT = void 0;
+exports.PERSISTENCE_SCHEMA_VERSION = exports.MANIFEST_FORMAT_VERSION = exports.MANIFEST_FORMAT = void 0;
+exports.newDataEpoch = newDataEpoch;
+exports.newCheckpointId = newCheckpointId;
+exports.createInitialManifest = createInitialManifest;
+exports.writeManifestAtomic = writeManifestAtomic;
+exports.validateManifest = validateManifest;
+exports.manifestMatchesInstance = manifestMatchesInstance;
+exports.beginRestoreTransactionFence = beginRestoreTransactionFence;
+exports.finalizeRestoreTransactionFence = finalizeRestoreTransactionFence;
 const node_crypto_1 = require("node:crypto");
 const schema_1 = require("../backup/schema");
 const atomic_write_1 = require("../persistence/atomic_write");
@@ -10,11 +18,9 @@ exports.PERSISTENCE_SCHEMA_VERSION = 1;
 function newDataEpoch() {
     return (0, node_crypto_1.randomUUID)();
 }
-exports.newDataEpoch = newDataEpoch;
 function newCheckpointId() {
     return (0, node_crypto_1.randomUUID)();
 }
-exports.newCheckpointId = newCheckpointId;
 function createInitialManifest(input) {
     const now = new Date().toISOString();
     return {
@@ -33,14 +39,12 @@ function createInitialManifest(input) {
         updatedAt: now,
     };
 }
-exports.createInitialManifest = createInitialManifest;
 async function writeManifestAtomic(manifestPath, manifest) {
     const payload = { ...manifest, updatedAt: new Date().toISOString() };
     await (0, atomic_write_1.atomicWriteJson)(manifestPath, payload, schema_1.stableJsonStringify, (parsed) => {
         validateManifest(parsed);
     });
 }
-exports.writeManifestAtomic = writeManifestAtomic;
 function validateManifest(raw) {
     if (!raw || typeof raw !== "object") {
         throw new Error("manifest_invalid");
@@ -76,11 +80,9 @@ function validateManifest(raw) {
     }
     return m;
 }
-exports.validateManifest = validateManifest;
 function manifestMatchesInstance(manifest, namespace, instance) {
     return manifest.namespace === namespace && manifest.instance === instance;
 }
-exports.manifestMatchesInstance = manifestMatchesInstance;
 async function beginRestoreTransactionFence(manifestPath, manifest, transactionId) {
     const next = {
         ...manifest,
@@ -91,7 +93,6 @@ async function beginRestoreTransactionFence(manifestPath, manifest, transactionI
     await writeManifestAtomic(manifestPath, next);
     return next;
 }
-exports.beginRestoreTransactionFence = beginRestoreTransactionFence;
 async function finalizeRestoreTransactionFence(manifestPath, manifest, outcome) {
     const next = {
         ...manifest,
@@ -103,4 +104,3 @@ async function finalizeRestoreTransactionFence(manifestPath, manifest, outcome) 
     await writeManifestAtomic(manifestPath, next);
     return next;
 }
-exports.finalizeRestoreTransactionFence = finalizeRestoreTransactionFence;

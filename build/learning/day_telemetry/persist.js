@@ -20,15 +20,41 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT = exports.normalizeDayTelemetryStore = exports.assertDayRecordSlotWidth = exports.pruneDayTelemetryStore = exports.readDayTelemetryPersist = exports.writeDayTelemetryPersist = exports.loadDayTelemetryStoreForDateKeys = exports.loadOrEmptyDayTelemetryStore = exports.pruneDayTelemetryFiles = exports.migrateMonolithToDayFiles = exports.listDayTelemetryDateKeys = exports.writeDayTelemetryDay = exports.readDayTelemetryDay = exports.normalizeDayRecord = exports.dayTelemetryPersistPath = exports.dayTelemetryDayPath = exports.dayTelemetryDayFileName = exports.DAY_TELEMETRY_CATEGORY = void 0;
+exports.DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT = exports.DAY_TELEMETRY_CATEGORY = void 0;
+exports.dayTelemetryDayFileName = dayTelemetryDayFileName;
+exports.dayTelemetryDayPath = dayTelemetryDayPath;
+exports.dayTelemetryPersistPath = dayTelemetryPersistPath;
+exports.normalizeDayRecord = normalizeDayRecord;
+exports.readDayTelemetryDay = readDayTelemetryDay;
+exports.writeDayTelemetryDay = writeDayTelemetryDay;
+exports.listDayTelemetryDateKeys = listDayTelemetryDateKeys;
+exports.migrateMonolithToDayFiles = migrateMonolithToDayFiles;
+exports.pruneDayTelemetryFiles = pruneDayTelemetryFiles;
+exports.loadOrEmptyDayTelemetryStore = loadOrEmptyDayTelemetryStore;
+exports.loadDayTelemetryStoreForDateKeys = loadDayTelemetryStoreForDateKeys;
+exports.writeDayTelemetryPersist = writeDayTelemetryPersist;
+exports.readDayTelemetryPersist = readDayTelemetryPersist;
+exports.pruneDayTelemetryStore = pruneDayTelemetryStore;
+exports.assertDayRecordSlotWidth = assertDayRecordSlotWidth;
+exports.normalizeDayTelemetryStore = normalizeDayTelemetryStore;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
@@ -42,16 +68,13 @@ const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 function dayTelemetryDayFileName(dateKey) {
     return `${dateKey}.json`;
 }
-exports.dayTelemetryDayFileName = dayTelemetryDayFileName;
 function dayTelemetryDayPath(baseDir, dateKey) {
     return path.join(baseDir, dayTelemetryDayFileName(dateKey));
 }
-exports.dayTelemetryDayPath = dayTelemetryDayPath;
 /** @deprecated Monolith-Pfad — nur Migration/Inventar. */
 function dayTelemetryPersistPath(baseDir) {
     return path.join(baseDir, constants_1.DAY_TELEMETRY_LEGACY_MONOLITH_FILE);
 }
-exports.dayTelemetryPersistPath = dayTelemetryPersistPath;
 function asCoverageFields(day) {
     if (day.firstSampleMs === undefined)
         day.firstSampleMs = null;
@@ -154,7 +177,6 @@ function normalizeDayRecord(raw, fallbackDateKey) {
         day.complete = false;
     return asCoverageFields(day);
 }
-exports.normalizeDayRecord = normalizeDayRecord;
 async function readDayTelemetryDay(baseDir, dateKey) {
     try {
         const raw = await fs.readFile(dayTelemetryDayPath(baseDir, dateKey), "utf8");
@@ -169,7 +191,6 @@ async function readDayTelemetryDay(baseDir, dateKey) {
         return null;
     }
 }
-exports.readDayTelemetryDay = readDayTelemetryDay;
 async function writeDayTelemetryDay(baseDir, day) {
     (0, types_1.refreshDayCoverage)(day);
     /*
@@ -186,12 +207,10 @@ async function writeDayTelemetryDay(baseDir, day) {
     };
     await (0, atomic_write_1.atomicWriteFile)(dayTelemetryDayPath(baseDir, day.dateKey), `${JSON.stringify(payload)}\n`, { mode: atomic_write_1.DIAGNOSTIC_FILE_MODE });
 }
-exports.writeDayTelemetryDay = writeDayTelemetryDay;
 /** Additiv (Block A): Liste vorhandener Tagesdateien — rein lesend, keine Migration. */
 async function listDayTelemetryDateKeys(baseDir) {
     return listDayKeysOnDisk(baseDir);
 }
-exports.listDayTelemetryDateKeys = listDayTelemetryDateKeys;
 async function listDayKeysOnDisk(baseDir) {
     try {
         const names = await fs.readdir(baseDir);
@@ -258,7 +277,6 @@ async function migrateMonolithToDayFiles(baseDir) {
     await (0, atomic_write_1.atomicWriteFile)(marker, `${JSON.stringify({ migratedAtIso: new Date().toISOString(), dayCount, backup: path.basename(bak) })}\n`);
     return { migrated: true, dayCount };
 }
-exports.migrateMonolithToDayFiles = migrateMonolithToDayFiles;
 async function pruneDayTelemetryFiles(baseDir, retainDays = constants_1.DAY_TELEMETRY_RETENTION_DAYS, todayDateKey) {
     const keys = await listDayKeysOnDisk(baseDir);
     if (keys.length <= retainDays)
@@ -285,7 +303,6 @@ async function pruneDayTelemetryFiles(baseDir, retainDays = constants_1.DAY_TELE
     }
     return removed;
 }
-exports.pruneDayTelemetryFiles = pruneDayTelemetryFiles;
 /** In-Memory-Store aus Disk laden (für Tests / Cache-Hydration). */
 async function loadOrEmptyDayTelemetryStore(baseDir) {
     if (!baseDir)
@@ -301,7 +318,6 @@ async function loadOrEmptyDayTelemetryStore(baseDir) {
     store.updatedAtIso = new Date().toISOString();
     return store;
 }
-exports.loadOrEmptyDayTelemetryStore = loadOrEmptyDayTelemetryStore;
 /**
  * Lädt nur explizit benötigte Tagesdateien in den Arbeitsspeicher.
  *
@@ -324,7 +340,6 @@ async function loadDayTelemetryStoreForDateKeys(baseDir, dateKeys) {
     store.updatedAtIso = new Date().toISOString();
     return store;
 }
-exports.loadDayTelemetryStoreForDateKeys = loadDayTelemetryStoreForDateKeys;
 /**
  * Schreibt alle Tage im Store als Tagesdateien (Tests / Vollpersist).
  * Produktion: bevorzugt writeDayTelemetryDay für den aktiven Tag.
@@ -335,7 +350,6 @@ async function writeDayTelemetryPersist(baseDir, store) {
         await writeDayTelemetryDay(baseDir, day);
     }
 }
-exports.writeDayTelemetryPersist = writeDayTelemetryPersist;
 /** @deprecated Kompatibilitätstests — liest alle Tagesdateien als Store. */
 async function readDayTelemetryPersist(baseDir) {
     const store = await loadOrEmptyDayTelemetryStore(baseDir);
@@ -350,7 +364,6 @@ async function readDayTelemetryPersist(baseDir) {
     }
     return store;
 }
-exports.readDayTelemetryPersist = readDayTelemetryPersist;
 /** In-Memory Retention (Cache); Dateien separat via pruneDayTelemetryFiles. */
 function pruneDayTelemetryStore(store, retainDays = constants_1.DAY_TELEMETRY_RETENTION_DAYS, todayDateKey) {
     const keys = Object.keys(store.days).sort();
@@ -380,11 +393,9 @@ function pruneDayTelemetryStore(store, retainDays = constants_1.DAY_TELEMETRY_RE
         updatedAtIso: new Date().toISOString(),
     };
 }
-exports.pruneDayTelemetryStore = pruneDayTelemetryStore;
 function assertDayRecordSlotWidth(day) {
     return day.slotWidthMs === constants_1.DAY_TELEMETRY_SLOT_MS;
 }
-exports.assertDayRecordSlotWidth = assertDayRecordSlotWidth;
 function normalizeDayTelemetryStore(raw) {
     if (!raw || typeof raw !== "object")
         return null;
@@ -406,4 +417,3 @@ function normalizeDayTelemetryStore(raw) {
         days,
     };
 }
-exports.normalizeDayTelemetryStore = normalizeDayTelemetryStore;

@@ -8,7 +8,8 @@
  * gemeinsame One-Plan-Bilanzschicht gegen Golden/ALLOC-Tests.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.allocateUnifiedDayPlan = exports.trimUnifiedInputToRemainingHorizon = void 0;
+exports.trimUnifiedInputToRemainingHorizon = trimUnifiedInputToRemainingHorizon;
+exports.allocateUnifiedDayPlan = allocateUnifiedDayPlan;
 const quality_1 = require("../../quality");
 const time_1 = require("../../time");
 const types_1 = require("./types");
@@ -114,7 +115,6 @@ function trimUnifiedInputToRemainingHorizon(input, nowMs) {
         },
     };
 }
-exports.trimUnifiedInputToRemainingHorizon = trimUnifiedInputToRemainingHorizon;
 function allocateUnifiedDayPlan(input, opts) {
     const nowMs = Date.parse(input.time.nowIso);
     const trimmed = Number.isFinite(nowMs) ? trimUnifiedInputToRemainingHorizon(input, nowMs) : input;
@@ -286,7 +286,6 @@ function allocateUnifiedDayPlan(input, opts) {
         batteryPriceBridge: batteryPriceBridge ?? null,
     };
 }
-exports.allocateUnifiedDayPlan = allocateUnifiedDayPlan;
 function earliestFeasibleGridCostCt(input, slots, gridNeedKwh) {
     const wb = input.wallbox;
     if (!wb || gridNeedKwh <= score_allocate_1.EPS)

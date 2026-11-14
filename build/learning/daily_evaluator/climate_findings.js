@@ -7,7 +7,8 @@
  * auf Mandatory-Flag + Preis-Timing beschränkt, kein erfundener Komfort-Score.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateClimatePredictiveDayFindings = exports.evaluateClimateFindings = void 0;
+exports.evaluateClimateFindings = evaluateClimateFindings;
+exports.evaluateClimatePredictiveDayFindings = evaluateClimatePredictiveDayFindings;
 const slots_1 = require("../day_telemetry/slots");
 const knowledge_time_1 = require("./knowledge_time");
 // Abnahme-Korrektur #2b: dieselbe fachliche Funktion wie die Runtime (`isHardOffStartWorthwhile`)
@@ -181,7 +182,6 @@ function evaluateClimateFindings(day) {
     }
     return findings;
 }
-exports.evaluateClimateFindings = evaluateClimateFindings;
 /**
  * Additiv: predicted vs. actual Climate-Bedarf aus Snapshots.
  * Keine Selbstkorrektur, keine Änderung bestehender climate_run-Findings.
@@ -264,7 +264,6 @@ function evaluateClimatePredictiveDayFindings(day) {
     }
     return findings;
 }
-exports.evaluateClimatePredictiveDayFindings = evaluateClimatePredictiveDayFindings;
 function buildClimateExplanation(seg, decisionQuality, reasonCodes, remainingMinutesUntilHardOff, demandUrgency01) {
     const base = `Klima-Lauf (${seg.mode}, ${seg.activeUnitCombination}) ${Math.round(seg.runtimeSec / 60)} min, ${seg.energyKwh.toFixed(2)} kWh`;
     if (reasonCodes.includes(HARD_OFF_CONTEXT_UNKNOWN_REASON_CODE)) {

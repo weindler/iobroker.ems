@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.roundPublishedSocPct = exports.roundPublishedEnergyKwh = exports.buildSocEnergyInput = exports.resolveVehicleSocAndEnergy = exports.isValidDirectSocPct = void 0;
+exports.isValidDirectSocPct = isValidDirectSocPct;
+exports.resolveVehicleSocAndEnergy = resolveVehicleSocAndEnergy;
+exports.buildSocEnergyInput = buildSocEnergyInput;
+exports.roundPublishedEnergyKwh = roundPublishedEnergyKwh;
+exports.roundPublishedSocPct = roundPublishedSocPct;
 const types_1 = require("./types");
 const soc_1 = require("./soc");
 function isValidDirectSocPct(value) {
@@ -10,7 +14,6 @@ function isValidDirectSocPct(value) {
         return false;
     return value >= 0 && value <= 100;
 }
-exports.isValidDirectSocPct = isValidDirectSocPct;
 function clamp(n, min, max) {
     return Math.max(min, Math.min(max, n));
 }
@@ -321,7 +324,6 @@ function resolveVehicleSocAndEnergy(input) {
     }
     return emptyResolution(vehicleId, reasonCode);
 }
-exports.resolveVehicleSocAndEnergy = resolveVehicleSocAndEnergy;
 function buildSocEnergyInput(vehicleId, profile, telemetry, readings, rollforwardAnchor, lastTrustedSnapshot, now) {
     const nowMs = now.getTime();
     const directSocStale = readings.socFromConfiguredState &&
@@ -341,16 +343,13 @@ function buildSocEnergyInput(vehicleId, profile, telemetry, readings, rollforwar
         now,
     };
 }
-exports.buildSocEnergyInput = buildSocEnergyInput;
 function roundPublishedEnergyKwh(value) {
     if (value === null || !Number.isFinite(value))
         return "";
     return Math.round(value * 1000) / 1000;
 }
-exports.roundPublishedEnergyKwh = roundPublishedEnergyKwh;
 function roundPublishedSocPct(value) {
     if (value === null || !Number.isFinite(value))
         return "";
     return Math.round(value * 10) / 10;
 }
-exports.roundPublishedSocPct = roundPublishedSocPct;

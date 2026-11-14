@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureBatteryRuntimeLearningStates = void 0;
+exports.ensureBatteryRuntimeLearningStates = ensureBatteryRuntimeLearningStates;
 const state_util_1 = require("../../ems_light/state_util");
 function numState(id, name, unit) {
     return {
@@ -63,4 +63,3 @@ async function ensureBatteryRuntimeLearningStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureBatteryRuntimeLearningStates = ensureBatteryRuntimeLearningStates;

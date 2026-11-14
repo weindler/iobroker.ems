@@ -4,7 +4,9 @@
  * Keine 15-Min-Slot-Pflicht — nur Energie-/Stundenbedarf für Forecast/Briefing.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.estimateDehumidifyHours = exports.estimateCoolingHours = exports.outdoorDriveFactor = void 0;
+exports.outdoorDriveFactor = outdoorDriveFactor;
+exports.estimateCoolingHours = estimateCoolingHours;
+exports.estimateDehumidifyHours = estimateDehumidifyHours;
 function outdoorDriveFactor(outdoorMaxC, outdoorLikelyTempC) {
     if (outdoorMaxC === null || !Number.isFinite(outdoorMaxC))
         return 0;
@@ -18,7 +20,6 @@ function outdoorDriveFactor(outdoorMaxC, outdoorLikelyTempC) {
         return 0.75;
     return 0.95;
 }
-exports.outdoorDriveFactor = outdoorDriveFactor;
 function estimateCoolingHours(input) {
     const remaining = Math.max(0, input.remainingHours);
     if (remaining <= 0) {
@@ -74,7 +75,6 @@ function estimateCoolingHours(input) {
             : "Kein Kühlbedarf",
     };
 }
-exports.estimateCoolingHours = estimateCoolingHours;
 function estimateDehumidifyHours(input) {
     if (!input.dryModeConfigured || input.maxHumidityPct === null) {
         return { likelyActive: false, expectedHours: 0, reasonDe: "Entfeuchten nicht konfiguriert." };
@@ -115,7 +115,6 @@ function estimateDehumidifyHours(input) {
             : "Kein Entfeuchtungsbedarf",
     };
 }
-exports.estimateDehumidifyHours = estimateDehumidifyHours;
 function round2(n) {
     return Math.round(n * 100) / 100;
 }

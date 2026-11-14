@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.executeBatteryWrite = exports.evaluateFinalWriteGate = void 0;
+exports.evaluateFinalWriteGate = evaluateFinalWriteGate;
+exports.executeBatteryWrite = executeBatteryWrite;
 const device_write_1 = require("../../../device_write");
 const barrier_1 = require("../../../restore/barrier");
 function evaluateFinalWriteGate(gate) {
@@ -28,7 +29,6 @@ function evaluateFinalWriteGate(gate) {
         return { passed: false, rejectCode: "ownership_invalid" };
     return { passed: true, rejectCode: null };
 }
-exports.evaluateFinalWriteGate = evaluateFinalWriteGate;
 /**
  * EINZIGE zentrale Write-Funktion für reale Batterie-Datenpunkte.
  * Dryrun simuliert exakt denselben Ablauf wie Live, schreibt aber nie real.
@@ -141,4 +141,3 @@ async function executeBatteryWrite(host, params) {
         };
     }
 }
-exports.executeBatteryWrite = executeBatteryWrite;

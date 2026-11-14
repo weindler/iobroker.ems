@@ -6,7 +6,8 @@
  * überspringt diese Segmente weiterhin (valid=false, combo none).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.advanceClimateSegment = exports.closeClimateSegment = void 0;
+exports.closeClimateSegment = closeClimateSegment;
+exports.advanceClimateSegment = advanceClimateSegment;
 function keyEqual(a, b) {
     return (a.sharedPowerGroupId === b.sharedPowerGroupId &&
         a.mode === b.mode &&
@@ -121,7 +122,6 @@ function closeClimateSegment(open, endTs, list) {
         return list;
     return [...list, toClosedSegment(open, endTs)];
 }
-exports.closeClimateSegment = closeClimateSegment;
 /**
  * Aktualisiert laufendes Segment mit Messprobe.
  * Bei Key-Wechsel: altes schließen, neues öffnen.
@@ -151,4 +151,3 @@ function advanceClimateSegment(open, nowTs, key, deltaKwh, deltaRuntimeSec, reje
     applySnapEnd(next, thermalSnap);
     return { open: next, list };
 }
-exports.advanceClimateSegment = advanceClimateSegment;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildWallboxDispatchIntent = void 0;
+exports.buildWallboxDispatchIntent = buildWallboxDispatchIntent;
 function mapSource(src) {
     if (src === "pv_surplus")
         return "pv_surplus";
@@ -106,4 +106,3 @@ function buildWallboxDispatchIntent(input) {
     }
     return noneIntent("Kein Dispatch-Ziel — sicherer Grundzustand.", now, revision);
 }
-exports.buildWallboxDispatchIntent = buildWallboxDispatchIntent;

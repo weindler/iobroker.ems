@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.planSummaryJson = exports.assertPlanMatchesIdentity = exports.markPlanUsed = exports.createRestorePlan = exports.invalidateRestorePlan = exports.getActiveRestorePlan = exports.clearRestorePlanForTest = void 0;
+exports.clearRestorePlanForTest = clearRestorePlanForTest;
+exports.getActiveRestorePlan = getActiveRestorePlan;
+exports.invalidateRestorePlan = invalidateRestorePlan;
+exports.createRestorePlan = createRestorePlan;
+exports.markPlanUsed = markPlanUsed;
+exports.assertPlanMatchesIdentity = assertPlanMatchesIdentity;
+exports.planSummaryJson = planSummaryJson;
 const node_crypto_1 = require("node:crypto");
 const types_1 = require("./types");
 const learning_map_1 = require("./learning_map");
@@ -9,7 +15,6 @@ let activePlan = null;
 function clearRestorePlanForTest() {
     activePlan = null;
 }
-exports.clearRestorePlanForTest = clearRestorePlanForTest;
 function getActiveRestorePlan() {
     if (!activePlan)
         return null;
@@ -19,11 +24,9 @@ function getActiveRestorePlan() {
     }
     return activePlan;
 }
-exports.getActiveRestorePlan = getActiveRestorePlan;
 function invalidateRestorePlan() {
     activePlan = null;
 }
-exports.invalidateRestorePlan = invalidateRestorePlan;
 function createRestorePlan(input) {
     const now = Date.now();
     const planId = (0, node_crypto_1.randomUUID)();
@@ -65,12 +68,10 @@ function createRestorePlan(input) {
     activePlan = plan;
     return plan;
 }
-exports.createRestorePlan = createRestorePlan;
 function markPlanUsed() {
     if (activePlan)
         activePlan.used = true;
 }
-exports.markPlanUsed = markPlanUsed;
 function assertPlanMatchesIdentity(identity, confirmPlanId) {
     const plan = getActiveRestorePlan();
     if (!plan) {
@@ -93,8 +94,6 @@ function assertPlanMatchesIdentity(identity, confirmPlanId) {
     }
     return plan;
 }
-exports.assertPlanMatchesIdentity = assertPlanMatchesIdentity;
 function planSummaryJson(plan) {
     return JSON.stringify(plan.summary);
 }
-exports.planSummaryJson = planSummaryJson;

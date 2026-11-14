@@ -5,7 +5,8 @@
  * Entscheidet nicht parallel zum Planner.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formatOperationalAssessmentDe = exports.buildOperationalAssessment = void 0;
+exports.buildOperationalAssessment = buildOperationalAssessment;
+exports.formatOperationalAssessmentDe = formatOperationalAssessmentDe;
 const time_1 = require("../time");
 const ON_W = 50;
 const NEAR_TARGET_SOC_PP = 3;
@@ -602,10 +603,10 @@ function assessForecast(input) {
     const tmin = input.weatherTomorrowMinC ?? input.weatherTodayMinC;
     const tmax = input.weatherTomorrowMaxC ?? input.weatherTodayMaxC;
     if (input.weatherTodayMinC != null && input.weatherTodayMaxC != null) {
-        bits.push(`heute ${Math.round(input.weatherTodayMinC)}–${Math.round(input.weatherTodayMaxC)} °C`);
+        bits.push(`heute ${Math.round(input.weatherTodayMinC)} bis ${Math.round(input.weatherTodayMaxC)} °C`);
     }
     else if (tmin != null && tmax != null) {
-        bits.push(`${Math.round(tmin)}–${Math.round(tmax)} °C`);
+        bits.push(`${Math.round(tmin)} bis ${Math.round(tmax)} °C`);
     }
     if (bits.length === 0)
         return "Forecast noch nicht vollständig.";
@@ -643,7 +644,6 @@ function buildOperationalAssessment(input) {
         forecast,
     };
 }
-exports.buildOperationalAssessment = buildOperationalAssessment;
 function formatOperationalAssessmentDe(a) {
     const lines = ["EMS-Einschätzung"];
     lines.push(`Auto: ${a.ev.text}${a.ev.next ? ` ${a.ev.next}` : ""}`);
@@ -661,4 +661,3 @@ function formatOperationalAssessmentDe(a) {
     lines.push(`Netzausgleich: ${a.gridBalance.text}`);
     return lines.join("\n");
 }
-exports.formatOperationalAssessmentDe = formatOperationalAssessmentDe;

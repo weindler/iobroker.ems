@@ -10,7 +10,8 @@
  * Klimaräume in day_telemetry (keine erfundene Zahl).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.computeGlobalScore = exports.computeDomainScores = void 0;
+exports.computeDomainScores = computeDomainScores;
+exports.computeGlobalScore = computeGlobalScore;
 const types_1 = require("./types");
 const CLASSIFICATION_SCORE = {
     mandatory: 100,
@@ -120,7 +121,6 @@ function computeDomainScores(day, findings) {
         comfortScore(),
     ];
 }
-exports.computeDomainScores = computeDomainScores;
 function computeGlobalScore(scores) {
     const usable = scores.filter((s) => s.value != null);
     if (usable.length === 0)
@@ -144,4 +144,3 @@ function computeGlobalScore(scores) {
         recompute += s.value * weights[s.topic];
     return { globalScore: Math.round(recompute * 10) / 10, weights };
 }
-exports.computeGlobalScore = computeGlobalScore;

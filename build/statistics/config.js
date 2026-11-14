@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.statisticsConfigFromAdapter = void 0;
+exports.statisticsConfigFromAdapter = statisticsConfigFromAdapter;
 const ensure_evcc_states_1 = require("../addons/wallbox/ensure_evcc_states");
 const evcc_config_1 = require("../addons/wallbox/evcc_config");
 const state_util_1 = require("../ems_light/state_util");
@@ -69,4 +69,3 @@ function statisticsConfigFromAdapter(config) {
         tibberGridRewardsActiveStateId: strField(c, "statistics_tibber_grid_rewards_active_state", strField(c, evcc_config_1.WB_EXTERNAL_GRID_REWARDS_ACTIVE, strField(c, evcc_config_1.WB_TIBBER_GRID_REWARDS_ACTIVE))),
     };
 }
-exports.statisticsConfigFromAdapter = statisticsConfigFromAdapter;

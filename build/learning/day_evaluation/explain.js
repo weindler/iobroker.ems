@@ -9,7 +9,7 @@
  * - `fahrzeug.*` = Goal Scope (Deadline-/Zielbezogen)
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildDeterministicDayExplanation = void 0;
+exports.buildDeterministicDayExplanation = buildDeterministicDayExplanation;
 const energy_scopes_1 = require("../../operator/daily_plan/unified/energy_scopes");
 const time_1 = require("../../operator/time");
 function sumKind(plan, kind) {
@@ -142,4 +142,3 @@ function buildDeterministicDayExplanation(plan, opts) {
         reasonCodes: [...plan.reasonCodes],
     };
 }
-exports.buildDeterministicDayExplanation = buildDeterministicDayExplanation;

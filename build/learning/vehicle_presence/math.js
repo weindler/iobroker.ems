@@ -4,7 +4,16 @@
  * Observation = unabhängiger historischer Tag, nicht Runtime-Tick.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bucketStatsForTest = exports.seedBucket = exports.observeConnected = exports.predictAt = exports.predictFromCounts = exports.confidenceFromSamples = exports.availabilityRatio = exports.localBucketAt = exports.bucketKey = exports.bucketIndexFromLocal = void 0;
+exports.bucketIndexFromLocal = bucketIndexFromLocal;
+exports.bucketKey = bucketKey;
+exports.localBucketAt = localBucketAt;
+exports.availabilityRatio = availabilityRatio;
+exports.confidenceFromSamples = confidenceFromSamples;
+exports.predictFromCounts = predictFromCounts;
+exports.predictAt = predictAt;
+exports.observeConnected = observeConnected;
+exports.seedBucket = seedBucket;
+exports.bucketStatsForTest = bucketStatsForTest;
 const time_1 = require("../../operator/time");
 const constants_1 = require("./constants");
 const types_1 = require("./types");
@@ -35,11 +44,9 @@ function bucketIndexFromLocal(hour, minute) {
     const idx = Math.floor((hour * 60 + minute) / constants_1.BUCKET_MINUTES);
     return Math.max(0, Math.min(constants_1.BUCKETS_PER_DAY - 1, idx));
 }
-exports.bucketIndexFromLocal = bucketIndexFromLocal;
 function bucketKey(weekday, bucketIndex) {
     return `${weekday}:${bucketIndex}`;
 }
-exports.bucketKey = bucketKey;
 function localBucketAt(ms, timezone) {
     const { hour, minute, weekday } = zonedHourMinuteWeekday(ms, timezone);
     const bucketIndex = bucketIndexFromLocal(hour, minute);
@@ -50,13 +57,11 @@ function localBucketAt(ms, timezone) {
         dateKey: (0, time_1.localDateKeyInTimezone)(new Date(ms), timezone),
     };
 }
-exports.localBucketAt = localBucketAt;
 function availabilityRatio(connectedCount, observedCount) {
     if (!(observedCount > 0))
         return null;
     return connectedCount / observedCount;
 }
-exports.availabilityRatio = availabilityRatio;
 function confidenceFromSamples(observedCount) {
     if (observedCount < constants_1.MIN_OBSERVATIONS_FOR_PREDICTION)
         return null;
@@ -66,7 +71,6 @@ function confidenceFromSamples(observedCount) {
         (constants_1.CONFIDENCE_TARGET_SAMPLES - constants_1.MIN_OBSERVATIONS_FOR_PREDICTION);
     return Math.round(constants_1.CONFIDENCE_AT_MIN_PCT + t * (constants_1.CONFIDENCE_AT_TARGET_PCT - constants_1.CONFIDENCE_AT_MIN_PCT));
 }
-exports.confidenceFromSamples = confidenceFromSamples;
 function predictFromCounts(connectedCount, observedCount) {
     if (observedCount < constants_1.MIN_OBSERVATIONS_FOR_PREDICTION) {
         return {
@@ -105,7 +109,6 @@ function predictFromCounts(connectedCount, observedCount) {
         source: "unknown",
     };
 }
-exports.predictFromCounts = predictFromCounts;
 function profileOf(store, vehicleKey) {
     return store.profiles[vehicleKey] ?? null;
 }
@@ -128,7 +131,6 @@ function predictAt(store, atMs, timezone, vehicleKey) {
         return unknown;
     return predictFromCounts(b.connectedCount, b.observedCount);
 }
-exports.predictAt = predictAt;
 /**
  * Unabhängige Observation: max. 1 pro (vehicleKey × lokales Datum × Wochentag × Bucket).
  * Wiederholte Runtime-Ticks im selben Fenster erhöhen observedCount nicht.
@@ -206,7 +208,6 @@ function observeConnected(store, atMs, timezone, connected, vehicleKey) {
         },
     };
 }
-exports.observeConnected = observeConnected;
 /** Test-Hilfe: unabhängige Tages-Samples für ein Profil/Bucket setzen. */
 function seedBucket(store, weekday, bucketIndex, connectedCount, observedCount, vehicleKey = "test_vehicle") {
     const key = bucketKey(weekday, bucketIndex);
@@ -237,8 +238,6 @@ function seedBucket(store, weekday, bucketIndex, connectedCount, observedCount, 
         },
     };
 }
-exports.seedBucket = seedBucket;
 function bucketStatsForTest(store, vehicleKey, weekday, bucketIndex) {
     return store.profiles[vehicleKey]?.buckets[bucketKey(weekday, bucketIndex)] ?? null;
 }
-exports.bucketStatsForTest = bucketStatsForTest;

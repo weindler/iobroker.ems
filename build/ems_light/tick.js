@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runEmsLightPhase1Tick = void 0;
+exports.runEmsLightPhase1Tick = runEmsLightPhase1Tick;
 const ems_activity_1 = require("../ems_activity");
 const tree_paths_1 = require("../tree_paths");
 const live_cache_1 = require("./live_cache");
@@ -160,4 +160,3 @@ async function runEmsLightPhase1Tick(host) {
         // Reporting-Projektion darf den lokalen Steuerpfad niemals beeinflussen.
     }
 }
-exports.runEmsLightPhase1Tick = runEmsLightPhase1Tick;

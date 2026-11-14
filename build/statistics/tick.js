@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleStatisticsStateChange = exports.isStatisticsRelatedState = exports.__resetStatisticsForTest = exports.tickStatistics = exports.legacyDailyChargesForKeys = void 0;
+exports.legacyDailyChargesForKeys = legacyDailyChargesForKeys;
+exports.tickStatistics = tickStatistics;
+exports.__resetStatisticsForTest = __resetStatisticsForTest;
+exports.isStatisticsRelatedState = isStatisticsRelatedState;
+exports.handleStatisticsStateChange = handleStatisticsStateChange;
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
 const archive_1 = require("./archive");
@@ -104,7 +108,6 @@ function legacyDailyChargesForKeys(days, keys) {
             : [];
     });
 }
-exports.legacyDailyChargesForKeys = legacyDailyChargesForKeys;
 function measuredChargeForKeys(days, keys) {
     let charged = 0;
     let cost = 0;
@@ -362,7 +365,6 @@ function tickStatistics(host, now = new Date()) {
     statisticsQueue = next.catch(() => undefined);
     return next;
 }
-exports.tickStatistics = tickStatistics;
 async function tickStatisticsSerialized(host, now) {
     const cfg = (0, config_1.statisticsConfigFromAdapter)(host.config);
     const dateKey = (0, compute_1.localDateKey)(now);
@@ -1046,13 +1048,11 @@ function __resetStatisticsForTest() {
     persistCache = null;
     persistDirty = false;
 }
-exports.__resetStatisticsForTest = __resetStatisticsForTest;
 function isStatisticsRelatedState(relativeId) {
     return (relativeId === ensure_states_2.STATISTICS_STATES.publicSubmitRequest ||
         relativeId === ensure_states_2.STATISTICS_STATES.adjustRequest ||
         relativeId.startsWith("statistics."));
 }
-exports.isStatisticsRelatedState = isStatisticsRelatedState;
 async function handleStatisticsStateChange(host, relativeId, val, ack) {
     // period_id: VIS kann mit ack:true schreiben — trotzdem neu rechnen.
     if (relativeId === ensure_states_2.STATISTICS_STATES.periodId) {
@@ -1082,4 +1082,3 @@ async function handleStatisticsStateChange(host, relativeId, val, ack) {
     await tickStatistics(host);
     return true;
 }
-exports.handleStatisticsStateChange = handleStatisticsStateChange;

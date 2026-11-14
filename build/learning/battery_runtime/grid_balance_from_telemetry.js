@@ -4,7 +4,10 @@
  * Keine Schätzung: nur Slots mit gesetztem kWh (inkl. gemessener 0) werden zu Leistungspunkten.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dayTelemetryDirFromHost = exports.loadGridBalancePowerFromDayTelemetry = exports.powerPointsFromGridBalanceDay = exports.gridBalanceKwhSlotToPowerW = void 0;
+exports.gridBalanceKwhSlotToPowerW = gridBalanceKwhSlotToPowerW;
+exports.powerPointsFromGridBalanceDay = powerPointsFromGridBalanceDay;
+exports.loadGridBalancePowerFromDayTelemetry = loadGridBalancePowerFromDayTelemetry;
+exports.dayTelemetryDirFromHost = dayTelemetryDirFromHost;
 const constants_1 = require("../day_telemetry/constants");
 const persist_1 = require("../day_telemetry/persist");
 const time_1 = require("../../operator/time");
@@ -13,7 +16,6 @@ function gridBalanceKwhSlotToPowerW(kwh, slotWidthMs) {
         return 0;
     return (kwh * 3_600_000_000) / slotWidthMs;
 }
-exports.gridBalanceKwhSlotToPowerW = gridBalanceKwhSlotToPowerW;
 /**
  * Wandelt Slot-kWh in energieerhaltende Leistungspunkte (Slot-Mitte).
  * null-Slots werden ausgelassen (missing), 0 bleibt 0 W.
@@ -43,7 +45,6 @@ function powerPointsFromGridBalanceDay(day) {
     }
     return points;
 }
-exports.powerPointsFromGridBalanceDay = powerPointsFromGridBalanceDay;
 async function loadGridBalancePowerFromDayTelemetry(baseDir, lookbackDays, now = new Date(), timezone = "Europe/Berlin") {
     if (!baseDir || lookbackDays <= 0) {
         return { points: [], observedDayCount: 0 };
@@ -74,10 +75,8 @@ async function loadGridBalancePowerFromDayTelemetry(baseDir, lookbackDays, now =
     points.sort((a, b) => a.ts - b.ts);
     return { points, observedDayCount };
 }
-exports.loadGridBalancePowerFromDayTelemetry = loadGridBalancePowerFromDayTelemetry;
 function dayTelemetryDirFromHost(getAbsolutePath) {
     if (!getAbsolutePath)
         return undefined;
     return getAbsolutePath(constants_1.DAY_TELEMETRY_CATEGORY);
 }
-exports.dayTelemetryDirFromHost = dayTelemetryDirFromHost;

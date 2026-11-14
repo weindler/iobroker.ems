@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveConsumerEffectivePowerW = exports.collectRecentDayMetrics = exports.LEARNED_POWER_MIN_SAMPLE_DAYS = exports.LEARNED_POWER_LOOKBACK_DAYS = exports.LEARNED_POWER_MIN_DAY_RUNTIME_SEC = void 0;
+exports.LEARNED_POWER_MIN_SAMPLE_DAYS = exports.LEARNED_POWER_LOOKBACK_DAYS = exports.LEARNED_POWER_MIN_DAY_RUNTIME_SEC = void 0;
+exports.collectRecentDayMetrics = collectRecentDayMetrics;
+exports.resolveConsumerEffectivePowerW = resolveConsumerEffectivePowerW;
 const constants_1 = require("../house_load/constants");
 const day_1 = require("../energy_daily_rollup/day");
 exports.LEARNED_POWER_MIN_DAY_RUNTIME_SEC = 600;
@@ -45,7 +47,6 @@ function collectRecentDayMetrics(entry, nowMs, lookbackDays = exports.LEARNED_PO
     }
     return { powerWs, runtimeSecs };
 }
-exports.collectRecentDayMetrics = collectRecentDayMetrics;
 /** Effektive Leistung: Median aus Stats-Tageswerten, sonst Admin-Config. */
 function resolveConsumerEffectivePowerW(entry, configPowerW, nowMs) {
     const safeConfig = configPowerW > 0 ? configPowerW : 0;
@@ -68,4 +69,3 @@ function resolveConsumerEffectivePowerW(entry, configPowerW, nowMs) {
         medianRuntimeSecPerDay,
     };
 }
-exports.resolveConsumerEffectivePowerW = resolveConsumerEffectivePowerW;

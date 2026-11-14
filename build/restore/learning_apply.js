@@ -15,15 +15,28 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restoreLearningFromSnapshot = exports.applyLearningFromStaged = exports.writeLearningSnapshot = exports.snapshotLearningFiles = void 0;
+exports.snapshotLearningFiles = snapshotLearningFiles;
+exports.writeLearningSnapshot = writeLearningSnapshot;
+exports.applyLearningFromStaged = applyLearningFromStaged;
+exports.restoreLearningFromSnapshot = restoreLearningFromSnapshot;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const promises_1 = require("node:fs/promises");
@@ -65,7 +78,6 @@ async function snapshotLearningFiles(host) {
     }
     return out;
 }
-exports.snapshotLearningFiles = snapshotLearningFiles;
 async function writeLearningSnapshot(dir, sub, entries) {
     for (const e of entries) {
         if (!e.exists || e.content === undefined)
@@ -74,7 +86,6 @@ async function writeLearningSnapshot(dir, sub, entries) {
         await (0, journal_1.writeJsonFileAtomic)(path.join(dir, rel), e.content);
     }
 }
-exports.writeLearningSnapshot = writeLearningSnapshot;
 async function applyLearningFromStaged(host, txDir, learning) {
     const adapter = host;
     const middleIdx = Math.floor(learning_map_1.RESTORE_LEARNING_KEYS.length / 2);
@@ -132,7 +143,6 @@ async function applyLearningFromStaged(host, txDir, learning) {
             await (0, apply_hooks_1.maybeInjectRestoreApplyFailure)("after_learning_last");
     }
 }
-exports.applyLearningFromStaged = applyLearningFromStaged;
 async function restoreLearningFromSnapshot(host, txDir, sub) {
     const adapter = host;
     for (const key of learning_map_1.RESTORE_LEARNING_KEYS) {
@@ -151,4 +161,3 @@ async function restoreLearningFromSnapshot(host, txDir, sub) {
         }
     }
 }
-exports.restoreLearningFromSnapshot = restoreLearningFromSnapshot;

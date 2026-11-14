@@ -4,7 +4,7 @@
  * KI erklärt; sie plant nicht neu.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildAiExplanationContext = void 0;
+exports.buildAiExplanationContext = buildAiExplanationContext;
 const explain_1 = require("../../learning/day_evaluation/explain");
 function buildAiExplanationContext(input) {
     const facts = (0, explain_1.buildDeterministicDayExplanation)(input.plan, {
@@ -39,4 +39,3 @@ function buildAiExplanationContext(input) {
         },
     };
 }
-exports.buildAiExplanationContext = buildAiExplanationContext;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scopeIncludes = exports.resolveFieldFromCandidates = void 0;
+exports.resolveFieldFromCandidates = resolveFieldFromCandidates;
+exports.scopeIncludes = scopeIncludes;
 const validation_1 = require("./validation");
 /**
  * Löst ein Feld aus Kandidaten nach Priorität (niedrigere Zahl = höhere Priorität).
@@ -47,7 +48,6 @@ function resolveFieldFromCandidates(candidates, now) {
     }
     return { field: emptyField(now), conflict: false };
 }
-exports.resolveFieldFromCandidates = resolveFieldFromCandidates;
 function timeMs(c) {
     const raw = c.changed_at ?? c.observed_at;
     const t = Date.parse(raw);
@@ -80,4 +80,3 @@ function emptyField(now) {
 function scopeIncludes(scope, field) {
     return scope.includes("all") || scope.includes(field);
 }
-exports.scopeIncludes = scopeIncludes;

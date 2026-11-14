@@ -18,15 +18,36 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.learningConfidenceTier = exports.applyLearningFeedbackFromEvaluation = exports.noteHouseLoadFeedback = exports.applyThermalHeatFactorFeedback = exports.applyPvBiasFeedbackFromEvaluation = exports.usableHeatFactorKwhPerDegree = exports.writeHeatFactorStore = exports.loadHeatFactorStore = exports.applyThermalHeatFactorSample = exports.clampKwhPerDegree = exports.emptyHeatFactorStore = exports.THERMAL_HEAT_FACTOR_FILE = exports.THERMAL_KWH_MIN_SAMPLES_FOR_USE = exports.THERMAL_KWH_EMA_ALPHA = exports.THERMAL_KWH_PER_C_DEFAULT = exports.THERMAL_KWH_PER_C_MAX = exports.THERMAL_KWH_PER_C_MIN = void 0;
+exports.THERMAL_HEAT_FACTOR_FILE = exports.THERMAL_KWH_MIN_SAMPLES_FOR_USE = exports.THERMAL_KWH_EMA_ALPHA = exports.THERMAL_KWH_PER_C_DEFAULT = exports.THERMAL_KWH_PER_C_MAX = exports.THERMAL_KWH_PER_C_MIN = void 0;
+exports.emptyHeatFactorStore = emptyHeatFactorStore;
+exports.clampKwhPerDegree = clampKwhPerDegree;
+exports.applyThermalHeatFactorSample = applyThermalHeatFactorSample;
+exports.loadHeatFactorStore = loadHeatFactorStore;
+exports.writeHeatFactorStore = writeHeatFactorStore;
+exports.usableHeatFactorKwhPerDegree = usableHeatFactorKwhPerDegree;
+exports.applyPvBiasFeedbackFromEvaluation = applyPvBiasFeedbackFromEvaluation;
+exports.applyThermalHeatFactorFeedback = applyThermalHeatFactorFeedback;
+exports.noteHouseLoadFeedback = noteHouseLoadFeedback;
+exports.applyLearningFeedbackFromEvaluation = applyLearningFeedbackFromEvaluation;
+exports.learningConfidenceTier = learningConfidenceTier;
 const daily_persist_1 = require("../pv_bias/daily_persist");
 const atomic_write_1 = require("../../persistence/atomic_write");
 const fs = __importStar(require("node:fs/promises"));
@@ -49,11 +70,9 @@ function emptyHeatFactorStore() {
         lastObservedKwhPerDegreeC: null,
     };
 }
-exports.emptyHeatFactorStore = emptyHeatFactorStore;
 function clampKwhPerDegree(v) {
     return Math.min(exports.THERMAL_KWH_PER_C_MAX, Math.max(exports.THERMAL_KWH_PER_C_MIN, v));
 }
-exports.clampKwhPerDegree = clampKwhPerDegree;
 function applyThermalHeatFactorSample(store, observedKwhPerDegreeC, atIso) {
     if (!Number.isFinite(observedKwhPerDegreeC) || observedKwhPerDegreeC <= 0)
         return store;
@@ -68,7 +87,6 @@ function applyThermalHeatFactorSample(store, observedKwhPerDegreeC, atIso) {
         lastObservedKwhPerDegreeC: obs,
     };
 }
-exports.applyThermalHeatFactorSample = applyThermalHeatFactorSample;
 async function loadHeatFactorStore(baseDir) {
     try {
         const raw = await fs.readFile(path.join(baseDir, exports.THERMAL_HEAT_FACTOR_FILE), "utf8");
@@ -81,19 +99,16 @@ async function loadHeatFactorStore(baseDir) {
     }
     return emptyHeatFactorStore();
 }
-exports.loadHeatFactorStore = loadHeatFactorStore;
 async function writeHeatFactorStore(baseDir, store) {
     await fs.mkdir(baseDir, { recursive: true });
     await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, exports.THERMAL_HEAT_FACTOR_FILE), `${JSON.stringify(store, null, 2)}\n`);
 }
-exports.writeHeatFactorStore = writeHeatFactorStore;
 /** Nutzbarer Faktor nur bei genug Samples — sonst null (Default behalten). */
 function usableHeatFactorKwhPerDegree(store) {
     if (store.samples < exports.THERMAL_KWH_MIN_SAMPLES_FOR_USE)
         return null;
     return store.kwhPerDegreeC;
 }
-exports.usableHeatFactorKwhPerDegree = usableHeatFactorKwhPerDegree;
 /**
  * PV: speist bestehende pv_bias_daily Persistenz (eine Zeile pro Tag — keine Replan-Doppelzählung).
  * Forecast = initial expected (vor Replans), Actual = Evaluation.
@@ -121,7 +136,6 @@ async function applyPvBiasFeedbackFromEvaluation(pvBiasDir, ev) {
     await (0, daily_persist_1.writeDailyPersist)(pvBiasDir, next);
     return true;
 }
-exports.applyPvBiasFeedbackFromEvaluation = applyPvBiasFeedbackFromEvaluation;
 /**
  * Thermal: nur wenn geplante ΔT und Ist-Energie belastbar — EMA innerhalb Bounds.
  */
@@ -146,7 +160,6 @@ async function applyThermalHeatFactorFeedback(thermalDir, ev) {
     await writeHeatFactorStore(thermalDir, next);
     return true;
 }
-exports.applyThermalHeatFactorFeedback = applyThermalHeatFactorFeedback;
 /**
  * House Load: Evaluation speichert Abweichung; keine Tick-Samples.
  * Hier nur Qualitäts-Flag — bestehendes house_load-Modul bleibt History-Authority.
@@ -154,7 +167,6 @@ exports.applyThermalHeatFactorFeedback = applyThermalHeatFactorFeedback;
 function noteHouseLoadFeedback(ev) {
     return ev.houseLoad.expectedKwh !== null || ev.houseLoad.actualKwh !== null;
 }
-exports.noteHouseLoadFeedback = noteHouseLoadFeedback;
 async function applyLearningFeedbackFromEvaluation(dirs) {
     const ev = dirs.evaluation;
     if (ev.learningApplied) {
@@ -175,7 +187,6 @@ async function applyLearningFeedbackFromEvaluation(dirs) {
         skippedReason: null,
     };
 }
-exports.applyLearningFeedbackFromEvaluation = applyLearningFeedbackFromEvaluation;
 /** Confidence-Hinweis: ein Tag allein → few_data. */
 function learningConfidenceTier(sampleDays) {
     if (sampleDays <= 0)
@@ -186,4 +197,3 @@ function learningConfidenceTier(sampleDays) {
         return "usable";
     return "usable";
 }
-exports.learningConfidenceTier = learningConfidenceTier;

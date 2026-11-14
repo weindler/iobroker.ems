@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.planBatteryChargeLogic = void 0;
+exports.planBatteryChargeLogic = planBatteryChargeLogic;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -158,4 +158,3 @@ function planBatteryChargeLogic(input) {
         reasonDe: parts.join("; ") + ".",
     };
 }
-exports.planBatteryChargeLogic = planBatteryChargeLogic;

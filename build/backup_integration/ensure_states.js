@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.publishBackupIntegrationDiagnostics = exports.ensureBackupIntegrationInfoStates = exports.BACKUP_INFO_STATES = exports.BACKUP_INFO_BASE = void 0;
+exports.BACKUP_INFO_STATES = exports.BACKUP_INFO_BASE = void 0;
+exports.ensureBackupIntegrationInfoStates = ensureBackupIntegrationInfoStates;
+exports.publishBackupIntegrationDiagnostics = publishBackupIntegrationDiagnostics;
 const state_util_1 = require("../ems_light/state_util");
 const ensure_states_1 = require("../backup/ensure_states");
 /**
@@ -78,11 +80,9 @@ async function ensureBackupIntegrationInfoStates(host) {
         },
     ]);
 }
-exports.ensureBackupIntegrationInfoStates = ensureBackupIntegrationInfoStates;
 async function publishBackupIntegrationDiagnostics(host, diag) {
     await host.setStateAsync(exports.BACKUP_INFO_STATES.runtimeFolder, { val: diag.runtimeFolder, ack: true });
     await host.setStateAsync(exports.BACKUP_INFO_STATES.persistenceValid, { val: diag.persistenceValid, ack: true });
     await host.setStateAsync(exports.BACKUP_INFO_STATES.journalStatus, { val: diag.journalStatus, ack: true });
     await host.setStateAsync(exports.BACKUP_INFO_STATES.migrationStatus, { val: diag.migrationStatus, ack: true });
 }
-exports.publishBackupIntegrationDiagnostics = publishBackupIntegrationDiagnostics;

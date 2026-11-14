@@ -8,7 +8,11 @@
  * ohne Fake-Leistungs-Allocations.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildProductSummaryDe = exports.buildUnifiedDayAgendaDe = exports.selectRelevantAgendaWindows = exports.mergeWindows = exports.agendaBucketForWindow = void 0;
+exports.agendaBucketForWindow = agendaBucketForWindow;
+exports.mergeWindows = mergeWindows;
+exports.selectRelevantAgendaWindows = selectRelevantAgendaWindows;
+exports.buildUnifiedDayAgendaDe = buildUnifiedDayAgendaDe;
+exports.buildProductSummaryDe = buildProductSummaryDe;
 const explain_1 = require("../learning/day_evaluation/explain");
 const execution_display_1 = require("./execution_display");
 const MAX_LEN = 900;
@@ -103,7 +107,6 @@ function agendaBucketForWindow(w, nowMs, timezone) {
         return "tomorrow";
     return "later";
 }
-exports.agendaBucketForWindow = agendaBucketForWindow;
 function mergeWindows(cells, kind) {
     const sorted = cells
         .filter((a) => a.kind === kind && a.allocatedEnergyKwh > 0.02)
@@ -126,7 +129,6 @@ function mergeWindows(cells, kind) {
     }
     return out;
 }
-exports.mergeWindows = mergeWindows;
 /**
  * Nur current+future; priorisiert now → rest_today → tonight → tomorrow → goal/deadline → later.
  * Vergangene Fenster verdrängen Zukunft nicht.
@@ -169,7 +171,6 @@ function selectRelevantAgendaWindows(windows, nowMs, timezone, opts) {
     })
         .slice(0, max);
 }
-exports.selectRelevantAgendaWindows = selectRelevantAgendaWindows;
 function windowLine(label, w, timezone, statusPrefix, nowMs) {
     const startMs = Date.parse(w.startIso);
     const sameDay = nowMs != null && Number.isFinite(startMs)
@@ -328,7 +329,6 @@ function buildUnifiedDayAgendaDe(plan, execution, strategy) {
     }
     return lines;
 }
-exports.buildUnifiedDayAgendaDe = buildUnifiedDayAgendaDe;
 /** Kurze, nutzerlesbare Tageszusammenfassung. */
 function buildProductSummaryDe(plan, opts) {
     const x = (0, explain_1.buildDeterministicDayExplanation)(plan, opts);
@@ -404,4 +404,3 @@ function buildProductSummaryDe(plan, opts) {
     }
     return parts.join(" ").slice(0, MAX_LEN);
 }
-exports.buildProductSummaryDe = buildProductSummaryDe;

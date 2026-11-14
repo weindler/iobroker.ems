@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assertSupportBundleClean = exports.scanForForbiddenSecrets = exports.sanitizeForSupport = exports.sanitizeValue = exports.sanitizeString = exports.createPseudonymContext = void 0;
+exports.createPseudonymContext = createPseudonymContext;
+exports.sanitizeString = sanitizeString;
+exports.sanitizeValue = sanitizeValue;
+exports.sanitizeForSupport = sanitizeForSupport;
+exports.scanForForbiddenSecrets = scanForForbiddenSecrets;
+exports.assertSupportBundleClean = assertSupportBundleClean;
 const schema_1 = require("./schema");
 const VIN_RE = /\b[A-HJ-NPR-Z0-9]{17}\b/g;
 const IP_V4_RE = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
@@ -27,7 +32,6 @@ function createPseudonymContext() {
         profileName: new Map(),
     };
 }
-exports.createPseudonymContext = createPseudonymContext;
 function pseudonym(map, prefix, counter, value) {
     const key = value.trim();
     if (!key)
@@ -65,7 +69,6 @@ function sanitizeString(text, ctx) {
     out = out.replace(/__ISO_(\d+)__/g, (_, i) => isoHold[Number(i)] ?? "");
     return out;
 }
-exports.sanitizeString = sanitizeString;
 function sanitizeValue(value, ctx, keyPath = "") {
     if (value === null || value === undefined)
         return value;
@@ -102,12 +105,10 @@ function sanitizeValue(value, ctx, keyPath = "") {
     }
     return value;
 }
-exports.sanitizeValue = sanitizeValue;
 function sanitizeForSupport(value) {
     const ctx = createPseudonymContext();
     return sanitizeValue(value, ctx);
 }
-exports.sanitizeForSupport = sanitizeForSupport;
 function resetRegex(re) {
     re.lastIndex = 0;
 }
@@ -166,7 +167,6 @@ function scanForForbiddenSecrets(text) {
     }
     return null;
 }
-exports.scanForForbiddenSecrets = scanForForbiddenSecrets;
 function assertSupportBundleClean(entries) {
     for (const e of entries) {
         const pathHit = scanForForbiddenSecrets(e.path);
@@ -179,4 +179,3 @@ function assertSupportBundleClean(entries) {
         }
     }
 }
-exports.assertSupportBundleClean = assertSupportBundleClean;

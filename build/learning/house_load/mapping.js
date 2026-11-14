@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveHouseLoadPowerStateId = void 0;
+exports.resolveHouseLoadPowerStateId = resolveHouseLoadPowerStateId;
 const mapping_resolve_1 = require("../../mapping_resolve");
 /** Admin-State oder native Batterie-Mapping consumption_w. */
 async function resolveHouseLoadPowerStateId(host, configuredStateId) {
@@ -13,4 +13,3 @@ async function resolveHouseLoadPowerStateId(host, configuredStateId) {
     }
     return { stateId: mapped.targetState, sourceKind: "battery_mapping" };
 }
-exports.resolveHouseLoadPowerStateId = resolveHouseLoadPowerStateId;

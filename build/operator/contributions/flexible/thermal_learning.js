@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildThermalLearningSignal = void 0;
+exports.buildThermalLearningSignal = buildThermalLearningSignal;
 const time_1 = require("../../../learning/house_load/time");
 const constants_1 = require("../../../learning/thermal_runtime/constants");
 const math_1 = require("../../../learning/thermal_runtime/math");
@@ -126,4 +126,3 @@ function buildThermalLearningSignal(input) {
         reasonDe: reasonDeForStatus(status, input.samples, estimatedEmptyAt, timezone, vessel, nowMs),
     };
 }
-exports.buildThermalLearningSignal = buildThermalLearningSignal;

@@ -4,7 +4,8 @@
  * Relativ + Mindesttoleranz, keine starre Wattgrenze für alle Betriebspunkte.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pushStabilitySample = exports.isStabilityWindowStable = void 0;
+exports.isStabilityWindowStable = isStabilityWindowStable;
+exports.pushStabilitySample = pushStabilitySample;
 const constants_1 = require("./constants");
 function finiteOrNull(v) {
     return v != null && Number.isFinite(v) ? v : null;
@@ -46,10 +47,8 @@ function isStabilityWindowStable(samples, opts) {
         return false;
     return true;
 }
-exports.isStabilityWindowStable = isStabilityWindowStable;
 function pushStabilitySample(buf, sample, max) {
     const next = buf.length >= max ? buf.slice(buf.length - max + 1) : buf.slice();
     next.push(sample);
     return next;
 }
-exports.pushStabilitySample = pushStabilitySample;

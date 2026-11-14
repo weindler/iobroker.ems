@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildWeatherContribution = void 0;
+exports.buildWeatherContribution = buildWeatherContribution;
 const quality_1 = require("../quality");
 const contributor_1 = require("../contributor");
 const contribution_ids_1 = require("../contribution_ids");
@@ -72,4 +72,3 @@ function buildWeatherContribution(input) {
         slots,
     });
 }
-exports.buildWeatherContribution = buildWeatherContribution;

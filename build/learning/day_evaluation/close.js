@@ -3,7 +3,8 @@
  * Tagesabschluss — genau einmal pro lokalem Tag (idempotent, restart-sicher).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dayEvaluationDirsFromRoot = exports.closeDayEvaluationOnce = void 0;
+exports.closeDayEvaluationOnce = closeDayEvaluationOnce;
+exports.dayEvaluationDirsFromRoot = dayEvaluationDirsFromRoot;
 const data_dir_1 = require("../data_dir");
 const build_1 = require("./build");
 const feedback_1 = require("./feedback");
@@ -65,7 +66,6 @@ async function closeDayEvaluationOnce(input) {
         };
     }
 }
-exports.closeDayEvaluationOnce = closeDayEvaluationOnce;
 /** Pfade aus durable root ableiten. */
 function dayEvaluationDirsFromRoot(durableRoot) {
     return {
@@ -74,4 +74,3 @@ function dayEvaluationDirsFromRoot(durableRoot) {
         thermalDir: (0, data_dir_1.learningDataPathFromRoot)(durableRoot, "learning/thermal_runtime"),
     };
 }
-exports.dayEvaluationDirsFromRoot = dayEvaluationDirsFromRoot;

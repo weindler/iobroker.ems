@@ -952,7 +952,7 @@ describe("VIS battery / grid / GB presentation", () => {
 			],
 		);
 		assert.equal(ops.visHorizonDayLabel(Date.parse("2026-08-19T08:00:00"), 2), "Morgen");
-		assert.equal(ops.visHorizonDayLine("Morgen", 31.4, 18, 28), "Morgen · 31 kWh · 18–28 °C");
+		assert.equal(ops.visHorizonDayLine("Morgen", 31.4, 18, 28), "Morgen · 31 kWh · 18 bis 28 °C");
 		assert.equal(ops.visBatteryRemainKwh(84, 20, 100), 3.2);
 	});
 
@@ -991,7 +991,7 @@ describe("VIS battery / grid / GB presentation", () => {
 				minC: 14.2,
 				maxC: 22.4,
 			}),
-			"Heute 18 kWh · Morgen 31 kWh · danach schwächer · 14–22 °C",
+			"Heute 18 kWh · Morgen 31 kWh · danach schwächer · 14 bis 22 °C",
 		);
 		assert.equal(ops.visLageLine({}), "");
 		assert.match(visHtml, /id="ems-lage"/);

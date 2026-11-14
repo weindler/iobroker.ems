@@ -3,7 +3,9 @@
  * Mapping-Ziele aus der Adapterkonfiguration (jsonConfig) — keine ioBroker-Spiegelstates.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hostAdapterConfig = exports.resolveMappingTargetFromConfig = exports.mappingTableFromConfig = void 0;
+exports.mappingTableFromConfig = mappingTableFromConfig;
+exports.resolveMappingTargetFromConfig = resolveMappingTargetFromConfig;
+exports.hostAdapterConfig = hostAdapterConfig;
 const mapping_config_1 = require("./addons/air_conditioning/mapping_config");
 const mapping_1 = require("./addons/battery/mapping");
 const mapping_config_2 = require("./addons/dynamic_tariff/mapping_config");
@@ -29,7 +31,6 @@ function mappingTableFromConfig(config, addonId) {
             return {};
     }
 }
-exports.mappingTableFromConfig = mappingTableFromConfig;
 function resolveMappingTargetFromConfig(config, addonId, role) {
     const entry = mappingTableFromConfig(config, addonId)[role];
     if (!entry) {
@@ -46,8 +47,6 @@ function resolveMappingTargetFromConfig(config, addonId, role) {
         allowedValues: allowed,
     };
 }
-exports.resolveMappingTargetFromConfig = resolveMappingTargetFromConfig;
 function hostAdapterConfig(host) {
     return host.config;
 }
-exports.hostAdapterConfig = hostAdapterConfig;

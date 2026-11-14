@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncAllMappingsFromConfig = exports.cleanupDynamicPlaceholders = exports.ensureDynamicVehicleProfiles = exports.ensureStaticStateTree = void 0;
+exports.ensureStaticStateTree = ensureStaticStateTree;
+exports.ensureDynamicVehicleProfiles = ensureDynamicVehicleProfiles;
+exports.cleanupDynamicPlaceholders = cleanupDynamicPlaceholders;
+exports.syncAllMappingsFromConfig = syncAllMappingsFromConfig;
 const air_conditioning_1 = require("../addons/air_conditioning");
 const battery_1 = require("../addons/battery");
 const immersion_heater_1 = require("../addons/immersion_heater");
@@ -34,12 +37,10 @@ async function ensureStaticStateTree(host) {
     await (0, air_conditioning_1.ensureAirConditioningStateTree)(host);
     await (0, measured_consumers_1.ensureMeasuredConsumersStateTree)(host);
 }
-exports.ensureStaticStateTree = ensureStaticStateTree;
 /** Phase C — no-op since v0.1.227 (fat vehicle profile trees removed; see `wb_vehicle_map`). */
 async function ensureDynamicVehicleProfiles(host) {
     await (0, wallbox_1.ensureWallboxDynamicVehicleProfiles)(host);
 }
-exports.ensureDynamicVehicleProfiles = ensureDynamicVehicleProfiles;
 /**
  * Phase 4B1 — controlled cleanup of unconfigured AC / orphan vehicle placeholders.
  * Runs after ensure so configured trees exist; idempotent.
@@ -70,9 +71,7 @@ async function cleanupDynamicPlaceholders(host) {
     };
     await (0, cleanup_1.runDynamicSurfaceCleanup)(cleanupHost);
 }
-exports.cleanupDynamicPlaceholders = cleanupDynamicPlaceholders;
 /** Mapping kommt aus der Adapterkonfiguration — keine ioBroker-Spiegel mehr. */
 async function syncAllMappingsFromConfig(_host) {
     return;
 }
-exports.syncAllMappingsFromConfig = syncAllMappingsFromConfig;

@@ -1,6 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.summarizeDays = exports.fetchPriceSamples = exports.resolvePriceUnit = exports.toEurPerKwh = exports.isValidPriceValue = exports.detectPriceUnit = exports.dayBoundsMs = exports.dateKeyFromOffset = exports.dateKeyFromTs = void 0;
+exports.dateKeyFromTs = dateKeyFromTs;
+exports.dateKeyFromOffset = dateKeyFromOffset;
+exports.dayBoundsMs = dayBoundsMs;
+exports.detectPriceUnit = detectPriceUnit;
+exports.isValidPriceValue = isValidPriceValue;
+exports.toEurPerKwh = toEurPerKwh;
+exports.resolvePriceUnit = resolvePriceUnit;
+exports.fetchPriceSamples = fetchPriceSamples;
+exports.summarizeDays = summarizeDays;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const constants_1 = require("./constants");
@@ -17,14 +25,12 @@ function dateKeyFromTs(ts) {
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
 }
-exports.dateKeyFromTs = dateKeyFromTs;
 function dateKeyFromOffset(dayOffset) {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() - dayOffset);
     return dateKeyFromTs(d.getTime());
 }
-exports.dateKeyFromOffset = dateKeyFromOffset;
 function dayBoundsMs(dayOffset) {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -32,7 +38,6 @@ function dayBoundsMs(dayOffset) {
     const start = d.getTime();
     return { start, end: start + constants_1.MS_PER_DAY };
 }
-exports.dayBoundsMs = dayBoundsMs;
 function detectPriceUnit(stateId, unit) {
     const u = (unit ?? "").toLowerCase();
     if (u.includes("ct") || stateId.includes("ct_per_kwh")) {
@@ -43,7 +48,6 @@ function detectPriceUnit(stateId, unit) {
     }
     return stateId.includes("ct_per_kwh") ? "ct_per_kwh" : "eur_per_kwh";
 }
-exports.detectPriceUnit = detectPriceUnit;
 /** missing ≠ 0 — nur explizit gelieferte, endliche, plausible Werte sind gültig. */
 function isValidPriceValue(value, unit) {
     if (value === null || !Number.isFinite(value)) {
@@ -54,11 +58,9 @@ function isValidPriceValue(value, unit) {
     }
     return value >= constants_1.PLAUSIBLE_EUR_MIN && value <= constants_1.PLAUSIBLE_EUR_MAX;
 }
-exports.isValidPriceValue = isValidPriceValue;
 function toEurPerKwh(value, unit) {
     return unit === "ct_per_kwh" ? value / 100 : value;
 }
-exports.toEurPerKwh = toEurPerKwh;
 async function resolvePriceUnit(host, stateId) {
     if (!host.getObjectAsync) {
         return detectPriceUnit(stateId);
@@ -72,7 +74,6 @@ async function resolvePriceUnit(host, stateId) {
         return detectPriceUnit(stateId);
     }
 }
-exports.resolvePriceUnit = resolvePriceUnit;
 async function fetchPriceSamples(host, stateId, lookbackDays) {
     const unit = await resolvePriceUnit(host, stateId);
     const samples = [];
@@ -100,7 +101,6 @@ async function fetchPriceSamples(host, stateId, lookbackDays) {
     }
     return { samples, unit };
 }
-exports.fetchPriceSamples = fetchPriceSamples;
 function summarizeDays(samples, lookbackDays) {
     const byDay = new Map();
     for (const s of samples) {
@@ -118,4 +118,3 @@ function summarizeDays(samples, lookbackDays) {
     }
     return summaries;
 }
-exports.summarizeDays = summarizeDays;

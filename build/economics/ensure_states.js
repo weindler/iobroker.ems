@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureEconomicsStates = exports.ECONOMICS_FLAT = exports.ECONOMICS_STATES = void 0;
+exports.ECONOMICS_FLAT = exports.ECONOMICS_STATES = void 0;
+exports.ensureEconomicsStates = ensureEconomicsStates;
 const state_util_1 = require("../ems_light/state_util");
 function numState(id, name, unit) {
     return { id, common: { name, type: "number", role: "value", read: true, write: false, unit } };
@@ -69,4 +70,3 @@ async function ensureEconomicsStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureEconomicsStates = ensureEconomicsStates;

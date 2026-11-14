@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureConsumerStatsStates = exports.consumerStatsStateIds = exports.consumerStatsBase = exports.consumerStatsConfigFor = exports.collectRecentDayMetrics = exports.resolveConsumerEffectivePowerW = exports.peekConsumerStatsEntry = exports.resetConsumerStatsCache = exports.flushConsumerStatsPersist = exports.tickConsumerStats = exports.initConsumerStatsForAddon = exports.initConsumerStatsForKey = exports.PERSIST_CATEGORY = void 0;
+exports.ensureConsumerStatsStates = exports.consumerStatsStateIds = exports.consumerStatsBase = exports.consumerStatsConfigFor = exports.collectRecentDayMetrics = exports.resolveConsumerEffectivePowerW = exports.PERSIST_CATEGORY = void 0;
+exports.initConsumerStatsForKey = initConsumerStatsForKey;
+exports.initConsumerStatsForAddon = initConsumerStatsForAddon;
+exports.tickConsumerStats = tickConsumerStats;
+exports.flushConsumerStatsPersist = flushConsumerStatsPersist;
+exports.resetConsumerStatsCache = resetConsumerStatsCache;
+exports.peekConsumerStatsEntry = peekConsumerStatsEntry;
 const buffer_1 = require("./buffer");
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
@@ -43,12 +49,10 @@ async function initConsumerStatsForKey(host, consumerKey) {
     await (0, ensure_states_1.ensureConsumerStatsStates)(host, consumerKey);
     await loadPersist(host);
 }
-exports.initConsumerStatsForKey = initConsumerStatsForKey;
 /** @deprecated use initConsumerStatsForKey */
 async function initConsumerStatsForAddon(host, addonId) {
     await initConsumerStatsForKey(host, addonId);
 }
-exports.initConsumerStatsForAddon = initConsumerStatsForAddon;
 async function tickConsumerStats(host, input) {
     const config = (0, config_1.consumerStatsConfigFor)(input.consumerKey, host.config);
     if (!config) {
@@ -77,22 +81,18 @@ async function tickConsumerStats(host, input) {
     await flushPersist(host);
     return snapshot;
 }
-exports.tickConsumerStats = tickConsumerStats;
 async function flushConsumerStatsPersist(host) {
     await flushPersist(host);
 }
-exports.flushConsumerStatsPersist = flushConsumerStatsPersist;
 function resetConsumerStatsCache() {
     persistCache = null;
     persistDirty = false;
 }
-exports.resetConsumerStatsCache = resetConsumerStatsCache;
 /** Liest gecachte Consumer-Stats für eine Unit (nach initConsumerStatsForKey). */
 async function peekConsumerStatsEntry(host, consumerKey) {
     const persist = await loadPersist(host);
     return persist.consumers[consumerKey];
 }
-exports.peekConsumerStatsEntry = peekConsumerStatsEntry;
 var learned_power_1 = require("./learned_power");
 Object.defineProperty(exports, "resolveConsumerEffectivePowerW", { enumerable: true, get: function () { return learned_power_1.resolveConsumerEffectivePowerW; } });
 Object.defineProperty(exports, "collectRecentDayMetrics", { enumerable: true, get: function () { return learned_power_1.collectRecentDayMetrics; } });

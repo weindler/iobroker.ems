@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseInboxValue = void 0;
+exports.parseInboxValue = parseInboxValue;
 /** Admin/json state: value may be object or JSON string. */
 function parseInboxValue(val) {
     if (val === null || val === undefined)
@@ -27,4 +27,3 @@ function parseInboxValue(val) {
         return null;
     return data;
 }
-exports.parseInboxValue = parseInboxValue;

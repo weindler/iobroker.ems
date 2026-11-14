@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureShadowEngineStates = void 0;
+exports.ensureShadowEngineStates = ensureShadowEngineStates;
 const state_util_1 = require("../../ems_light/state_util");
 function numState(id, name, unit) {
     return { id, common: { name, type: "number", role: "value", read: true, write: false, unit } };
@@ -34,4 +34,3 @@ async function ensureShadowEngineStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureShadowEngineStates = ensureShadowEngineStates;

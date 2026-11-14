@@ -4,7 +4,8 @@
  * Does not create, modify, or delete ioBroker objects.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.summarizeStateSurfaceCatalog = exports.STATE_SURFACE_FAMILIES = void 0;
+exports.STATE_SURFACE_FAMILIES = void 0;
+exports.summarizeStateSurfaceCatalog = summarizeStateSurfaceCatalog;
 /** Catalog of known families — counts are code-derived estimates, not live instance scans. */
 exports.STATE_SURFACE_FAMILIES = [
     {
@@ -409,4 +410,3 @@ function summarizeStateSurfaceCatalog() {
         largestFamilies,
     };
 }
-exports.summarizeStateSurfaceCatalog = summarizeStateSurfaceCatalog;

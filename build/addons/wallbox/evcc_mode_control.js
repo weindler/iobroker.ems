@@ -6,7 +6,16 @@
  * Grid-Rewards-Plug-Edge-Pfad darf ausschließlich den validierten `control.now`-Button nutzen.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectEvccButtonWriteStateIds = exports.controlContractModelFromVariant = exports.resolveEvccModeControlContract = exports.stringModeContractComplete = exports.pickEvccButtonStateId = exports.resolveEvccModeFeedbackStateId = exports.isEvccModeButtonStateId = exports.isEvccModeFeedbackStateId = exports.parseEvccModeControlRequested = exports.EVCC_FEEDBACK_MODE_VALUES = exports.EVCC_MODE_CONTROL_REQUESTED = exports.EVCC_MODE_FEEDBACK_SUFFIX = exports.WB_EVCC_MODE_CONTROL = exports.WB_EVCC_CONTROL_PV = exports.WB_EVCC_CONTROL_OFF = exports.WB_EVCC_CONTROL_NOW = exports.WB_EVCC_CONTROL_MIN = exports.EVCC_BUTTON_SUFFIXES = void 0;
+exports.EVCC_FEEDBACK_MODE_VALUES = exports.EVCC_MODE_CONTROL_REQUESTED = exports.EVCC_MODE_FEEDBACK_SUFFIX = exports.WB_EVCC_MODE_CONTROL = exports.WB_EVCC_CONTROL_PV = exports.WB_EVCC_CONTROL_OFF = exports.WB_EVCC_CONTROL_NOW = exports.WB_EVCC_CONTROL_MIN = exports.EVCC_BUTTON_SUFFIXES = void 0;
+exports.parseEvccModeControlRequested = parseEvccModeControlRequested;
+exports.isEvccModeFeedbackStateId = isEvccModeFeedbackStateId;
+exports.isEvccModeButtonStateId = isEvccModeButtonStateId;
+exports.resolveEvccModeFeedbackStateId = resolveEvccModeFeedbackStateId;
+exports.pickEvccButtonStateId = pickEvccButtonStateId;
+exports.stringModeContractComplete = stringModeContractComplete;
+exports.resolveEvccModeControlContract = resolveEvccModeControlContract;
+exports.controlContractModelFromVariant = controlContractModelFromVariant;
+exports.collectEvccButtonWriteStateIds = collectEvccButtonWriteStateIds;
 const constants_1 = require("../../intent/core/constants");
 const evcc_config_1 = require("./evcc_config");
 const evcc_control_config_1 = require("./evcc_control_config");
@@ -44,21 +53,18 @@ function parseEvccModeControlRequested(raw) {
         return s;
     return "auto";
 }
-exports.parseEvccModeControlRequested = parseEvccModeControlRequested;
 function isEvccModeFeedbackStateId(stateId) {
     const id = rejectDirectGoeId(stateId);
     if (!id)
         return false;
     return (0, evcc_control_config_1.matchesEvccControlSuffix)(id, exports.EVCC_MODE_FEEDBACK_SUFFIX);
 }
-exports.isEvccModeFeedbackStateId = isEvccModeFeedbackStateId;
 function isEvccModeButtonStateId(stateId, button) {
     const id = rejectDirectGoeId(stateId);
     if (!id)
         return false;
     return (0, evcc_control_config_1.matchesEvccControlSuffix)(id, evcc_control_config_1.EVCC_BUTTON_SUFFIXES[button]);
 }
-exports.isEvccModeButtonStateId = isEvccModeButtonStateId;
 /** status.mode is feedback — never a write target. */
 function resolveEvccModeFeedbackStateId(config) {
     const c = config && typeof config === "object" ? config : {};
@@ -76,7 +82,6 @@ function resolveEvccModeFeedbackStateId(config) {
     }
     return "";
 }
-exports.resolveEvccModeFeedbackStateId = resolveEvccModeFeedbackStateId;
 function pickEvccButtonStateId(config, button) {
     const c = config && typeof config === "object" ? config : {};
     const keys = {
@@ -87,14 +92,12 @@ function pickEvccButtonStateId(config, button) {
     };
     return pickMatchingId(c, keys[button], evcc_control_config_1.EVCC_BUTTON_SUFFIXES[button]);
 }
-exports.pickEvccButtonStateId = pickEvccButtonStateId;
 function stringModeContractComplete(config) {
     const c = config && typeof config === "object" ? config : {};
     return ((0, evcc_control_config_1.evccControlTargetForRole)(c, "set_mode").length > 0 &&
         (0, evcc_control_config_1.evccControlTargetForRole)(c, "set_max_current_a").length > 0 &&
         (0, evcc_control_config_1.evccModeChargeValue)(c).length > 0);
 }
-exports.stringModeContractComplete = stringModeContractComplete;
 function compactRecord(input) {
     const out = {};
     for (const [key, value] of Object.entries(input)) {
@@ -283,7 +286,6 @@ function resolveEvccModeControlContract(config) {
         detail,
     };
 }
-exports.resolveEvccModeControlContract = resolveEvccModeControlContract;
 function controlContractModelFromVariant(controlModel, variant) {
     if (controlModel === "none")
         return "none";
@@ -297,8 +299,6 @@ function controlContractModelFromVariant(controlModel, variant) {
         return "evcc_string_mode";
     return "evcc_buttons";
 }
-exports.controlContractModelFromVariant = controlContractModelFromVariant;
 function collectEvccButtonWriteStateIds(contract) {
     return [contract.offStateId, contract.pvStateId, contract.minStateId, contract.nowStateId].filter((id) => id.length > 0);
 }
-exports.collectEvccButtonWriteStateIds = collectEvccButtonWriteStateIds;

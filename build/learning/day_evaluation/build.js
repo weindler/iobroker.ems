@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildDayEvaluationRecord = exports.snapshotFromUnifiedSession = void 0;
+exports.snapshotFromUnifiedSession = snapshotFromUnifiedSession;
+exports.buildDayEvaluationRecord = buildDayEvaluationRecord;
 const types_1 = require("./types");
 function sumKind(plan, kind) {
     if (!plan)
@@ -65,7 +66,6 @@ function snapshotFromUnifiedSession(input) {
         goals: goalsFromPlan(plan),
     };
 }
-exports.snapshotFromUnifiedSession = snapshotFromUnifiedSession;
 function buildDayEvaluationRecord(session, actuals, evaluatedAt) {
     const pvAbs = (0, types_1.absError)(session.initialExpectedPvKwh, actuals.actualPvKwh);
     const pvPct = (0, types_1.pctError)(session.initialExpectedPvKwh, actuals.actualPvKwh);
@@ -161,4 +161,3 @@ function buildDayEvaluationRecord(session, actuals, evaluatedAt) {
         learningApplied: false,
     };
 }
-exports.buildDayEvaluationRecord = buildDayEvaluationRecord;

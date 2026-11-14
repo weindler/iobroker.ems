@@ -10,7 +10,23 @@
  * Keine Write-Gates.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveClimateUnitDisplay = exports.classifyClimateDemand = exports.buildAgendaExecutionHints = exports.formatAgendaSlotMetaDe = exports.formatExecutionNowLineDe = exports.agendaStatusLabelDe = exports.executionDisplayBadge = exports.resolveExecutionDisplayPhase = exports.isImmersionHardwareActive = exports.isPowerActive = exports.operationFromWallboxStrategy = exports.operationFromBatteryStrategy = exports.addonOffSummaryDe = exports.executionAuthorityBadge = exports.resolveExecutionAuthority = exports.resolveExecutionAuthorityFromModes = exports.isEffectiveLiveWriteAllowed = void 0;
+exports.isEffectiveLiveWriteAllowed = isEffectiveLiveWriteAllowed;
+exports.resolveExecutionAuthorityFromModes = resolveExecutionAuthorityFromModes;
+exports.resolveExecutionAuthority = resolveExecutionAuthority;
+exports.executionAuthorityBadge = executionAuthorityBadge;
+exports.addonOffSummaryDe = addonOffSummaryDe;
+exports.operationFromBatteryStrategy = operationFromBatteryStrategy;
+exports.operationFromWallboxStrategy = operationFromWallboxStrategy;
+exports.isPowerActive = isPowerActive;
+exports.isImmersionHardwareActive = isImmersionHardwareActive;
+exports.resolveExecutionDisplayPhase = resolveExecutionDisplayPhase;
+exports.executionDisplayBadge = executionDisplayBadge;
+exports.agendaStatusLabelDe = agendaStatusLabelDe;
+exports.formatExecutionNowLineDe = formatExecutionNowLineDe;
+exports.formatAgendaSlotMetaDe = formatAgendaSlotMetaDe;
+exports.buildAgendaExecutionHints = buildAgendaExecutionHints;
+exports.classifyClimateDemand = classifyClimateDemand;
+exports.resolveClimateUnitDisplay = resolveClimateUnitDisplay;
 const execution_mode_1 = require("../execution_mode");
 const plan_visibility_1 = require("./plan_visibility");
 const DEFAULT_ON_W = 50;
@@ -18,7 +34,6 @@ const DEFAULT_ON_W = 50;
 function isEffectiveLiveWriteAllowed(globalMode, addonModeVal) {
     return (0, execution_mode_1.parseGlobalMode)(globalMode) === "live" && (0, execution_mode_1.parseAddonMode)(addonModeVal) === "live";
 }
-exports.isEffectiveLiveWriteAllowed = isEffectiveLiveWriteAllowed;
 /**
  * Execution-Badge aus Modes — unabhängig von Operation (Gesperrt/Hold/…).
  * Add-on off → AUS; sonst LIVE nur bei global∧addon live, sonst DRYRUN.
@@ -28,12 +43,10 @@ function resolveExecutionAuthorityFromModes(globalMode, addonModeVal) {
         return "off";
     return isEffectiveLiveWriteAllowed(globalMode, addonModeVal) ? "live" : "dryrun";
 }
-exports.resolveExecutionAuthorityFromModes = resolveExecutionAuthorityFromModes;
 /** @deprecated Prefer resolveExecutionAuthorityFromModes — liveWriteAllowed allein kennt Off nicht. */
 function resolveExecutionAuthority(liveWriteAllowed) {
     return liveWriteAllowed ? "live" : "dryrun";
 }
-exports.resolveExecutionAuthority = resolveExecutionAuthority;
 function executionAuthorityBadge(authority) {
     if (authority === "live")
         return { authority: "live", cls: "live", labelDe: "LIVE" };
@@ -41,7 +54,6 @@ function executionAuthorityBadge(authority) {
         return { authority: "off", cls: "idle", labelDe: "AUS" };
     return { authority: "dryrun", cls: "dryrun", labelDe: "DRYRUN" };
 }
-exports.executionAuthorityBadge = executionAuthorityBadge;
 function addonOffSummaryDe(addonId) {
     switch (addonId) {
         case "wallbox":
@@ -56,7 +68,6 @@ function addonOffSummaryDe(addonId) {
             return `${addonId}: AUS · EMS-Steuerung deaktiviert`;
     }
 }
-exports.addonOffSummaryDe = addonOffSummaryDe;
 function operationFromBatteryStrategy(status, hardwareActive) {
     if (hardwareActive) {
         return { kind: "running", labelDe: "Läuft", detailDe: "Hardware lädt." };
@@ -86,7 +97,6 @@ function operationFromBatteryStrategy(status, hardwareActive) {
             return { kind: "idle", labelDe: "Kein Bedarf", detailDe: "Kein strategischer Ladebedarf." };
     }
 }
-exports.operationFromBatteryStrategy = operationFromBatteryStrategy;
 function operationFromWallboxStrategy(status, hardwareActive) {
     if (hardwareActive && (status === "charging" || status === "scheduled")) {
         return { kind: "running", labelDe: "Läuft", detailDe: "Fahrzeug lädt." };
@@ -115,11 +125,9 @@ function operationFromWallboxStrategy(status, hardwareActive) {
             return { kind: "idle", labelDe: "Kein Bedarf", detailDe: "Kein Wallbox-Ladebedarf." };
     }
 }
-exports.operationFromWallboxStrategy = operationFromWallboxStrategy;
 function isPowerActive(powerW, thresholdW = DEFAULT_ON_W) {
     return powerW != null && Number.isFinite(powerW) && powerW >= thresholdW;
 }
-exports.isPowerActive = isPowerActive;
 /**
  * Immersion: Feedback/Messung sind verlässlicher Istzustand.
  * Commanded allein zählt nur unter Live-Write-Authority (Dryrun setzt commanded ebenfalls).
@@ -134,7 +142,6 @@ function isImmersionHardwareActive(input) {
         return true;
     return false;
 }
-exports.isImmersionHardwareActive = isImmersionHardwareActive;
 function resolveExecutionDisplayPhase(input) {
     if (input.liveWriteAllowed && input.hardwareActive)
         return "running";
@@ -144,7 +151,6 @@ function resolveExecutionDisplayPhase(input) {
         return "planned";
     return "idle";
 }
-exports.resolveExecutionDisplayPhase = resolveExecutionDisplayPhase;
 function executionDisplayBadge(phase) {
     switch (phase) {
         case "running":
@@ -157,7 +163,6 @@ function executionDisplayBadge(phase) {
             return { phase: "idle", cls: "idle", labelDe: "Pausiert" };
     }
 }
-exports.executionDisplayBadge = executionDisplayBadge;
 /** Agenda-/Timeline-Status in Großbuchstaben (GEPLANT / DRYRUN / LÄUFT). */
 function agendaStatusLabelDe(phase) {
     switch (phase) {
@@ -171,7 +176,6 @@ function agendaStatusLabelDe(phase) {
             return null;
     }
 }
-exports.agendaStatusLabelDe = agendaStatusLabelDe;
 /**
  * „Jetzt“-Zeile: bei Dryrun Planner und Hardware getrennt; LÄUFT nur realer Ist.
  */
@@ -191,7 +195,6 @@ function formatExecutionNowLineDe(input) {
     }
     return input.hardwareLabelDe;
 }
-exports.formatExecutionNowLineDe = formatExecutionNowLineDe;
 /** Agenda-Meta für den aktuellen Dryrun-/Plan-Slot. */
 function formatAgendaSlotMetaDe(input) {
     const status = agendaStatusLabelDe(input.phase);
@@ -208,7 +211,6 @@ function formatAgendaSlotMetaDe(input) {
     }
     return status;
 }
-exports.formatAgendaSlotMetaDe = formatAgendaSlotMetaDe;
 function buildAgendaExecutionHints(input) {
     const thr = input.thresholdW ?? DEFAULT_ON_W;
     const ihOff = (0, execution_mode_1.parseAddonMode)(input.addonModes.immersion_heater) === "off";
@@ -258,7 +260,6 @@ function buildAgendaExecutionHints(input) {
         },
     };
 }
-exports.buildAgendaExecutionHints = buildAgendaExecutionHints;
 function climateHoldReasonDe(reasonDe) {
     const r = String(reasonDe ?? "").trim();
     if (/Hysterese/i.test(r))
@@ -296,7 +297,6 @@ function classifyClimateDemand(input) {
         return "none";
     return "none";
 }
-exports.classifyClimateDemand = classifyClimateDemand;
 /**
  * Klima-Unit-Karte: Hardware-Ist + Runtime-Bedarf + Planner-Budget — ohne Widerspruch.
  *
@@ -434,4 +434,3 @@ function resolveClimateUnitDisplay(input) {
         noteDe: reason || "Klima aus.",
     });
 }
-exports.resolveClimateUnitDisplay = resolveClimateUnitDisplay;

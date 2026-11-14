@@ -23,7 +23,15 @@
  * (kind=discharge vs kind=charge).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.withGridImportExplain = exports.evaluateGridBalanceSafety = exports.isCompetingEmsBatteryAction = exports.formatGridBalanceExplain = exports.classifyGridBalanceEvConflict = exports.normalizeLoadpointMode = exports.parseGridBalanceMaxPriceCt = exports.parseGridBalanceMinPriceCt = exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_MIN_PRICE_MAX_CT = exports.GRID_BALANCE_MIN_PRICE_MIN_CT = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = exports.GRID_BALANCE_EXECUTION_ENABLED = void 0;
+exports.GRID_BALANCE_MAX_PRICE_DEFAULT_CT = exports.GRID_BALANCE_MIN_PRICE_MAX_CT = exports.GRID_BALANCE_MIN_PRICE_MIN_CT = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT = exports.GRID_BALANCE_EXECUTION_ENABLED = void 0;
+exports.parseGridBalanceMinPriceCt = parseGridBalanceMinPriceCt;
+exports.parseGridBalanceMaxPriceCt = parseGridBalanceMaxPriceCt;
+exports.normalizeLoadpointMode = normalizeLoadpointMode;
+exports.classifyGridBalanceEvConflict = classifyGridBalanceEvConflict;
+exports.formatGridBalanceExplain = formatGridBalanceExplain;
+exports.isCompetingEmsBatteryAction = isCompetingEmsBatteryAction;
+exports.evaluateGridBalanceSafety = evaluateGridBalanceSafety;
+exports.withGridImportExplain = withGridImportExplain;
 const charge_hold_1 = require("../wallbox/charge_hold");
 const grid_balance_1 = require("./grid_balance");
 exports.GRID_BALANCE_EXECUTION_ENABLED = true;
@@ -42,19 +50,16 @@ function parseGridBalanceMinPriceCt(raw, fallback = exports.GRID_BALANCE_MIN_PRI
         return fallback;
     return Math.min(exports.GRID_BALANCE_MIN_PRICE_MAX_CT, Math.max(exports.GRID_BALANCE_MIN_PRICE_MIN_CT, n));
 }
-exports.parseGridBalanceMinPriceCt = parseGridBalanceMinPriceCt;
 /** @deprecated alias — value is not inverted */
 function parseGridBalanceMaxPriceCt(raw, fallback = exports.GRID_BALANCE_MIN_PRICE_DEFAULT_CT) {
     return parseGridBalanceMinPriceCt(raw, fallback);
 }
-exports.parseGridBalanceMaxPriceCt = parseGridBalanceMaxPriceCt;
 function normalizeLoadpointMode(raw) {
     return String(raw ?? "")
         .trim()
         .toLowerCase()
         .replace(/\s+/g, "");
 }
-exports.normalizeLoadpointMode = normalizeLoadpointMode;
 function classifyGridBalanceEvConflict(input) {
     if (input.vehicleConnected === false) {
         return { conflict: false, kind: "" };
@@ -79,7 +84,6 @@ function classifyGridBalanceEvConflict(input) {
     }
     return { conflict: false, kind: "" };
 }
-exports.classifyGridBalanceEvConflict = classifyGridBalanceEvConflict;
 function formatPriceCt(priceNowCt) {
     return priceNowCt != null && Number.isFinite(priceNowCt) ? priceNowCt.toFixed(1) : "?";
 }
@@ -103,7 +107,6 @@ function formatGridBalanceExplain(input) {
     const importW = Number.isFinite(input.gridImportW) ? Math.round(input.gridImportW) : 0;
     return `grid_balance=ready, price=${formatPriceCt(input.priceNowCt)}ct, minimum=${input.priceMinCt.toFixed(1)}ct, grid_import=${importW}W`;
 }
-exports.formatGridBalanceExplain = formatGridBalanceExplain;
 /**
  * Competing EMS battery action that Grid Balance must yield to.
  *
@@ -114,7 +117,6 @@ exports.formatGridBalanceExplain = formatGridBalanceExplain;
 function isCompetingEmsBatteryAction(input) {
     return Boolean(input.plannedBatteryAction || input.ownershipActive || input.mode1Active);
 }
-exports.isCompetingEmsBatteryAction = isCompetingEmsBatteryAction;
 function firstBlock(input) {
     if (input.restoreInProgress)
         return { reason: "restore_in_progress", authority: "safety" };
@@ -197,7 +199,6 @@ function evaluateGridBalanceSafety(input) {
         explain,
     };
 }
-exports.evaluateGridBalanceSafety = evaluateGridBalanceSafety;
 function withGridImportExplain(result, gridImportW, priceNowCt, priceMinCt) {
     return {
         ...result,
@@ -210,4 +211,3 @@ function withGridImportExplain(result, gridImportW, priceNowCt, priceMinCt) {
         }),
     };
 }
-exports.withGridImportExplain = withGridImportExplain;

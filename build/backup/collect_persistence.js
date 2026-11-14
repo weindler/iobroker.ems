@@ -15,15 +15,32 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isTransientStateId = exports.collectVehicleSupportPersistence = exports.collectRestorableFileArtifacts = exports.assertBackupRestoreExclusion = exports.assertSelectedStateDataShape = exports.collectSelectedStateData = exports.collectLearningPersistence = exports.SELECTED_STATE_DATA_KEYS = exports.SELECTED_STATE_DATA_ARTIFACTS = void 0;
+exports.SELECTED_STATE_DATA_KEYS = exports.SELECTED_STATE_DATA_ARTIFACTS = void 0;
+exports.collectLearningPersistence = collectLearningPersistence;
+exports.collectSelectedStateData = collectSelectedStateData;
+exports.assertSelectedStateDataShape = assertSelectedStateDataShape;
+exports.assertBackupRestoreExclusion = assertBackupRestoreExclusion;
+exports.collectRestorableFileArtifacts = collectRestorableFileArtifacts;
+exports.collectVehicleSupportPersistence = collectVehicleSupportPersistence;
+exports.isTransientStateId = isTransientStateId;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const data_dir_1 = require("../learning/data_dir");
@@ -113,7 +130,6 @@ async function collectLearningPersistence(host) {
     }
     return out;
 }
-exports.collectLearningPersistence = collectLearningPersistence;
 /** Langfristige Learning-/Statistik-Persistenz für persistence/selected_state_data.json. */
 async function collectSelectedStateData(host) {
     const adapter = host;
@@ -129,7 +145,6 @@ async function collectSelectedStateData(host) {
     }
     return out;
 }
-exports.collectSelectedStateData = collectSelectedStateData;
 function assertSelectedStateDataShape(data) {
     for (const key of Object.keys(data)) {
         if (!exports.SELECTED_STATE_DATA_KEYS.includes(key)) {
@@ -137,7 +152,6 @@ function assertSelectedStateDataShape(data) {
         }
     }
 }
-exports.assertSelectedStateDataShape = assertSelectedStateDataShape;
 const FORBIDDEN_RESTORE_SUBSTRINGS = [
     "intent_v1.json",
     "global_modes_v1.json",
@@ -171,12 +185,10 @@ function assertBackupRestoreExclusion(entries) {
         }
     }
 }
-exports.assertBackupRestoreExclusion = assertBackupRestoreExclusion;
 async function collectRestorableFileArtifacts(_host) {
     // v0.1.141: Intent/Global-Modes/Policy-Dateien sind keine restorefähigen Backup-Inhalte.
     return {};
 }
-exports.collectRestorableFileArtifacts = collectRestorableFileArtifacts;
 /** Support-only: Vehicle-Persistenz aus estimation-States (kein Restore-Bereich). */
 async function collectVehicleSupportPersistence(host) {
     const out = {};
@@ -212,7 +224,6 @@ async function collectVehicleSupportPersistence(host) {
     }
     return out;
 }
-exports.collectVehicleSupportPersistence = collectVehicleSupportPersistence;
 async function* walkObjects(host, prefix) {
     // Fat vehicle trees removed in v0.1.227 — nothing to enumerate from config.
     void host;
@@ -233,4 +244,3 @@ function isTransientStateId(relativeId) {
         return true;
     return false;
 }
-exports.isTransientStateId = isTransientStateId;

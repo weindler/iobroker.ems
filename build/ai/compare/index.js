@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.maybeUpdatePlanCompareOnDailyPlanChange = exports.ensureCompareStateTree = exports.resetPlanCompareHookForTest = exports.runPlanCompare = exports.COMPARE_ELIGIBLE_GOVERNED_IDS = exports.buildCompareResult = exports.COMPARE_STATES = exports.ensureCompareStates = void 0;
+exports.runPlanCompare = exports.COMPARE_ELIGIBLE_GOVERNED_IDS = exports.buildCompareResult = exports.COMPARE_STATES = exports.ensureCompareStates = void 0;
+exports.resetPlanCompareHookForTest = resetPlanCompareHookForTest;
+exports.ensureCompareStateTree = ensureCompareStateTree;
+exports.maybeUpdatePlanCompareOnDailyPlanChange = maybeUpdatePlanCompareOnDailyPlanChange;
 const ensure_states_1 = require("./ensure_states");
 const run_1 = require("./run");
 var ensure_states_2 = require("./ensure_states");
@@ -16,11 +19,9 @@ let lastComparedRevision = -1;
 function resetPlanCompareHookForTest() {
     lastComparedRevision = -1;
 }
-exports.resetPlanCompareHookForTest = resetPlanCompareHookForTest;
 async function ensureCompareStateTree(host) {
     await (0, ensure_states_1.ensureCompareStates)(host);
 }
-exports.ensureCompareStateTree = ensureCompareStateTree;
 /**
  * Aktualisiert den Plan-Vergleich nur bei tatsächlicher Daily-Plan-Änderung (neue Revision) —
  * analog zum KI-Hook, damit nicht bei jedem Tick unnötig geschrieben wird.
@@ -32,4 +33,3 @@ async function maybeUpdatePlanCompareOnDailyPlanChange(host, plan) {
     lastComparedRevision = plan.revision;
     return (0, run_1.runPlanCompare)(host, plan);
 }
-exports.maybeUpdatePlanCompareOnDailyPlanChange = maybeUpdatePlanCompareOnDailyPlanChange;

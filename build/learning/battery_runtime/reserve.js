@@ -19,7 +19,8 @@
  * (Battery-Runtime) bestehen.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveRequiredSocAtPvEndPct = exports.NIGHT_RESERVE_SAFETY_MARGIN_FRACTION = void 0;
+exports.NIGHT_RESERVE_SAFETY_MARGIN_FRACTION = void 0;
+exports.resolveRequiredSocAtPvEndPct = resolveRequiredSocAtPvEndPct;
 /** Aufschlag auf den gelernten Ø-Nachtverbrauch — Streuung zwischen Nächten abfedern. */
 exports.NIGHT_RESERVE_SAFETY_MARGIN_FRACTION = 0.2;
 function round1(n) {
@@ -55,4 +56,3 @@ function resolveRequiredSocAtPvEndPct(input) {
             : `Reserve ${requiredReserveKwh.toFixed(1)} kWh (${requiredSocAtPvEndPct.toFixed(0)} %) aus gelerntem Nachtverbrauch ${input.predictedNightConsumptionKwh.toFixed(1)} kWh + ${Math.round(margin * 100)} % Sicherheitsaufschlag.`,
     };
 }
-exports.resolveRequiredSocAtPvEndPct = resolveRequiredSocAtPvEndPct;

@@ -4,7 +4,12 @@
  * Keine neuen Mappings; fehlende Werte bleiben null.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.activeUnitCombinationKey = exports.immersionOnFromPowers = exports.readLiveTelemetrySample = exports.resolveActiveSharedPowerGroupId = exports.resolveTelemetryPriceCtPerKwh = exports.additionalGridBalancePowerW = void 0;
+exports.additionalGridBalancePowerW = additionalGridBalancePowerW;
+exports.resolveTelemetryPriceCtPerKwh = resolveTelemetryPriceCtPerKwh;
+exports.resolveActiveSharedPowerGroupId = resolveActiveSharedPowerGroupId;
+exports.readLiveTelemetrySample = readLiveTelemetrySample;
+exports.immersionOnFromPowers = immersionOnFromPowers;
+exports.activeUnitCombinationKey = activeUnitCombinationKey;
 const ensure_states_1 = require("../../addons/battery/ensure_states");
 const types_1 = require("../../addons/immersion_heater/runtime/types");
 /** Live-PV (gepflegt vom Live-Cache) — nicht grid_balance.pv_power_w (ungeschrieben). */
@@ -40,7 +45,6 @@ function additionalGridBalancePowerW(input) {
     const ordinaryHouseDeficitW = Math.max(0, input.houseW - input.pvW);
     return Math.max(0, Math.min(input.batteryDischargeW, input.effectiveSetpointW) - ordinaryHouseDeficitW);
 }
-exports.additionalGridBalancePowerW = additionalGridBalancePowerW;
 async function readNum(host, id) {
     if (!id)
         return null;
@@ -103,7 +107,6 @@ async function resolveTelemetryPriceCtPerKwh(host, nowMs) {
         return gridNow;
     return null;
 }
-exports.resolveTelemetryPriceCtPerKwh = resolveTelemetryPriceCtPerKwh;
 /**
  * Shared-Power-Gruppe aus Admin-Config der aktiven Units.
  * null wenn keine Unit aktiv, Gruppe unbekannt oder mehrere unterschiedliche Gruppen.
@@ -133,7 +136,6 @@ function resolveActiveSharedPowerGroupId(active, config, plannerGroupByConsumerI
     }
     return { groupId: null, rejectReason: "shared_power_group_unknown" };
 }
-exports.resolveActiveSharedPowerGroupId = resolveActiveSharedPowerGroupId;
 async function readLiveTelemetrySample(host, nowMs = Date.now()) {
     const hlCfg = (0, config_4.houseLoadConfigFromAdapter)(host.config);
     const houseSrc = await (0, mapping_1.resolveHouseLoadPowerStateId)(host, hlCfg.powerStateId);
@@ -269,7 +271,6 @@ async function readLiveTelemetrySample(host, nowMs = Date.now()) {
         climateUnits,
     };
 }
-exports.readLiveTelemetrySample = readLiveTelemetrySample;
 /** Nach Sample: Immersion-on aus Leistung ableiten. */
 function immersionOnFromPowers(measuredW, commandedW) {
     if (measuredW != null && Number.isFinite(measuredW))
@@ -278,7 +279,6 @@ function immersionOnFromPowers(measuredW, commandedW) {
         return commandedW > 50;
     return null;
 }
-exports.immersionOnFromPowers = immersionOnFromPowers;
 /** Aktive Unit-Kombination als kompakter String (z. B. "1+3" oder "none"). */
 function activeUnitCombinationKey(active) {
     const ids = [];
@@ -288,4 +288,3 @@ function activeUnitCombinationKey(active) {
     }
     return ids.length ? ids.join("+") : "none";
 }
-exports.activeUnitCombinationKey = activeUnitCombinationKey;

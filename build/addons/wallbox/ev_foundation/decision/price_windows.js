@@ -3,7 +3,8 @@
  * Neutral price-window fallback. No vendor parsers here — callers pass already-normalized windows.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluatePriceWindows = exports.priceWindowsFrom15MinSlots = void 0;
+exports.priceWindowsFrom15MinSlots = priceWindowsFrom15MinSlots;
+exports.evaluatePriceWindows = evaluatePriceWindows;
 const time_1 = require("../../../../operator/time");
 const energy_1 = require("./energy");
 function priceWindowsFrom15MinSlots(slots) {
@@ -15,7 +16,6 @@ function priceWindowsFrom15MinSlots(slots) {
         importCtPerKwh: s.priceCtPerKwh,
     }));
 }
-exports.priceWindowsFrom15MinSlots = priceWindowsFrom15MinSlots;
 function median(values) {
     if (values.length === 0)
         return null;
@@ -128,4 +128,3 @@ function evaluatePriceWindows(input) {
         economicWindowLossRisk,
     };
 }
-exports.evaluatePriceWindows = evaluatePriceWindows;

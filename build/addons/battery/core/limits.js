@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hasDischargeCapability = exports.hardwareLimitsFromConfig = void 0;
+exports.hardwareLimitsFromConfig = hardwareLimitsFromConfig;
+exports.hasDischargeCapability = hasDischargeCapability;
 function num(raw) {
     if (raw === null || raw === undefined || raw === "" || typeof raw === "boolean") {
         return null;
@@ -41,9 +42,7 @@ function hardwareLimitsFromConfig(config) {
         issues,
     };
 }
-exports.hardwareLimitsFromConfig = hardwareLimitsFromConfig;
 /** Entladefähigkeit nur, wenn explizit eine positive Entladegrenze konfiguriert ist. */
 function hasDischargeCapability(limits) {
     return limits.maxDischargeW !== null && limits.maxDischargeW > 0;
 }
-exports.hasDischargeCapability = hasDischargeCapability;

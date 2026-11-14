@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.candidateUsable = exports.isExpiredAt = exports.parseOptionalSoc = exports.isFiniteNumber = void 0;
+exports.isFiniteNumber = isFiniteNumber;
+exports.parseOptionalSoc = parseOptionalSoc;
+exports.isExpiredAt = isExpiredAt;
+exports.candidateUsable = candidateUsable;
 function isFiniteNumber(n) {
     return Number.isFinite(n);
 }
-exports.isFiniteNumber = isFiniteNumber;
 function parseOptionalSoc(raw) {
     if (raw === null || raw === undefined || raw === "") {
         return { value: null, status: "missing" };
@@ -18,7 +20,6 @@ function parseOptionalSoc(raw) {
     }
     return { value: n, status: "valid" };
 }
-exports.parseOptionalSoc = parseOptionalSoc;
 function isExpiredAt(iso, now) {
     if (!iso) {
         return false;
@@ -29,7 +30,6 @@ function isExpiredAt(iso, now) {
     }
     return t < now.getTime();
 }
-exports.isExpiredAt = isExpiredAt;
 function candidateUsable(status, validUntil, now) {
     if (status === "invalid" || status === "missing") {
         return false;
@@ -42,4 +42,3 @@ function candidateUsable(status, validUntil, now) {
     }
     return status === "valid";
 }
-exports.candidateUsable = candidateUsable;

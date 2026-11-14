@@ -4,7 +4,7 @@
  * Bei AC an und power≈0 nicht Learning/Leistung auf 0 setzen.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveLocalthingsMeasuredPowerW = void 0;
+exports.resolveLocalthingsMeasuredPowerW = resolveLocalthingsMeasuredPowerW;
 function resolveLocalthingsMeasuredPowerW(input) {
     const minOn = input.minPlausibleOnW ?? 50;
     const p = input.rawPowerW;
@@ -16,4 +16,3 @@ function resolveLocalthingsMeasuredPowerW(input) {
     }
     return { useMeasured: true, powerW: Math.round(p) };
 }
-exports.resolveLocalthingsMeasuredPowerW = resolveLocalthingsMeasuredPowerW;

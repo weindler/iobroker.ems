@@ -1,13 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isCleaningStuckNeverEngaged = exports.isCleaningFinishedByFeedback = exports.isCleaningFinishedByProgress = exports.shouldMarkCleaningProgressActive = exports.shouldMarkCleaningOperatingActive = exports.isCleaningOperatingActive = exports.normalizeCleaningProgressPct = exports.normalizeCleaningToken = exports.CLEANING_RUNNING_OPERATING = void 0;
+exports.CLEANING_RUNNING_OPERATING = void 0;
+exports.normalizeCleaningToken = normalizeCleaningToken;
+exports.normalizeCleaningProgressPct = normalizeCleaningProgressPct;
+exports.isCleaningOperatingActive = isCleaningOperatingActive;
+exports.shouldMarkCleaningOperatingActive = shouldMarkCleaningOperatingActive;
+exports.shouldMarkCleaningProgressActive = shouldMarkCleaningProgressActive;
+exports.isCleaningFinishedByProgress = isCleaningFinishedByProgress;
+exports.isCleaningFinishedByFeedback = isCleaningFinishedByFeedback;
+exports.isCleaningStuckNeverEngaged = isCleaningStuckNeverEngaged;
 const constants_1 = require("../constants");
 /** SmartThings custom.autoCleaningMode — operatingState während Reinigung. */
 exports.CLEANING_RUNNING_OPERATING = ["autoclean", "speedclean", "quietclean", "timedclean"];
 function normalizeCleaningToken(raw) {
     return String(raw ?? "").trim().toLowerCase();
 }
-exports.normalizeCleaningToken = normalizeCleaningToken;
 function normalizeCleaningProgressPct(raw) {
     if (raw == null || raw === "") {
         return null;
@@ -16,7 +23,6 @@ function normalizeCleaningProgressPct(raw) {
     const n = Number(token);
     return Number.isFinite(n) ? n : null;
 }
-exports.normalizeCleaningProgressPct = normalizeCleaningProgressPct;
 function isCleaningOperatingActive(raw) {
     if (typeof raw === "boolean")
         return raw;
@@ -27,15 +33,12 @@ function isCleaningOperatingActive(raw) {
         return true;
     return exports.CLEANING_RUNNING_OPERATING.includes(token);
 }
-exports.isCleaningOperatingActive = isCleaningOperatingActive;
 function shouldMarkCleaningOperatingActive(raw, elapsedSec) {
     return elapsedSec >= constants_1.AC_CLEANING_ACTIVE_CONFIRM_SEC && isCleaningOperatingActive(raw);
 }
-exports.shouldMarkCleaningOperatingActive = shouldMarkCleaningOperatingActive;
 function shouldMarkCleaningProgressActive(progressPct) {
     return progressPct != null && progressPct > 0 && progressPct < 100;
 }
-exports.shouldMarkCleaningProgressActive = shouldMarkCleaningProgressActive;
 /** Primäres Ende-Signal: SmartThings progress = 100 %. */
 function isCleaningFinishedByProgress(input) {
     const progress = input.progressPct;
@@ -48,7 +51,6 @@ function isCleaningFinishedByProgress(input) {
     const start = input.startProgressPct;
     return start != null && progress > start;
 }
-exports.isCleaningFinishedByProgress = isCleaningFinishedByProgress;
 /** Fallback wenn kein Fortschritt gemappt oder progress hängt. */
 function isCleaningFinishedByFeedback(input) {
     if (!input.sawOperatingActive || input.elapsedSec < constants_1.AC_CLEANING_ACTIVE_CONFIRM_SEC) {
@@ -67,7 +69,6 @@ function isCleaningFinishedByFeedback(input) {
     }
     return false;
 }
-exports.isCleaningFinishedByFeedback = isCleaningFinishedByFeedback;
 /** Reinigung nie wirklich gestartet (ready + kein autoclean/progress) → Flag freigeben. */
 function isCleaningStuckNeverEngaged(input) {
     if (input.sawOperatingActive || input.sawProgressActive) {
@@ -79,4 +80,3 @@ function isCleaningStuckNeverEngaged(input) {
     const op = normalizeCleaningToken(input.operatingStateRaw);
     return op === "ready" || op === "" || op === "idle";
 }
-exports.isCleaningStuckNeverEngaged = isCleaningStuckNeverEngaged;

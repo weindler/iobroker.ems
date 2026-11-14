@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.planSafeRestore = void 0;
+exports.planSafeRestore = planSafeRestore;
 const ownership_1 = require("./ownership");
 /**
  * Safe Restore: charge stoppen → Self Consumption / Modus 2 → Netzausgleich
@@ -24,4 +24,3 @@ function planSafeRestore(input) {
         reason: "ems_ownership",
     };
 }
-exports.planSafeRestore = planSafeRestore;

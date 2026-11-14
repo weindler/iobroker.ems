@@ -11,7 +11,8 @@
  * evaluable/insufficient_data-Entscheidung.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateAllDomainEligibility = exports.evaluateDomainEligibility = void 0;
+exports.evaluateDomainEligibility = evaluateDomainEligibility;
+exports.evaluateAllDomainEligibility = evaluateAllDomainEligibility;
 const quality_mask_1 = require("../day_telemetry/quality_mask");
 const constants_1 = require("./constants");
 const types_1 = require("./types");
@@ -126,8 +127,6 @@ function evaluateDomainEligibility(day, domain) {
         reasonDe: `Domain-Coverage ${coveragePct}% < Schwelle ${constants_1.DAILY_EVALUATOR_DOMAIN_COVERAGE_PCT}% trotz Evidenz — zu wenig Daten für diesen Tag.`,
     };
 }
-exports.evaluateDomainEligibility = evaluateDomainEligibility;
 function evaluateAllDomainEligibility(day) {
     return Object.values(types_1.EVALUATOR_DOMAIN).map((d) => evaluateDomainEligibility(day, d));
 }
-exports.evaluateAllDomainEligibility = evaluateAllDomainEligibility;

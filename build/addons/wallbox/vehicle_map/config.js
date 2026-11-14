@@ -5,7 +5,10 @@
  * Empty map is valid — EVCC-first wallbox planning works without entries.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.slimEntryFromLegacyProfileRow = exports.vehicleMapEntryToExportRow = exports.wallboxVehicleMapFromAdapter = exports.WB_VEHICLE_MAP = void 0;
+exports.WB_VEHICLE_MAP = void 0;
+exports.wallboxVehicleMapFromAdapter = wallboxVehicleMapFromAdapter;
+exports.vehicleMapEntryToExportRow = vehicleMapEntryToExportRow;
+exports.slimEntryFromLegacyProfileRow = slimEntryFromLegacyProfileRow;
 exports.WB_VEHICLE_MAP = "wb_vehicle_map";
 function strField(row, key) {
     const v = row[key];
@@ -65,7 +68,6 @@ function wallboxVehicleMapFromAdapter(config) {
     }
     return { entries };
 }
-exports.wallboxVehicleMapFromAdapter = wallboxVehicleMapFromAdapter;
 /** Slim export row for backup (only allowlisted keys). */
 function vehicleMapEntryToExportRow(entry) {
     return {
@@ -76,7 +78,6 @@ function vehicleMapEntryToExportRow(entry) {
         max_ac_charge_power_w: entry.maxAcChargePowerW,
     };
 }
-exports.vehicleMapEntryToExportRow = vehicleMapEntryToExportRow;
 /**
  * Migrate a legacy fat `wb_vehicle_profiles` row into a slim map entry.
  * Requires a non-empty EVCC id or name; otherwise returns null.
@@ -96,4 +97,3 @@ function slimEntryFromLegacyProfileRow(row) {
         max_ac_charge_power_w: r.max_ac_charge_power_w,
     });
 }
-exports.slimEntryFromLegacyProfileRow = slimEntryFromLegacyProfileRow;

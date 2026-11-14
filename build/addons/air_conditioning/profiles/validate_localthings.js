@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.localthingsMappingsValid = exports.validateAcUnitMappings = void 0;
+exports.validateAcUnitMappings = validateAcUnitMappings;
+exports.localthingsMappingsValid = localthingsMappingsValid;
 const registry_1 = require("./registry");
 const LOCALTHINGS_REQUIRED = [
     "feedback_switch",
@@ -44,8 +45,6 @@ function validateAcUnitMappings(input) {
     }
     return issues;
 }
-exports.validateAcUnitMappings = validateAcUnitMappings;
 function localthingsMappingsValid(profileId, targets) {
     return validateAcUnitMappings({ unitIndex: 1, profileId, targets }).every((i) => i.severity !== "error");
 }
-exports.localthingsMappingsValid = localthingsMappingsValid;

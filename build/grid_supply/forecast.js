@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.gridSupplyRevisionPayload = exports.medianPriceCtFromGridSupply = exports.gridSlotsToPrice15Min = exports.buildGridSupplyForecast = exports.classifyGridPriceLabel = exports.resolveFlexibleGridImportAllowed = exports.computeEffectiveMaxGridImportW = void 0;
+exports.computeEffectiveMaxGridImportW = computeEffectiveMaxGridImportW;
+exports.resolveFlexibleGridImportAllowed = resolveFlexibleGridImportAllowed;
+exports.classifyGridPriceLabel = classifyGridPriceLabel;
+exports.buildGridSupplyForecast = buildGridSupplyForecast;
+exports.gridSlotsToPrice15Min = gridSlotsToPrice15Min;
+exports.medianPriceCtFromGridSupply = medianPriceCtFromGridSupply;
+exports.gridSupplyRevisionPayload = gridSupplyRevisionPayload;
 const config_1 = require("../global_modes/config");
 const quality_1 = require("./quality");
 const time_1 = require("./time");
@@ -47,7 +53,6 @@ function computeEffectiveMaxGridImportW(maxGridImportW, houseFuseLimitW) {
         return null;
     return Math.min(...limits);
 }
-exports.computeEffectiveMaxGridImportW = computeEffectiveMaxGridImportW;
 function resolveFlexibleGridImportAllowed(globalMode, policyGridImportAllowed) {
     const mode = globalMode && (0, config_1.isGlobalMode)(globalMode) ? globalMode : "balanced";
     if (mode === "off") {
@@ -58,7 +63,6 @@ function resolveFlexibleGridImportAllowed(globalMode, policyGridImportAllowed) {
     }
     return true;
 }
-exports.resolveFlexibleGridImportAllowed = resolveFlexibleGridImportAllowed;
 function medianPrice(slots) {
     const prices = slots
         .map((s) => s.priceCtPerKwh)
@@ -83,7 +87,6 @@ function classifyGridPriceLabel(priceCtPerKwh, referenceMedianCt) {
         return "expensive";
     return "normal";
 }
-exports.classifyGridPriceLabel = classifyGridPriceLabel;
 function normalizeDynamicSlots(rawSlots, flexibleImportAllowed, effectiveMaxImportW, referenceMedianCt) {
     const byStart = new Map();
     for (const raw of rawSlots) {
@@ -205,7 +208,6 @@ function buildGridSupplyForecast(input) {
         reasonDe,
     };
 }
-exports.buildGridSupplyForecast = buildGridSupplyForecast;
 function gridSlotsToPrice15Min(slots) {
     const out = [];
     for (const slot of slots) {
@@ -218,11 +220,9 @@ function gridSlotsToPrice15Min(slots) {
     }
     return out.sort((a, b) => a.slotStartMs - b.slotStartMs);
 }
-exports.gridSlotsToPrice15Min = gridSlotsToPrice15Min;
 function medianPriceCtFromGridSupply(forecast) {
     return medianPrice(forecast.slots);
 }
-exports.medianPriceCtFromGridSupply = medianPriceCtFromGridSupply;
 function gridSupplyRevisionPayload(forecast) {
     return JSON.stringify({
         source: forecast.source,
@@ -238,4 +238,3 @@ function gridSupplyRevisionPayload(forecast) {
         qualityStatus: forecast.quality.status,
     });
 }
-exports.gridSupplyRevisionPayload = gridSupplyRevisionPayload;

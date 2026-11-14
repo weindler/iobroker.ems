@@ -4,7 +4,12 @@
  * Golden Tests prüfen diese Prinzipien an Szenario-Plänen.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateUnifiedDayPlanPrinciples = exports.evaluateNoNightBatteryHeatAfterWastedPv = exports.evaluateReplanWhenForecastCollapses = exports.evaluatePreferPvOverUnnecessaryGrid = exports.evaluateNoChargeWhileAbsent = exports.evaluatePreallocateForeseeablePv = void 0;
+exports.evaluatePreallocateForeseeablePv = evaluatePreallocateForeseeablePv;
+exports.evaluateNoChargeWhileAbsent = evaluateNoChargeWhileAbsent;
+exports.evaluatePreferPvOverUnnecessaryGrid = evaluatePreferPvOverUnnecessaryGrid;
+exports.evaluateReplanWhenForecastCollapses = evaluateReplanWhenForecastCollapses;
+exports.evaluateNoNightBatteryHeatAfterWastedPv = evaluateNoNightBatteryHeatAfterWastedPv;
+exports.evaluateUnifiedDayPlanPrinciples = evaluateUnifiedDayPlanPrinciples;
 function sumAllocEnergy(plan, kind, predicate) {
     let s = 0;
     for (const a of plan.allocations) {
@@ -65,7 +70,6 @@ function evaluatePreallocateForeseeablePv(input, plan) {
             : `Thermische Vorallocation ${thermalAlloc.toFixed(1)} kWh bei Headroom ${thermalHeadroom.toFixed(1)} kWh; Export ${exportKwh.toFixed(1)} kWh.`,
     };
 }
-exports.evaluatePreallocateForeseeablePv = evaluatePreallocateForeseeablePv;
 function evaluateNoChargeWhileAbsent(input, plan) {
     const principleId = "no_charge_while_vehicle_absent";
     const bad = plan.allocations.filter((a) => a.kind === "wallbox" &&
@@ -81,7 +85,6 @@ function evaluateNoChargeWhileAbsent(input, plan) {
             : "Keine Wallbox-Energie während Abwesenheit.",
     };
 }
-exports.evaluateNoChargeWhileAbsent = evaluateNoChargeWhileAbsent;
 function evaluatePreferPvOverUnnecessaryGrid(input, plan) {
     const principleId = "prefer_pv_over_unnecessary_grid";
     const wb = input.wallbox;
@@ -122,7 +125,6 @@ function evaluatePreferPvOverUnnecessaryGrid(input, plan) {
             : `Wallbox PV ${pvWb.toFixed(1)} / Netz ${gridWb.toFixed(1)} kWh bei Bedarf ${wb.requiredEnergyKwh.toFixed(1)} kWh.`,
     };
 }
-exports.evaluatePreferPvOverUnnecessaryGrid = evaluatePreferPvOverUnnecessaryGrid;
 /**
  * Relevante Forecast-Verschlechterung: Tages-PV fällt auf ≤55 % der vorherigen Prognose.
  * Plan muss die **revidierte** PV widerspiegeln und Pflichtenergie ggf. auf Netz legen —
@@ -172,7 +174,6 @@ function evaluateReplanWhenForecastCollapses(input, plan) {
             : `Plan spiegelt revidierte PV (${planPv?.toFixed(1)} kWh) und verschiebt Pflichtenergie bei Bedarf auf Netz.`,
     };
 }
-exports.evaluateReplanWhenForecastCollapses = evaluateReplanWhenForecastCollapses;
 function pvPowerAtSlot(input, startIso) {
     for (const s of input.pv.slots) {
         if (s.slot.startIso === startIso)
@@ -207,7 +208,6 @@ function evaluateNoNightBatteryHeatAfterWastedPv(input, plan) {
             : "Kein unnötiges Batterie-Heizen in PV-armen Slots nach verschwendetem Tages-PV.",
     };
 }
-exports.evaluateNoNightBatteryHeatAfterWastedPv = evaluateNoNightBatteryHeatAfterWastedPv;
 const EVALUATORS = [
     evaluatePreallocateForeseeablePv,
     evaluateNoChargeWhileAbsent,
@@ -220,4 +220,3 @@ function evaluateUnifiedDayPlanPrinciples(input, plan) {
     const verdicts = EVALUATORS.map((fn) => fn(input, plan));
     return { ok: verdicts.every((v) => v.passed), verdicts };
 }
-exports.evaluateUnifiedDayPlanPrinciples = evaluateUnifiedDayPlanPrinciples;

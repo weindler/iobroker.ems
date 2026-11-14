@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MODE_STATES = exports.ensureImmersionRuntimeStates = void 0;
+exports.MODE_STATES = void 0;
+exports.ensureImmersionRuntimeStates = ensureImmersionRuntimeStates;
 const state_util_1 = require("../../../ems_light/state_util");
 const types_1 = require("./types");
 function strState(id, name, def, write = false, extendCommon) {
@@ -72,4 +73,3 @@ async function ensureImmersionRuntimeStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureImmersionRuntimeStates = ensureImmersionRuntimeStates;

@@ -10,7 +10,9 @@
  * Addon-Runtimes bleiben Ausführungsadapter (EVCC Master, Heizstab-FSM, …).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LEGACY_ATTACH_POINTS = exports.mapDailyPlanToUnified = exports.mapLegacyToUnifiedInput = void 0;
+exports.LEGACY_ATTACH_POINTS = void 0;
+exports.mapLegacyToUnifiedInput = mapLegacyToUnifiedInput;
+exports.mapDailyPlanToUnified = mapDailyPlanToUnified;
 /**
  * Platzhalter — bewusst nicht implementiert.
  * Verhindert, dass Schritt 1 eine zweite Planner-Pipeline erfindet.
@@ -18,11 +20,9 @@ exports.LEGACY_ATTACH_POINTS = exports.mapDailyPlanToUnified = exports.mapLegacy
 function mapLegacyToUnifiedInput(_sources) {
     throw new Error("mapLegacyToUnifiedInput: Schritt 2 — aus ForecastPlan + Telemetrie + Contributions befüllen");
 }
-exports.mapLegacyToUnifiedInput = mapLegacyToUnifiedInput;
 function mapDailyPlanToUnified(_plan) {
     throw new Error("mapDailyPlanToUnified: Schritt 2 — DailyPlan → UnifiedDayPlan Projection");
 }
-exports.mapDailyPlanToUnified = mapDailyPlanToUnified;
 /** Komponenten, die später an den gemeinsamen Planner angeschlossen werden. */
 exports.LEGACY_ATTACH_POINTS = [
     "src/operator/forecast/build.ts",

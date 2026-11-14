@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runPlanner = exports.resetPlannerRevisionForTest = void 0;
+exports.resetPlannerRevisionForTest = resetPlannerRevisionForTest;
+exports.runPlanner = runPlanner;
 const battery_1 = require("../operator/planning/battery");
 const battery_winter_1 = require("../operator/planning/battery_winter");
 const surplus_1 = require("../operator/planning/surplus");
@@ -11,7 +12,6 @@ let revision = 0;
 function resetPlannerRevisionForTest() {
     revision = 0;
 }
-exports.resetPlannerRevisionForTest = resetPlannerRevisionForTest;
 function runPlanner(inputs) {
     const surplusW = (0, surplus_1.computePvSurplusW)(inputs.pvPowerW, inputs.houseLoadW);
     const deficitW = (0, battery_1.computeDeficitW)(inputs.pvPowerW, inputs.houseLoadW);
@@ -165,4 +165,3 @@ function runPlanner(inputs) {
         battery_winter,
     };
 }
-exports.runPlanner = runPlanner;

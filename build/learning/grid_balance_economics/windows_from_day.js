@@ -4,7 +4,10 @@
  * ergänzend 15-Min-Slots (niedrigere Quelle, mehr Samples nötig).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectMatchWindows = exports.matchWindowsFromSlots = exports.matchWindowsFromOffWindow = exports.matchWindowsFromEpisode = void 0;
+exports.matchWindowsFromEpisode = matchWindowsFromEpisode;
+exports.matchWindowsFromOffWindow = matchWindowsFromOffWindow;
+exports.matchWindowsFromSlots = matchWindowsFromSlots;
+exports.collectMatchWindows = collectMatchWindows;
 const constants_1 = require("./constants");
 function slotHours(day) {
     return day.slotWidthMs > 0 ? day.slotWidthMs / 3_600_000 : 0.25;
@@ -32,7 +35,6 @@ function matchWindowsFromEpisode(seg) {
         source: "episode",
     };
 }
-exports.matchWindowsFromEpisode = matchWindowsFromEpisode;
 function matchWindowsFromOffWindow(w) {
     if (!w.usable)
         return null;
@@ -54,7 +56,6 @@ function matchWindowsFromOffWindow(w) {
         source: "episode",
     };
 }
-exports.matchWindowsFromOffWindow = matchWindowsFromOffWindow;
 function matchWindowsFromSlots(day) {
     const b = day.buckets;
     const hours = slotHours(day);
@@ -89,7 +90,6 @@ function matchWindowsFromSlots(day) {
     }
     return out;
 }
-exports.matchWindowsFromSlots = matchWindowsFromSlots;
 function collectMatchWindows(day) {
     const out = [];
     for (const seg of day.gridBalanceRunSegments ?? []) {
@@ -107,4 +107,3 @@ function collectMatchWindows(day) {
     }
     return out;
 }
-exports.collectMatchWindows = collectMatchWindows;

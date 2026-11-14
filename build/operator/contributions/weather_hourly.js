@@ -4,7 +4,10 @@
  * Keine neue Wetterarchitektur, keine Interpolation, fehlende Stunden bleiben weg.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.weatherHourlyHorizonEnd = exports.weatherHourlyDayIndex = exports.collectWeatherHourlyPoints = exports.WEATHER_HOURLY_PROBE_COUNT = void 0;
+exports.WEATHER_HOURLY_PROBE_COUNT = void 0;
+exports.collectWeatherHourlyPoints = collectWeatherHourlyPoints;
+exports.weatherHourlyDayIndex = weatherHourlyDayIndex;
+exports.weatherHourlyHorizonEnd = weatherHourlyHorizonEnd;
 const state_util_1 = require("../../ems_light/state_util");
 const math_1 = require("../../learning/weather/horizon/math");
 const time_1 = require("../time");
@@ -90,13 +93,10 @@ async function collectWeatherHourlyPoints(host, now, timezone, brightskyHourlyPr
     }));
     return rows.filter((r) => r !== null);
 }
-exports.collectWeatherHourlyPoints = collectWeatherHourlyPoints;
 /** Sichtbar für Tests — reiner dayIndex-Abgleich ohne IO. */
 function weatherHourlyDayIndex(todayKey, hourDateKey) {
     return dayIndexFromDateKeys(todayKey, hourDateKey);
 }
-exports.weatherHourlyDayIndex = weatherHourlyDayIndex;
 function weatherHourlyHorizonEnd(todayKey) {
     return `${(0, time_1.addDaysToDateKey)(todayKey, 1)}T23:59:59.999Z`;
 }
-exports.weatherHourlyHorizonEnd = weatherHourlyHorizonEnd;

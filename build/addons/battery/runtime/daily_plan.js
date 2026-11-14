@@ -1,6 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isChargingDeviceIntent = exports.dailyPlanWantsCharge = exports.resolveBatteryDailyPlanAllocation = exports.deviceIntentFromDailyPlan = exports.resolveBatteryDailyPlanFromData = exports.mergeBatteryChargeSlotAllocation = exports.parseDailyAllocationEntries = exports.dailyPlanCompetesWithGridBalance = exports.isBatteryDailyPlanAuthoritative = exports.resetBatteryDailyPlanCache = void 0;
+exports.resetBatteryDailyPlanCache = resetBatteryDailyPlanCache;
+exports.isBatteryDailyPlanAuthoritative = isBatteryDailyPlanAuthoritative;
+exports.dailyPlanCompetesWithGridBalance = dailyPlanCompetesWithGridBalance;
+exports.parseDailyAllocationEntries = parseDailyAllocationEntries;
+exports.mergeBatteryChargeSlotAllocation = mergeBatteryChargeSlotAllocation;
+exports.resolveBatteryDailyPlanFromData = resolveBatteryDailyPlanFromData;
+exports.deviceIntentFromDailyPlan = deviceIntentFromDailyPlan;
+exports.resolveBatteryDailyPlanAllocation = resolveBatteryDailyPlanAllocation;
+exports.dailyPlanWantsCharge = dailyPlanWantsCharge;
+exports.isChargingDeviceIntent = isChargingDeviceIntent;
 const config_1 = require("../../../intent/config");
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
@@ -15,16 +24,13 @@ let planCache = null;
 function resetBatteryDailyPlanCache() {
     planCache = null;
 }
-exports.resetBatteryDailyPlanCache = resetBatteryDailyPlanCache;
 function isBatteryDailyPlanAuthoritative(ctx) {
     return ctx.dailyPlanAuthoritative;
 }
-exports.isBatteryDailyPlanAuthoritative = isBatteryDailyPlanAuthoritative;
 /** Competing EMS charge from the Daily Plan — not 0 W / self_consumption. */
 function dailyPlanCompetesWithGridBalance(ctx) {
     return Boolean(ctx.chargingAllowed && (ctx.effectiveChargePowerW ?? 0) > 0);
 }
-exports.dailyPlanCompetesWithGridBalance = dailyPlanCompetesWithGridBalance;
 function isValidTimezone(timezone) {
     if (!timezone.trim())
         return false;
@@ -98,7 +104,6 @@ function parseDailyAllocationEntries(raw) {
     }
     return out;
 }
-exports.parseDailyAllocationEntries = parseDailyAllocationEntries;
 function parseFullDailyPlan(raw) {
     if (raw === null || raw === undefined)
         return null;
@@ -172,7 +177,6 @@ function mergeBatteryChargeSlotAllocation(entries, slotStartIso, slotEndIso) {
     }
     return { valid: true, entry: found, allocationStatus: found.status, reasonDe: found.reasonDe || "" };
 }
-exports.mergeBatteryChargeSlotAllocation = mergeBatteryChargeSlotAllocation;
 function mapEnergySource(src) {
     if (src === "pv_surplus")
         return "pv";
@@ -419,7 +423,6 @@ function resolveBatteryDailyPlanFromData(input) {
         dischargeIgnored: dischargePresent,
     };
 }
-exports.resolveBatteryDailyPlanFromData = resolveBatteryDailyPlanFromData;
 function deviceIntentFromDailyPlan(ctx, nowMs) {
     const revision = ctx.dailyPlanRevision ?? 0;
     if (!ctx.chargingAllowed || (ctx.effectiveChargePowerW ?? 0) <= 0) {
@@ -455,7 +458,6 @@ function deviceIntentFromDailyPlan(ctx, nowMs) {
         source: "daily_plan",
     };
 }
-exports.deviceIntentFromDailyPlan = deviceIntentFromDailyPlan;
 async function loadPlanData(host) {
     const adminCfg = (0, config_1.intentAdminConfigFromAdapter)(host.config);
     const timezone = adminCfg.timezone || "Europe/Berlin";
@@ -513,12 +515,9 @@ async function resolveBatteryDailyPlanAllocation(host, profile, limits, opts) {
         governanceEnabled: opts.governanceEnabled,
     });
 }
-exports.resolveBatteryDailyPlanAllocation = resolveBatteryDailyPlanAllocation;
 function dailyPlanWantsCharge(ctx) {
     return ctx.chargingAllowed && (ctx.effectiveChargePowerW ?? 0) > 0;
 }
-exports.dailyPlanWantsCharge = dailyPlanWantsCharge;
 function isChargingDeviceIntent(intent) {
     return (0, intent_1.isChargingAction)(intent.action);
 }
-exports.isChargingDeviceIntent = isChargingDeviceIntent;

@@ -1,6 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.expectedTypeForEvccRole = exports.validateEnumValueAgainstMeta = exports.validateEvccControlTargetMeta = exports.validateEvccModeFeedbackMeta = exports.validateEvccButtonTargetMeta = exports.validateControlObjectMeta = exports.isEvccNamespaceStateId = exports.isDirectGoeStateId = exports.resolveWallboxControlObjectMetas = exports.resolveWallboxControlObjectMeta = exports.metaFromObject = exports.validateEvccSemanticRole = exports.requiredSemanticForEvccRole = exports.inferEvccSemanticRole = exports.classifyWallboxControlTargetKind = void 0;
+exports.classifyWallboxControlTargetKind = classifyWallboxControlTargetKind;
+exports.inferEvccSemanticRole = inferEvccSemanticRole;
+exports.requiredSemanticForEvccRole = requiredSemanticForEvccRole;
+exports.validateEvccSemanticRole = validateEvccSemanticRole;
+exports.metaFromObject = metaFromObject;
+exports.resolveWallboxControlObjectMeta = resolveWallboxControlObjectMeta;
+exports.resolveWallboxControlObjectMetas = resolveWallboxControlObjectMetas;
+exports.isDirectGoeStateId = isDirectGoeStateId;
+exports.isEvccNamespaceStateId = isEvccNamespaceStateId;
+exports.validateControlObjectMeta = validateControlObjectMeta;
+exports.validateEvccButtonTargetMeta = validateEvccButtonTargetMeta;
+exports.validateEvccModeFeedbackMeta = validateEvccModeFeedbackMeta;
+exports.validateEvccControlTargetMeta = validateEvccControlTargetMeta;
+exports.validateEnumValueAgainstMeta = validateEnumValueAgainstMeta;
+exports.expectedTypeForEvccRole = expectedTypeForEvccRole;
 const evcc_mode_control_1 = require("../evcc_mode_control");
 function classifyWallboxControlTargetKind(stateId) {
     const id = stateId.trim().toLowerCase();
@@ -10,7 +24,6 @@ function classifyWallboxControlTargetKind(stateId) {
         return "goe_direct";
     return "user_configured";
 }
-exports.classifyWallboxControlTargetKind = classifyWallboxControlTargetKind;
 /** Heuristische EVCC-Semantik aus State-ID — nicht allein aus common.write oder evcc.*-Präfix. */
 function inferEvccSemanticRole(stateId) {
     const id = stateId.trim().toLowerCase();
@@ -36,7 +49,6 @@ function inferEvccSemanticRole(stateId) {
         return "evcc_phases";
     return "unknown";
 }
-exports.inferEvccSemanticRole = inferEvccSemanticRole;
 function requiredSemanticForEvccRole(role) {
     switch (role) {
         case "set_mode":
@@ -49,7 +61,6 @@ function requiredSemanticForEvccRole(role) {
             return "unknown";
     }
 }
-exports.requiredSemanticForEvccRole = requiredSemanticForEvccRole;
 function validateEvccSemanticRole(role, stateId) {
     const semanticRole = inferEvccSemanticRole(stateId);
     const required = requiredSemanticForEvccRole(role);
@@ -64,7 +75,6 @@ function validateEvccSemanticRole(role, stateId) {
     }
     return { valid: true, reason: null, semanticRole };
 }
-exports.validateEvccSemanticRole = validateEvccSemanticRole;
 function metaFromObject(stateId, obj) {
     if (!obj || !obj.common) {
         return {
@@ -91,7 +101,6 @@ function metaFromObject(stateId, obj) {
         allowedStateKeys,
     };
 }
-exports.metaFromObject = metaFromObject;
 async function resolveWallboxControlObjectMeta(getObjectAsync, stateId) {
     const id = stateId.trim();
     if (!id || !getObjectAsync) {
@@ -112,7 +121,6 @@ async function resolveWallboxControlObjectMeta(getObjectAsync, stateId) {
         return metaFromObject(id, null);
     }
 }
-exports.resolveWallboxControlObjectMeta = resolveWallboxControlObjectMeta;
 async function resolveWallboxControlObjectMetas(getObjectAsync, stateIds) {
     const unique = [...new Set(stateIds.map((s) => s.trim()).filter(Boolean))];
     const out = {};
@@ -121,15 +129,12 @@ async function resolveWallboxControlObjectMetas(getObjectAsync, stateIds) {
     }));
     return out;
 }
-exports.resolveWallboxControlObjectMetas = resolveWallboxControlObjectMetas;
 function isDirectGoeStateId(stateId) {
     return stateId.trim().toLowerCase().startsWith("go-e.");
 }
-exports.isDirectGoeStateId = isDirectGoeStateId;
 function isEvccNamespaceStateId(stateId) {
     return stateId.trim().toLowerCase().startsWith("evcc.");
 }
-exports.isEvccNamespaceStateId = isEvccNamespaceStateId;
 function validateControlObjectMeta(meta, expectedType) {
     if (!meta || !meta.objectPresent) {
         return { valid: false, reason: "target_object_missing" };
@@ -144,7 +149,6 @@ function validateControlObjectMeta(meta, expectedType) {
     }
     return { valid: true, reason: null };
 }
-exports.validateControlObjectMeta = validateControlObjectMeta;
 /** Button-States: write=true / read=false are valid write targets. */
 function validateEvccButtonTargetMeta(stateId, button, meta) {
     const semanticRole = inferEvccSemanticRole(stateId);
@@ -166,7 +170,6 @@ function validateEvccButtonTargetMeta(stateId, button, meta) {
     }
     return { valid: true, reason: null, semanticRole };
 }
-exports.validateEvccButtonTargetMeta = validateEvccButtonTargetMeta;
 function validateEvccModeFeedbackMeta(stateId, meta) {
     if (isDirectGoeStateId(stateId)) {
         return { valid: false, reason: "goe_target_not_evcc_compatible" };
@@ -182,7 +185,6 @@ function validateEvccModeFeedbackMeta(stateId, meta) {
     }
     return { valid: true, reason: null };
 }
-exports.validateEvccModeFeedbackMeta = validateEvccModeFeedbackMeta;
 function validateEvccControlTargetMeta(stateId, expectedType, meta, role) {
     if (isDirectGoeStateId(stateId)) {
         return { valid: false, reason: "goe_target_not_evcc_compatible", semanticRole: inferEvccSemanticRole(stateId) };
@@ -207,7 +209,6 @@ function validateEvccControlTargetMeta(stateId, expectedType, meta, role) {
     }
     return { valid: true, reason: null, semanticRole: semantic.semanticRole };
 }
-exports.validateEvccControlTargetMeta = validateEvccControlTargetMeta;
 function validateEnumValueAgainstMeta(value, meta) {
     if (!meta?.allowedStateKeys || meta.allowedStateKeys.length === 0) {
         return { valid: false, reason: "enum_values_unconfirmed" };
@@ -217,7 +218,6 @@ function validateEnumValueAgainstMeta(value, meta) {
     }
     return { valid: true, reason: null };
 }
-exports.validateEnumValueAgainstMeta = validateEnumValueAgainstMeta;
 function expectedTypeForEvccRole(role) {
     switch (role) {
         case "set_max_current_a":
@@ -229,4 +229,3 @@ function expectedTypeForEvccRole(role) {
             return "string";
     }
 }
-exports.expectedTypeForEvccRole = expectedTypeForEvccRole;

@@ -24,7 +24,10 @@
  * Verhalten (Fallback).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toThermalLearningExplanation = exports.evaluateThermalDeferOpportunity = exports.calibrateThermalOpportunityGap = exports.THERMAL_LEARNING_GAP_ADJUST_MAX = exports.THERMAL_LEARNING_GAP_MAX = exports.THERMAL_LEARNING_GAP_MIN = exports.THERMAL_LEARNING_MIN_CONFIDENCE_PCT = exports.THERMAL_LEARNING_MIN_SAMPLE_COUNT = exports.THERMAL_OPPORTUNITY_DEFER_SCORE_WEIGHT = exports.THERMAL_OPPORTUNITY_MIN_PV_CONFIDENCE_PCT = exports.THERMAL_OPPORTUNITY_PV_PERCENTILE_GAP = void 0;
+exports.THERMAL_LEARNING_GAP_ADJUST_MAX = exports.THERMAL_LEARNING_GAP_MAX = exports.THERMAL_LEARNING_GAP_MIN = exports.THERMAL_LEARNING_MIN_CONFIDENCE_PCT = exports.THERMAL_LEARNING_MIN_SAMPLE_COUNT = exports.THERMAL_OPPORTUNITY_DEFER_SCORE_WEIGHT = exports.THERMAL_OPPORTUNITY_MIN_PV_CONFIDENCE_PCT = exports.THERMAL_OPPORTUNITY_PV_PERCENTILE_GAP = void 0;
+exports.calibrateThermalOpportunityGap = calibrateThermalOpportunityGap;
+exports.evaluateThermalDeferOpportunity = evaluateThermalDeferOpportunity;
+exports.toThermalLearningExplanation = toThermalLearningExplanation;
 const learning_gate_1 = require("./learning_gate");
 /**
  * Muss dem Block-A-Schwellenwert entsprechen (`SIGNIFICANT_PERCENTILE_GAP` in
@@ -111,7 +114,6 @@ function calibrateThermalOpportunityGap(metric) {
         baselineGap: exports.THERMAL_OPPORTUNITY_PV_PERCENTILE_GAP,
     };
 }
-exports.calibrateThermalOpportunityGap = calibrateThermalOpportunityGap;
 function noOpportunityResult(reasonCode, learning) {
     return {
         defer: false,
@@ -186,7 +188,6 @@ function evaluateThermalDeferOpportunity(input) {
         learning: calibration,
     };
 }
-exports.evaluateThermalDeferOpportunity = evaluateThermalDeferOpportunity;
 /**
  * Übersetzt ein `ThermalOpportunityGateResult` in die gemeinsame, kleine
  * `PlannerLearningExplanation`-Struktur (siehe `learning_explanation.ts`) — rein
@@ -213,4 +214,3 @@ function toThermalLearningExplanation(result) {
         ],
     };
 }
-exports.toThermalLearningExplanation = toThermalLearningExplanation;

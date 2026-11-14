@@ -11,12 +11,15 @@
  * Leftover EVCC now / Boost ohne Verbindung oder ohne Ladung ist kein Hold.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveWallboxBatteryHold = exports.interpretExternalVehicleCharge = exports.isEvActuallyCharging = exports.isEvVehiclePresent = exports.EV_CHARGE_ACTION_MIN_W = void 0;
+exports.EV_CHARGE_ACTION_MIN_W = void 0;
+exports.isEvVehiclePresent = isEvVehiclePresent;
+exports.isEvActuallyCharging = isEvActuallyCharging;
+exports.interpretExternalVehicleCharge = interpretExternalVehicleCharge;
+exports.resolveWallboxBatteryHold = resolveWallboxBatteryHold;
 exports.EV_CHARGE_ACTION_MIN_W = 50;
 function isEvVehiclePresent(connected) {
     return connected === true;
 }
-exports.isEvVehiclePresent = isEvVehiclePresent;
 function isEvActuallyCharging(input) {
     if (input.charging === true)
         return true;
@@ -24,7 +27,6 @@ function isEvActuallyCharging(input) {
     const min = input.minW ?? exports.EV_CHARGE_ACTION_MIN_W;
     return p != null && Number.isFinite(p) && p >= min;
 }
-exports.isEvActuallyCharging = isEvActuallyCharging;
 /** Interpretiert HA-/Fremd-Ladestatus konservativ (unbekannt → nicht aktiv). */
 function interpretExternalVehicleCharge(raw) {
     if (raw === null || raw === undefined)
@@ -52,7 +54,6 @@ function interpretExternalVehicleCharge(raw) {
         return true;
     return false;
 }
-exports.interpretExternalVehicleCharge = interpretExternalVehicleCharge;
 /** PV-/Überschuss-Modi: HA „Charging“ ist hier normales EVCC-Laden → kein External-Hold. */
 function isPvSurplusLoadpointMode(mode) {
     return mode === "pv" || mode === "minpv" || mode === "min+pv" || mode === "solar";
@@ -111,4 +112,3 @@ function resolveWallboxBatteryHold(input) {
             : "Kein Wallbox-Batterie-Hold (kein verbundenes Laden / keine externe Hoheit).",
     };
 }
-exports.resolveWallboxBatteryHold = resolveWallboxBatteryHold;

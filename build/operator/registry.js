@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.operatorAddonsWithRole = exports.operatorRegistryAddonIds = exports.operatorRegistryCoversAllCatalogAddons = exports.operatorAddonRegistration = exports.OPERATOR_ADDON_REGISTRY = void 0;
+exports.OPERATOR_ADDON_REGISTRY = void 0;
+exports.operatorAddonRegistration = operatorAddonRegistration;
+exports.operatorRegistryCoversAllCatalogAddons = operatorRegistryCoversAllCatalogAddons;
+exports.operatorRegistryAddonIds = operatorRegistryAddonIds;
+exports.operatorAddonsWithRole = operatorAddonsWithRole;
 const registry_1 = require("../addons/registry");
 const REGISTRY = [
     {
@@ -146,16 +150,12 @@ function operatorAddonRegistration(addonId) {
     }
     return entry;
 }
-exports.operatorAddonRegistration = operatorAddonRegistration;
 function operatorRegistryCoversAllCatalogAddons() {
     return registry_1.EMS_ADDON_IDS.every((id) => BY_ID.has(id));
 }
-exports.operatorRegistryCoversAllCatalogAddons = operatorRegistryCoversAllCatalogAddons;
 function operatorRegistryAddonIds() {
     return REGISTRY.map((e) => e.addonId);
 }
-exports.operatorRegistryAddonIds = operatorRegistryAddonIds;
 function operatorAddonsWithRole(role) {
     return REGISTRY.filter((e) => e.roles.includes(role));
 }
-exports.operatorAddonsWithRole = operatorAddonsWithRole;

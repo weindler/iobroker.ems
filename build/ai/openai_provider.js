@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createOpenAiProvider = exports.parseDecisions = void 0;
+exports.parseDecisions = parseDecisions;
+exports.createOpenAiProvider = createOpenAiProvider;
 const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
 const SYSTEM_PROMPT_LEGACY = [
     "Du bist die optionale Optimierungsschicht eines Hausenergiemanagers (EMS-Light).",
@@ -149,7 +150,6 @@ function parseDecisions(raw, allowedAddonIds) {
     }
     return out;
 }
-exports.parseDecisions = parseDecisions;
 function createOpenAiProvider(fetchImpl = fetch) {
     return {
         id: "openai",
@@ -271,4 +271,3 @@ function createOpenAiProvider(fetchImpl = fetch) {
         },
     };
 }
-exports.createOpenAiProvider = createOpenAiProvider;

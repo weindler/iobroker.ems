@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.measuredConsumerOverflowCount = exports.configuredMeasuredConsumerSlots = void 0;
+exports.configuredMeasuredConsumerSlots = configuredMeasuredConsumerSlots;
+exports.measuredConsumerOverflowCount = measuredConsumerOverflowCount;
 const constants_1 = require("./constants");
 function asStr(v) {
     if (typeof v === "string")
@@ -53,11 +54,9 @@ function configuredMeasuredConsumerSlots(config) {
     }
     return out;
 }
-exports.configuredMeasuredConsumerSlots = configuredMeasuredConsumerSlots;
 /** Anzahl konfigurierter Zeilen jenseits der Admin-Kapazität (für einmalige Warnung beim Start). */
 function measuredConsumerOverflowCount(config) {
     const raw = config && typeof config === "object" ? config : {};
     const rows = Array.isArray(raw[constants_1.MEASURED_CONSUMERS_CONFIG_KEY]) ? raw[constants_1.MEASURED_CONSUMERS_CONFIG_KEY] : [];
     return Math.max(0, rows.length - constants_1.MEASURED_CONSUMERS_SLOT_COUNT);
 }
-exports.measuredConsumerOverflowCount = measuredConsumerOverflowCount;

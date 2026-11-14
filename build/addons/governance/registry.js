@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.governedAddonIds = exports.isGovernedAddonId = exports.governedAddonByRuntimeId = exports.governedAddonEntry = exports.GOVERNED_ADDON_REGISTRY = void 0;
+exports.GOVERNED_ADDON_REGISTRY = void 0;
+exports.governedAddonEntry = governedAddonEntry;
+exports.governedAddonByRuntimeId = governedAddonByRuntimeId;
+exports.isGovernedAddonId = isGovernedAddonId;
+exports.governedAddonIds = governedAddonIds;
 exports.GOVERNED_ADDON_REGISTRY = [
     {
         id: "wallbox",
@@ -44,16 +48,12 @@ function governedAddonEntry(id) {
     }
     return entry;
 }
-exports.governedAddonEntry = governedAddonEntry;
 function governedAddonByRuntimeId(runtimeAddonId) {
     return BY_RUNTIME_ID.get(runtimeAddonId) ?? null;
 }
-exports.governedAddonByRuntimeId = governedAddonByRuntimeId;
 function isGovernedAddonId(id) {
     return BY_ID.has(id);
 }
-exports.isGovernedAddonId = isGovernedAddonId;
 function governedAddonIds() {
     return exports.GOVERNED_ADDON_REGISTRY.map((e) => e.id);
 }
-exports.governedAddonIds = governedAddonIds;

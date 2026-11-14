@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.plannerStatusFromDailyPlan = exports.mapDecisionDetailToCanonical = void 0;
+exports.mapDecisionDetailToCanonical = mapDecisionDetailToCanonical;
+exports.plannerStatusFromDailyPlan = plannerStatusFromDailyPlan;
 const OFF = new Set([
     "off",
     "addon_disabled",
@@ -63,7 +64,6 @@ function mapDecisionDetailToCanonical(detail) {
     // safety, fault, lockout, safe_default, restore, missing_telemetry, mapping_incomplete, cleaning, …
     return "safety";
 }
-exports.mapDecisionDetailToCanonical = mapDecisionDetailToCanonical;
 /** Derive planner_status from common daily-plan status strings + flags. */
 function plannerStatusFromDailyPlan(input) {
     if (input.addonEnabled === false || input.governanceEnabled === false) {
@@ -86,4 +86,3 @@ function plannerStatusFromDailyPlan(input) {
     }
     return "unused";
 }
-exports.plannerStatusFromDailyPlan = plannerStatusFromDailyPlan;

@@ -1,42 +1,48 @@
 "use strict";
 /** Startup live-rearm gate — independent from restore dryrun context. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetStartupRearmForTest = exports.captureExecutionModeBaselineFromHost = exports.isExplicitUserLiveRearmRequest = exports.isExplicitUserExecutionModeRequest = exports.isFreshUserStateChange = exports.isAdapterInternalStateOrigin = exports.confirmStartupLiveRearm = exports.clearStartupRearmRequired = exports.getExecutionModeBaselineLc = exports.clearExecutionModeBaseline = exports.recordExecutionModeBaseline = exports.getBootstrapCompletedAtMs = exports.markBootstrapCompletedForRearm = exports.isStartupRearmRequired = exports.setStartupRearmRequired = void 0;
+exports.setStartupRearmRequired = setStartupRearmRequired;
+exports.isStartupRearmRequired = isStartupRearmRequired;
+exports.markBootstrapCompletedForRearm = markBootstrapCompletedForRearm;
+exports.getBootstrapCompletedAtMs = getBootstrapCompletedAtMs;
+exports.recordExecutionModeBaseline = recordExecutionModeBaseline;
+exports.clearExecutionModeBaseline = clearExecutionModeBaseline;
+exports.getExecutionModeBaselineLc = getExecutionModeBaselineLc;
+exports.clearStartupRearmRequired = clearStartupRearmRequired;
+exports.confirmStartupLiveRearm = confirmStartupLiveRearm;
+exports.isAdapterInternalStateOrigin = isAdapterInternalStateOrigin;
+exports.isFreshUserStateChange = isFreshUserStateChange;
+exports.isExplicitUserExecutionModeRequest = isExplicitUserExecutionModeRequest;
+exports.isExplicitUserLiveRearmRequest = isExplicitUserLiveRearmRequest;
+exports.captureExecutionModeBaselineFromHost = captureExecutionModeBaselineFromHost;
+exports.resetStartupRearmForTest = resetStartupRearmForTest;
 let startupRearmRequired = false;
 let bootstrapCompletedAtMs = 0;
 const executionModeBaselineLc = new Map();
 function setStartupRearmRequired(required) {
     startupRearmRequired = required;
 }
-exports.setStartupRearmRequired = setStartupRearmRequired;
 function isStartupRearmRequired() {
     return startupRearmRequired;
 }
-exports.isStartupRearmRequired = isStartupRearmRequired;
 function markBootstrapCompletedForRearm(nowMs = Date.now()) {
     bootstrapCompletedAtMs = nowMs;
 }
-exports.markBootstrapCompletedForRearm = markBootstrapCompletedForRearm;
 function getBootstrapCompletedAtMs() {
     return bootstrapCompletedAtMs;
 }
-exports.getBootstrapCompletedAtMs = getBootstrapCompletedAtMs;
 function recordExecutionModeBaseline(relativeStateId, lc) {
     executionModeBaselineLc.set(relativeStateId, lc);
 }
-exports.recordExecutionModeBaseline = recordExecutionModeBaseline;
 function clearExecutionModeBaseline() {
     executionModeBaselineLc.clear();
 }
-exports.clearExecutionModeBaseline = clearExecutionModeBaseline;
 function getExecutionModeBaselineLc(relativeStateId) {
     return executionModeBaselineLc.get(relativeStateId);
 }
-exports.getExecutionModeBaselineLc = getExecutionModeBaselineLc;
 function clearStartupRearmRequired() {
     startupRearmRequired = false;
 }
-exports.clearStartupRearmRequired = clearStartupRearmRequired;
 /**
  * Explizite Benutzer-Freigabe für Geräte-Writes nach Adapter-Start.
  * Unabhängig von Mode-Toggle — Admin-Config-Save / Restart blockiert das nicht.
@@ -64,7 +70,6 @@ async function confirmStartupLiveRearm(host) {
         : "Startup-Rearm aufgehoben (confirm_live_rearm) — Geräte-Writes freigegeben");
     return { ok: true, alreadyCleared };
 }
-exports.confirmStartupLiveRearm = confirmStartupLiveRearm;
 /** Adapter-interne Writes (Sync, Reconciliation, Hydration) dürfen Rearm nicht aufheben. */
 function isAdapterInternalStateOrigin(from, adapterNamespace) {
     const origin = String(from ?? "").trim();
@@ -79,7 +84,6 @@ function isAdapterInternalStateOrigin(from, adapterNamespace) {
     }
     return false;
 }
-exports.isAdapterInternalStateOrigin = isAdapterInternalStateOrigin;
 function isFreshUserStateChange(state, bootstrapCompletedAtMsValue) {
     if (!state || state.ack) {
         return false;
@@ -90,7 +94,6 @@ function isFreshUserStateChange(state, bootstrapCompletedAtMsValue) {
     const ts = state.ts ?? 0;
     return ts >= bootstrapCompletedAtMsValue;
 }
-exports.isFreshUserStateChange = isFreshUserStateChange;
 /**
  * Explizite Benutzer-Anforderung auf einem Execution-Mode-State (dryrun oder live).
  * Nicht ausreichend: Hydration, Reconciliation, interne Spiegelung, alter Request.
@@ -115,7 +118,6 @@ function isExplicitUserExecutionModeRequest(state, adapterNamespace, relativeSta
     }
     return true;
 }
-exports.isExplicitUserExecutionModeRequest = isExplicitUserExecutionModeRequest;
 /**
  * Startup-Rearm nur durch frischen externen live-Request auf global.execution_mode aufheben.
  * dryrun ist keine Zustimmung zu realen Geräte-Writes und hebt Rearm nicht auf.
@@ -130,7 +132,6 @@ function isExplicitUserLiveRearmRequest(state, adapterNamespace, relativeStateId
     }
     return String(state?.val ?? "").trim().toLowerCase() === "live";
 }
-exports.isExplicitUserLiveRearmRequest = isExplicitUserLiveRearmRequest;
 async function captureExecutionModeBaselineFromHost(host, relativeStateIds) {
     clearExecutionModeBaseline();
     for (const id of relativeStateIds) {
@@ -138,10 +139,8 @@ async function captureExecutionModeBaselineFromHost(host, relativeStateIds) {
         recordExecutionModeBaseline(id, st?.lc ?? 0);
     }
 }
-exports.captureExecutionModeBaselineFromHost = captureExecutionModeBaselineFromHost;
 function resetStartupRearmForTest() {
     startupRearmRequired = false;
     bootstrapCompletedAtMs = 0;
     clearExecutionModeBaseline();
 }
-exports.resetStartupRearmForTest = resetStartupRearmForTest;

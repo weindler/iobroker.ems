@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.planWallboxSafeRestore = void 0;
+exports.planWallboxSafeRestore = planWallboxSafeRestore;
 const ownership_1 = require("./ownership");
 /**
  * Safe Restore: EMS gibt die EVCC-Modus-Steuerung an den konfigurierten Hold-Wert zurück,
@@ -24,4 +24,3 @@ function planWallboxSafeRestore(ownership, mapping) {
         reason: "ems_ownership",
     };
 }
-exports.planWallboxSafeRestore = planWallboxSafeRestore;

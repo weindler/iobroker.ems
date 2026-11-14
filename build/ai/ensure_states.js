@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureAiStates = exports.AI_STATES = exports.AI_BASE = void 0;
+exports.AI_STATES = exports.AI_BASE = void 0;
+exports.ensureAiStates = ensureAiStates;
 const state_util_1 = require("../ems_light/state_util");
 exports.AI_BASE = "ai";
 exports.AI_STATES = {
@@ -272,4 +273,3 @@ async function ensureAiStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureAiStates = ensureAiStates;

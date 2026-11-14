@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.44] – 2026-11-14
+
+### Behoben
+- Batterie-Einschätzung: „Heute X kWh PV erwartet" zeigt jetzt denselben Wert wie die PV-Kachel (bisher erzeugt + Rest laut Plan) statt des unkorrigierten Modellwerts.
+- Temperaturangabe als „−5 bis 5 °C" statt „-5–5 °C"; „Lern-Korrektur" statt „angewendete Korrektur".
+
 ## [0.4.43] – 2026-11-14
 
 ### Hinzugefügt

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runGridBalanceEconomicsLearning = void 0;
+exports.runGridBalanceEconomicsLearning = runGridBalanceEconomicsLearning;
 const constants_1 = require("../day_telemetry/constants");
 const persist_1 = require("../day_telemetry/persist");
 const time_1 = require("../../operator/time");
@@ -65,7 +65,6 @@ async function runGridBalanceEconomicsLearning(host, opts = {}) {
     await (0, persist_2.writeGridBalanceEconomicsPersist)(dir, persist);
     await publishLearning(host, persist);
 }
-exports.runGridBalanceEconomicsLearning = runGridBalanceEconomicsLearning;
 async function publishLearning(host, persist) {
     const a = persist.alphaBeta;
     const e = persist.eta;

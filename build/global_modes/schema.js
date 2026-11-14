@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.profileForMode = exports.availableModesJson = exports.GLOBAL_MODE_PROFILES = void 0;
+exports.GLOBAL_MODE_PROFILES = void 0;
+exports.availableModesJson = availableModesJson;
+exports.profileForMode = profileForMode;
 const constants_1 = require("./constants");
 exports.GLOBAL_MODE_PROFILES = {
     off: {
@@ -56,8 +58,6 @@ function availableModesJson() {
         profile: exports.GLOBAL_MODE_PROFILES[mode],
     })));
 }
-exports.availableModesJson = availableModesJson;
 function profileForMode(mode) {
     return exports.GLOBAL_MODE_PROFILES[mode];
 }
-exports.profileForMode = profileForMode;

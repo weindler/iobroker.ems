@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetGlobalModesRuntime = exports.runGlobalModes = void 0;
+exports.runGlobalModes = runGlobalModes;
+exports.resetGlobalModesRuntime = resetGlobalModesRuntime;
 const state_write_1 = require("../policy/core/state_write");
 const constants_1 = require("./constants");
 const config_1 = require("./config");
@@ -68,8 +69,6 @@ async function runGlobalModes(host) {
     }
     return resolution;
 }
-exports.runGlobalModes = runGlobalModes;
 function resetGlobalModesRuntime() {
     lastActiveMode = null;
 }
-exports.resetGlobalModesRuntime = resetGlobalModesRuntime;

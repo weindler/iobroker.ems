@@ -11,7 +11,11 @@
  * only written on connect/disconnect — never use it as a heartbeat.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isCommandFeedbackConfirmed = exports.evaluateEvccSourceFreshness = exports.isEvccModeFeedbackStale = exports.isEvccHeartbeatStale = exports.maxFiniteTs = void 0;
+exports.maxFiniteTs = maxFiniteTs;
+exports.isEvccHeartbeatStale = isEvccHeartbeatStale;
+exports.isEvccModeFeedbackStale = isEvccModeFeedbackStale;
+exports.evaluateEvccSourceFreshness = evaluateEvccSourceFreshness;
+exports.isCommandFeedbackConfirmed = isCommandFeedbackConfirmed;
 const types_1 = require("./types");
 function maxFiniteTs(values) {
     let max = null;
@@ -23,7 +27,6 @@ function maxFiniteTs(values) {
     }
     return max;
 }
-exports.maxFiniteTs = maxFiniteTs;
 /** Age helper for heartbeat timestamps — not for status.mode.ts. */
 function isEvccHeartbeatStale(input) {
     if (input.tsMs == null || !Number.isFinite(input.tsMs))
@@ -31,14 +34,12 @@ function isEvccHeartbeatStale(input) {
     const limit = input.staleAfterMs ?? types_1.EV_SOURCE_STALE_AFTER_MS;
     return input.nowMs - input.tsMs > limit;
 }
-exports.isEvccHeartbeatStale = isEvccHeartbeatStale;
 /**
  * @deprecated Name kept for Phase 5A tests. This is heartbeat age, not mode.ts.
  */
 function isEvccModeFeedbackStale(input) {
     return isEvccHeartbeatStale(input);
 }
-exports.isEvccModeFeedbackStale = isEvccModeFeedbackStale;
 function evaluateEvccSourceFreshness(input) {
     if (input.connectionKnown && input.connectionValue === false) {
         return { fresh: false, reason: "evcc_source_offline", signal: "connection" };
@@ -55,7 +56,6 @@ function evaluateEvccSourceFreshness(input) {
     /** No connection mapping and no heartbeat: do not invent stale from status.mode.ts. */
     return { fresh: true, reason: "", signal: "telemetry_valid" };
 }
-exports.evaluateEvccSourceFreshness = evaluateEvccSourceFreshness;
 /**
  * After a write, matching status.mode is confirmation only if its ts is not older
  * than the command. An unchanged pre-write timestamp is not new feedback.
@@ -68,4 +68,3 @@ function isCommandFeedbackConfirmed(input) {
         return true;
     return input.modeTsMs + types_1.EV_FEEDBACK_CLOCK_SKEW_MS >= input.lastCommandAtMs;
 }
-exports.isCommandFeedbackConfirmed = isCommandFeedbackConfirmed;

@@ -1,7 +1,9 @@
 "use strict";
 /** Feste Mappingtabelle Backup-Key → Learning-Ziel (kein freier Pfad aus JSON). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isKnownLearningKey = exports.restoreLearningRelativeTargetPath = exports.RESTORE_LEARNING_KEYS = exports.RESTORE_LEARNING_TARGETS = void 0;
+exports.RESTORE_LEARNING_KEYS = exports.RESTORE_LEARNING_TARGETS = void 0;
+exports.restoreLearningRelativeTargetPath = restoreLearningRelativeTargetPath;
+exports.isKnownLearningKey = isKnownLearningKey;
 exports.RESTORE_LEARNING_TARGETS = {
     "statistics_v1.json": { category: "statistics", fileName: "statistics_restore_v1.json" },
     "battery_runtime_learning_v1.json": { category: "learning/battery_runtime", fileName: "battery_runtime_learning_v1.json" },
@@ -35,8 +37,6 @@ function restoreLearningRelativeTargetPath(key) {
     }
     return `${target.category}/${target.fileName}`;
 }
-exports.restoreLearningRelativeTargetPath = restoreLearningRelativeTargetPath;
 function isKnownLearningKey(key) {
     return key in exports.RESTORE_LEARNING_TARGETS;
 }
-exports.isKnownLearningKey = isKnownLearningKey;

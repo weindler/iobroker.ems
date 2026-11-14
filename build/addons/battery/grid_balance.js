@@ -1,7 +1,9 @@
 "use strict";
 /** Netzausgleich-Logik — rein, ohne ioBroker. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveController = exports.computeGridBalanceTarget = exports.evaluateGridBalanceMinPrice = void 0;
+exports.evaluateGridBalanceMinPrice = evaluateGridBalanceMinPrice;
+exports.computeGridBalanceTarget = computeGridBalanceTarget;
+exports.resolveController = resolveController;
 /** price_allowed = current >= configured minimum. No median, no second switch. */
 function evaluateGridBalanceMinPrice(params) {
     const price = params.priceNowCt;
@@ -19,7 +21,6 @@ function evaluateGridBalanceMinPrice(params) {
         reasonDe: `Preis ${price.toFixed(1)} ct/kWh ≥ ${params.minPriceCtPerKwh.toFixed(1)} ct/kWh`,
     };
 }
-exports.evaluateGridBalanceMinPrice = evaluateGridBalanceMinPrice;
 function computeGridBalanceTarget(inputs) {
     const checksPassed = [];
     const checksFailed = [];
@@ -84,7 +85,6 @@ function computeGridBalanceTarget(inputs) {
         checksFailed,
     };
 }
-exports.computeGridBalanceTarget = computeGridBalanceTarget;
 function inactive(reasonDe, checksPassed, checksFailed) {
     return {
         active: false,
@@ -107,4 +107,3 @@ function resolveController(params) {
     }
     return "idle";
 }
-exports.resolveController = resolveController;

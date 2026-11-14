@@ -4,7 +4,8 @@
  * Never writes EVCC / Tibber / Sonnen / Ford / go-e. Never calls button triggers.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateEvTakeoverDecision = exports.applyEvTakeoverDiagnosis = void 0;
+exports.applyEvTakeoverDiagnosis = applyEvTakeoverDiagnosis;
+exports.evaluateEvTakeoverDecision = evaluateEvTakeoverDecision;
 const authority_1 = require("./authority");
 const energy_1 = require("./energy");
 const latest_start_1 = require("./latest_start");
@@ -38,7 +39,6 @@ function applyEvTakeoverDiagnosis(model, decision) {
         takeoverReason: decision.takeoverReason,
     };
 }
-exports.applyEvTakeoverDiagnosis = applyEvTakeoverDiagnosis;
 function evaluateEvTakeoverDecision(input) {
     const { model, nowMs } = input;
     const authority = (0, authority_1.resolveExternalAuthorityState)(model);
@@ -232,4 +232,3 @@ function evaluateEvTakeoverDecision(input) {
         explain,
     };
 }
-exports.evaluateEvTakeoverDecision = evaluateEvTakeoverDecision;

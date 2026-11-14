@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.allocationQualityFromUnallocated = exports.buildAllocationCandidates = exports.runAllocation = exports.effectiveMinPowerW = void 0;
+exports.effectiveMinPowerW = effectiveMinPowerW;
+exports.runAllocation = runAllocation;
+exports.buildAllocationCandidates = buildAllocationCandidates;
+exports.allocationQualityFromUnallocated = allocationQualityFromUnallocated;
 const quality_1 = require("../quality");
 const policy_1 = require("./policy");
 const slots_1 = require("./slots");
@@ -27,7 +30,6 @@ function effectiveMinPowerW(candidate) {
     }
     return null;
 }
-exports.effectiveMinPowerW = effectiveMinPowerW;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -340,11 +342,9 @@ function runAllocation(input) {
     }
     return { slots, allocations: allEntries, unallocated };
 }
-exports.runAllocation = runAllocation;
 function buildAllocationCandidates(contributions, globalMode, energyPriority) {
     return contributions.map((c) => (0, policy_1.buildAllocationCandidate)(c, globalMode, energyPriority));
 }
-exports.buildAllocationCandidates = buildAllocationCandidates;
 function allocationQualityFromUnallocated(unallocated, hasMandatoryGap) {
     if (hasMandatoryGap) {
         return (0, quality_1.operatorQuality)("degraded", "Pflichtbedarf nicht vollständig alloziert.");
@@ -354,4 +354,3 @@ function allocationQualityFromUnallocated(unallocated, hasMandatoryGap) {
     }
     return (0, quality_1.operatorQuality)("valid", "Daily Plan Allocation bereit.");
 }
-exports.allocationQualityFromUnallocated = allocationQualityFromUnallocated;

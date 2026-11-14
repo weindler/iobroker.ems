@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isSeasonallyPausedAddon = exports.isWinterOperationActive = exports.handleSeasonStateChange = exports.initSeasonControl = exports.WINTER_RUNTIME_STATE = void 0;
+exports.WINTER_RUNTIME_STATE = void 0;
+exports.initSeasonControl = initSeasonControl;
+exports.handleSeasonStateChange = handleSeasonStateChange;
+exports.isWinterOperationActive = isWinterOperationActive;
+exports.isSeasonallyPausedAddon = isSeasonallyPausedAddon;
 /** Laufzeit-Sperre für saisonal nicht verwendete Wärme-/Klima-Add-ons. */
 let winterActive = false;
 let configuredStateId = "";
@@ -48,7 +52,6 @@ async function initSeasonControl(host) {
     await host.subscribeForeignStatesAsync(configuredStateId);
     host.log.info(`Saisonsteuerung aktiv: ${configuredStateId}; Winter=${winterActive}`);
 }
-exports.initSeasonControl = initSeasonControl;
 async function handleSeasonStateChange(host, id, state) {
     if (!configuredStateId || id !== configuredStateId || !state)
         return false;
@@ -66,12 +69,9 @@ async function handleSeasonStateChange(host, id, state) {
     }
     return true;
 }
-exports.handleSeasonStateChange = handleSeasonStateChange;
 function isWinterOperationActive() {
     return winterActive;
 }
-exports.isWinterOperationActive = isWinterOperationActive;
 function isSeasonallyPausedAddon(addonId) {
     return winterActive && (addonId === "air_conditioning" || addonId === "immersion_heater");
 }
-exports.isSeasonallyPausedAddon = isSeasonallyPausedAddon;

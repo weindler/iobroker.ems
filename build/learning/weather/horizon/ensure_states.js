@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureWeatherHorizonStates = exports.weatherHorizonDayStatePrefix = void 0;
+exports.weatherHorizonDayStatePrefix = weatherHorizonDayStatePrefix;
+exports.ensureWeatherHorizonStates = ensureWeatherHorizonStates;
 const state_util_1 = require("../../../ems_light/state_util");
 const constants_1 = require("./constants");
 function numState(id, name, unit) {
@@ -27,7 +28,6 @@ function strState(id, name, def) {
 function weatherHorizonDayStatePrefix(dayIndex) {
     return `learning.weather.horizon.day${dayIndex}`;
 }
-exports.weatherHorizonDayStatePrefix = weatherHorizonDayStatePrefix;
 async function ensureWeatherHorizonStates(host) {
     await (0, state_util_1.ensureChannel)(host, "learning.weather", "EMS-Light Learning Weather");
     await (0, state_util_1.ensureChannel)(host, "learning.weather.horizon", "EMS-Light Weather Horizon (Tag 1–7)");
@@ -51,4 +51,3 @@ async function ensureWeatherHorizonStates(host) {
     }
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureWeatherHorizonStates = ensureWeatherHorizonStates;

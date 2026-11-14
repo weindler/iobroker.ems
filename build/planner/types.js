@@ -1,7 +1,8 @@
 "use strict";
 /** Deterministic EMS planner — Phase 1 MVP (dryrun-first). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emptyPlannerIntent = exports.PLANNER_ENGINE_VERSION = exports.PLANNER_SCHEMA_VERSION = void 0;
+exports.PLANNER_ENGINE_VERSION = exports.PLANNER_SCHEMA_VERSION = void 0;
+exports.emptyPlannerIntent = emptyPlannerIntent;
 exports.PLANNER_SCHEMA_VERSION = 1;
 exports.PLANNER_ENGINE_VERSION = "0.4.0";
 function emptyPlannerIntent(now) {
@@ -65,4 +66,3 @@ function emptyPlannerIntent(now) {
         },
     };
 }
-exports.emptyPlannerIntent = emptyPlannerIntent;

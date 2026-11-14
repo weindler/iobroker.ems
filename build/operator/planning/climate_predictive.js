@@ -9,7 +9,10 @@
  * Beeinflusst nur den Bedarf vor Unified — nicht Runtime/Safety/Hard-Off.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.climateDemandDigest = exports.climateWindowEndMs = exports.estimateClimateUnitDemand = exports.hourlyPointsInWindow = void 0;
+exports.hourlyPointsInWindow = hourlyPointsInWindow;
+exports.estimateClimateUnitDemand = estimateClimateUnitDemand;
+exports.climateWindowEndMs = climateWindowEndMs;
+exports.climateDemandDigest = climateDemandDigest;
 const config_1 = require("../../addons/air_conditioning/config");
 const climate_energy_1 = require("./climate_energy");
 /** Anteil der Fenster-Stunden mit Temperatur, bevor Predictive greifen darf. */
@@ -58,7 +61,6 @@ function hourlyPointsInWindow(points, fromMs, toMs) {
     })
         .sort((x, y) => Date.parse(x.startIso) - Date.parse(y.startIso));
 }
-exports.hourlyPointsInWindow = hourlyPointsInWindow;
 function hourlyCoverage(points, fromMs, toMs) {
     const span = toMs - fromMs;
     if (!(span > 0))
@@ -527,11 +529,9 @@ function estimateClimateUnitDemand(input) {
         reasonDe: parts.length ? parts.join("; ") : "Kein Climate-Bedarf.",
     };
 }
-exports.estimateClimateUnitDemand = estimateClimateUnitDemand;
 function climateWindowEndMs(now, remainingHours) {
     return now.getTime() + Math.max(0, remainingHours) * 3_600_000;
 }
-exports.climateWindowEndMs = climateWindowEndMs;
 function climateDemandDigest(input) {
     return input.units
         .map((u) => {
@@ -541,4 +541,3 @@ function climateDemandDigest(input) {
     })
         .join("|");
 }
-exports.climateDemandDigest = climateDemandDigest;

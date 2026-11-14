@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureForecastPlanStates = exports.FORECAST_PLAN_STATE_IDS = void 0;
+exports.FORECAST_PLAN_STATE_IDS = void 0;
+exports.ensureForecastPlanStates = ensureForecastPlanStates;
 const state_util_1 = require("../../ems_light/state_util");
 function strState(id, name, def) {
     return {
@@ -44,4 +45,3 @@ async function ensureForecastPlanStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureForecastPlanStates = ensureForecastPlanStates;

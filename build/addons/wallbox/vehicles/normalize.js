@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.normalizeWallboxVehicleProfiles = exports.normalizeWallboxVehicleProfile = void 0;
+exports.normalizeWallboxVehicleProfile = normalizeWallboxVehicleProfile;
+exports.normalizeWallboxVehicleProfiles = normalizeWallboxVehicleProfiles;
 const vehicle_id_1 = require("./vehicle_id");
 function strOrNull(raw) {
     if (raw === null || raw === undefined)
@@ -178,7 +179,6 @@ function normalizeWallboxVehicleProfile(input, nowIso) {
     }
     return { profile, invalidFields, reasons };
 }
-exports.normalizeWallboxVehicleProfile = normalizeWallboxVehicleProfile;
 function normalizeWallboxVehicleProfiles(inputs, nowIso) {
     const profiles = [];
     const errors = [];
@@ -201,4 +201,3 @@ function normalizeWallboxVehicleProfiles(inputs, nowIso) {
     }
     return { profiles, errors };
 }
-exports.normalizeWallboxVehicleProfiles = normalizeWallboxVehicleProfiles;

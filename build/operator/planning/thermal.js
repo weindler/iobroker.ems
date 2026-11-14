@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.planThermal = void 0;
+exports.planThermal = planThermal;
 const inputs_1 = require("../../planner/inputs");
 const thermal_forecast_1 = require("./thermal_forecast");
 function enabledStages(config) {
@@ -82,4 +82,3 @@ function planThermal(input) {
     const minRequired = stages[stages.length - 1]?.nominalPowerW ?? 0;
     return none(`PV-Überschuss ${input.surplusW} W reicht nicht für eine Stufe (kleinste Stufe ${minRequired} W).`);
 }
-exports.planThermal = planThermal;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.lookupVehicleMapEntry = void 0;
+exports.lookupVehicleMapEntry = lookupVehicleMapEntry;
 function norm(s) {
     if (s == null)
         return null;
@@ -31,4 +31,3 @@ function lookupVehicleMapEntry(entries, vehicleName, vehicleTitle = null) {
     }
     return null;
 }
-exports.lookupVehicleMapEntry = lookupVehicleMapEntry;

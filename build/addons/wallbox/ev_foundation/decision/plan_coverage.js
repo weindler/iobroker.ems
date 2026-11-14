@@ -3,7 +3,7 @@
  * External smart-plan coverage from normalized slots only.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.computePlanCoverage = void 0;
+exports.computePlanCoverage = computePlanCoverage;
 const remaining_energy_1 = require("../external/remaining_energy");
 const ENERGY_EPS_KWH = 0.05;
 const SOC_EPS_PCT = 0.5;
@@ -72,4 +72,3 @@ function computePlanCoverage(input) {
         remainingEnergyEstimated: estimated,
     };
 }
-exports.computePlanCoverage = computePlanCoverage;

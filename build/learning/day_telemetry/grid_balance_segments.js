@@ -4,7 +4,10 @@
  * Stabilität nur fürs Learning — keine feste Einschwing-Minutenlogik.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.advanceOffWindow = exports.advanceGridBalanceEpisode = exports.closeOffWindow = exports.closeGridBalanceEpisode = void 0;
+exports.closeGridBalanceEpisode = closeGridBalanceEpisode;
+exports.closeOffWindow = closeOffWindow;
+exports.advanceGridBalanceEpisode = advanceGridBalanceEpisode;
+exports.advanceOffWindow = advanceOffWindow;
 const constants_1 = require("../grid_balance_economics/constants");
 const stability_1 = require("../grid_balance_economics/stability");
 function kwhFromW(w, dtSec) {
@@ -56,7 +59,6 @@ function closeGridBalanceEpisode(open, endTs, abortReason, list) {
     };
     return capList([...list, seg], constants_1.MAX_GB_SEGMENTS_PER_DAY);
 }
-exports.closeGridBalanceEpisode = closeGridBalanceEpisode;
 function closeOffWindow(open, endTs, list) {
     if (!open || endTs <= open.startTs)
         return list;
@@ -80,7 +82,6 @@ function closeOffWindow(open, endTs, list) {
         return list;
     return capList([...list, w], constants_1.MAX_OFF_WINDOWS_PER_DAY);
 }
-exports.closeOffWindow = closeOffWindow;
 function advanceGridBalanceEpisode(open, stabilityBuf, sample, prevTs, list) {
     const buf = (0, stability_1.pushStabilitySample)(stabilityBuf, sample, constants_1.STABILITY_MIN_SAMPLES + 2);
     const dtSec = prevTs != null && sample.ts > prevTs ? (sample.ts - prevTs) / 1000 : 0;
@@ -172,7 +173,6 @@ function advanceGridBalanceEpisode(open, stabilityBuf, sample, prevTs, list) {
     }
     return { open: next, buf, list };
 }
-exports.advanceGridBalanceEpisode = advanceGridBalanceEpisode;
 function advanceOffWindow(open, stabilityBuf, sample, prevTs, list) {
     const dtSec = prevTs != null && sample.ts > prevTs ? (sample.ts - prevTs) / 1000 : 0;
     const gbOn = sample.gbActive || (sample.gbEffectiveW != null && sample.gbEffectiveW > 10);
@@ -225,4 +225,3 @@ function advanceOffWindow(open, stabilityBuf, sample, prevTs, list) {
     };
     return { open: next, list };
 }
-exports.advanceOffWindow = advanceOffWindow;

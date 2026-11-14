@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isReadOnlyAddon = exports.addonHasCapability = exports.commandNeedsCapability = exports.ADDON_DEFAULT_CAPABILITIES = exports.EMS_ADDON_IDS = void 0;
+exports.ADDON_DEFAULT_CAPABILITIES = exports.EMS_ADDON_IDS = void 0;
+exports.commandNeedsCapability = commandNeedsCapability;
+exports.addonHasCapability = addonHasCapability;
+exports.isReadOnlyAddon = isReadOnlyAddon;
 /** EMS addon_id list (aligned with EMS snapshot catalog). */
 exports.EMS_ADDON_IDS = [
     "sensorics",
@@ -78,16 +81,13 @@ function commandNeedsCapability(addonId, command) {
         return perAddon[command];
     return null;
 }
-exports.commandNeedsCapability = commandNeedsCapability;
 function addonHasCapability(addonId, cap) {
     const list = exports.ADDON_DEFAULT_CAPABILITIES[addonId];
     return list?.includes(cap) ?? false;
 }
-exports.addonHasCapability = addonHasCapability;
 function isReadOnlyAddon(addonId) {
     const list = exports.ADDON_DEFAULT_CAPABILITIES[addonId];
     if (!list?.length)
         return false;
     return list.length === 1 && list[0] === "supports_read_only";
 }
-exports.isReadOnlyAddon = isReadOnlyAddon;

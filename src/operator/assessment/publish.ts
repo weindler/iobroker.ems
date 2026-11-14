@@ -200,13 +200,19 @@ export async function publishOperationalAssessment(
 	};
 
 	if (buildInput.ev) buildInput.ev.sourceFresh = await readBool(host, "addons.wallbox.status.ev_foundation.ev_execution_source_fresh");
-	const assessment = buildOperationalAssessment(buildInput);
 	const outlook = buildOperatorOutlook72h({
 		now: input.now,
 		timezone: input.timezone,
 		plan: input.plan,
 		plannerInput: input.plannerInput,
 	});
+	// "Heute X kWh PV" muss zur Kachel passen: bisher erzeugt + noch erwarteter Rest laut Plan.
+	const actualTodayKwh = await readNum(host, "learning.pv_bias.actual_today_kwh");
+	const day0 = outlook.days[0];
+	if (actualTodayKwh !== null && day0 && day0.expectedPvKwh !== null && day0.partialDay !== false) {
+		buildInput.pvTodayKwh = Math.round((actualTodayKwh + day0.expectedPvKwh) * 10) / 10;
+	}
+	const assessment = buildOperationalAssessment(buildInput);
 	const writer = host as unknown as StateHost;
 	const todayBattery = outlook.days[0]?.battery;
 	if ((await readStr(host, "addons.battery.mode")) === "off") {

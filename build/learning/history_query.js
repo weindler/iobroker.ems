@@ -5,7 +5,17 @@
  * getHistoryAsync nur wenn kein sendToAsync am Host.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchHistoryRowsLookback = exports.fetchHistoryRowsAggregated = exports.fetchHistoryRowsInRange = exports.historyCustomEnabled = exports.resetHistoryQueryQueueForTests = exports.withHistoryTimeout = exports.historyStateCandidates = exports.dayBoundsMs = exports.normalizeHistoryRows = exports.normalizeHistoryTs = exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_QUERY_BULK_OPTIONS = exports.HISTORY_QUERY_PER_DAY_OPTIONS = exports.HISTORY_EMPTY_PROBE_DAYS = exports.HISTORY_AGGREGATES = exports.BULK_LOOKBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
+exports.HISTORY_QUERY_OPTIONS = exports.HISTORY_QUERY_BULK_OPTIONS = exports.HISTORY_QUERY_PER_DAY_OPTIONS = exports.HISTORY_EMPTY_PROBE_DAYS = exports.HISTORY_AGGREGATES = exports.BULK_LOOKBACK_MAX_DAYS = exports.HISTORY_DAY_CONCURRENCY = exports.HISTORY_BULK_TIMEOUT_MS = exports.HISTORY_CHUNK_TIMEOUT_MS = exports.HISTORY_ROWS_PER_DAY = void 0;
+exports.normalizeHistoryTs = normalizeHistoryTs;
+exports.normalizeHistoryRows = normalizeHistoryRows;
+exports.dayBoundsMs = dayBoundsMs;
+exports.historyStateCandidates = historyStateCandidates;
+exports.withHistoryTimeout = withHistoryTimeout;
+exports.resetHistoryQueryQueueForTests = resetHistoryQueryQueueForTests;
+exports.historyCustomEnabled = historyCustomEnabled;
+exports.fetchHistoryRowsInRange = fetchHistoryRowsInRange;
+exports.fetchHistoryRowsAggregated = fetchHistoryRowsAggregated;
+exports.fetchHistoryRowsLookback = fetchHistoryRowsLookback;
 exports.HISTORY_ROWS_PER_DAY = 500;
 exports.HISTORY_CHUNK_TIMEOUT_MS = 45_000;
 exports.HISTORY_BULK_TIMEOUT_MS = 45_000;
@@ -41,7 +51,6 @@ function normalizeHistoryTs(ts) {
     }
     return ts;
 }
-exports.normalizeHistoryTs = normalizeHistoryTs;
 function normalizeHistoryRows(rows) {
     return rows.map((row) => {
         if (!row || typeof row.ts !== "number") {
@@ -51,7 +60,6 @@ function normalizeHistoryRows(rows) {
         return ts === row.ts ? row : { ...row, ts };
     });
 }
-exports.normalizeHistoryRows = normalizeHistoryRows;
 function dayBoundsMs(dayOffset) {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -59,7 +67,6 @@ function dayBoundsMs(dayOffset) {
     const start = d.getTime();
     return { start, end: start + MS_PER_DAY };
 }
-exports.dayBoundsMs = dayBoundsMs;
 function uniqueIds(ids) {
     const seen = new Set();
     const out = [];
@@ -95,7 +102,6 @@ async function historyStateCandidates(host, stateId) {
         return [stateId];
     }
 }
-exports.historyStateCandidates = historyStateCandidates;
 async function withHistoryTimeout(promise, timeoutMs) {
     let timer = null;
     try {
@@ -114,7 +120,6 @@ async function withHistoryTimeout(promise, timeoutMs) {
             clearTimeout(timer);
     }
 }
-exports.withHistoryTimeout = withHistoryTimeout;
 async function mapInBatches(items, batchSize, fn) {
     const out = [];
     for (let i = 0; i < items.length; i += batchSize) {
@@ -199,7 +204,6 @@ function resetHistoryQueryQueueForTests() {
     historyQueryChain = Promise.resolve();
     historyUnavailableWarned.clear();
 }
-exports.resetHistoryQueryQueueForTests = resetHistoryQueryQueueForTests;
 const historyUnavailableWarned = new Set();
 function historyCustomEnabled(obj) {
     if (obj == null)
@@ -214,7 +218,6 @@ function historyCustomEnabled(obj) {
     }
     return false;
 }
-exports.historyCustomEnabled = historyCustomEnabled;
 function warnHistoryUnavailableOnce(host, stateId, detail) {
     if (historyUnavailableWarned.has(stateId))
         return;
@@ -235,7 +238,6 @@ async function fetchHistoryRowsInRange(host, stateId, startMs, endMs, count = ex
     const result = await fetchHistoryRowsInRangeDetailed(host, stateId, startMs, endMs, count, timeoutMs, aggregate);
     return result.rows;
 }
-exports.fetchHistoryRowsInRange = fetchHistoryRowsInRange;
 /** Stündlich/täglich aggregiert — umgeht kaputte onChange-Timestamps in Rohdaten. */
 async function fetchHistoryRowsAggregated(host, stateId, startMs, endMs, count, timeoutMs, aggregate, stepMs) {
     if (!stateId || stepMs <= 0) {
@@ -265,7 +267,6 @@ async function fetchHistoryRowsAggregated(host, stateId, startMs, endMs, count, 
     }
     return [];
 }
-exports.fetchHistoryRowsAggregated = fetchHistoryRowsAggregated;
 function bulkCountForDays(days) {
     return Math.min(Math.max(days * 500, 500), 8_000);
 }
@@ -432,4 +433,3 @@ async function fetchHistoryRowsLookback(host, stateId, lookbackDays, countPerDay
     }
     return [];
 }
-exports.fetchHistoryRowsLookback = fetchHistoryRowsLookback;

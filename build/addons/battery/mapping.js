@@ -1,7 +1,12 @@
 "use strict";
 /** Batterie-Mapping: logische Rollen → ioBroker-States (jsonConfig / objectId-Picker). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.missingMappings = exports.isMappingConfigured = exports.batteryMappingCommandsForEnsure = exports.batteryMappingNativeFromConfig = exports.batteryMappingFromConfig = exports.BATTERY_MAPPING_FLAT_PREFIX = exports.BATTERY_MAPPING_ROLES = exports.BATTERY_WRITE_ROLES = exports.BATTERY_READ_ROLES = void 0;
+exports.BATTERY_MAPPING_FLAT_PREFIX = exports.BATTERY_MAPPING_ROLES = exports.BATTERY_WRITE_ROLES = exports.BATTERY_READ_ROLES = void 0;
+exports.batteryMappingFromConfig = batteryMappingFromConfig;
+exports.batteryMappingNativeFromConfig = batteryMappingNativeFromConfig;
+exports.batteryMappingCommandsForEnsure = batteryMappingCommandsForEnsure;
+exports.isMappingConfigured = isMappingConfigured;
+exports.missingMappings = missingMappings;
 exports.BATTERY_READ_ROLES = [
     "soc_pct",
     "power_w",
@@ -65,7 +70,6 @@ function batteryMappingFromConfig(config) {
     }
     return table;
 }
-exports.batteryMappingFromConfig = batteryMappingFromConfig;
 /** Für mapping_sync: nur Rollen mit gesetztem target_state (leichte Oberfläche). */
 function batteryMappingNativeFromConfig(config) {
     const table = batteryMappingFromConfig(config);
@@ -78,18 +82,14 @@ function batteryMappingNativeFromConfig(config) {
     }
     return out;
 }
-exports.batteryMappingNativeFromConfig = batteryMappingNativeFromConfig;
 function batteryMappingCommandsForEnsure(config) {
     return Object.keys(batteryMappingNativeFromConfig(config && typeof config === "object" ? config : {}));
 }
-exports.batteryMappingCommandsForEnsure = batteryMappingCommandsForEnsure;
 /** Eine Rolle gilt als konfiguriert, wenn enabled und ein Ziel-State gesetzt ist. */
 function isMappingConfigured(table, role) {
     const slot = table[role];
     return !!slot && slot.enabled && slot.targetState.length > 0;
 }
-exports.isMappingConfigured = isMappingConfigured;
 function missingMappings(table, roles) {
     return roles.filter((r) => !isMappingConfigured(table, r));
 }
-exports.missingMappings = missingMappings;

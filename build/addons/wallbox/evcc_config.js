@@ -1,7 +1,15 @@
 "use strict";
 /** EVCC read-only telemetry config (Phase 3B.1). Intent fields stay on intent_evcc_* keys. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hasLegacyWallboxWriteMapping = exports.wallboxEvccTelemetryMappingFromConfig = exports.stateIdForRole = exports.configuredEvccTelemetryStateIds = exports.configuredWallboxHoldSignalStateIds = exports.wallboxHoldSignalConfigFromAdapter = exports.wallboxEvccTelemetryConfigFromAdapter = exports.emptyWallboxEvccTelemetryConfig = exports.EVCC_TELEMETRY_ROLE_CONFIG_FIELD = exports.WB_LEGACY_VEHICLE_SOC = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE = exports.WB_TIBBER_GRID_REWARDS_ACTIVE = exports.WB_EXTERNAL_VEHICLE_CHARGE = exports.WB_EVCC_SMART_COST_ACTIVE = exports.WB_EVCC_SMART_COST_LIMIT = exports.WB_EVCC_VEHICLE_DETECTION_ACTIVE = exports.WB_EVCC_SESSION_PRICE_PER_KWH = exports.WB_EVCC_SESSION_PRICE = exports.WB_EVCC_CHARGE_VOLTAGES = exports.WB_EVCC_CHARGE_CURRENTS = exports.WB_EVCC_OFFERED_CURRENT = exports.WB_EVCC_EFFECTIVE_MIN_CURRENT = exports.WB_EVCC_EFFECTIVE_MAX_CURRENT = exports.WB_EVCC_CHARGE_REMAINING_DURATION = exports.WB_EVCC_VEHICLE_ODOMETER = exports.WB_EVCC_VEHICLE_RANGE = exports.WB_EVCC_CONNECTION = exports.WB_EVCC_LOADPOINT_MODE = exports.WB_EVCC_BATTERY_BOOST = exports.WB_EVCC_EFFECTIVE_LIMIT_SOC = exports.WB_EVCC_VEHICLE_TITLE = exports.WB_EVCC_VEHICLE_NAME = exports.WB_EVCC_CHARGE_REMAINING_ENERGY = exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL = exports.WB_EVCC_BATTERY_MODE = exports.WB_EVCC_MAX_CURRENT_A = exports.WB_EVCC_MIN_CURRENT_A = exports.WB_EVCC_CONFIGURED_PHASES = exports.WB_EVCC_ACTIVE_PHASES = exports.WB_EVCC_EFFECTIVE_PLAN_TIME = exports.WB_EVCC_PLAN_TIME = exports.WB_EVCC_PLAN_SOC = exports.WB_EVCC_PLAN_ACTIVE = exports.WB_EVCC_VEHICLE_SOC = exports.WB_EVCC_SESSION_ENERGY_KWH = exports.WB_EVCC_CHARGE_POWER_W = exports.WB_EVCC_CHARGING = exports.WB_EVCC_CONNECTED = exports.WB_EVCC_ENABLED = void 0;
+exports.EVCC_TELEMETRY_ROLE_CONFIG_FIELD = exports.WB_LEGACY_VEHICLE_SOC = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE = exports.WB_TIBBER_GRID_REWARDS_ACTIVE = exports.WB_EXTERNAL_VEHICLE_CHARGE = exports.WB_EVCC_SMART_COST_ACTIVE = exports.WB_EVCC_SMART_COST_LIMIT = exports.WB_EVCC_VEHICLE_DETECTION_ACTIVE = exports.WB_EVCC_SESSION_PRICE_PER_KWH = exports.WB_EVCC_SESSION_PRICE = exports.WB_EVCC_CHARGE_VOLTAGES = exports.WB_EVCC_CHARGE_CURRENTS = exports.WB_EVCC_OFFERED_CURRENT = exports.WB_EVCC_EFFECTIVE_MIN_CURRENT = exports.WB_EVCC_EFFECTIVE_MAX_CURRENT = exports.WB_EVCC_CHARGE_REMAINING_DURATION = exports.WB_EVCC_VEHICLE_ODOMETER = exports.WB_EVCC_VEHICLE_RANGE = exports.WB_EVCC_CONNECTION = exports.WB_EVCC_LOADPOINT_MODE = exports.WB_EVCC_BATTERY_BOOST = exports.WB_EVCC_EFFECTIVE_LIMIT_SOC = exports.WB_EVCC_VEHICLE_TITLE = exports.WB_EVCC_VEHICLE_NAME = exports.WB_EVCC_CHARGE_REMAINING_ENERGY = exports.WB_EVCC_BATTERY_DISCHARGE_CONTROL = exports.WB_EVCC_BATTERY_MODE = exports.WB_EVCC_MAX_CURRENT_A = exports.WB_EVCC_MIN_CURRENT_A = exports.WB_EVCC_CONFIGURED_PHASES = exports.WB_EVCC_ACTIVE_PHASES = exports.WB_EVCC_EFFECTIVE_PLAN_TIME = exports.WB_EVCC_PLAN_TIME = exports.WB_EVCC_PLAN_SOC = exports.WB_EVCC_PLAN_ACTIVE = exports.WB_EVCC_VEHICLE_SOC = exports.WB_EVCC_SESSION_ENERGY_KWH = exports.WB_EVCC_CHARGE_POWER_W = exports.WB_EVCC_CHARGING = exports.WB_EVCC_CONNECTED = exports.WB_EVCC_ENABLED = void 0;
+exports.emptyWallboxEvccTelemetryConfig = emptyWallboxEvccTelemetryConfig;
+exports.wallboxEvccTelemetryConfigFromAdapter = wallboxEvccTelemetryConfigFromAdapter;
+exports.wallboxHoldSignalConfigFromAdapter = wallboxHoldSignalConfigFromAdapter;
+exports.configuredWallboxHoldSignalStateIds = configuredWallboxHoldSignalStateIds;
+exports.configuredEvccTelemetryStateIds = configuredEvccTelemetryStateIds;
+exports.stateIdForRole = stateIdForRole;
+exports.wallboxEvccTelemetryMappingFromConfig = wallboxEvccTelemetryMappingFromConfig;
+exports.hasLegacyWallboxWriteMapping = hasLegacyWallboxWriteMapping;
 exports.WB_EVCC_ENABLED = "wb_evcc_enabled_state";
 exports.WB_EVCC_CONNECTED = "wb_evcc_connected_state";
 exports.WB_EVCC_CHARGING = "wb_evcc_charging_state";
@@ -162,7 +170,6 @@ function emptyWallboxEvccTelemetryConfig() {
         smartCostActiveStateId: "",
     };
 }
-exports.emptyWallboxEvccTelemetryConfig = emptyWallboxEvccTelemetryConfig;
 function strField(c, key) {
     const v = c[key];
     return typeof v === "string" ? v.trim() : "";
@@ -210,7 +217,6 @@ function wallboxEvccTelemetryConfigFromAdapter(config) {
         smartCostActiveStateId: strField(c, exports.WB_EVCC_SMART_COST_ACTIVE),
     };
 }
-exports.wallboxEvccTelemetryConfigFromAdapter = wallboxEvccTelemetryConfigFromAdapter;
 function wallboxHoldSignalConfigFromAdapter(config) {
     const c = config && typeof config === "object" ? config : {};
     return {
@@ -218,7 +224,6 @@ function wallboxHoldSignalConfigFromAdapter(config) {
         tibberGridRewardsActiveStateId: strField(c, exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE) || strField(c, exports.WB_TIBBER_GRID_REWARDS_ACTIVE),
     };
 }
-exports.wallboxHoldSignalConfigFromAdapter = wallboxHoldSignalConfigFromAdapter;
 function configuredWallboxHoldSignalStateIds(cfg) {
     const ids = [];
     if (cfg.externalVehicleChargeStateId)
@@ -227,7 +232,6 @@ function configuredWallboxHoldSignalStateIds(cfg) {
         ids.push(cfg.tibberGridRewardsActiveStateId);
     return ids;
 }
-exports.configuredWallboxHoldSignalStateIds = configuredWallboxHoldSignalStateIds;
 function configuredEvccTelemetryStateIds(cfg) {
     const ids = [];
     for (const role of exports.WALLBOX_EVCC_TELEMETRY_ROLES) {
@@ -237,11 +241,9 @@ function configuredEvccTelemetryStateIds(cfg) {
     }
     return ids;
 }
-exports.configuredEvccTelemetryStateIds = configuredEvccTelemetryStateIds;
 function stateIdForRole(cfg, role) {
     return cfg[exports.EVCC_TELEMETRY_ROLE_CONFIG_FIELD[role]] ?? "";
 }
-exports.stateIdForRole = stateIdForRole;
 /** Builds addons.wallbox.mapping.* entries from flat wb_evcc_* config keys. */
 function wallboxEvccTelemetryMappingFromConfig(config) {
     const cfg = wallboxEvccTelemetryConfigFromAdapter(config);
@@ -254,7 +256,6 @@ function wallboxEvccTelemetryMappingFromConfig(config) {
     }
     return out;
 }
-exports.wallboxEvccTelemetryMappingFromConfig = wallboxEvccTelemetryMappingFromConfig;
 /** True when any legacy go-e write mapping is configured (for failsafe/pipeline guard). */
 function hasLegacyWallboxWriteMapping(config) {
     const c = config && typeof config === "object" ? config : {};
@@ -266,4 +267,3 @@ function hasLegacyWallboxWriteMapping(config) {
     ];
     return legacyKeys.some((k) => typeof c[k] === "string" && String(c[k]).trim().length > 0);
 }
-exports.hasLegacyWallboxWriteMapping = hasLegacyWallboxWriteMapping;

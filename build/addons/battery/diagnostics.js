@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assembleBatterySnapshot = void 0;
+exports.assembleBatterySnapshot = assembleBatterySnapshot;
 const capacity_1 = require("./core/capacity");
 const telemetry_1 = require("./core/telemetry");
 const mapping_1 = require("./mapping");
@@ -51,4 +51,3 @@ function assembleBatterySnapshot(input) {
         missingMappings: missing,
     };
 }
-exports.assembleBatterySnapshot = assembleBatterySnapshot;

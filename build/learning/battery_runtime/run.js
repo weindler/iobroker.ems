@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runBatteryRuntimeLearning = void 0;
+exports.runBatteryRuntimeLearning = runBatteryRuntimeLearning;
 const config_1 = require("./config");
 const history_1 = require("./history");
 const mapping_1 = require("./mapping");
@@ -196,4 +196,3 @@ async function runBatteryRuntimeLearning(host) {
         await writeResult(host, (0, math_1.errorResult)(msg, cfg, { soc: sources.socStateId, power: sources.powerStateId }), lastRun);
     }
 }
-exports.runBatteryRuntimeLearning = runBatteryRuntimeLearning;

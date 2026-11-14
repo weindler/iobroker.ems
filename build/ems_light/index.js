@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopEmsLightPhase1 = exports.initEmsLightPhase1 = exports.startEmsLightPhase1Runtime = exports.ensureEmsLightStateTree = exports.getLearningStateTreeHost = void 0;
+exports.getLearningStateTreeHost = getLearningStateTreeHost;
+exports.ensureEmsLightStateTree = ensureEmsLightStateTree;
+exports.startEmsLightPhase1Runtime = startEmsLightPhase1Runtime;
+exports.initEmsLightPhase1 = initEmsLightPhase1;
+exports.stopEmsLightPhase1 = stopEmsLightPhase1;
 const pv_bias_1 = require("../learning/pv_bias");
 const weather_1 = require("../learning/weather");
 const data_dir_1 = require("../learning/data_dir");
@@ -103,7 +107,6 @@ function buildIntentHost(adapter) {
 function getLearningStateTreeHost() {
     return learningHost;
 }
-exports.getLearningStateTreeHost = getLearningStateTreeHost;
 /** Phase B — EMS-Light-, Planner-, Policy-, Intent- und Learning-Objekte. */
 async function ensureEmsLightStateTree(adapter) {
     const version = String(adapter.common?.version ?? "0.0.0");
@@ -117,7 +120,6 @@ async function ensureEmsLightStateTree(adapter) {
     await (0, intent_1.ensureIntentStates)(buildIntentHost(adapter));
     learningHost = await (0, pv_bias_1.ensureLearningStateTree)(adapter);
 }
-exports.ensureEmsLightStateTree = ensureEmsLightStateTree;
 /** Phase F — Runtime, Ticks und initiale Auswertung (nach Bootstrap-Barriere). */
 async function startEmsLightPhase1Runtime(adapter) {
     (0, execution_mode_1.setAddonModeReplanHook)((info) => {
@@ -237,12 +239,10 @@ async function startEmsLightPhase1Runtime(adapter) {
     }, sec * 1000);
     adapter.log.debug(`EMS-Light Phase 1 ready (read-only, tick ${sec}s)`);
 }
-exports.startEmsLightPhase1Runtime = startEmsLightPhase1Runtime;
 async function initEmsLightPhase1(adapter) {
     await ensureEmsLightStateTree(adapter);
     await startEmsLightPhase1Runtime(adapter);
 }
-exports.initEmsLightPhase1 = initEmsLightPhase1;
 /** Nur Live-Tick-Timer stoppen (Learning-Intervalle laufen weiter). */
 function stopEmsLightTick() {
     if (tickTimer) {
@@ -272,4 +272,3 @@ async function stopEmsLightPhase1() {
     learningHost = null;
     stopEmsLightTick();
 }
-exports.stopEmsLightPhase1 = stopEmsLightPhase1;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.defaultBatteryWinterConfig = exports.defaultBatteryWinterDays = void 0;
+exports.defaultBatteryWinterDays = defaultBatteryWinterDays;
+exports.defaultBatteryWinterConfig = defaultBatteryWinterConfig;
 const battery_winter_config_1 = require("./battery_winter_config");
 /** Test-/Default-Horizont für Planner-Inputs. */
 function defaultBatteryWinterDays() {
@@ -9,7 +10,6 @@ function defaultBatteryWinterDays() {
         { dayIndex: 2, dateKey: "2026-01-02", pvKwh: 6, loadKwh: 12, pvConfidencePct: 75 },
     ];
 }
-exports.defaultBatteryWinterDays = defaultBatteryWinterDays;
 function defaultBatteryWinterConfig(config) {
     return (0, battery_winter_config_1.batteryWinterPlanConfigFromAdapter)(config ?? {
         battery_capacity_net_kwh: 10,
@@ -18,4 +18,3 @@ function defaultBatteryWinterConfig(config) {
         bat_hw_max_soc_pct: 100,
     });
 }
-exports.defaultBatteryWinterConfig = defaultBatteryWinterConfig;

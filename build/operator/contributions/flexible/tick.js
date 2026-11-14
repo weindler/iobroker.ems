@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runFlexibleContributionsTick = exports.flexibleContributionsRevisionForTest = exports.resetFlexibleContributionsRevisionForTest = void 0;
+exports.resetFlexibleContributionsRevisionForTest = resetFlexibleContributionsRevisionForTest;
+exports.flexibleContributionsRevisionForTest = flexibleContributionsRevisionForTest;
+exports.runFlexibleContributionsTick = runFlexibleContributionsTick;
 const state_write_1 = require("../../../policy/core/state_write");
 const types_1 = require("./types");
 const read_1 = require("./read");
@@ -11,11 +13,9 @@ function resetFlexibleContributionsRevisionForTest() {
     lastRevisionPayload = "";
     revision = 0;
 }
-exports.resetFlexibleContributionsRevisionForTest = resetFlexibleContributionsRevisionForTest;
 function flexibleContributionsRevisionForTest() {
     return revision;
 }
-exports.flexibleContributionsRevisionForTest = flexibleContributionsRevisionForTest;
 function partitionFlexible(contributions) {
     const active = [];
     const excluded = [];
@@ -92,4 +92,3 @@ async function runFlexibleContributionsTick(host, gridForecast) {
     }
     return contributions;
 }
-exports.runFlexibleContributionsTick = runFlexibleContributionsTick;

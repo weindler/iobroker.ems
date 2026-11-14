@@ -6,7 +6,10 @@
  * - Newton darf trotzdem Deadline/empty_at treiben, ohne "cycle-valid" zu behaupten
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.thermalLearningDegradedCauseDe = exports.thermalEmptyAtUsableForPlanning = exports.hasNewtonEmptyAtModel = exports.hasCycleCoolingModel = void 0;
+exports.hasCycleCoolingModel = hasCycleCoolingModel;
+exports.hasNewtonEmptyAtModel = hasNewtonEmptyAtModel;
+exports.thermalEmptyAtUsableForPlanning = thermalEmptyAtUsableForPlanning;
+exports.thermalLearningDegradedCauseDe = thermalLearningDegradedCauseDe;
 /** Abgeschlossene Peak→Floor-Zyklen mit positiver linearer Rate. */
 function hasCycleCoolingModel(learning) {
     return (!!learning &&
@@ -14,7 +17,6 @@ function hasCycleCoolingModel(learning) {
         learning.coolingRateCPerHAvg > 0 &&
         (learning.samples ?? 0) > 0);
 }
-exports.hasCycleCoolingModel = hasCycleCoolingModel;
 /** Newton-k + zukünftige empty_at (auch bei samples=0). */
 function hasNewtonEmptyAtModel(learning) {
     return (!!learning &&
@@ -22,7 +24,6 @@ function hasNewtonEmptyAtModel(learning) {
         learning.coolingConstantPerH !== null &&
         learning.coolingConstantPerH > 0);
 }
-exports.hasNewtonEmptyAtModel = hasNewtonEmptyAtModel;
 /**
  * Planning darf empty_at nutzen bei valid|degraded wenn Cycle-Rate oder Newton-Modell trägt.
  * status bleibt degraded bei samples&lt;3 — kein falsches „valid cycles“.
@@ -36,7 +37,6 @@ function thermalEmptyAtUsableForPlanning(learning) {
         return true;
     return hasNewtonEmptyAtModel(learning);
 }
-exports.thermalEmptyAtUsableForPlanning = thermalEmptyAtUsableForPlanning;
 /** Kurzer Diagnose-Code für Briefing/Details. */
 function thermalLearningDegradedCauseDe(learning) {
     if (!learning || learning.status !== "degraded")
@@ -50,4 +50,3 @@ function thermalLearningDegradedCauseDe(learning) {
     }
     return `thermal learning degraded (${samples} cycles)`;
 }
-exports.thermalLearningDegradedCauseDe = thermalLearningDegradedCauseDe;

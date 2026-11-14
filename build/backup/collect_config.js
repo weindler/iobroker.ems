@@ -1,6 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectPoliciesExport = exports.collectVehicleProfilesExport = exports.filterVehicleProfileRow = exports.filterVehicleMapRow = exports.collectMappingsExport = exports.collectAdapterConfigExport = exports.filterAllowlistedConfig = exports.isAllowedConfigKey = exports.VEHICLE_PROFILE_ALLOWED_KEYS = exports.VEHICLE_MAP_ALLOWED_KEYS = void 0;
+exports.VEHICLE_PROFILE_ALLOWED_KEYS = exports.VEHICLE_MAP_ALLOWED_KEYS = void 0;
+exports.isAllowedConfigKey = isAllowedConfigKey;
+exports.filterAllowlistedConfig = filterAllowlistedConfig;
+exports.collectAdapterConfigExport = collectAdapterConfigExport;
+exports.collectMappingsExport = collectMappingsExport;
+exports.filterVehicleMapRow = filterVehicleMapRow;
+exports.filterVehicleProfileRow = filterVehicleProfileRow;
+exports.collectVehicleProfilesExport = collectVehicleProfilesExport;
+exports.collectPoliciesExport = collectPoliciesExport;
 const execution_mode_1 = require("../execution_mode");
 const schema_1 = require("./schema");
 /** Erlaubte Native-Config-Präfixe (Allowlist). */
@@ -80,7 +88,6 @@ function isAllowedConfigKey(key) {
         return true;
     return ALLOWED_PREFIXES.some((p) => key.startsWith(p));
 }
-exports.isAllowedConfigKey = isAllowedConfigKey;
 function filterAllowlistedConfig(config) {
     const out = {};
     for (const [key, val] of Object.entries(config)) {
@@ -92,7 +99,6 @@ function filterAllowlistedConfig(config) {
     }
     return out;
 }
-exports.filterAllowlistedConfig = filterAllowlistedConfig;
 function filterMappingObject(mapping) {
     const out = {};
     for (const [addonKey, addonVal] of Object.entries(mapping)) {
@@ -137,7 +143,6 @@ function collectAdapterConfigExport(config) {
         },
     };
 }
-exports.collectAdapterConfigExport = collectAdapterConfigExport;
 function collectMappingsExport(config) {
     const raw = config && typeof config === "object" ? config : {};
     const mapping = raw.mapping && typeof raw.mapping === "object" ? raw.mapping : {};
@@ -154,7 +159,6 @@ function collectMappingsExport(config) {
     }
     return out;
 }
-exports.collectMappingsExport = collectMappingsExport;
 function filterVehicleMapRow(row) {
     if (!row || typeof row !== "object" || Array.isArray(row))
         return row;
@@ -168,12 +172,10 @@ function filterVehicleMapRow(row) {
     }
     return out;
 }
-exports.filterVehicleMapRow = filterVehicleMapRow;
 /** @deprecated use filterVehicleMapRow */
 function filterVehicleProfileRow(row) {
     return filterVehicleMapRow(row);
 }
-exports.filterVehicleProfileRow = filterVehicleProfileRow;
 /**
  * Archive path stays `config/vehicle_profiles.json` for schema stability.
  * Content is slim `{ entries: [...] }` from `wb_vehicle_map` (v0.1.227+).
@@ -206,7 +208,6 @@ function collectVehicleProfilesExport(config) {
     }
     return { entries };
 }
-exports.collectVehicleProfilesExport = collectVehicleProfilesExport;
 function collectPoliciesExport(config) {
     const raw = config && typeof config === "object" ? config : {};
     const out = {};
@@ -218,4 +219,3 @@ function collectPoliciesExport(config) {
     }
     return out;
 }
-exports.collectPoliciesExport = collectPoliciesExport;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureFlexibleContributionStates = exports.FLEXIBLE_ADDON_STATE_IDS = exports.FLEXIBLE_CONTRIBUTIONS_STATE_IDS = void 0;
+exports.FLEXIBLE_ADDON_STATE_IDS = exports.FLEXIBLE_CONTRIBUTIONS_STATE_IDS = void 0;
+exports.ensureFlexibleContributionStates = ensureFlexibleContributionStates;
 const state_util_1 = require("../../../ems_light/state_util");
 function strState(id, name, def) {
     return {
@@ -67,4 +68,3 @@ async function ensureFlexibleContributionStates(host) {
     }
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureFlexibleContributionStates = ensureFlexibleContributionStates;

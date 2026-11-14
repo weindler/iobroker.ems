@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildAirConditioningContributions = void 0;
+exports.buildAirConditioningContributions = buildAirConditioningContributions;
 const constants_1 = require("../../../addons/air_conditioning/constants");
 const cooling_1 = require("../../planning/cooling");
 const contribution_ids_1 = require("../../contribution_ids");
@@ -162,4 +162,3 @@ function buildAirConditioningContributions(input) {
     }
     return contributions;
 }
-exports.buildAirConditioningContributions = buildAirConditioningContributions;

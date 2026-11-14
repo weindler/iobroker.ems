@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveGovernedAddonId = exports.getAddonGovernance = exports.isAddonAiOptimizationAllowed = exports.isAddonEnabled = exports.boolField = void 0;
+exports.boolField = boolField;
+exports.isAddonEnabled = isAddonEnabled;
+exports.isAddonAiOptimizationAllowed = isAddonAiOptimizationAllowed;
+exports.getAddonGovernance = getAddonGovernance;
+exports.resolveGovernedAddonId = resolveGovernedAddonId;
 const registry_1 = require("./registry");
 function configRecord(config) {
     return config && typeof config === "object" ? config : {};
@@ -20,7 +24,6 @@ function boolField(config, key, defaultVal) {
     }
     return defaultVal;
 }
-exports.boolField = boolField;
 /** Default true — preserves prior runtime default (addons.*.enabled def true). */
 const DEFAULT_ADDON_ENABLED = true;
 const DEFAULT_AI_ALLOWED = false;
@@ -28,19 +31,16 @@ function isAddonEnabled(config, addonId) {
     const entry = (0, registry_1.governedAddonEntry)(addonId);
     return boolField(configRecord(config), entry.enabledConfigKey, DEFAULT_ADDON_ENABLED);
 }
-exports.isAddonEnabled = isAddonEnabled;
 function isAddonAiOptimizationAllowed(config, addonId) {
     const entry = (0, registry_1.governedAddonEntry)(addonId);
     return boolField(configRecord(config), entry.aiAllowedConfigKey, DEFAULT_AI_ALLOWED);
 }
-exports.isAddonAiOptimizationAllowed = isAddonAiOptimizationAllowed;
 function getAddonGovernance(config, addonId) {
     return {
         enabled: isAddonEnabled(config, addonId),
         aiOptimizationAllowed: isAddonAiOptimizationAllowed(config, addonId),
     };
 }
-exports.getAddonGovernance = getAddonGovernance;
 function resolveGovernedAddonId(addonOrRuntimeId) {
     if ((0, registry_1.isGovernedAddonId)(addonOrRuntimeId)) {
         return addonOrRuntimeId;
@@ -48,4 +48,3 @@ function resolveGovernedAddonId(addonOrRuntimeId) {
     const entry = (0, registry_1.governedAddonByRuntimeId)(addonOrRuntimeId);
     return entry?.id ?? null;
 }
-exports.resolveGovernedAddonId = resolveGovernedAddonId;

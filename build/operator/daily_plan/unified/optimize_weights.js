@@ -4,7 +4,7 @@
  * globalMode → plannerModePolicyFromGlobalMode → Skalierung von Kosten vs. Komfort vs. Deadline.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.optimizeWeightsFromInput = void 0;
+exports.optimizeWeightsFromInput = optimizeWeightsFromInput;
 const mode_policy_1 = require("../../../planner/mode_policy");
 const BASE = {
     costWeight: 1,
@@ -79,4 +79,3 @@ function optimizeWeightsFromInput(input) {
         allowPvCharge: policy.allowPvCharge,
     };
 }
-exports.optimizeWeightsFromInput = optimizeWeightsFromInput;

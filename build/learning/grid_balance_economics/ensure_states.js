@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureGridBalanceEconomicsStates = exports.GRID_BALANCE_ECONOMICS_STATE_IDS = void 0;
+exports.GRID_BALANCE_ECONOMICS_STATE_IDS = void 0;
+exports.ensureGridBalanceEconomicsStates = ensureGridBalanceEconomicsStates;
 const state_util_1 = require("../../ems_light/state_util");
 const BASE = "learning.grid_balance_economics";
 exports.GRID_BALANCE_ECONOMICS_STATE_IDS = {
@@ -56,4 +57,3 @@ async function ensureGridBalanceEconomicsStates(host) {
         strState(S.etaReasonDe, "GB-Economics η Begründung"),
     ]);
 }
-exports.ensureGridBalanceEconomicsStates = ensureGridBalanceEconomicsStates;

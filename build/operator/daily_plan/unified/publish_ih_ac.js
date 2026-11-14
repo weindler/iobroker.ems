@@ -7,7 +7,7 @@
  * Diese Hilfsfunktion bleibt für gezielte Slice-Writes/Tests.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.publishUnifiedIhAcDispatch = void 0;
+exports.publishUnifiedIhAcDispatch = publishUnifiedIhAcDispatch;
 const state_write_1 = require("../../../policy/core/state_write");
 const daily_plan_1 = require("../../../addons/immersion_heater/runtime/daily_plan");
 const daily_plan_2 = require("../../../addons/air_conditioning/runtime/daily_plan");
@@ -35,4 +35,3 @@ async function publishUnifiedIhAcDispatch(host, plan) {
     host.log?.debug?.(`unified ih/ac dispatch: ih=${pub.immersionEntries.length} ac=${pub.climateEntries.length}`);
     return { immersionCount: pub.immersionEntries.length, climateCount: pub.climateEntries.length };
 }
-exports.publishUnifiedIhAcDispatch = publishUnifiedIhAcDispatch;

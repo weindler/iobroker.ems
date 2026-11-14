@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isSafeDefaultAction = exports.isChargingAction = exports.deviceIntentFromResolved = void 0;
+exports.deviceIntentFromResolved = deviceIntentFromResolved;
+exports.isChargingAction = isChargingAction;
+exports.isSafeDefaultAction = isSafeDefaultAction;
 /**
  * Übersetzt den herstellerneutralen, aufgelösten Batterie-Intent in einen
  * geräteorientierten Intent. `discharge` wird hier strukturiert abgewiesen
@@ -60,14 +62,11 @@ function deviceIntentFromResolved(resolved, options = {}) {
     void now;
     return { intent, rejected: null };
 }
-exports.deviceIntentFromResolved = deviceIntentFromResolved;
 /** Aktionen, die einen aktiven Ladevorgang (Modus 1) bedeuten. */
 function isChargingAction(action) {
     return action === "charge" || action === "grid_charge" || action === "topoff";
 }
-exports.isChargingAction = isChargingAction;
 /** Aktionen, die den sicheren Grundzustand (Self Consumption / Modus 2) bedeuten. */
 function isSafeDefaultAction(action) {
     return action === "self_consumption" || action === "safe_default" || action === "protect_reserve";
 }
-exports.isSafeDefaultAction = isSafeDefaultAction;

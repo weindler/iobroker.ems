@@ -7,7 +7,7 @@
  * noop = EMS has nothing to execute (no button, no pending, no retry)
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.projectDesiredEvccMode = void 0;
+exports.projectDesiredEvccMode = projectDesiredEvccMode;
 function chargeMode(energySource) {
     if (energySource === "pv_surplus")
         return "pv";
@@ -52,4 +52,3 @@ function projectDesiredEvccMode(input) {
     }
     return { desired: chargeMode(input.energySource), reason: "planned_charge" };
 }
-exports.projectDesiredEvccMode = projectDesiredEvccMode;

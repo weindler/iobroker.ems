@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.estimateCostEurFromCharCount = exports.estimateCostEur = exports.USD_TO_EUR_APPROX = void 0;
+exports.USD_TO_EUR_APPROX = void 0;
+exports.estimateCostEur = estimateCostEur;
+exports.estimateCostEurFromCharCount = estimateCostEurFromCharCount;
 /**
  * Grobe Preistabelle (USD je 1M Tokens) — Stand siehe io-package.json News dieser Version.
  * Dient nur der Kostenschätzung/Tageslimit-Anzeige im Admin, keine Abrechnungsgrundlage.
@@ -21,7 +23,6 @@ function estimateCostEur(model, promptTokens, completionTokens) {
     const usd = (inTok / 1_000_000) * price.input + (outTok / 1_000_000) * price.output;
     return Math.round(usd * exports.USD_TO_EUR_APPROX * 100_000) / 100_000;
 }
-exports.estimateCostEur = estimateCostEur;
 /** Grobe Vorab-Schätzung ohne Usage (z. B. für Anzeige vor dem ersten Call). */
 function estimateCostEurFromCharCount(model, promptChars, expectedCompletionChars = 400) {
     // ~4 Zeichen/Token Faustregel (Englisch/gemischt), bewusst grob.
@@ -29,4 +30,3 @@ function estimateCostEurFromCharCount(model, promptChars, expectedCompletionChar
     const completionTokens = Math.ceil(expectedCompletionChars / 4);
     return estimateCostEur(model, promptTokens, completionTokens);
 }
-exports.estimateCostEurFromCharCount = estimateCostEurFromCharCount;

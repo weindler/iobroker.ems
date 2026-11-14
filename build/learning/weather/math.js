@@ -1,6 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.computeWeatherLearning = exports.buildSummaryYesterday = exports.healthFromValidHours = exports.confidenceFromValidHours = exports.meanOrNull = exports.metricBias = exports.isValidMetricValue = void 0;
+exports.isValidMetricValue = isValidMetricValue;
+exports.metricBias = metricBias;
+exports.meanOrNull = meanOrNull;
+exports.confidenceFromValidHours = confidenceFromValidHours;
+exports.healthFromValidHours = healthFromValidHours;
+exports.buildSummaryYesterday = buildSummaryYesterday;
+exports.computeWeatherLearning = computeWeatherLearning;
+exports.errorResult = errorResult;
 const constants_1 = require("./constants");
 /** missing ≠ 0 — nur explizit gelieferte, endliche, plausible Werte sind gültig. */
 function isValidMetricValue(key, value) {
@@ -10,18 +17,15 @@ function isValidMetricValue(key, value) {
     const bounds = constants_1.PLAUSIBILITY[key];
     return value >= bounds.min && value <= bounds.max;
 }
-exports.isValidMetricValue = isValidMetricValue;
 function metricBias(actual, forecast) {
     return actual - forecast;
 }
-exports.metricBias = metricBias;
 function meanOrNull(values) {
     if (values.length === 0) {
         return null;
     }
     return values.reduce((a, b) => a + b, 0) / values.length;
 }
-exports.meanOrNull = meanOrNull;
 function confidenceFromValidHours(validHours) {
     if (validHours >= constants_1.WEATHER_CONFIDENCE_HIGH_MIN_HOURS) {
         return "high";
@@ -34,7 +38,6 @@ function confidenceFromValidHours(validHours) {
     }
     return "none";
 }
-exports.confidenceFromValidHours = confidenceFromValidHours;
 function healthFromValidHours(validHours) {
     if (validHours >= constants_1.WEATHER_HEALTH_OK_MIN_HOURS) {
         return "ok";
@@ -44,7 +47,6 @@ function healthFromValidHours(validHours) {
     }
     return "error";
 }
-exports.healthFromValidHours = healthFromValidHours;
 function buildSummaryYesterday(day) {
     if (!day || day.validHours < constants_1.WEATHER_MIN_VALID_DAY_HOURS) {
         return "Gestern kein ausreichender Forecast↔Ist-Vergleich.";
@@ -67,7 +69,6 @@ function buildSummaryYesterday(day) {
     }
     return `Gestern ${day.validHours}h vergleichbar: ${parts.join(", ")}.`;
 }
-exports.buildSummaryYesterday = buildSummaryYesterday;
 function round(n, digits) {
     const f = 10 ** digits;
     return Math.round(n * f) / f;
@@ -129,7 +130,6 @@ function computeWeatherLearning(dayResults, configuredMetrics, yesterday, foreca
         yesterday,
     };
 }
-exports.computeWeatherLearning = computeWeatherLearning;
 function emptyResult(status, forecastSource, actualSource, error) {
     return {
         status,
@@ -155,4 +155,3 @@ function emptyResult(status, forecastSource, actualSource, error) {
 function errorResult(forecastSource, actualSource, message) {
     return emptyResult("error", forecastSource, actualSource, message);
 }
-exports.errorResult = errorResult;

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildResolvedAllIntent = exports.nextAggregateRevision = exports.computeAggregateRevisionHash = void 0;
+exports.computeAggregateRevisionHash = computeAggregateRevisionHash;
+exports.nextAggregateRevision = nextAggregateRevision;
+exports.buildResolvedAllIntent = buildResolvedAllIntent;
 const node_crypto_1 = require("node:crypto");
 function stableStringify(value) {
     return JSON.stringify(sortKeysDeep(value));
@@ -27,7 +29,6 @@ function computeAggregateRevisionHash(domains) {
     };
     return (0, node_crypto_1.createHash)("sha256").update(stableStringify(payload), "utf8").digest("hex");
 }
-exports.computeAggregateRevisionHash = computeAggregateRevisionHash;
 function nextAggregateRevision(prev, domains) {
     const hash = computeAggregateRevisionHash(domains);
     if (!prev) {
@@ -39,7 +40,6 @@ function nextAggregateRevision(prev, domains) {
     }
     return prev.revision + 1;
 }
-exports.nextAggregateRevision = nextAggregateRevision;
 function buildResolvedAllIntent(prev, domains, now) {
     const revision = nextAggregateRevision(prev, domains);
     const changed = !prev || revision !== prev.revision;
@@ -50,4 +50,3 @@ function buildResolvedAllIntent(prev, domains, now) {
         domains,
     };
 }
-exports.buildResolvedAllIntent = buildResolvedAllIntent;

@@ -7,7 +7,7 @@
  * kein Raten, kein Stacking.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ingestAnalystFindingsAsOverrides = void 0;
+exports.ingestAnalystFindingsAsOverrides = ingestAnalystFindingsAsOverrides;
 const persist_1 = require("./persist");
 const allowlist_1 = require("./allowlist");
 const validate_1 = require("./validate");
@@ -80,4 +80,3 @@ async function ingestAnalystFindingsAsOverrides(host, findings, dateKey, now = n
     }
     return result;
 }
-exports.ingestAnalystFindingsAsOverrides = ingestAnalystFindingsAsOverrides;

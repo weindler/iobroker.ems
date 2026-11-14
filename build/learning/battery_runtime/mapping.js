@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveBatteryRuntimeSources = void 0;
+exports.resolveBatteryRuntimeSources = resolveBatteryRuntimeSources;
 const mapping_resolve_1 = require("../../mapping_resolve");
 const config_1 = require("../house_load/config");
 function mappedTarget(host, role) {
@@ -24,4 +24,3 @@ async function resolveBatteryRuntimeSources(host, configured) {
         consumptionStateId: houseLearning.powerStateId || consumptionMapped,
     };
 }
-exports.resolveBatteryRuntimeSources = resolveBatteryRuntimeSources;

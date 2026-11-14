@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopMeasuredConsumersModule = exports.refreshMeasuredConsumersRuntime = exports.startMeasuredConsumersModuleRuntime = exports.ensureMeasuredConsumersStateTree = exports.MEASURED_CONSUMERS_ADDON_ID = void 0;
+exports.MEASURED_CONSUMERS_ADDON_ID = void 0;
+exports.ensureMeasuredConsumersStateTree = ensureMeasuredConsumersStateTree;
+exports.startMeasuredConsumersModuleRuntime = startMeasuredConsumersModuleRuntime;
+exports.refreshMeasuredConsumersRuntime = refreshMeasuredConsumersRuntime;
+exports.stopMeasuredConsumersModule = stopMeasuredConsumersModule;
 const data_dir_1 = require("../../learning/data_dir");
 const engine_1 = require("./runtime/engine");
 const config_1 = require("./config");
@@ -25,20 +29,16 @@ async function ensureMeasuredConsumersStateTree(adapter) {
     const slots = (0, config_1.configuredMeasuredConsumerSlots)(adapter.config);
     await (0, ensure_states_1.ensureMeasuredConsumersStates)(runtimeHost(adapter), slots);
 }
-exports.ensureMeasuredConsumersStateTree = ensureMeasuredConsumersStateTree;
 /** Phase E — periodischer Tick (rein lesend, keine Geräte-Writes). */
 async function startMeasuredConsumersModuleRuntime(adapter) {
     await (0, engine_1.initMeasuredConsumersRuntimeEngine)(runtimeHost(adapter));
     adapter.log.debug("measured_consumers: runtime engine (rein messend, kein Schalten)");
     return null;
 }
-exports.startMeasuredConsumersModuleRuntime = startMeasuredConsumersModuleRuntime;
 /** Post-Bootstrap-Reconciliation — aktuelle Fremdeingänge einmalig neu einlesen. */
 async function refreshMeasuredConsumersRuntime(adapter) {
     await (0, engine_1.runMeasuredConsumersTick)(runtimeHost(adapter));
 }
-exports.refreshMeasuredConsumersRuntime = refreshMeasuredConsumersRuntime;
 function stopMeasuredConsumersModule() {
     (0, engine_1.stopMeasuredConsumersRuntimeEngine)();
 }
-exports.stopMeasuredConsumersModule = stopMeasuredConsumersModule;

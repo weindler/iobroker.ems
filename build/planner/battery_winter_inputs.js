@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readBatteryWinterDays = void 0;
+exports.readBatteryWinterDays = readBatteryWinterDays;
 const time_1 = require("../learning/house_load/time");
 const battery_winter_1 = require("../operator/planning/battery_winter");
 async function readNum(host, id) {
@@ -100,4 +100,3 @@ async function readBatteryWinterDays(host, horizonDays) {
     }
     return days;
 }
-exports.readBatteryWinterDays = readBatteryWinterDays;

@@ -9,14 +9,18 @@
  * nicht mehr schreiben, wenn die aktuelle authoritative Entscheidung ON/HOLD ist.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.decideStopWrite = exports.clearStopIntentAfterStart = exports.advanceCoolingDesired = exports.ensureStopIntentFields = exports.resolveCoolingDesired = exports.plannerCoolingBudgetOn = void 0;
+exports.plannerCoolingBudgetOn = plannerCoolingBudgetOn;
+exports.resolveCoolingDesired = resolveCoolingDesired;
+exports.ensureStopIntentFields = ensureStopIntentFields;
+exports.advanceCoolingDesired = advanceCoolingDesired;
+exports.clearStopIntentAfterStart = clearStopIntentAfterStart;
+exports.decideStopWrite = decideStopWrite;
 function plannerCoolingBudgetOn(dailyPlan) {
     return (dailyPlan.useDailyPlan &&
         dailyPlan.allocatedPowerW !== null &&
         Number.isFinite(dailyPlan.allocatedPowerW) &&
         dailyPlan.allocatedPowerW > 0);
 }
-exports.plannerCoolingBudgetOn = plannerCoolingBudgetOn;
 /**
  * @deprecated Engine nutzt computeAcCoolingDesired. Bleibt für Stop-Intent-Tests.
  * Desired folgt Permission (eine Authority) — hold wenn FB on und kein allowStop.
@@ -36,7 +40,6 @@ function resolveCoolingDesired(input) {
     }
     return "idle";
 }
-exports.resolveCoolingDesired = resolveCoolingDesired;
 function ensureStopIntentFields(up) {
     if (typeof up.commandGeneration !== "number" || !Number.isFinite(up.commandGeneration)) {
         up.commandGeneration = 0;
@@ -48,7 +51,6 @@ function ensureStopIntentFields(up) {
         up.lastDesired = null;
     }
 }
-exports.ensureStopIntentFields = ensureStopIntentFields;
 /** Desired-Wechsel erhöht die Kommando-Generation; ON/HOLD invalidiert STOP-Kampagnen. */
 function advanceCoolingDesired(up, desired) {
     ensureStopIntentFields(up);
@@ -67,7 +69,6 @@ function advanceCoolingDesired(up, desired) {
     }
     return { generationBumped, stopCleared };
 }
-exports.advanceCoolingDesired = advanceCoolingDesired;
 /** Nach erfolgreichem START: STOP-Kampagne der Vorperiode verwerfen. */
 function clearStopIntentAfterStart(up) {
     ensureStopIntentFields(up);
@@ -75,7 +76,6 @@ function clearStopIntentAfterStart(up) {
     /** Alte Stop-Timestamps dürfen keinen „Retry“-Schein gegen den neuen Start erzeugen. */
     up.lastStopAtMs = null;
 }
-exports.clearStopIntentAfterStart = clearStopIntentAfterStart;
 /**
  * Entscheidet, ob ein Stop-Write ausgeführt werden darf.
  * I1: nur bei aktuellem Desired OFF.
@@ -124,4 +124,3 @@ function decideStopWrite(input) {
         isRetry,
     };
 }
-exports.decideStopWrite = decideStopWrite;

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.setBackupExportStatus = exports.ensureBackupStates = exports.SUPPORT_STATES = exports.RESTORE_STATES = exports.BACKUP_STATES = exports.SUPPORT_BASE = exports.BACKUP_BASE = void 0;
+exports.SUPPORT_STATES = exports.RESTORE_STATES = exports.BACKUP_STATES = exports.SUPPORT_BASE = exports.BACKUP_BASE = void 0;
+exports.ensureBackupStates = ensureBackupStates;
+exports.setBackupExportStatus = setBackupExportStatus;
 const state_util_1 = require("../ems_light/state_util");
 exports.BACKUP_BASE = "backup";
 exports.SUPPORT_BASE = "support";
@@ -168,7 +170,6 @@ async function ensureBackupStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureBackupStates = ensureBackupStates;
 async function setBackupExportStatus(host, patch) {
     const map = [];
     if (patch.status !== undefined)
@@ -185,4 +186,3 @@ async function setBackupExportStatus(host, patch) {
         await host.setStateAsync(id, { val, ack: true });
     }
 }
-exports.setBackupExportStatus = setBackupExportStatus;

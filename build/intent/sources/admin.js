@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildAdminIntentSnapshot = void 0;
+exports.buildAdminIntentSnapshot = buildAdminIntentSnapshot;
 function adminField(value, status, observedAt) {
     return {
         value,
@@ -26,4 +26,3 @@ function buildAdminIntentSnapshot(cfg, now) {
         timezone: cfg.timezone,
     };
 }
-exports.buildAdminIntentSnapshot = buildAdminIntentSnapshot;

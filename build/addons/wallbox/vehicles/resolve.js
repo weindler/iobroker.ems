@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pickTelemetryFieldNumber = exports.pickTelemetryFieldBool = exports.pickEvccConnected = exports.resolveActiveVehicle = void 0;
+exports.resolveActiveVehicle = resolveActiveVehicle;
+exports.pickEvccConnected = pickEvccConnected;
+exports.pickTelemetryFieldBool = pickTelemetryFieldBool;
+exports.pickTelemetryFieldNumber = pickTelemetryFieldNumber;
 const types_1 = require("./types");
 const vehicle_id_1 = require("./vehicle_id");
 function profileMatchesEvcc(profile, detection) {
@@ -161,24 +164,20 @@ function resolveActiveVehicle(input) {
         reasons,
     };
 }
-exports.resolveActiveVehicle = resolveActiveVehicle;
 function pickEvccConnected(snap) {
     const f = snap.connected;
     if (f.status === "valid" && typeof f.value === "boolean")
         return f.value;
     return null;
 }
-exports.pickEvccConnected = pickEvccConnected;
 function pickTelemetryFieldBool(field) {
     if (field.status === "valid" && typeof field.value === "boolean")
         return field.value;
     return null;
 }
-exports.pickTelemetryFieldBool = pickTelemetryFieldBool;
 function pickTelemetryFieldNumber(field) {
     if (field.status === "valid" && typeof field.value === "number" && Number.isFinite(field.value)) {
         return field.value;
     }
     return null;
 }
-exports.pickTelemetryFieldNumber = pickTelemetryFieldNumber;

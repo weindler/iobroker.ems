@@ -3,7 +3,7 @@
  * D1: Konkrete Begründung für Daily Plan (degraded) — kein Verhaltenswechsel.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.explainDailyPlanDegradedDe = void 0;
+exports.explainDailyPlanDegradedDe = explainDailyPlanDegradedDe;
 /**
  * Kompakte Ursache(n) für Briefing, z. B.:
  * "thermal learning usable only via Newton estimate, 0 completed cooling cycles"
@@ -39,4 +39,3 @@ function explainDailyPlanDegradedDe(contributions, flags) {
     }
     return [...new Set(parts)].slice(0, 3).join("; ");
 }
-exports.explainDailyPlanDegradedDe = explainDailyPlanDegradedDe;

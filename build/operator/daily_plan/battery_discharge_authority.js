@@ -25,7 +25,8 @@
  * Bewusst NICHT Teil dieses Blocks: Klima, Heizstab-Planung, Wallbox, Ownership-Umbau.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveBatteryDischargeAuthorization = exports.DEFAULT_ECONOMICS_DECISION_MARGIN_CT = exports.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH = void 0;
+exports.DEFAULT_ECONOMICS_DECISION_MARGIN_CT = exports.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH = void 0;
+exports.resolveBatteryDischargeAuthorization = resolveBatteryDischargeAuthorization;
 const grid_balance_1 = require("../../addons/battery/grid_balance");
 exports.DEFAULT_OPPORTUNITY_MARGIN_CT_PER_KWH = 3;
 exports.DEFAULT_ECONOMICS_DECISION_MARGIN_CT = 1.5;
@@ -153,7 +154,6 @@ function resolveBatteryDischargeAuthorization(input) {
         reasonDe: `${priceCheck.reasonDe}; SOC ${input.socPct.toFixed(0)} % > dynamische Reserve ${input.requiredSocAtPvEndPct} %.`,
     };
 }
-exports.resolveBatteryDischargeAuthorization = resolveBatteryDischargeAuthorization;
 function isEconomicsReady(input) {
     const e = input.economics;
     return !!(e &&

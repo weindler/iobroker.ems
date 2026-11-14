@@ -15,15 +15,31 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dailyRecord = exports.upsertDailyRecord = exports.writeDailyPersist = exports.readDailyPersist = exports.pruneDailyPersist = exports.emptyDailyPersist = exports.PV_BIAS_DAILY_RETENTION_DAYS = exports.PV_BIAS_DAILY_FILENAME = void 0;
+exports.PV_BIAS_DAILY_RETENTION_DAYS = exports.PV_BIAS_DAILY_FILENAME = void 0;
+exports.emptyDailyPersist = emptyDailyPersist;
+exports.pruneDailyPersist = pruneDailyPersist;
+exports.readDailyPersist = readDailyPersist;
+exports.writeDailyPersist = writeDailyPersist;
+exports.upsertDailyRecord = upsertDailyRecord;
+exports.dailyRecord = dailyRecord;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
@@ -32,7 +48,6 @@ exports.PV_BIAS_DAILY_RETENTION_DAYS = 120;
 function emptyDailyPersist() {
     return { version: 1, days: {} };
 }
-exports.emptyDailyPersist = emptyDailyPersist;
 function pruneDailyPersist(persist, retainDays = exports.PV_BIAS_DAILY_RETENTION_DAYS) {
     if (!(retainDays > 0))
         return persist;
@@ -45,7 +60,6 @@ function pruneDailyPersist(persist, retainDays = exports.PV_BIAS_DAILY_RETENTION
     }
     return { ...persist, days };
 }
-exports.pruneDailyPersist = pruneDailyPersist;
 async function readDailyPersist(baseDir) {
     try {
         const raw = await fs.readFile(path.join(baseDir, exports.PV_BIAS_DAILY_FILENAME), "utf8");
@@ -59,13 +73,11 @@ async function readDailyPersist(baseDir) {
     }
     return emptyDailyPersist();
 }
-exports.readDailyPersist = readDailyPersist;
 async function writeDailyPersist(baseDir, persist) {
     await fs.mkdir(baseDir, { recursive: true });
     const compacted = pruneDailyPersist(persist);
     await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, exports.PV_BIAS_DAILY_FILENAME), `${JSON.stringify(compacted, null, 2)}\n`);
 }
-exports.writeDailyPersist = writeDailyPersist;
 function upsertDailyRecord(persist, record) {
     return {
         ...persist,
@@ -79,7 +91,6 @@ function upsertDailyRecord(persist, record) {
         },
     };
 }
-exports.upsertDailyRecord = upsertDailyRecord;
 function dailyRecord(persist, dateKey) {
     const row = persist.days[dateKey];
     if (!row) {
@@ -87,4 +98,3 @@ function dailyRecord(persist, dateKey) {
     }
     return row;
 }
-exports.dailyRecord = dailyRecord;

@@ -15,15 +15,35 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeJsonFileAtomic = exports.scanRestoreTransactionsAtStartup = exports.listRecoverableTransactions = exports.listIncompleteTransactions = exports.updateJournalPhase = exports.createJournal = exports.readJournal = exports.writeJournalAtomic = exports.ensureTransactionLayout = exports.transactionDir = exports.newTransactionId = void 0;
+exports.newTransactionId = newTransactionId;
+exports.transactionDir = transactionDir;
+exports.ensureTransactionLayout = ensureTransactionLayout;
+exports.writeJournalAtomic = writeJournalAtomic;
+exports.readJournal = readJournal;
+exports.createJournal = createJournal;
+exports.updateJournalPhase = updateJournalPhase;
+exports.listIncompleteTransactions = listIncompleteTransactions;
+exports.listRecoverableTransactions = listRecoverableTransactions;
+exports.scanRestoreTransactionsAtStartup = scanRestoreTransactionsAtStartup;
+exports.writeJsonFileAtomic = writeJsonFileAtomic;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const node_crypto_1 = require("node:crypto");
@@ -33,25 +53,21 @@ const types_1 = require("./types");
 function newTransactionId() {
     return (0, node_crypto_1.randomUUID)().replace(/-/g, "").slice(0, 24);
 }
-exports.newTransactionId = newTransactionId;
 function transactionDir(input, transactionId) {
     return path.join((0, source_1.restoreTransactionsDir)(input), transactionId);
 }
-exports.transactionDir = transactionDir;
 async function ensureTransactionLayout(input, transactionId) {
     const dir = transactionDir(input, transactionId);
     await fs.mkdir(path.join(dir, "before", "learning"), { recursive: true, mode: 0o700 });
     await fs.mkdir(path.join(dir, "staged", "learning"), { recursive: true, mode: 0o700 });
     return dir;
 }
-exports.ensureTransactionLayout = ensureTransactionLayout;
 async function writeJournalAtomic(dir, journal) {
     const target = path.join(dir, "journal.json");
     const tmp = path.join(dir, `.tmp-journal-${process.pid}.json`);
     await fs.writeFile(tmp, (0, schema_1.stableJsonStringify)(journal), { mode: 0o600 });
     await fs.rename(tmp, target);
 }
-exports.writeJournalAtomic = writeJournalAtomic;
 async function readJournal(dir) {
     try {
         const raw = await fs.readFile(path.join(dir, "journal.json"), "utf8");
@@ -61,7 +77,6 @@ async function readJournal(dir) {
         return null;
     }
 }
-exports.readJournal = readJournal;
 function createJournal(input) {
     const now = new Date().toISOString();
     if (input.manifest) {
@@ -93,7 +108,6 @@ function createJournal(input) {
         restore_must_start_dryrun: true,
     };
 }
-exports.createJournal = createJournal;
 async function updateJournalPhase(dir, phase) {
     const journal = await readJournal(dir);
     if (!journal)
@@ -102,7 +116,6 @@ async function updateJournalPhase(dir, phase) {
     journal.updated_at = new Date().toISOString();
     await writeJournalAtomic(dir, journal);
 }
-exports.updateJournalPhase = updateJournalPhase;
 async function listIncompleteTransactions(instanceDataDir) {
     const base = (0, source_1.restoreTransactionsDir)(instanceDataDir);
     const out = [];
@@ -123,13 +136,11 @@ async function listIncompleteTransactions(instanceDataDir) {
     }
     return out;
 }
-exports.listIncompleteTransactions = listIncompleteTransactions;
 /** Unvollständige oder nach Neustart noch offene committed-Transaktionen. */
 async function listRecoverableTransactions(instanceDataDir) {
     const scan = await scanRestoreTransactionsAtStartup(instanceDataDir);
     return scan.active;
 }
-exports.listRecoverableTransactions = listRecoverableTransactions;
 async function scanRestoreTransactionsAtStartup(transactionsDir) {
     const base = transactionsDir;
     const failed = [];
@@ -160,7 +171,6 @@ async function scanRestoreTransactionsAtStartup(transactionsDir) {
     }
     return { failed, active, rolledBack };
 }
-exports.scanRestoreTransactionsAtStartup = scanRestoreTransactionsAtStartup;
 async function writeJsonFileAtomic(filePath, value) {
     const dir = path.dirname(filePath);
     await fs.mkdir(dir, { recursive: true, mode: 0o700 });
@@ -168,4 +178,3 @@ async function writeJsonFileAtomic(filePath, value) {
     await fs.writeFile(tmp, (0, schema_1.stableJsonStringify)(value), { mode: 0o600 });
     await fs.rename(tmp, filePath);
 }
-exports.writeJsonFileAtomic = writeJsonFileAtomic;

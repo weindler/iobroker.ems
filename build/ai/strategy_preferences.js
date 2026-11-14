@@ -4,7 +4,13 @@
  * Reine Funktion — keine I/O, keine Geräte-Writes.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseAiSlotPreferencesJson = exports.acceptedImmersionSoftDisallowedSlotIsos = exports.immersionSoftDisallowedSlotIsosFromRetainedPrefs = exports.immersionDeferTomorrowFromDecisions = exports.wallboxPvOnlyFromDecisions = exports.decisionsToSlotPreferences = exports.normalizeAddonDecisions = void 0;
+exports.normalizeAddonDecisions = normalizeAddonDecisions;
+exports.decisionsToSlotPreferences = decisionsToSlotPreferences;
+exports.wallboxPvOnlyFromDecisions = wallboxPvOnlyFromDecisions;
+exports.immersionDeferTomorrowFromDecisions = immersionDeferTomorrowFromDecisions;
+exports.immersionSoftDisallowedSlotIsosFromRetainedPrefs = immersionSoftDisallowedSlotIsosFromRetainedPrefs;
+exports.acceptedImmersionSoftDisallowedSlotIsos = acceptedImmersionSoftDisallowedSlotIsos;
+exports.parseAiSlotPreferencesJson = parseAiSlotPreferencesJson;
 const time_1 = require("../operator/time");
 /** Extremere Gewichte → Plan B weicht klar von Plan A ab (sonst oft Identitäts-Compare). */
 const HIGH_W = 3;
@@ -161,7 +167,6 @@ function normalizeAddonDecisions(decisions, situation) {
         return d;
     });
 }
-exports.normalizeAddonDecisions = normalizeAddonDecisions;
 function deriveForDecision(plan, decision, nowMs) {
     const { addonId, action } = decision;
     if (action === "keep_plan_a")
@@ -297,18 +302,15 @@ function decisionsToSlotPreferences(plan, decisions, existingPrefs, nowMs = Date
     }
     return mergePrefs(derived, existingPrefs);
 }
-exports.decisionsToSlotPreferences = decisionsToSlotPreferences;
 /** Wallbox soll nur PV-Kapazität nutzen (kein zusätzlicher Netz-Peak in Plan B). */
 function wallboxPvOnlyFromDecisions(decisions) {
     return decisions.some((d) => d.addonId === "wallbox" &&
         (d.action === "prefer_pv_today" || d.action === "prefer_pv_tomorrow"));
 }
-exports.wallboxPvOnlyFromDecisions = wallboxPvOnlyFromDecisions;
 /** Explizite KI-Entscheidung: flexiblen Heizstab heute meiden / auf morgen verschieben. */
 function immersionDeferTomorrowFromDecisions(decisions) {
     return decisions.some((d) => d.addonId === "immersion_heater" && d.action === "defer_tomorrow");
 }
-exports.immersionDeferTomorrowFromDecisions = immersionDeferTomorrowFromDecisions;
 /** Slot-ISOs mit Gewicht 0 aus retained IH-Prefs — keine Decision-JSON. */
 function immersionSoftDisallowedSlotIsosFromRetainedPrefs(prefs) {
     const out = [];
@@ -325,7 +327,6 @@ function immersionSoftDisallowedSlotIsosFromRetainedPrefs(prefs) {
     }
     return out;
 }
-exports.immersionSoftDisallowedSlotIsosFromRetainedPrefs = immersionSoftDisallowedSlotIsosFromRetainedPrefs;
 /**
  * Compare-Gate: nur wenn Plan B akzeptiert wurde und retained Prefs heutige Flex-Slots
  * mit Gewicht 0 markieren. Rohe Decisions allein reichen nicht.
@@ -335,7 +336,6 @@ function acceptedImmersionSoftDisallowedSlotIsos(input) {
         return [];
     return immersionSoftDisallowedSlotIsosFromRetainedPrefs(input.prefs ?? []);
 }
-exports.acceptedImmersionSoftDisallowedSlotIsos = acceptedImmersionSoftDisallowedSlotIsos;
 function parseAiSlotPreferencesJson(raw) {
     if (typeof raw !== "string" || !raw)
         return [];
@@ -353,4 +353,3 @@ function parseAiSlotPreferencesJson(raw) {
         return [];
     }
 }
-exports.parseAiSlotPreferencesJson = parseAiSlotPreferencesJson;

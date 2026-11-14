@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deriveEnergy = exports.resolveCapacity = exports.isValidCapacityKwh = void 0;
+exports.isValidCapacityKwh = isValidCapacityKwh;
+exports.resolveCapacity = resolveCapacity;
+exports.deriveEnergy = deriveEnergy;
 /** Ungültig: null, NaN, Infinity, <= 0. */
 function isValidCapacityKwh(value) {
     return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
-exports.isValidCapacityKwh = isValidCapacityKwh;
 /**
  * Priorität:
  * 1. gültiger gemappter Wert, wenn Mapping-Quelle gewählt
@@ -24,7 +25,6 @@ function resolveCapacity(inputs) {
     }
     return { manualKwh: manual, mappedKwh: mapped, effectiveKwh: null, source: "unknown", valid: false };
 }
-exports.resolveCapacity = resolveCapacity;
 /** Energieableitungen nur bei gültigem SOC und gültiger Kapazität. */
 function deriveEnergy(socPct, capacityNetKwh, minSocPct) {
     const empty = {
@@ -51,7 +51,6 @@ function deriveEnergy(socPct, capacityNetKwh, minSocPct) {
         energyAboveTechnicalMinKwh: aboveMin === null ? null : round3(aboveMin),
     };
 }
-exports.deriveEnergy = deriveEnergy;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }

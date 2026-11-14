@@ -40,7 +40,9 @@
  * Basis-Arrayposition, vor diesem Fix persistiert) bleibt beim Lesen weiterhin unterstützt.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.rehydrateForecastRevisions = exports.compactForecastSnapshotsForPersist = exports.FORECAST_HORIZON_DELTA_MIN_ABS = exports.FORECAST_HORIZON_DELTA_MAX_RATIO = void 0;
+exports.FORECAST_HORIZON_DELTA_MIN_ABS = exports.FORECAST_HORIZON_DELTA_MAX_RATIO = void 0;
+exports.compactForecastSnapshotsForPersist = compactForecastSnapshotsForPersist;
+exports.rehydrateForecastRevisions = rehydrateForecastRevisions;
 const node_crypto_1 = require("node:crypto");
 const constants_1 = require("./constants");
 /**
@@ -183,7 +185,6 @@ function compactForecastSnapshotsForPersist(day) {
     });
     return { ...day, forecastSnapshots: compactSnapshots, forecastRevisions: revisions };
 }
-exports.compactForecastSnapshotsForPersist = compactForecastSnapshotsForPersist;
 /**
  * Rekonstruiert `priceSlots`/`pvSlotKwh` für jeden kompaktierten Snapshot verlustfrei
  * (Basisrevision + Delta). Mutiert `day` in place — nur direkt nach dem Einlesen (JSON.parse)
@@ -218,4 +219,3 @@ function rehydrateForecastRevisions(day) {
         }
     }
 }
-exports.rehydrateForecastRevisions = rehydrateForecastRevisions;

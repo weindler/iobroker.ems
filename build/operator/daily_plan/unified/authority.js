@@ -5,26 +5,29 @@
  * Planner schreibt keine Geräte-States.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearAllUnifiedAuthority = exports.clearIhAcAuthority = exports.applyUnifiedIhAcAuthority = exports.applyUnifiedDayAuthority = exports.isUnifiedManagedContributionId = exports.isWallboxContributionId = exports.isBatteryContributionId = exports.isIhAcContributionId = void 0;
+exports.isIhAcContributionId = isIhAcContributionId;
+exports.isBatteryContributionId = isBatteryContributionId;
+exports.isWallboxContributionId = isWallboxContributionId;
+exports.isUnifiedManagedContributionId = isUnifiedManagedContributionId;
+exports.applyUnifiedDayAuthority = applyUnifiedDayAuthority;
+exports.applyUnifiedIhAcAuthority = applyUnifiedIhAcAuthority;
+exports.clearIhAcAuthority = clearIhAcAuthority;
+exports.clearAllUnifiedAuthority = clearAllUnifiedAuthority;
 function isIhAcContributionId(contributionId) {
     return (contributionId.startsWith("immersion_heater.") ||
         contributionId.startsWith("air_conditioning."));
 }
-exports.isIhAcContributionId = isIhAcContributionId;
 function isBatteryContributionId(contributionId) {
     return contributionId.startsWith("battery.");
 }
-exports.isBatteryContributionId = isBatteryContributionId;
 function isWallboxContributionId(contributionId) {
     return contributionId.startsWith("wallbox.");
 }
-exports.isWallboxContributionId = isWallboxContributionId;
 function isUnifiedManagedContributionId(contributionId) {
     return (isIhAcContributionId(contributionId) ||
         isBatteryContributionId(contributionId) ||
         isWallboxContributionId(contributionId));
 }
-exports.isUnifiedManagedContributionId = isUnifiedManagedContributionId;
 function stampAuthority(entries, meta) {
     const tag = `unified_day_plan; daily_plan_rev=${meta.dailyPlanRevision}; planId=${meta.unifiedPlanId}`;
     return entries.map((e) => {
@@ -79,7 +82,6 @@ function applyUnifiedDayAuthority(plan, parts, meta) {
         },
     };
 }
-exports.applyUnifiedDayAuthority = applyUnifiedDayAuthority;
 /**
  * IH/AC Authority (Schritt 2/3): Battery/Wallbox bleiben unverändert (null = keep).
  */
@@ -91,7 +93,6 @@ function applyUnifiedIhAcAuthority(plan, immersionEntries, climateEntries, meta)
         wallboxEntries: null,
     }, meta);
 }
-exports.applyUnifiedIhAcAuthority = applyUnifiedIhAcAuthority;
 /** AUTH-003: IH/AC idle. */
 function clearIhAcAuthority(plan) {
     return applyUnifiedIhAcAuthority(plan, [], [], {
@@ -99,7 +100,6 @@ function clearIhAcAuthority(plan) {
         unifiedPlanId: "unified-failed",
     });
 }
-exports.clearIhAcAuthority = clearIhAcAuthority;
 /** Battery + Wallbox + IH/AC idle — kein Classic-Fallback. */
 function clearAllUnifiedAuthority(plan) {
     return applyUnifiedDayAuthority(plan, {
@@ -112,4 +112,3 @@ function clearAllUnifiedAuthority(plan) {
         unifiedPlanId: "unified-failed",
     });
 }
-exports.clearAllUnifiedAuthority = clearAllUnifiedAuthority;

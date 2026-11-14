@@ -1,6 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveWallboxDailyPlanDecision = exports.evaluateWallboxDailyPlan = exports.resolveWallboxPlanExecutionStatus = exports.summarizeWallboxPlanUntilDeadline = exports.resolveWallboxPowerLimits = exports.parseDailyAllocationEntries = exports.computeRemainingEnergyKwh = exports.telemetryInputFromSnapshot = exports.wallboxMinChargePowerW = exports.resetWallboxDailyPlanCache = exports.WALLBOX_PLAN_POWER_TOLERANCE_W = void 0;
+exports.WALLBOX_PLAN_POWER_TOLERANCE_W = void 0;
+exports.resetWallboxDailyPlanCache = resetWallboxDailyPlanCache;
+exports.wallboxMinChargePowerW = wallboxMinChargePowerW;
+exports.telemetryInputFromSnapshot = telemetryInputFromSnapshot;
+exports.computeRemainingEnergyKwh = computeRemainingEnergyKwh;
+exports.parseDailyAllocationEntries = parseDailyAllocationEntries;
+exports.resolveWallboxPowerLimits = resolveWallboxPowerLimits;
+exports.summarizeWallboxPlanUntilDeadline = summarizeWallboxPlanUntilDeadline;
+exports.resolveWallboxPlanExecutionStatus = resolveWallboxPlanExecutionStatus;
+exports.evaluateWallboxDailyPlan = evaluateWallboxDailyPlan;
+exports.resolveWallboxDailyPlanDecision = resolveWallboxDailyPlanDecision;
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
 const slots_1 = require("../../../operator/daily_plan/slots");
@@ -17,13 +27,11 @@ let planCache = null;
 function resetWallboxDailyPlanCache() {
     planCache = null;
 }
-exports.resetWallboxDailyPlanCache = resetWallboxDailyPlanCache;
 function wallboxMinChargePowerW(phases, minCurrentA, voltage = 230) {
     if (phases === null || minCurrentA === null || phases <= 0 || minCurrentA <= 0)
         return null;
     return Math.round(phases * voltage * minCurrentA);
 }
-exports.wallboxMinChargePowerW = wallboxMinChargePowerW;
 function telemetryInputFromSnapshot(snap, cfg) {
     const pickBool = (f) => f.status === "valid" ? f.value : null;
     const pickNum = (f) => f.status === "valid" ? f.value : null;
@@ -47,7 +55,6 @@ function telemetryInputFromSnapshot(snap, cfg) {
         mappingsReady: cfg.enabledStateId.trim().length > 0 && cfg.connectedStateId.trim().length > 0,
     };
 }
-exports.telemetryInputFromSnapshot = telemetryInputFromSnapshot;
 function resolveTargetSocForRemaining(telemetry) {
     if (telemetry.planActive === true && telemetry.planSocPct !== null && telemetry.planSocPct > 0) {
         return telemetry.planSocPct;
@@ -70,7 +77,6 @@ function computeRemainingEnergyKwh(telemetry, vehicleCapacityKwh = null) {
     }
     return null;
 }
-exports.computeRemainingEnergyKwh = computeRemainingEnergyKwh;
 function isValidTimezone(timezone) {
     if (!timezone.trim())
         return false;
@@ -126,7 +132,6 @@ function parseDailyAllocationEntries(raw) {
     }
     return out;
 }
-exports.parseDailyAllocationEntries = parseDailyAllocationEntries;
 function parseFullDailyPlan(raw) {
     if (raw === null || raw === undefined)
         return null;
@@ -196,7 +201,6 @@ function resolveWallboxPowerLimits(telemetry) {
         reasonDe: `Technische Leistungsgrenze ${maxW} W (${phases ?? "?"} Phasen).`,
     };
 }
-exports.resolveWallboxPowerLimits = resolveWallboxPowerLimits;
 function summarizeWallboxPlanUntilDeadline(entries, deadlineIso, nowMs) {
     const deadlineMs = deadlineIso ? Date.parse(deadlineIso) : null;
     let plannedEnergy = 0;
@@ -257,7 +261,6 @@ function summarizeWallboxPlanUntilDeadline(entries, deadlineIso, nowMs) {
         maxPlannedPowerW: maxPower,
     };
 }
-exports.summarizeWallboxPlanUntilDeadline = summarizeWallboxPlanUntilDeadline;
 function mergeCurrentSlotAllocation(entries, slotStartIso, slotEndIso) {
     const key = (0, slots_1.slotKey)(slotStartIso, slotEndIso);
     let found = null;
@@ -300,7 +303,6 @@ function planExecutionStatus(connected, charging, chargingAllowedByPlan, allocat
 function resolveWallboxPlanExecutionStatus(connected, charging, chargingAllowedByPlan, allocatedPowerW, chargePowerW = null) {
     return planExecutionStatus(connected, charging, chargingAllowedByPlan, allocatedPowerW, chargePowerW);
 }
-exports.resolveWallboxPlanExecutionStatus = resolveWallboxPlanExecutionStatus;
 function disconnectedDecision(telemetry) {
     return {
         connected: false,
@@ -858,7 +860,6 @@ function evaluateWallboxDailyPlan(input) {
         writeAllowed: false,
     };
 }
-exports.evaluateWallboxDailyPlan = evaluateWallboxDailyPlan;
 async function readStr(host, id) {
     try {
         const st = await host.getStateAsync(id);
@@ -928,4 +929,3 @@ async function resolveWallboxDailyPlanDecision(host, snap, cfg, now, opts) {
         vehicleCapacityKwh: opts.vehicleCapacityKwh,
     });
 }
-exports.resolveWallboxDailyPlanDecision = resolveWallboxDailyPlanDecision;

@@ -5,7 +5,7 @@
  * Opportunity-PV×0.3 wird hier nicht verwendet.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateBatteryReplaceCost = void 0;
+exports.evaluateBatteryReplaceCost = evaluateBatteryReplaceCost;
 const constants_1 = require("../../learning/grid_balance_economics/constants");
 function finite(n) {
     return n != null && Number.isFinite(n);
@@ -66,4 +66,3 @@ function evaluateBatteryReplaceCost(input) {
     }
     return result(null, null, "C_replace: kein dominanter belastbarer Energiepfad — Economics nicht usable.", 0, false);
 }
-exports.evaluateBatteryReplaceCost = evaluateBatteryReplaceCost;

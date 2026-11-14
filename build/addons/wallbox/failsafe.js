@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runWallboxFailsafeCheck = exports.recordWallboxPipelineResult = void 0;
+exports.recordWallboxPipelineResult = recordWallboxPipelineResult;
+exports.runWallboxFailsafeCheck = runWallboxFailsafeCheck;
 const evcc_config_1 = require("./evcc_config");
 const execution_mode_1 = require("../../execution_mode");
 const device_write_1 = require("../../device_write");
@@ -85,7 +86,6 @@ function recordWallboxPipelineResult(_config, intent, outcome) {
         };
     }
 }
-exports.recordWallboxPipelineResult = recordWallboxPipelineResult;
 async function forceWallboxSafeOff(adapter, reason) {
     const live = await (0, execution_mode_1.isLiveWriteAllowed)((id) => adapter.getStateAsync(id), ADDON_ID);
     if (!live)
@@ -193,4 +193,3 @@ async function runWallboxFailsafeCheck(adapter) {
         pending = null;
     }
 }
-exports.runWallboxFailsafeCheck = runWallboxFailsafeCheck;

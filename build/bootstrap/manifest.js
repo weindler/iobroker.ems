@@ -4,7 +4,8 @@
  * Kein vollständiger Objektbaum-Snapshot — nur unabhängig prüfbare Kategorien.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LEGACY_WALLBOX_VEHICLE_SLOT_PREFIXES = exports.allBootstrapCoreStateIds = exports.BOOTSTRAP_CORE_STATE_CATEGORIES = void 0;
+exports.LEGACY_WALLBOX_VEHICLE_SLOT_PREFIXES = exports.BOOTSTRAP_CORE_STATE_CATEGORIES = void 0;
+exports.allBootstrapCoreStateIds = allBootstrapCoreStateIds;
 exports.BOOTSTRAP_CORE_STATE_CATEGORIES = {
     globalBasis: [
         "global.execution_mode",
@@ -48,7 +49,6 @@ exports.BOOTSTRAP_CORE_STATE_CATEGORIES = {
 function allBootstrapCoreStateIds() {
     return Object.values(exports.BOOTSTRAP_CORE_STATE_CATEGORIES).flat();
 }
-exports.allBootstrapCoreStateIds = allBootstrapCoreStateIds;
 /** Legacy-Fahrzeugslot-Präfixe — dürfen nach Cold Start nicht existieren. */
 exports.LEGACY_WALLBOX_VEHICLE_SLOT_PREFIXES = [
     "addons.wallbox.vehicles.wb_vehicle_1_",

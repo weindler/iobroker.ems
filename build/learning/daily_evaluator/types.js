@@ -5,7 +5,9 @@
  * als Referenz), schreibt nie zurück in day_telemetry oder aktive Learning-Module.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DAILY_EVALUATOR_EXPECTED_TELEMETRY_SCHEMA = exports.DAILY_EVALUATOR_SCHEMA_VERSION = exports.emptyDailyEvaluatorLearningState = exports.emptyLearningMetric = exports.SCORE_TOPIC = exports.EVALUATOR_DOMAIN = void 0;
+exports.DAILY_EVALUATOR_EXPECTED_TELEMETRY_SCHEMA = exports.DAILY_EVALUATOR_SCHEMA_VERSION = exports.SCORE_TOPIC = exports.EVALUATOR_DOMAIN = void 0;
+exports.emptyLearningMetric = emptyLearningMetric;
+exports.emptyDailyEvaluatorLearningState = emptyDailyEvaluatorLearningState;
 const constants_1 = require("./constants");
 Object.defineProperty(exports, "DAILY_EVALUATOR_SCHEMA_VERSION", { enumerable: true, get: function () { return constants_1.DAILY_EVALUATOR_SCHEMA_VERSION; } });
 Object.defineProperty(exports, "DAILY_EVALUATOR_EXPECTED_TELEMETRY_SCHEMA", { enumerable: true, get: function () { return constants_1.DAILY_EVALUATOR_EXPECTED_TELEMETRY_SCHEMA; } });
@@ -40,7 +42,6 @@ function emptyLearningMetric() {
         reasonDe: "Noch keine Samples.",
     };
 }
-exports.emptyLearningMetric = emptyLearningMetric;
 function emptyDailyEvaluatorLearningState() {
     return {
         module: constants_1.DAILY_EVALUATOR_MODULE,
@@ -55,4 +56,3 @@ function emptyDailyEvaluatorLearningState() {
         lastProcessedDateKey: null,
     };
 }
-exports.emptyDailyEvaluatorLearningState = emptyDailyEvaluatorLearningState;

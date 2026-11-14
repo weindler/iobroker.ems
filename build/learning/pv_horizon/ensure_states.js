@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensurePvHorizonStates = void 0;
+exports.ensurePvHorizonStates = ensurePvHorizonStates;
 const state_util_1 = require("../../ems_light/state_util");
 const constants_1 = require("./constants");
 function numState(id, name, unit) {
@@ -38,4 +38,3 @@ async function ensurePvHorizonStates(host) {
     }
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensurePvHorizonStates = ensurePvHorizonStates;

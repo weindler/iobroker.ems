@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureCompareStates = exports.COMPARE_STATES = exports.COMPARE_BASE = void 0;
+exports.COMPARE_STATES = exports.COMPARE_BASE = void 0;
+exports.ensureCompareStates = ensureCompareStates;
 const state_util_1 = require("../../ems_light/state_util");
 exports.COMPARE_BASE = "compare";
 exports.COMPARE_STATES = {
@@ -84,4 +85,3 @@ async function ensureCompareStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureCompareStates = ensureCompareStates;

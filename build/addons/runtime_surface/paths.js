@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.governedRuntimeSurfaceEntries = exports.runtimeSurfaceStateMap = exports.addonRuntimeSurfaceState = exports.RUNTIME_SURFACE_STATE_IDS = exports.addonRuntimeSurfaceBase = void 0;
+exports.RUNTIME_SURFACE_STATE_IDS = void 0;
+exports.addonRuntimeSurfaceBase = addonRuntimeSurfaceBase;
+exports.addonRuntimeSurfaceState = addonRuntimeSurfaceState;
+exports.runtimeSurfaceStateMap = runtimeSurfaceStateMap;
+exports.governedRuntimeSurfaceEntries = governedRuntimeSurfaceEntries;
 const registry_1 = require("../governance/registry");
 /** Runtime path prefix: addons.<runtimeId>.runtime.surface */
 function addonRuntimeSurfaceBase(runtimeAddonId) {
     return `addons.${runtimeAddonId}.runtime.surface`;
 }
-exports.addonRuntimeSurfaceBase = addonRuntimeSurfaceBase;
 exports.RUNTIME_SURFACE_STATE_IDS = {
     decisionSource: "decision_source",
     decisionDetail: "decision_detail",
@@ -23,7 +26,6 @@ exports.RUNTIME_SURFACE_STATE_IDS = {
 function addonRuntimeSurfaceState(runtimeAddonId, key) {
     return `${addonRuntimeSurfaceBase(runtimeAddonId)}.${key}`;
 }
-exports.addonRuntimeSurfaceState = addonRuntimeSurfaceState;
 function runtimeSurfaceStateMap(runtimeAddonId) {
     const base = addonRuntimeSurfaceBase(runtimeAddonId);
     return {
@@ -40,8 +42,6 @@ function runtimeSurfaceStateMap(runtimeAddonId) {
         lockout: `${base}.${exports.RUNTIME_SURFACE_STATE_IDS.lockout}`,
     };
 }
-exports.runtimeSurfaceStateMap = runtimeSurfaceStateMap;
 function governedRuntimeSurfaceEntries() {
     return registry_1.GOVERNED_ADDON_REGISTRY;
 }
-exports.governedRuntimeSurfaceEntries = governedRuntimeSurfaceEntries;

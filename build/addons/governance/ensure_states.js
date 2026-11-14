@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isAddonGovernanceEnabledFromState = exports.syncAddonGovernanceFromConfig = exports.ensureAddonGovernanceStates = exports.addonGovernanceAiAllowedState = exports.addonGovernanceEnabledState = exports.addonGovernanceBase = void 0;
+exports.addonGovernanceBase = addonGovernanceBase;
+exports.addonGovernanceEnabledState = addonGovernanceEnabledState;
+exports.addonGovernanceAiAllowedState = addonGovernanceAiAllowedState;
+exports.ensureAddonGovernanceStates = ensureAddonGovernanceStates;
+exports.syncAddonGovernanceFromConfig = syncAddonGovernanceFromConfig;
+exports.isAddonGovernanceEnabledFromState = isAddonGovernanceEnabledFromState;
 const state_write_1 = require("../../policy/core/state_write");
 const tree_paths_1 = require("../../tree_paths");
 const config_1 = require("./config");
@@ -8,15 +13,12 @@ const registry_1 = require("./registry");
 function addonGovernanceBase(addonId) {
     return `addons.${addonId}.governance`;
 }
-exports.addonGovernanceBase = addonGovernanceBase;
 function addonGovernanceEnabledState(addonId) {
     return `${addonGovernanceBase(addonId)}.enabled`;
 }
-exports.addonGovernanceEnabledState = addonGovernanceEnabledState;
 function addonGovernanceAiAllowedState(addonId) {
     return `${addonGovernanceBase(addonId)}.ai_optimization_allowed`;
 }
-exports.addonGovernanceAiAllowedState = addonGovernanceAiAllowedState;
 async function ensureAddonGovernanceStates(host) {
     for (const entry of registry_1.GOVERNED_ADDON_REGISTRY) {
         await host.setObjectNotExistsAsync(`addons.${entry.id}`, {
@@ -53,7 +55,6 @@ async function ensureAddonGovernanceStates(host) {
         }
     }
 }
-exports.ensureAddonGovernanceStates = ensureAddonGovernanceStates;
 async function syncAddonGovernanceFromConfig(host, config) {
     for (const entry of registry_1.GOVERNED_ADDON_REGISTRY) {
         const gov = (0, config_1.getAddonGovernance)(config, entry.id);
@@ -62,7 +63,6 @@ async function syncAddonGovernanceFromConfig(host, config) {
         await (0, state_write_1.setStateIfChanged)(host, (0, tree_paths_1.addonEnabled)(entry.runtimeAddonId), gov.enabled);
     }
 }
-exports.syncAddonGovernanceFromConfig = syncAddonGovernanceFromConfig;
 async function isAddonGovernanceEnabledFromState(getState, addonOrRuntimeId) {
     const governedId = (0, config_1.resolveGovernedAddonId)(addonOrRuntimeId);
     if (governedId) {
@@ -77,4 +77,3 @@ async function isAddonGovernanceEnabledFromState(getState, addonOrRuntimeId) {
     const st = await getState((0, tree_paths_1.addonEnabled)(addonOrRuntimeId));
     return st?.val !== false;
 }
-exports.isAddonGovernanceEnabledFromState = isAddonGovernanceEnabledFromState;

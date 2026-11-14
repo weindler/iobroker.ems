@@ -4,7 +4,10 @@
  * Flexible Verbraucher werden separat im Unified modelliert — keine Doppelzählung.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyFlexDecompositionToSamples = exports.decomposeSamplePowerW = exports.decomposeHouseLoadBaselineW = exports.sumKnownFlexibleEmsLoadsW = void 0;
+exports.sumKnownFlexibleEmsLoadsW = sumKnownFlexibleEmsLoadsW;
+exports.decomposeHouseLoadBaselineW = decomposeHouseLoadBaselineW;
+exports.decomposeSamplePowerW = decomposeSamplePowerW;
+exports.applyFlexDecompositionToSamples = applyFlexDecompositionToSamples;
 function finiteNonNeg(w) {
     return w != null && Number.isFinite(w) && w >= 0;
 }
@@ -46,7 +49,6 @@ function sumKnownFlexibleEmsLoadsW(loads) {
     const sumFromParts = parts.reduce((s, p) => s + p.powerW, 0);
     return { sumW: sumFromParts, parts, missing };
 }
-exports.sumKnownFlexibleEmsLoadsW = sumKnownFlexibleEmsLoadsW;
 /**
  * baseline = totalMeasured − knownFlex, nie unter 0.
  * Fehlt total → baseline null. Fehlt Flex-Telemetrie → nicht schätzen (quality partial/none).
@@ -89,7 +91,6 @@ function decomposeHouseLoadBaselineW(totalMeasuredW, loads) {
         reasonDe,
     };
 }
-exports.decomposeHouseLoadBaselineW = decomposeHouseLoadBaselineW;
 /**
  * Sample-Leistung (Learning) dekomponieren, wenn Flex-Ist für denselben Zeitpunkt bekannt.
  * Ohne Flex-Werte: Sample unverändert, quality none.
@@ -101,7 +102,6 @@ function decomposeSamplePowerW(samplePowerW, loads) {
         result,
     };
 }
-exports.decomposeSamplePowerW = decomposeSamplePowerW;
 /** Wendet Dekomposition auf Samples an, wenn für hourStartMs Flex-Ist vorhanden. */
 function applyFlexDecompositionToSamples(samples, flexByHourStartMs) {
     let decomposedCount = 0;
@@ -119,4 +119,3 @@ function applyFlexDecompositionToSamples(samples, flexByHourStartMs) {
     });
     return { samples: out, decomposedCount, partialCount };
 }
-exports.applyFlexDecompositionToSamples = applyFlexDecompositionToSamples;

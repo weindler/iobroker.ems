@@ -4,7 +4,8 @@
  * Vendor state IDs never appear here.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveExternalAuthorityState = exports.externalControlExpected = void 0;
+exports.externalControlExpected = externalControlExpected;
+exports.resolveExternalAuthorityState = resolveExternalAuthorityState;
 function externalControlExpected(model) {
     if (model.externalControlConfigured)
         return true;
@@ -12,7 +13,6 @@ function externalControlExpected(model) {
         return true;
     return model.externalControlType !== "none";
 }
-exports.externalControlExpected = externalControlExpected;
 function hasActiveExternalSignal(model) {
     return (model.gridRewardsActive === true ||
         model.smartChargingActive === true ||
@@ -46,4 +46,3 @@ function resolveExternalAuthorityState(model) {
         return "unknown";
     return "inactive";
 }
-exports.resolveExternalAuthorityState = resolveExternalAuthorityState;

@@ -15,15 +15,30 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getExportDataDir = exports.runSupportExport = exports.runBackupExport = exports.runExport = exports.resetExportMutexForTest = exports.isExportRunning = void 0;
+exports.isExportRunning = isExportRunning;
+exports.resetExportMutexForTest = resetExportMutexForTest;
+exports.runExport = runExport;
+exports.runBackupExport = runBackupExport;
+exports.runSupportExport = runSupportExport;
+exports.getExportDataDir = getExportDataDir;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const data_dir_1 = require("../learning/data_dir");
@@ -44,11 +59,9 @@ const operation_lock_1 = require("./operation_lock");
 function isExportRunning() {
     return (0, operation_lock_1.isOperationRunning)();
 }
-exports.isExportRunning = isExportRunning;
 function resetExportMutexForTest() {
     (0, operation_lock_1.resetOperationLockForTest)();
 }
-exports.resetExportMutexForTest = resetExportMutexForTest;
 function instanceDataDir(host) {
     if (typeof host.getAbsoluteInstanceDataDir === "function") {
         return host.getAbsoluteInstanceDataDir();
@@ -209,7 +222,6 @@ async function runExport(host, kind, collectSupportExtras) {
         await fs.rm(workDir, { recursive: true, force: true }).catch(() => undefined);
     }
 }
-exports.runExport = runExport;
 function parseInstance(namespace) {
     const m = namespace.match(/\.(\d+)$/);
     return m ? Number(m[1]) : 0;
@@ -217,12 +229,9 @@ function parseInstance(namespace) {
 async function runBackupExport(host) {
     return runExport(host, "backup");
 }
-exports.runBackupExport = runBackupExport;
 async function runSupportExport(host, collectSupportExtras) {
     return runExport(host, "support", collectSupportExtras);
 }
-exports.runSupportExport = runSupportExport;
 function getExportDataDir(host) {
     return (0, data_dir_1.learningDataPath)(host);
 }
-exports.getExportDataDir = getExportDataDir;

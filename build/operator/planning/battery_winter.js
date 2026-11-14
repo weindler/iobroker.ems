@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.planBatteryWinter = exports.dailyKwhFromHouseLoadForecast = void 0;
+exports.dailyKwhFromHouseLoadForecast = dailyKwhFromHouseLoadForecast;
+exports.planBatteryWinter = planBatteryWinter;
 /**
  * @deprecated (Roadmap Block 2, v0.1.202) Ersetzt durch die Operator-Contribution
  * `src/operator/contributions/flexible/battery_charge_logic.ts` ("Batterie-Lade-Logik",
@@ -31,7 +32,6 @@ function dailyKwhFromHouseLoadForecast(json) {
     }
     return hasAny ? round3(sumWh / 1000) : null;
 }
-exports.dailyKwhFromHouseLoadForecast = dailyKwhFromHouseLoadForecast;
 function comfortReserveFactor(modePolicy) {
     if (modePolicy.mode === "comfort" || modePolicy.mode === "forced")
         return 1.35;
@@ -234,4 +234,3 @@ function planBatteryWinter(input) {
         reason_de: parts.join("; ") + ".",
     };
 }
-exports.planBatteryWinter = planBatteryWinter;

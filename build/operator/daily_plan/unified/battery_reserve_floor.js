@@ -9,7 +9,13 @@
  * Keine festen %-Regeln, keine Writes — nur Planungszahlen für Score-Allocation.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.usableBatteryEnergyKwh = exports.reserveFloorAt = exports.buildBatteryReserveFloor = exports.replacementCostCtPerKwh = exports.unavoidableNeedKwh = exports.findPvRecoverySlotIdx = exports.FLOOR_EPS = void 0;
+exports.FLOOR_EPS = void 0;
+exports.findPvRecoverySlotIdx = findPvRecoverySlotIdx;
+exports.unavoidableNeedKwh = unavoidableNeedKwh;
+exports.replacementCostCtPerKwh = replacementCostCtPerKwh;
+exports.buildBatteryReserveFloor = buildBatteryReserveFloor;
+exports.reserveFloorAt = reserveFloorAt;
+exports.usableBatteryEnergyKwh = usableBatteryEnergyKwh;
 exports.FLOOR_EPS = 1e-6;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
@@ -54,7 +60,6 @@ function findPvRecoverySlotIdx(slots, fromIdx) {
     }
     return slots.length - 1;
 }
-exports.findPvRecoverySlotIdx = findPvRecoverySlotIdx;
 /**
  * Unvermeidbarer Brückenbedarf am Slot i bis Recovery.
  *
@@ -97,7 +102,6 @@ function unavoidableNeedKwh(opts) {
         return round3(night * 0.12);
     return round3(night * 0.2);
 }
-exports.unavoidableNeedKwh = unavoidableNeedKwh;
 /** Erwartete Ersatz-ct/kWh: min Import bis Recovery, ~0 wenn PV reichlich nachlädt. */
 function replacementCostCtPerKwh(slots, fromIdx, recoveryIdx) {
     let cumSurplus = 0;
@@ -118,7 +122,6 @@ function replacementCostCtPerKwh(slots, fromIdx, recoveryIdx) {
         return minImport;
     return 28;
 }
-exports.replacementCostCtPerKwh = replacementCostCtPerKwh;
 function buildBatteryReserveFloor(input, slots) {
     const cap = input.battery.usableCapacityKwh;
     const reservePct = input.battery.reserveSocPct ?? input.battery.minSocPct ?? 0;
@@ -173,7 +176,6 @@ function buildBatteryReserveFloor(input, slots) {
         reasonDe: parts.join("; ") + ".",
     };
 }
-exports.buildBatteryReserveFloor = buildBatteryReserveFloor;
 /**
  * Intern: Haus − conf×PV bis Recovery.
  * null wenn keine belastbare Hauslast (nie 0 als Missing-Sentinel).
@@ -200,11 +202,9 @@ function reserveFloorAt(floor, slotIdx, fallback) {
     const v = floor.requiredKwhBySlot[slotIdx];
     return v !== undefined && Number.isFinite(v) ? v : fallback;
 }
-exports.reserveFloorAt = reserveFloorAt;
 function usableBatteryEnergyKwh(socKwh, floorKwh, dischargeEff) {
     const drawRoom = socKwh - floorKwh;
     if (!(drawRoom > exports.FLOOR_EPS))
         return 0;
     return round3(drawRoom * Math.max(dischargeEff, 0.1));
 }
-exports.usableBatteryEnergyKwh = usableBatteryEnergyKwh;

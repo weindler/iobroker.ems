@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.republishDailyPlanAfterWriteback = void 0;
+exports.republishDailyPlanAfterWriteback = republishDailyPlanAfterWriteback;
 const state_write_1 = require("../../policy/core/state_write");
 const addon_plan_publish_1 = require("../../operator/daily_plan/addon_plan_publish");
 const states_1 = require("../../operator/daily_plan/states");
@@ -35,4 +35,3 @@ async function republishDailyPlanAfterWriteback(host, plan) {
         host.log?.warn?.(`KI Write-back publish: ${String(e)}`);
     }
 }
-exports.republishDailyPlanAfterWriteback = republishDailyPlanAfterWriteback;

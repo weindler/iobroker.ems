@@ -8,7 +8,8 @@
  * dynamische Reserve, Mindestlaufzeit und Priorität.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveGridBalancePolicyLoadAdjustment = exports.parseExplicitBatteryPermission = void 0;
+exports.parseExplicitBatteryPermission = parseExplicitBatteryPermission;
+exports.resolveGridBalancePolicyLoadAdjustment = resolveGridBalancePolicyLoadAdjustment;
 /** Behält die Planner-Freigabe dreiwertig; nur echtes Boolean wird akzeptiert. */
 function parseExplicitBatteryPermission(raw) {
     if (raw === true)
@@ -17,7 +18,6 @@ function parseExplicitBatteryPermission(raw) {
         return false;
     return null;
 }
-exports.parseExplicitBatteryPermission = parseExplicitBatteryPermission;
 /**
  * Returns the measured whole-house load unchanged. The legacy consumer list is intentionally
  * ignored: subtracting a running heater caused the battery to reduce discharge and forced the
@@ -32,4 +32,3 @@ function resolveGridBalancePolicyLoadAdjustment(input) {
         reasonDe: "",
     };
 }
-exports.resolveGridBalancePolicyLoadAdjustment = resolveGridBalancePolicyLoadAdjustment;

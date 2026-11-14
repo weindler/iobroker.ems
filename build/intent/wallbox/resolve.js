@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyClearFields = exports.resolveWallboxIntent = void 0;
+exports.resolveWallboxIntent = resolveWallboxIntent;
+exports.applyClearFields = applyClearFields;
 const resolver_1 = require("../core/resolver");
 const revision_1 = require("../core/revision");
 const validation_1 = require("../core/validation");
@@ -98,7 +99,6 @@ function resolveWallboxIntent(input) {
         resolved_at: resolvedAt,
     };
 }
-exports.resolveWallboxIntent = resolveWallboxIntent;
 function fieldToCandidate(field, priority) {
     return {
         value: field.value,
@@ -137,4 +137,3 @@ function applyClearFields(snapshot, clearFields) {
     }
     return out;
 }
-exports.applyClearFields = applyClearFields;

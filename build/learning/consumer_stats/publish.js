@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.publishConsumerStats = void 0;
+exports.publishConsumerStats = publishConsumerStats;
 const state_write_1 = require("../../policy/core/state_write");
 const ensure_states_1 = require("./ensure_states");
 async function publishConsumerStats(host, consumerKey, snapshot) {
@@ -17,4 +17,3 @@ async function publishConsumerStats(host, consumerKey, snapshot) {
     await (0, state_write_1.setStateIfChanged)(host, ids.lastSessionEnergyKwh, snapshot.lastSessionEnergyKwh);
     await (0, state_write_1.setStateIfChanged)(host, ids.lastUpdated, snapshot.lastUpdated);
 }
-exports.publishConsumerStats = publishConsumerStats;

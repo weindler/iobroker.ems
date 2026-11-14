@@ -1,6 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeStatisticsPersist = exports.readStatisticsPersist = exports.atomicStatisticsWrite = exports.decodeStatistics = exports.UnsupportedStatisticsVersion = exports.emptyDayRecord = exports.emptyPersist = exports.emptyRuntime = exports.pruneStatisticsPersist = exports.STATISTICS_DAILY_RETENTION_DAYS = exports.STATISTICS_PERSIST_CATEGORY = exports.STATISTICS_PERSIST_FILE = void 0;
+exports.UnsupportedStatisticsVersion = exports.STATISTICS_DAILY_RETENTION_DAYS = exports.STATISTICS_PERSIST_CATEGORY = exports.STATISTICS_PERSIST_FILE = void 0;
+exports.pruneStatisticsPersist = pruneStatisticsPersist;
+exports.emptyRuntime = emptyRuntime;
+exports.emptyPersist = emptyPersist;
+exports.emptyDayRecord = emptyDayRecord;
+exports.decodeStatistics = decodeStatistics;
+exports.atomicStatisticsWrite = atomicStatisticsWrite;
+exports.readStatisticsPersist = readStatisticsPersist;
+exports.writeStatisticsPersist = writeStatisticsPersist;
 const promises_1 = require("node:fs/promises");
 const node_crypto_1 = require("node:crypto");
 const node_path_1 = require("node:path");
@@ -37,7 +45,6 @@ function pruneStatisticsPersist(data, anchorDateKey, retainDays = exports.STATIS
     }
     return { ...data, days, monthRewardsBilling };
 }
-exports.pruneStatisticsPersist = pruneStatisticsPersist;
 function emptyRuntime(dateKey) {
     return {
         dateKey,
@@ -56,7 +63,6 @@ function emptyRuntime(dateKey) {
         meterCaptureSinceIso: null,
     };
 }
-exports.emptyRuntime = emptyRuntime;
 function emptyPersist(now = new Date()) {
     const dateKey = (0, compute_1.localDateKey)(now);
     return {
@@ -67,7 +73,6 @@ function emptyPersist(now = new Date()) {
         runtime: emptyRuntime(dateKey),
     };
 }
-exports.emptyPersist = emptyPersist;
 function emptyDayRecord(dateKey) {
     return {
         dateKey,
@@ -76,7 +81,6 @@ function emptyDayRecord(dateKey) {
         publicSessions: [],
     };
 }
-exports.emptyDayRecord = emptyDayRecord;
 class UnsupportedStatisticsVersion extends Error {
 }
 exports.UnsupportedStatisticsVersion = UnsupportedStatisticsVersion;
@@ -97,7 +101,6 @@ function decodeStatistics(raw) {
     parsed.monthRewardsBilling ??= {};
     return parsed;
 }
-exports.decodeStatistics = decodeStatistics;
 function isMissing(error) {
     return error?.code === "ENOENT";
 }
@@ -117,7 +120,6 @@ async function atomicStatisticsWrite(path, raw) {
             throw error; });
     }
 }
-exports.atomicStatisticsWrite = atomicStatisticsWrite;
 async function readStatisticsPersist(dir) {
     const path = (0, node_path_1.join)(dir, exports.STATISTICS_PERSIST_FILE);
     let primaryError;
@@ -138,7 +140,6 @@ async function readStatisticsPersist(dir) {
         throw new Error("Statistics cannot be recovered; refusing to replace history with empty data", { cause: error });
     }
 }
-exports.readStatisticsPersist = readStatisticsPersist;
 async function writeStatisticsPersist(dir, data) {
     await (0, promises_1.mkdir)(dir, { recursive: true });
     const path = (0, node_path_1.join)(dir, exports.STATISTICS_PERSIST_FILE);
@@ -165,4 +166,3 @@ async function writeStatisticsPersist(dir, data) {
     await atomicStatisticsWrite(path, raw);
     data.generatedAt = generatedAt;
 }
-exports.writeStatisticsPersist = writeStatisticsPersist;

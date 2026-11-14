@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runDynamicSurfaceCleanup = void 0;
+exports.runDynamicSurfaceCleanup = runDynamicSurfaceCleanup;
 /**
  * Phase 4B1 — controlled cleanup of unambiguously empty dynamic placeholders.
  * Deletes only allowlisted relative IDs under the adapter namespace.
@@ -212,7 +212,6 @@ async function runDynamicSurfaceCleanup(host) {
     host.log.info(`surface cleanup: checked=${stats.checked} deleted=${stats.deleted} skipped=${stats.skipped}`);
     return stats;
 }
-exports.runDynamicSurfaceCleanup = runDynamicSurfaceCleanup;
 const MAPPING_ROOTS = [
     "addons.battery.mapping",
     "addons.wallbox.mapping",

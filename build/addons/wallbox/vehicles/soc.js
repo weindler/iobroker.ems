@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pickEvccField = exports.emptyProfileTelemetry = exports.profileTelemetryFromForeignReads = exports.mergeProfileTelemetryReadings = exports.isFieldStale = exports.STALE_MS = void 0;
+exports.STALE_MS = void 0;
+exports.isFieldStale = isFieldStale;
+exports.mergeProfileTelemetryReadings = mergeProfileTelemetryReadings;
+exports.profileTelemetryFromForeignReads = profileTelemetryFromForeignReads;
+exports.emptyProfileTelemetry = emptyProfileTelemetry;
+exports.pickEvccField = pickEvccField;
 const normalize_1 = require("../normalize");
 const STALE_MS = 15 * 60 * 1000;
 exports.STALE_MS = STALE_MS;
@@ -37,7 +42,6 @@ function isFieldStale(ts, nowMs) {
         return true;
     return nowMs - ts > STALE_MS;
 }
-exports.isFieldStale = isFieldStale;
 function mergeProfileTelemetryReadings(profile, readings, evccSnap, isResolvedProfile, evccConnected, now) {
     const nowMs = now.getTime();
     let connected = readings.connected;
@@ -110,7 +114,6 @@ function mergeProfileTelemetryReadings(profile, readings, evccSnap, isResolvedPr
         stale: readings.stale,
     };
 }
-exports.mergeProfileTelemetryReadings = mergeProfileTelemetryReadings;
 function profileTelemetryFromForeignReads(profile, reads, now) {
     const nowMs = now.getTime();
     const tsValues = [
@@ -137,7 +140,6 @@ function profileTelemetryFromForeignReads(profile, reads, now) {
         sessionEnergyTs: reads.sessionEnergy?.ts,
     };
 }
-exports.profileTelemetryFromForeignReads = profileTelemetryFromForeignReads;
 function emptyProfileTelemetry(now) {
     return {
         connected: null,
@@ -151,10 +153,8 @@ function emptyProfileTelemetry(now) {
         stale: false,
     };
 }
-exports.emptyProfileTelemetry = emptyProfileTelemetry;
 function pickEvccField(field) {
     if (field.status === "valid")
         return field.value;
     return null;
 }
-exports.pickEvccField = pickEvccField;

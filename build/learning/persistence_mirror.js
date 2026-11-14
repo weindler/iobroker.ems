@@ -15,15 +15,29 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restoreLearningPersistenceFromStates = exports.mirrorLearningPersistenceToStates = exports.ensureLearningPersistenceStates = exports.learningPersistenceMirrorRelativeIds = exports.LEARNING_PERSISTENCE_ARTIFACTS = void 0;
+exports.LEARNING_PERSISTENCE_ARTIFACTS = void 0;
+exports.learningPersistenceMirrorRelativeIds = learningPersistenceMirrorRelativeIds;
+exports.ensureLearningPersistenceStates = ensureLearningPersistenceStates;
+exports.mirrorLearningPersistenceToStates = mirrorLearningPersistenceToStates;
+exports.restoreLearningPersistenceFromStates = restoreLearningPersistenceFromStates;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const state_util_1 = require("../ems_light/state_util");
@@ -114,7 +128,6 @@ function mirrorStateId(key) {
 function learningPersistenceMirrorRelativeIds() {
     return exports.LEARNING_PERSISTENCE_ARTIFACTS.map((a) => mirrorStateId(a.key));
 }
-exports.learningPersistenceMirrorRelativeIds = learningPersistenceMirrorRelativeIds;
 async function ensureLearningPersistenceStates(host) {
     await (0, state_util_1.ensureChannel)(host, BASE, "Learning-Persistenz (Status)");
     const defs = [
@@ -151,7 +164,6 @@ async function ensureLearningPersistenceStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureLearningPersistenceStates = ensureLearningPersistenceStates;
 /**
  * Leichtgewichtiger Status-Tick: zählt Dateien, schreibt keine großen JSON-States mehr.
  * Vorher: Spiegelung ganzer Learning-Dateien in den Objektbaum (RAM-Last).
@@ -174,7 +186,6 @@ async function mirrorLearningPersistenceToStates(host) {
     await host.setStateAsync(`${BASE}.files_present`, { val: present, ack: true });
     await host.setStateAsync(`${BASE}.last_mirror`, { val: new Date().toISOString(), ack: true });
 }
-exports.mirrorLearningPersistenceToStates = mirrorLearningPersistenceToStates;
 /**
  * Fehlende Zusammenfassungs-Dateien aus Alt-Spiegel-States wiederherstellen (Upgrade-Pfad).
  */
@@ -221,4 +232,3 @@ async function restoreLearningPersistenceFromStates(host) {
         await host.setStateAsync(`${BASE}.last_restore`, { val: new Date().toISOString(), ack: true });
     }
 }
-exports.restoreLearningPersistenceFromStates = restoreLearningPersistenceFromStates;

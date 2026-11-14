@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runPriceForecastLearning = void 0;
+exports.runPriceForecastLearning = runPriceForecastLearning;
 const config_1 = require("./config");
 const compare_1 = require("./compare");
 const math_1 = require("./math");
@@ -67,4 +67,3 @@ async function runPriceForecastLearning(host) {
         await writeResult(host, (0, math_1.errorResult)(forecastSource, actualSource, msg), lastRun, cfg);
     }
 }
-exports.runPriceForecastLearning = runPriceForecastLearning;

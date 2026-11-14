@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.configuredVehicleDetectionStateIds = exports.configuredVehicleTelemetryStateIds = exports.wallboxVehicleProfilesConfigFromAdapter = exports.WB_EVCC_VEHICLE_NAME_STATE = exports.WB_EVCC_VEHICLE_ID_STATE = exports.WB_MANUAL_VEHICLE_ID = exports.WB_VEHICLE_PROFILES = void 0;
+exports.WB_EVCC_VEHICLE_NAME_STATE = exports.WB_EVCC_VEHICLE_ID_STATE = exports.WB_MANUAL_VEHICLE_ID = exports.WB_VEHICLE_PROFILES = void 0;
+exports.wallboxVehicleProfilesConfigFromAdapter = wallboxVehicleProfilesConfigFromAdapter;
+exports.configuredVehicleTelemetryStateIds = configuredVehicleTelemetryStateIds;
+exports.configuredVehicleDetectionStateIds = configuredVehicleDetectionStateIds;
 const vehicle_id_1 = require("./vehicle_id");
 exports.WB_VEHICLE_PROFILES = "wb_vehicle_profiles";
 exports.WB_MANUAL_VEHICLE_ID = "wb_manual_vehicle_id";
@@ -72,7 +75,6 @@ function wallboxVehicleProfilesConfigFromAdapter(config) {
         profiles: parseProfileRows(c[exports.WB_VEHICLE_PROFILES]),
     };
 }
-exports.wallboxVehicleProfilesConfigFromAdapter = wallboxVehicleProfilesConfigFromAdapter;
 function configuredVehicleTelemetryStateIds(profiles) {
     const ids = new Set();
     for (const p of profiles) {
@@ -89,7 +91,6 @@ function configuredVehicleTelemetryStateIds(profiles) {
     }
     return [...ids];
 }
-exports.configuredVehicleTelemetryStateIds = configuredVehicleTelemetryStateIds;
 function configuredVehicleDetectionStateIds(cfg) {
     const ids = [];
     if (cfg.evccVehicleIdStateId)
@@ -98,4 +99,3 @@ function configuredVehicleDetectionStateIds(cfg) {
         ids.push(cfg.evccVehicleNameStateId);
     return ids;
 }
-exports.configuredVehicleDetectionStateIds = configuredVehicleDetectionStateIds;

@@ -1,13 +1,20 @@
 "use strict";
 /** EVCC telemetry value normalization — missing stays missing, never invent 0/false. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.normalizeOptionalJsonString = exports.normalizeOptionalLoadpointMode = exports.normalizeOptionalString = exports.normalizeOptionalBatteryMode = exports.normalizeOptionalPhases = exports.normalizeOptionalSoc = exports.normalizeOptionalNumber = exports.normalizeOptionalBool = exports.missingField = void 0;
+exports.missingField = missingField;
+exports.normalizeOptionalBool = normalizeOptionalBool;
+exports.normalizeOptionalNumber = normalizeOptionalNumber;
+exports.normalizeOptionalSoc = normalizeOptionalSoc;
+exports.normalizeOptionalPhases = normalizeOptionalPhases;
+exports.normalizeOptionalBatteryMode = normalizeOptionalBatteryMode;
+exports.normalizeOptionalString = normalizeOptionalString;
+exports.normalizeOptionalLoadpointMode = normalizeOptionalLoadpointMode;
+exports.normalizeOptionalJsonString = normalizeOptionalJsonString;
 const sentinel_1 = require("../../intent/core/sentinel");
 const validation_1 = require("../../intent/core/validation");
 function missingField() {
     return { value: null, status: "missing", raw: null };
 }
-exports.missingField = missingField;
 function normalizeOptionalBool(raw) {
     if ((0, sentinel_1.isEmptySentinel)(raw))
         return missingField();
@@ -29,7 +36,6 @@ function normalizeOptionalBool(raw) {
         return { value: false, status: "valid", raw };
     return { value: null, status: "invalid", raw };
 }
-exports.normalizeOptionalBool = normalizeOptionalBool;
 function normalizeOptionalNumber(raw) {
     if ((0, sentinel_1.isEmptySentinel)(raw))
         return missingField();
@@ -44,14 +50,12 @@ function normalizeOptionalNumber(raw) {
         return { value: null, status: "invalid", raw };
     return { value: n, status: "valid", raw };
 }
-exports.normalizeOptionalNumber = normalizeOptionalNumber;
 function normalizeOptionalSoc(raw) {
     if ((0, sentinel_1.isEmptySentinel)(raw))
         return missingField();
     const parsed = (0, validation_1.parseOptionalSoc)(raw);
     return { value: parsed.value, status: parsed.status === "valid" ? "valid" : parsed.status === "missing" ? "missing" : "invalid", raw };
 }
-exports.normalizeOptionalSoc = normalizeOptionalSoc;
 function normalizeOptionalPhases(raw) {
     const n = normalizeOptionalNumber(raw);
     if (n.status !== "valid" || n.value === null)
@@ -60,7 +64,6 @@ function normalizeOptionalPhases(raw) {
         return { value: null, status: "invalid", raw };
     return n;
 }
-exports.normalizeOptionalPhases = normalizeOptionalPhases;
 const EVCC_BATTERY_MODES = new Set(["normal", "hold", "charge", "holdcharge", "unknown"]);
 function normalizeOptionalBatteryMode(raw) {
     if ((0, sentinel_1.isEmptySentinel)(raw))
@@ -77,7 +80,6 @@ function normalizeOptionalBatteryMode(raw) {
         return { value: s, status: "valid", raw };
     return { value: null, status: "invalid", raw };
 }
-exports.normalizeOptionalBatteryMode = normalizeOptionalBatteryMode;
 /** Freitext (Fahrzeugname/Titel) — getrimmt, keine Erfindung. */
 function normalizeOptionalString(raw) {
     if ((0, sentinel_1.isEmptySentinel)(raw))
@@ -87,7 +89,6 @@ function normalizeOptionalString(raw) {
         return missingField();
     return { value: s, status: "valid", raw };
 }
-exports.normalizeOptionalString = normalizeOptionalString;
 /** Loadpoint-Modus (off/pv/minpv/now …) — getrimmt lowercase, kein Inventar. */
 function normalizeOptionalLoadpointMode(raw) {
     if ((0, sentinel_1.isEmptySentinel)(raw))
@@ -97,7 +98,6 @@ function normalizeOptionalLoadpointMode(raw) {
         return missingField();
     return { value: s, status: "valid", raw };
 }
-exports.normalizeOptionalLoadpointMode = normalizeOptionalLoadpointMode;
 /** Arrays/Objekte (chargeCurrents/chargeVoltages) als JSON-String — kein Fake-[] . */
 function normalizeOptionalJsonString(raw) {
     if ((0, sentinel_1.isEmptySentinel)(raw))
@@ -118,4 +118,3 @@ function normalizeOptionalJsonString(raw) {
     }
     return { value: null, status: "invalid", raw };
 }
-exports.normalizeOptionalJsonString = normalizeOptionalJsonString;

@@ -3,7 +3,25 @@
  * Golden-Szenario-Fixtures — relative Zahlen, keine Hardcodes als Produktregeln.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.golden005GoodDayPvHeat = exports.golden001ScaledBadPlan = exports.golden001ScaledInput = exports.golden005BadNightBatteryHeat = exports.golden005Input = exports.golden004StalePlanNoReplan = exports.golden004ReplanPlan = exports.golden004Input = exports.golden003GoodPv = exports.golden003BadEarlyGrid = exports.golden003Input = exports.golden002GoodPlan = exports.golden002BadPlanAbsentCharge = exports.golden002Input = exports.golden001GoodPlan = exports.golden001BadPlan = exports.golden001Input = exports.basePlan = exports.buildSlots = void 0;
+exports.buildSlots = buildSlots;
+exports.basePlan = basePlan;
+exports.golden001Input = golden001Input;
+exports.golden001BadPlan = golden001BadPlan;
+exports.golden001GoodPlan = golden001GoodPlan;
+exports.golden002Input = golden002Input;
+exports.golden002BadPlanAbsentCharge = golden002BadPlanAbsentCharge;
+exports.golden002GoodPlan = golden002GoodPlan;
+exports.golden003Input = golden003Input;
+exports.golden003BadEarlyGrid = golden003BadEarlyGrid;
+exports.golden003GoodPv = golden003GoodPv;
+exports.golden004Input = golden004Input;
+exports.golden004ReplanPlan = golden004ReplanPlan;
+exports.golden004StalePlanNoReplan = golden004StalePlanNoReplan;
+exports.golden005Input = golden005Input;
+exports.golden005BadNightBatteryHeat = golden005BadNightBatteryHeat;
+exports.golden001ScaledInput = golden001ScaledInput;
+exports.golden001ScaledBadPlan = golden001ScaledBadPlan;
+exports.golden005GoodDayPvHeat = golden005GoodDayPvHeat;
 const Q_OK = { status: "valid", confidencePct: 80, reasonDe: "fixture" };
 const FRESH = {
     observedAtIso: "2026-08-04T00:00:00.000Z",
@@ -25,7 +43,6 @@ function buildSlots(startIso, hours) {
     }
     return out;
 }
-exports.buildSlots = buildSlots;
 function emptyTotals() {
     return {
         pvForecastEnergyKwh: null,
@@ -77,7 +94,6 @@ function basePlan(overrides = {}) {
         ...overrides,
     };
 }
-exports.basePlan = basePlan;
 function pvSlotsFlat(slots, powerW) {
     const energy = (powerW / 1000) * 0.25;
     return slots.map((s) => ({
@@ -188,7 +204,6 @@ function golden001Input() {
         globalMode: "balanced",
     };
 }
-exports.golden001Input = golden001Input;
 /** Schlechter Plan: viel Export, kaum thermische Allocation, Batterie abends voll. */
 function golden001BadPlan(input) {
     const bat = [
@@ -218,7 +233,6 @@ function golden001BadPlan(input) {
         reasonCodes: ["HIGH_EXPORT", "BATTERY_NEAR_FULL"],
     });
 }
-exports.golden001BadPlan = golden001BadPlan;
 /** Guter Plan: thermischer Headroom weitgehend aus PV belegt, Export klein. */
 function golden001GoodPlan(input) {
     const thermalSlots = [];
@@ -253,7 +267,6 @@ function golden001GoodPlan(input) {
         reasonCodes: ["PREALLOCATE_PV_TO_THERMAL"],
     });
 }
-exports.golden001GoodPlan = golden001GoodPlan;
 /** GOLDEN-002: Fahrzeug 05:45–15:30 weg, PV später gut, Deadline Abend. */
 function golden002Input() {
     const slots = buildSlots("2026-08-04T00:00:00.000Z", 24);
@@ -359,7 +372,6 @@ function golden002Input() {
         globalMode: "balanced",
     };
 }
-exports.golden002Input = golden002Input;
 function golden002BadPlanAbsentCharge() {
     return basePlan({
         planId: "golden-002-bad-absent",
@@ -377,7 +389,6 @@ function golden002BadPlanAbsentCharge() {
         ],
     });
 }
-exports.golden002BadPlanAbsentCharge = golden002BadPlanAbsentCharge;
 function golden002GoodPlan() {
     return basePlan({
         planId: "golden-002-good",
@@ -406,7 +417,6 @@ function golden002GoodPlan() {
         reasonCodes: ["PRESENCE_AWARE", "PRICE_WINDOWS_COMPARED"],
     });
 }
-exports.golden002GoodPlan = golden002GoodPlan;
 /** GOLDEN-003: billiger Morgen-Netzstrom, aber genug PV vor Deadline. */
 function golden003Input() {
     const input = golden002Input();
@@ -429,7 +439,6 @@ function golden003Input() {
     input.pv.expectedDayEnergyKwh = input.pv.slots.reduce((a, x) => a + (x.energyKwh ?? 0), 0);
     return input;
 }
-exports.golden003Input = golden003Input;
 function golden003BadEarlyGrid() {
     return basePlan({
         planId: "golden-003-bad",
@@ -447,7 +456,6 @@ function golden003BadEarlyGrid() {
         ],
     });
 }
-exports.golden003BadEarlyGrid = golden003BadEarlyGrid;
 function golden003GoodPv() {
     return basePlan({
         planId: "golden-003-good",
@@ -465,7 +473,6 @@ function golden003GoodPv() {
         ],
     });
 }
-exports.golden003GoodPv = golden003GoodPv;
 /** GOLDEN-004: Forecast kippt (40→12 kWh) — Plan muss revidierte PV + Netz-Pflicht zeigen. */
 function golden004Input() {
     const input = golden001Input();
@@ -473,7 +480,6 @@ function golden004Input() {
     input.pv.expectedDayEnergyKwh = 12;
     return input;
 }
-exports.golden004Input = golden004Input;
 function golden004ReplanPlan() {
     return basePlan({
         planId: "golden-004-replan",
@@ -493,7 +499,6 @@ function golden004ReplanPlan() {
         ],
     });
 }
-exports.golden004ReplanPlan = golden004ReplanPlan;
 /** Stale: Plan hängt noch an alter hoher PV und verschiebt keine Pflicht auf Netz. */
 function golden004StalePlanNoReplan() {
     return basePlan({
@@ -503,12 +508,10 @@ function golden004StalePlanNoReplan() {
         allocations: [],
     });
 }
-exports.golden004StalePlanNoReplan = golden004StalePlanNoReplan;
 /** GOLDEN-005: Tages-PV verschwendet, Nacht Batterie→Heizstab. */
 function golden005Input() {
     return golden001Input();
 }
-exports.golden005Input = golden005Input;
 /**
  * Bad: Batterie→Heizstab in einem Slot ohne PV-Forecast (21:00Z liegt außerhalb
  * der Tages-PV-Slots von golden001 → pvPowerAtSlot=0), nach hohem Export.
@@ -541,7 +544,6 @@ function golden005BadNightBatteryHeat(input) {
         ],
     });
 }
-exports.golden005BadNightBatteryHeat = golden005BadNightBatteryHeat;
 /** Skaliertes 001-Szenario (andere Zahlen) — beweist Unabhängigkeit von 22 kWh / 47 °C. */
 function golden001ScaledInput() {
     const input = golden001Input();
@@ -553,7 +555,6 @@ function golden001ScaledInput() {
     };
     return input;
 }
-exports.golden001ScaledInput = golden001ScaledInput;
 function golden001ScaledBadPlan(input) {
     return basePlan({
         planId: "golden-001-scaled-bad",
@@ -574,8 +575,6 @@ function golden001ScaledBadPlan(input) {
         ],
     });
 }
-exports.golden001ScaledBadPlan = golden001ScaledBadPlan;
 function golden005GoodDayPvHeat(input) {
     return golden001GoodPlan(input);
 }
-exports.golden005GoodDayPvHeat = golden005GoodDayPvHeat;

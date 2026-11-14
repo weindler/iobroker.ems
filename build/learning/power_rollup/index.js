@@ -1,6 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopPowerRollup = exports.fetchRollupUnidirectionalPowerPoints = exports.fetchRollupHouseLoadSamples = exports.fetchRollupPowerHistory = exports.ensurePowerRollupForLearning = exports.handlePowerRollupStateChange = exports.tickPowerRollup = exports.initPowerRollup = void 0;
+exports.initPowerRollup = initPowerRollup;
+exports.tickPowerRollup = tickPowerRollup;
+exports.handlePowerRollupStateChange = handlePowerRollupStateChange;
+exports.ensurePowerRollupForLearning = ensurePowerRollupForLearning;
+exports.fetchRollupPowerHistory = fetchRollupPowerHistory;
+exports.fetchRollupHouseLoadSamples = fetchRollupHouseLoadSamples;
+exports.fetchRollupUnidirectionalPowerPoints = fetchRollupUnidirectionalPowerPoints;
+exports.stopPowerRollup = stopPowerRollup;
 const state_util_1 = require("../../ems_light/state_util");
 const backfill_1 = require("./backfill");
 const buffer_1 = require("./buffer");
@@ -207,7 +214,6 @@ async function initPowerRollup(host) {
     }
     host.log.debug?.(`Power-Rollup ready (${sources.length} source(s))`);
 }
-exports.initPowerRollup = initPowerRollup;
 async function tickPowerRollup(host) {
     if (!baseDir(host)) {
         return;
@@ -236,7 +242,6 @@ async function tickPowerRollup(host) {
     }
     await flushPersist(host);
 }
-exports.tickPowerRollup = tickPowerRollup;
 function handlePowerRollupStateChange(id, state) {
     if (!rollupHost || !state) {
         return;
@@ -262,7 +267,6 @@ function handlePowerRollupStateChange(id, state) {
         rollupHost?.log.warn(`Power-Rollup ingest ${id}: ${e}`);
     });
 }
-exports.handlePowerRollupStateChange = handlePowerRollupStateChange;
 async function ensurePowerRollupForLearning(host) {
     if (!baseDir(host)) {
         return;
@@ -271,7 +275,6 @@ async function ensurePowerRollupForLearning(host) {
     await (0, backfill_1.ensurePowerRollupBackfill)(host, sources);
     persistCache = null;
 }
-exports.ensurePowerRollupForLearning = ensurePowerRollupForLearning;
 async function fetchRollupPowerHistory(host, stateId, lookbackDays) {
     const dir = host.getAbsolutePath?.(PERSIST_CATEGORY);
     if (!dir || !stateId) {
@@ -288,7 +291,6 @@ async function fetchRollupPowerHistory(host, stateId, lookbackDays) {
     }
     return result;
 }
-exports.fetchRollupPowerHistory = fetchRollupPowerHistory;
 async function fetchRollupHouseLoadSamples(host, stateId, lookbackDays) {
     const dir = host.getAbsolutePath?.(PERSIST_CATEGORY);
     if (!dir || !stateId) {
@@ -305,7 +307,6 @@ async function fetchRollupHouseLoadSamples(host, stateId, lookbackDays) {
     }
     return result;
 }
-exports.fetchRollupHouseLoadSamples = fetchRollupHouseLoadSamples;
 /** Unidirektionale Leistung (PV / Hauslast) aus EMS-Stunden-Rollup. */
 async function fetchRollupUnidirectionalPowerPoints(host, stateId, lookbackDays) {
     const dir = host.getAbsolutePath?.(PERSIST_CATEGORY);
@@ -323,7 +324,6 @@ async function fetchRollupUnidirectionalPowerPoints(host, stateId, lookbackDays)
     }
     return result;
 }
-exports.fetchRollupUnidirectionalPowerPoints = fetchRollupUnidirectionalPowerPoints;
 function stopPowerRollup() {
     rollupHost = null;
     persistCache = null;
@@ -331,4 +331,3 @@ function stopPowerRollup() {
     subscribedStateIds.clear();
     persistDirty = false;
 }
-exports.stopPowerRollup = stopPowerRollup;

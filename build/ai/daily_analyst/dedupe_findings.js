@@ -5,7 +5,10 @@
  * Unterschiedliche echte Probleme bleiben getrennt — keine aggressive Fusion.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formatAnalystFindingsDe = exports.dedupeAnalystFindings = exports.findingsAreSameEvent = exports.analystFindingEventKey = void 0;
+exports.analystFindingEventKey = analystFindingEventKey;
+exports.findingsAreSameEvent = findingsAreSameEvent;
+exports.dedupeAnalystFindings = dedupeAnalystFindings;
+exports.formatAnalystFindingsDe = formatAnalystFindingsDe;
 const SEVERITY_RANK = {
     info: 1,
     notice: 2,
@@ -42,7 +45,6 @@ function analystFindingEventKey(f) {
     const qty = extractQuantities(allText(f));
     return [consumerFamily(f), f.expectedDirection, qty || f.findingType].join("::");
 }
-exports.analystFindingEventKey = analystFindingEventKey;
 function findingsAreSameEvent(a, b) {
     if (a.dateKey && b.dateKey && a.dateKey !== b.dateKey)
         return false;
@@ -63,7 +65,6 @@ function findingsAreSameEvent(a, b) {
         return sameWindowCause(a, b);
     return a.findingType === b.findingType && sameWindowCause(a, b);
 }
-exports.findingsAreSameEvent = findingsAreSameEvent;
 function observationPrecision(f) {
     const t = f.observedBehaviorDe;
     const digits = (t.match(/\d/g) ?? []).length;
@@ -125,7 +126,6 @@ function dedupeAnalystFindings(findings) {
     }
     return clusters;
 }
-exports.dedupeAnalystFindings = dedupeAnalystFindings;
 /** Kompakte nummerierte VIS-/State-Darstellung — kein JSON-Dump. */
 function formatAnalystFindingsDe(findings) {
     if (!findings.length)
@@ -137,4 +137,3 @@ function formatAnalystFindingsDe(findings) {
     })
         .join("\n\n");
 }
-exports.formatAnalystFindingsDe = formatAnalystFindingsDe;

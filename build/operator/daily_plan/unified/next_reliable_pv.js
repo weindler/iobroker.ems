@@ -6,7 +6,15 @@
  * keine Doppelverwendung derselben PV-kWh als „sichere Versorgung“.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveThermalPlannerEnergy = exports.thermalHardCoverUntilMs = exports.expectedNetDemandUntilPvKwh = exports.findNextReliablePvAfterCurrentWindow = exports.findStartOfNextSurplusWindowIdx = exports.findEndOfCurrentSurplusWindowIdx = exports.findNextReliablePvOpportunity = exports.applyHardPvBoundsToSlots = exports.estimateHardPvBoundKwhBySlot = void 0;
+exports.estimateHardPvBoundKwhBySlot = estimateHardPvBoundKwhBySlot;
+exports.applyHardPvBoundsToSlots = applyHardPvBoundsToSlots;
+exports.findNextReliablePvOpportunity = findNextReliablePvOpportunity;
+exports.findEndOfCurrentSurplusWindowIdx = findEndOfCurrentSurplusWindowIdx;
+exports.findStartOfNextSurplusWindowIdx = findStartOfNextSurplusWindowIdx;
+exports.findNextReliablePvAfterCurrentWindow = findNextReliablePvAfterCurrentWindow;
+exports.expectedNetDemandUntilPvKwh = expectedNetDemandUntilPvKwh;
+exports.thermalHardCoverUntilMs = thermalHardCoverUntilMs;
+exports.resolveThermalPlannerEnergy = resolveThermalPlannerEnergy;
 const battery_reserve_floor_1 = require("./battery_reserve_floor");
 const thermal_boiler_buffer_1 = require("./thermal_boiler_buffer");
 function round3(n) {
@@ -42,7 +50,6 @@ function estimateHardPvBoundKwhBySlot(slots, nowMs, hardConsumers) {
     }
     return bound.map(round3);
 }
-exports.estimateHardPvBoundKwhBySlot = estimateHardPvBoundKwhBySlot;
 /** Reduziert Slot-PV um gebundene Pflichtenergie (Kopie — Allocation-Slots unverändert). */
 function applyHardPvBoundsToSlots(slots, boundKwhBySlot) {
     return slots.map((s, i) => {
@@ -52,7 +59,6 @@ function applyHardPvBoundsToSlots(slots, boundKwhBySlot) {
         return { ...s, pvKwh: Math.max(0, s.pvKwh - bound) };
     });
 }
-exports.applyHardPvBoundsToSlots = applyHardPvBoundsToSlots;
 /**
  * Wie findPvRecoverySlotIdx, aber PV-kWh werden mit Confidence abgewertet
  * (niedrige Confidence → Recovery später / schwieriger).
@@ -96,7 +102,6 @@ function findNextReliablePvOpportunity(slots, fromIdx, pvConfidence01, afterMs) 
         reasonDe: `Belastbare PV-Recovery ab ${slots[idx].startIso} (conf=${(conf * 100).toFixed(0)} %).`,
     };
 }
-exports.findNextReliablePvOpportunity = findNextReliablePvOpportunity;
 /**
  * 1 kW × Slotlänge (0,25 h) — an Raster gebunden, keine Uhrzeit-Heuristik.
  * Wird nur als „PV sichtbar“-Schwelle genutzt, nicht als Stunden-Cutoff.
@@ -143,7 +148,6 @@ function findEndOfCurrentSurplusWindowIdx(slots, fromIdx) {
     }
     return Math.min(slots.length, end);
 }
-exports.findEndOfCurrentSurplusWindowIdx = findEndOfCurrentSurplusWindowIdx;
 /**
  * Erster Surplus-Slot ab afterIdx (Start des nächsten Fensters).
  * Wichtig: nicht mit findPvRecoverySlotIdx verwechseln — der kann mitten in einer
@@ -157,7 +161,6 @@ function findStartOfNextSurplusWindowIdx(slots, afterIdx) {
     }
     return null;
 }
-exports.findStartOfNextSurplusWindowIdx = findStartOfNextSurplusWindowIdx;
 /**
  * Nächste PV-Gelegenheit für Thermal-Bridge: Recovery NACH dem aktuellen Surplus-Fenster
  * (damit „hält bis nächste Versorgung“ nicht mit dem laufenden Peak verwechselt wird).
@@ -195,7 +198,6 @@ function findNextReliablePvAfterCurrentWindow(slots, fromIdx, pvConfidence01, _n
     /** Kein Folgef Fenster / kurzer Horizon: erste Recovery ab now. */
     return findNextReliablePvOpportunity(checkSlots, fromIdx, pvConfidence01);
 }
-exports.findNextReliablePvAfterCurrentWindow = findNextReliablePvAfterCurrentWindow;
 /**
  * Erwarteter Nettobedarf (Haus − abgewertete PV) von fromIdx bis recoveryIdx (exklusiv Recovery-Start).
  * Nie negativ; Unsicherheitsanteil über (1−confidence).
@@ -213,12 +215,10 @@ function expectedNetDemandUntilPvKwh(slots, fromIdx, recoveryIdx, pvConfidence01
     }
     return Math.round(net * 1000) / 1000;
 }
-exports.expectedNetDemandUntilPvKwh = expectedNetDemandUntilPvKwh;
 /** Cover-Horizont für Hard-Bridge (Boiler). */
 function thermalHardCoverUntilMs(input) {
     return (0, thermal_boiler_buffer_1.thermalHardCoverUntilMs)(input);
 }
-exports.thermalHardCoverUntilMs = thermalHardCoverUntilMs;
 /**
  * Hard = Boiler-Min / Boiler-Cover / Hygiene.
  * Soft = Puffer-Headroom.
@@ -255,4 +255,3 @@ function resolveThermalPlannerEnergy(input) {
         reasonDe: r.reasonDe,
     };
 }
-exports.resolveThermalPlannerEnergy = resolveThermalPlannerEnergy;

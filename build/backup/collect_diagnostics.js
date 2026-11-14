@@ -15,15 +15,35 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SUPPORT_STATE_ALLOWLIST = exports.collectRichSupportDiagnostics = exports.collectSupportRuntimePersistFiles = exports.collectParsedJsonStateDiagnostics = exports.collectAddonDiagnostics = exports.collectBootstrapDiagnostics = exports.collectMappingDiagnostics = exports.collectHealthDiagnostics = exports.collectRuntimeDiagnosticStates = exports.collectSelectedStateSnapshot = exports.collectSystemSummary = void 0;
+exports.SUPPORT_STATE_ALLOWLIST = void 0;
+exports.collectSystemSummary = collectSystemSummary;
+exports.collectSelectedStateSnapshot = collectSelectedStateSnapshot;
+exports.collectRuntimeDiagnosticStates = collectRuntimeDiagnosticStates;
+exports.collectHealthDiagnostics = collectHealthDiagnostics;
+exports.collectMappingDiagnostics = collectMappingDiagnostics;
+exports.collectBootstrapDiagnostics = collectBootstrapDiagnostics;
+exports.collectAddonDiagnostics = collectAddonDiagnostics;
+exports.collectParsedJsonStateDiagnostics = collectParsedJsonStateDiagnostics;
+exports.collectSupportRuntimePersistFiles = collectSupportRuntimePersistFiles;
+exports.collectRichSupportDiagnostics = collectRichSupportDiagnostics;
 const fs = __importStar(require("node:fs/promises"));
 const os = __importStar(require("node:os"));
 const path = __importStar(require("node:path"));
@@ -175,12 +195,10 @@ function collectSystemSummary(host) {
         memory_rss_mb: Math.round(process.memoryUsage().rss / (1024 * 1024)),
     };
 }
-exports.collectSystemSummary = collectSystemSummary;
 /** Kern-Allowlist-Snapshot (Abwärtskompatibilität / Tests). */
 async function collectSelectedStateSnapshot(host) {
     return readExactStates(host, SUPPORT_STATE_CORE);
 }
-exports.collectSelectedStateSnapshot = collectSelectedStateSnapshot;
 /** Volle Runtime-/Diagnose-States für Support (Muster + Kern). */
 async function collectRuntimeDiagnosticStates(host) {
     const byId = new Map();
@@ -192,7 +210,6 @@ async function collectRuntimeDiagnosticStates(host) {
     }
     return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
-exports.collectRuntimeDiagnosticStates = collectRuntimeDiagnosticStates;
 async function collectHealthDiagnostics(host) {
     const snapshot = await collectRuntimeDiagnosticStates(host);
     const liveEligible = snapshot.find((s) => s.id === "addons.wallbox.runtime.write_live_eligible");
@@ -204,7 +221,6 @@ async function collectHealthDiagnostics(host) {
         note: "Vollständige Runtime-States unter states/runtime_diagnostics.json und diagnostics/*",
     };
 }
-exports.collectHealthDiagnostics = collectHealthDiagnostics;
 async function collectMappingDiagnostics(config) {
     const raw = config && typeof config === "object" ? config : {};
     const mappingKeys = Object.keys(raw).filter((k) => k.endsWith("_target") || k.endsWith("_state"));
@@ -219,14 +235,12 @@ async function collectMappingDiagnostics(config) {
                 : 0,
     };
 }
-exports.collectMappingDiagnostics = collectMappingDiagnostics;
 async function collectBootstrapDiagnostics() {
     return {
         phase: "post_bootstrap",
         cold_start_recovery_documented: true,
     };
 }
-exports.collectBootstrapDiagnostics = collectBootstrapDiagnostics;
 async function collectAddonDiagnostics(host) {
     return {
         wallbox_mode: (await host.getStateAsync("addons.wallbox.mode"))?.val ?? null,
@@ -239,7 +253,6 @@ async function collectAddonDiagnostics(host) {
         battery_state: (await host.getStateAsync("addons.battery.status.state"))?.val ?? null,
     };
 }
-exports.collectAddonDiagnostics = collectAddonDiagnostics;
 /** Parse JSON-States in eigene Diagnose-Dateien. */
 async function collectParsedJsonStateDiagnostics(host) {
     const specs = [
@@ -262,7 +275,6 @@ async function collectParsedJsonStateDiagnostics(host) {
     }
     return out;
 }
-exports.collectParsedJsonStateDiagnostics = collectParsedJsonStateDiagnostics;
 /** support_only Persistenzdateien (Heizstab/Klima Runtime). */
 async function collectSupportRuntimePersistFiles(host) {
     const layout = (0, paths_1.resolveEmsPaths)(host);
@@ -285,7 +297,6 @@ async function collectSupportRuntimePersistFiles(host) {
     }
     return out;
 }
-exports.collectSupportRuntimePersistFiles = collectSupportRuntimePersistFiles;
 /** Alle zusätzlichen Support-Diagnose-Einträge (neben den bisherigen Summaries). */
 async function collectRichSupportDiagnostics(host) {
     const runtimeStates = await collectRuntimeDiagnosticStates(host);
@@ -314,6 +325,5 @@ async function collectRichSupportDiagnostics(host) {
     ];
     return entries;
 }
-exports.collectRichSupportDiagnostics = collectRichSupportDiagnostics;
 /** @deprecated alias — Tests/Imports */
 exports.SUPPORT_STATE_ALLOWLIST = SUPPORT_STATE_CORE;

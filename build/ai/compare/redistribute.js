@@ -8,7 +8,10 @@
  * verfügbar war. Ohne KI-Gewichtung (multiplier=1 überall) reproduziert das Ergebnis exakt Plan A.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.redistributeAddonAcrossSlots = exports.coalescePowersToMinStage = exports.waterFillProportional = exports.computeSlotWeight = void 0;
+exports.computeSlotWeight = computeSlotWeight;
+exports.waterFillProportional = waterFillProportional;
+exports.coalescePowersToMinStage = coalescePowersToMinStage;
+exports.redistributeAddonAcrossSlots = redistributeAddonAcrossSlots;
 const SLOT_WEIGHT_MULTIPLIER_MIN = 0;
 const SLOT_WEIGHT_MULTIPLIER_MAX = 3;
 /**
@@ -22,7 +25,6 @@ function computeSlotWeight(ownW, capacityW, multiplier) {
     const extra = Math.max(0, capacityW - safeOwnW);
     return safeOwnW * m + extra * Math.max(0, m - 1);
 }
-exports.computeSlotWeight = computeSlotWeight;
 /**
  * Verteilt `total` proportional zu `weights` über alle Slots, begrenzt durch `capacities`.
  * Klassisches "Water-Filling": Slots, deren proportionaler Anteil ihre Kapazität übersteigen würde,
@@ -83,7 +85,6 @@ function waterFillProportional(weights, capacities, total) {
     }
     return allocated;
 }
-exports.waterFillProportional = waterFillProportional;
 /**
  * Verwirft Leistungen unter minPowerW und bündelt die Energie in fahrbare Slots
  * (ganze minPowerW-Quanten), kapazitätsbegrenzt. Rest unter einer Stufe bleibt 0.
@@ -120,7 +121,6 @@ function coalescePowersToMinStage(powers, capacities, minPowerW) {
     }
     return out;
 }
-exports.coalescePowersToMinStage = coalescePowersToMinStage;
 /**
  * Verteilt die von Plan A für ein Add-on zugeteilte flexible Energie gemäß KI-Multiplikatoren neu,
  * kapazitätsbegrenzt. Slots mit Multiplikator 0 werden nicht per Fallback wieder befüllt;
@@ -137,4 +137,3 @@ function redistributeAddonAcrossSlots(slots, multipliers, minPowerW) {
     }
     return raw;
 }
-exports.redistributeAddonAcrossSlots = redistributeAddonAcrossSlots;

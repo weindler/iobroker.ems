@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.switchIsOff = exports.switchIsOn = exports.isHardOffTime = exports.isWithinClockWindow = exports.localMinutesNow = exports.parseClockToMinutes = void 0;
+exports.parseClockToMinutes = parseClockToMinutes;
+exports.localMinutesNow = localMinutesNow;
+exports.isWithinClockWindow = isWithinClockWindow;
+exports.isHardOffTime = isHardOffTime;
+exports.switchIsOn = switchIsOn;
+exports.switchIsOff = switchIsOff;
 /** Minuten seit Mitternacht aus HH:MM oder HH:MM:SS. */
 function parseClockToMinutes(raw) {
     const m = String(raw ?? "").trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
@@ -12,11 +17,9 @@ function parseClockToMinutes(raw) {
         return null;
     return h * 60 + min;
 }
-exports.parseClockToMinutes = parseClockToMinutes;
 function localMinutesNow(d) {
     return d.getHours() * 60 + d.getMinutes();
 }
-exports.localMinutesNow = localMinutesNow;
 function isWithinClockWindow(nowMin, fromRaw, untilRaw) {
     const from = parseClockToMinutes(fromRaw);
     const until = parseClockToMinutes(untilRaw);
@@ -27,14 +30,12 @@ function isWithinClockWindow(nowMin, fromRaw, untilRaw) {
     }
     return nowMin >= from || nowMin < until;
 }
-exports.isWithinClockWindow = isWithinClockWindow;
 function isHardOffTime(nowMin, hardOffRaw) {
     const off = parseClockToMinutes(hardOffRaw);
     if (off === null)
         return false;
     return nowMin >= off;
 }
-exports.isHardOffTime = isHardOffTime;
 function switchIsOn(raw) {
     if (typeof raw === "boolean")
         return raw;
@@ -48,7 +49,6 @@ function switchIsOn(raw) {
     // LocalThings climate.state: HVAC-Modi = Gerät an
     return s === "cool" || s === "heat" || s === "dry" || s === "fan_only" || s === "auto";
 }
-exports.switchIsOn = switchIsOn;
 function switchIsOff(raw) {
     if (typeof raw === "boolean")
         return !raw;
@@ -57,4 +57,3 @@ function switchIsOff(raw) {
     const s = String(raw ?? "").trim().toLowerCase();
     return s === "off" || s === "false" || s === "0" || s === "";
 }
-exports.switchIsOff = switchIsOff;

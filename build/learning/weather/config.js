@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sourceLabelFromStateId = exports.weatherConfigReady = exports.weatherConfigFromAdapter = void 0;
+exports.weatherConfigFromAdapter = weatherConfigFromAdapter;
+exports.weatherConfigReady = weatherConfigReady;
+exports.sourceLabelFromStateId = sourceLabelFromStateId;
 const constants_1 = require("./constants");
 function strField(config, key) {
     const v = config[key];
@@ -54,14 +56,11 @@ function weatherConfigFromAdapter(config) {
         metrics,
     };
 }
-exports.weatherConfigFromAdapter = weatherConfigFromAdapter;
 function weatherConfigReady(cfg) {
     return Object.keys(cfg.metrics).length > 0;
 }
-exports.weatherConfigReady = weatherConfigReady;
 /** Kurzlabel aus State-ID, z. B. brightsky.0… → brightsky */
 function sourceLabelFromStateId(stateId) {
     const m = stateId.match(/^([a-z0-9_-]+)\.\d+\./i);
     return m ? m[1] : stateId.split(".")[0] || "unknown";
 }
-exports.sourceLabelFromStateId = sourceLabelFromStateId;

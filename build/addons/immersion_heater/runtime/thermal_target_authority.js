@@ -6,7 +6,9 @@
  * Sonst: sicherer Forecast-/Force-Fallback. Nie über planningMax.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.thermalEnergyMatchesTargetTemp = exports.resolveAuthoritativeThermalTarget = exports.planTargetRevisionMatches = void 0;
+exports.planTargetRevisionMatches = planTargetRevisionMatches;
+exports.resolveAuthoritativeThermalTarget = resolveAuthoritativeThermalTarget;
+exports.thermalEnergyMatchesTargetTemp = thermalEnergyMatchesTargetTemp;
 function clampTemp(min, max, t) {
     return Math.min(max, Math.max(min, t));
 }
@@ -21,7 +23,6 @@ function planTargetRevisionMatches(planTargetRevision, dailyPlanRevision) {
         return false;
     return planTargetRevision === dailyPlanRevision;
 }
-exports.planTargetRevisionMatches = planTargetRevisionMatches;
 function resolveAuthoritativeThermalTarget(input) {
     const min = input.planningMinTempC;
     const max = input.planningMaxTempC;
@@ -72,7 +73,6 @@ function resolveAuthoritativeThermalTarget(input) {
         source: "safe_min",
     };
 }
-exports.resolveAuthoritativeThermalTarget = resolveAuthoritativeThermalTarget;
 /**
  * Grobe Konsistenz: Energy-Headroom ↔ ΔT × kWh/°C (Default 0.38).
  * Toleranz für Learning-Marge / Rundung.
@@ -86,4 +86,3 @@ function thermalEnergyMatchesTargetTemp(opts) {
     const tol = opts.toleranceKwh ?? Math.max(0.5, expected * 0.35);
     return Math.abs(opts.requiredEnergyKwh - expected) <= tol;
 }
-exports.thermalEnergyMatchesTargetTemp = thermalEnergyMatchesTargetTemp;

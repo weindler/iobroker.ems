@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runPvHorizon = void 0;
+exports.runPvHorizon = runPvHorizon;
 const history_1 = require("../pv_bias/history");
 const config_1 = require("./config");
 const math_1 = require("./math");
@@ -109,4 +109,3 @@ async function runPvHorizon(host) {
         : "Tag1-7";
     host.log.debug?.(`PV-Horizon [${scope}]: days=${result.daysAvailable}/${result.expectedDays} status=${result.status} total_corr=${result.total7dCorrectedKwh ?? "—"} kWh`);
 }
-exports.runPvHorizon = runPvHorizon;

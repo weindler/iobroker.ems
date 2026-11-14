@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runWeatherLearning = void 0;
+exports.runWeatherLearning = runWeatherLearning;
 const config_1 = require("./config");
 const history_1 = require("./history");
 const math_1 = require("./math");
@@ -80,4 +80,3 @@ async function runWeatherLearning(host) {
         await writeWeatherResult(host, result);
     }
 }
-exports.runWeatherLearning = runWeatherLearning;

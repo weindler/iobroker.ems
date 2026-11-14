@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearBatteryFault = exports.stepSonnenFsm = exports.isBatterySimulatedProgressState = exports.isBatterySafetyWriteState = exports.initialSonnenRuntime = void 0;
+exports.initialSonnenRuntime = initialSonnenRuntime;
+exports.isBatterySafetyWriteState = isBatterySafetyWriteState;
+exports.isBatterySimulatedProgressState = isBatterySimulatedProgressState;
+exports.stepSonnenFsm = stepSonnenFsm;
+exports.clearBatteryFault = clearBatteryFault;
 const feedback_1 = require("./feedback");
 const ownership_1 = require("./ownership");
 function initialSonnenRuntime(nowMs) {
@@ -20,7 +24,6 @@ function initialSonnenRuntime(nowMs) {
         lockoutReason: null,
     };
 }
-exports.initialSonnenRuntime = initialSonnenRuntime;
 const STOPPABLE_STATES = new Set([
     "wait_after_manual_mode",
     "verify_manual_mode",
@@ -35,12 +38,10 @@ function isBatterySafetyWriteState(state) {
         state === "verify_self_consumption" ||
         state === "restore_grid_balance");
 }
-exports.isBatterySafetyWriteState = isBatterySafetyWriteState;
 /** FSM-Zustände, in denen nur simuliertes Feedback lief — bei Live-Start neu beginnen. */
 function isBatterySimulatedProgressState(state) {
     return state !== "idle" && state !== "completed" && state !== "rejected" && state !== "lockout" && state !== "fault";
 }
-exports.isBatterySimulatedProgressState = isBatterySimulatedProgressState;
 /** Reine FSM-Transition. Dieselbe Logik wird in Dryrun und Live verwendet. */
 function stepSonnenFsm(prev, ctx) {
     const rt = { ...prev, ownership: { ...prev.ownership } };
@@ -315,7 +316,6 @@ function stepSonnenFsm(prev, ctx) {
     }
     return { runtime: rt, writes, gridBalance, log, transitioned: from !== rt.state };
 }
-exports.stepSonnenFsm = stepSonnenFsm;
 /** Fault/Lockout zurücksetzen (kein Geräte-Write, kein Moduswechsel). */
 function clearBatteryFault(prev, nowMs) {
     if (prev.state !== "fault" && prev.state !== "lockout" && !prev.lockout && !prev.faultCode) {
@@ -333,4 +333,3 @@ function clearBatteryFault(prev, nowMs) {
         ownership: (0, ownership_1.emptyOwnership)(),
     };
 }
-exports.clearBatteryFault = clearBatteryFault;

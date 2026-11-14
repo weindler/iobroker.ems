@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.immersionCriticalNow = exports.resolveAllBatteryConsumerAccess = exports.resolveBatteryConsumerAccess = void 0;
+exports.resolveBatteryConsumerAccess = resolveBatteryConsumerAccess;
+exports.resolveAllBatteryConsumerAccess = resolveAllBatteryConsumerAccess;
+exports.immersionCriticalNow = immersionCriticalNow;
 const config_1 = require("./config");
 /**
  * Deterministic gate: may this consumer draw house-battery energy right now?
@@ -63,7 +65,6 @@ function resolveBatteryConsumerAccess(input) {
             : "Automatik aktiv — finale Entladung nach Preis, dynamischer Reserve und Hardwarelimit.",
     };
 }
-exports.resolveBatteryConsumerAccess = resolveBatteryConsumerAccess;
 function resolveAllBatteryConsumerAccess(input) {
     const ids = ["immersion_heater", "air_conditioning", "wallbox"];
     const out = {};
@@ -78,7 +79,6 @@ function resolveAllBatteryConsumerAccess(input) {
     }
     return out;
 }
-exports.resolveAllBatteryConsumerAccess = resolveAllBatteryConsumerAccess;
 /** Immersion critical: buffer at or below planningMin + margin. */
 function immersionCriticalNow(bufferTempC, planningMinTempC, criticalMarginK) {
     if (bufferTempC === null)
@@ -86,4 +86,3 @@ function immersionCriticalNow(bufferTempC, planningMinTempC, criticalMarginK) {
     const margin = criticalMarginK ?? 0;
     return bufferTempC <= planningMinTempC + margin;
 }
-exports.immersionCriticalNow = immersionCriticalNow;

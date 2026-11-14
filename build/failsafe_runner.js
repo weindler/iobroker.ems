@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopFailsafeRunner = exports.startFailsafeRunner = void 0;
+exports.startFailsafeRunner = startFailsafeRunner;
+exports.stopFailsafeRunner = stopFailsafeRunner;
 const failsafe_1 = require("./addons/immersion_heater/failsafe");
 const failsafe_2 = require("./addons/wallbox/failsafe");
 const failsafe_3 = require("./addons/battery/failsafe");
@@ -19,11 +20,9 @@ function startFailsafeRunner(adapter) {
     }, failsafeCheckIntervalSec * 1000);
     adapter.log.debug(`failsafe runner: interval ${failsafeCheckIntervalSec}s (immersion, wallbox, battery)`);
 }
-exports.startFailsafeRunner = startFailsafeRunner;
 function stopFailsafeRunner() {
     if (timer) {
         clearInterval(timer);
         timer = null;
     }
 }
-exports.stopFailsafeRunner = stopFailsafeRunner;

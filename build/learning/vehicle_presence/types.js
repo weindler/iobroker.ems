@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emptyVehiclePresenceStore = void 0;
+exports.emptyVehiclePresenceStore = emptyVehiclePresenceStore;
 const constants_1 = require("./constants");
 function emptyVehiclePresenceStore(nowIso = new Date().toISOString()) {
     return {
@@ -10,4 +10,3 @@ function emptyVehiclePresenceStore(nowIso = new Date().toISOString()) {
         profiles: {},
     };
 }
-exports.emptyVehiclePresenceStore = emptyVehiclePresenceStore;

@@ -4,7 +4,8 @@
  * Source freshness is not status.mode.ts.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formatEvExecutionExplain = exports.evaluateEvExecutionGates = void 0;
+exports.evaluateEvExecutionGates = evaluateEvExecutionGates;
+exports.formatEvExecutionExplain = formatEvExecutionExplain;
 const write_allowlist_1 = require("../write_allowlist");
 const ownership_1 = require("./ownership");
 function desiredWantsWrite(desired) {
@@ -81,7 +82,6 @@ function evaluateEvExecutionGates(input) {
         failsafeReason,
     };
 }
-exports.evaluateEvExecutionGates = evaluateEvExecutionGates;
 function formatEvExecutionExplain(input) {
     const desired = input.desired ?? "none";
     const actual = input.actual ?? "none";
@@ -162,4 +162,3 @@ function formatEvExecutionExplain(input) {
     }
     return `desired=${desired}, actual=${actual}, authority=${input.authority}, ${input.phase}`;
 }
-exports.formatEvExecutionExplain = formatEvExecutionExplain;

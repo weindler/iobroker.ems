@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.detectFullNamespaceColdStart = void 0;
+exports.detectFullNamespaceColdStart = detectFullNamespaceColdStart;
 /** Marker-Objekte — wenn keines existiert, war der Namespace vor dem Bootstrap leer. */
 const COLD_START_MARKERS = [
     "global",
@@ -27,4 +27,3 @@ async function detectFullNamespaceColdStart(host) {
     }
     return true;
 }
-exports.detectFullNamespaceColdStart = detectFullNamespaceColdStart;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isImmersionReheatHysteresisActive = void 0;
+exports.isImmersionReheatHysteresisActive = isImmersionReheatHysteresisActive;
 /**
  * Wiedereinschalt-Hysterese nach erreichtem Auto-Tagesziel — lokaler Taktschutz.
  * Greift in der FSM nur, wenn kein explizites Planner-Soll (Stufe > 0) vorliegt.
@@ -18,4 +18,3 @@ function isImmersionReheatHysteresisActive(input) {
         return false;
     return input.autoTargetReached === true || input.bufferTempC >= input.targetTempC;
 }
-exports.isImmersionReheatHysteresisActive = isImmersionReheatHysteresisActive;

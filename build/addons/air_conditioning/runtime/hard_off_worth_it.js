@@ -6,7 +6,11 @@
  * `parseClockToMinutes` (time.ts) — keine zweite Uhrzeit-Logik.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isHardOffStartWorthwhile = exports.dehumidifyDemandUrgency01 = exports.coolingDemandUrgency01 = exports.minutesUntilHardOff = exports.AC_URGENCY_REFERENCE_HUMIDITY_PCT_DEFAULT = exports.AC_URGENCY_REFERENCE_TEMP_K_DEFAULT = exports.AC_MIN_WORTHWHILE_RUNTIME_MIN_DEFAULT = void 0;
+exports.AC_URGENCY_REFERENCE_HUMIDITY_PCT_DEFAULT = exports.AC_URGENCY_REFERENCE_TEMP_K_DEFAULT = exports.AC_MIN_WORTHWHILE_RUNTIME_MIN_DEFAULT = void 0;
+exports.minutesUntilHardOff = minutesUntilHardOff;
+exports.coolingDemandUrgency01 = coolingDemandUrgency01;
+exports.dehumidifyDemandUrgency01 = dehumidifyDemandUrgency01;
+exports.isHardOffStartWorthwhile = isHardOffStartWorthwhile;
 const time_1 = require("./time");
 /** Referenz-Mindestlaufzeit (Minuten) bei neutralem (0) Komfortbedarf. */
 exports.AC_MIN_WORTHWHILE_RUNTIME_MIN_DEFAULT = 20;
@@ -27,21 +31,18 @@ function minutesUntilHardOff(nowMin, hardOffRaw) {
     const diff = off - nowMin;
     return diff >= 0 ? diff : diff + 24 * 60;
 }
-exports.minutesUntilHardOff = minutesUntilHardOff;
 /** Dringlichkeit aus Temperatur-Überschreitung (0 = an Schwelle, 1 = ≥ Referenz-Spanne drüber). */
 function coolingDemandUrgency01(roomTempC, onTempC, referenceK = exports.AC_URGENCY_REFERENCE_TEMP_K_DEFAULT) {
     if (roomTempC === null || !(referenceK > 0))
         return 0;
     return clamp01((roomTempC - onTempC) / referenceK);
 }
-exports.coolingDemandUrgency01 = coolingDemandUrgency01;
 /** Dringlichkeit aus Feuchte-Überschreitung (0 = an Schwelle, 1 = ≥ Referenz-Spanne drüber). */
 function dehumidifyDemandUrgency01(roomHumidityPct, maxHumidityPct, referencePct = exports.AC_URGENCY_REFERENCE_HUMIDITY_PCT_DEFAULT) {
     if (roomHumidityPct === null || maxHumidityPct === null || !(referencePct > 0))
         return 0;
     return clamp01((roomHumidityPct - maxHumidityPct) / referencePct);
 }
-exports.dehumidifyDemandUrgency01 = dehumidifyDemandUrgency01;
 /**
  * Kein blindes Starten kurz vor Hard-Off, aber keine starre Schwelle: die geforderte
  * Mindestlaufzeit schrumpft linear mit steigender Dringlichkeit auf 0 (volle Dringlichkeit
@@ -63,4 +64,3 @@ function isHardOffStartWorthwhile(input) {
             : `Hard-Off in ${input.remainingMinutesUntilHardOff} Min — bei aktuellem Komfortbedarf (${Math.round(urgency * 100)} %) wären mind. ${requiredMinutes} Min nötig, Start zurückgestellt.`,
     };
 }
-exports.isHardOffStartWorthwhile = isHardOffStartWorthwhile;

@@ -3,7 +3,20 @@
  * Score-basierte iterative Unified-Allocation — kein fester Add-on-Phasen-Order.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runScoreBasedAllocation = exports.scoreCandidate = exports.hardPvConsumersFromInput = exports.takePv = exports.pushAlloc = exports.climateSharedGroupElectricalKwh = exports.wallboxAllocatedInSlotKwh = exports.immersionAllocatedInSlotKwh = exports.allocatedInSlotKwh = exports.buildSlots = exports.powerFromEnergyKwh = exports.energyFromPowerW = exports.projectedSocAt = exports.EPS = exports.SLOT_H = exports.IMMERSION_HARD_CONSUMER_ID = exports.IMMERSION_SOFT_CONSUMER_ID = void 0;
+exports.EPS = exports.SLOT_H = exports.IMMERSION_HARD_CONSUMER_ID = exports.IMMERSION_SOFT_CONSUMER_ID = void 0;
+exports.projectedSocAt = projectedSocAt;
+exports.energyFromPowerW = energyFromPowerW;
+exports.powerFromEnergyKwh = powerFromEnergyKwh;
+exports.buildSlots = buildSlots;
+exports.allocatedInSlotKwh = allocatedInSlotKwh;
+exports.immersionAllocatedInSlotKwh = immersionAllocatedInSlotKwh;
+exports.wallboxAllocatedInSlotKwh = wallboxAllocatedInSlotKwh;
+exports.climateSharedGroupElectricalKwh = climateSharedGroupElectricalKwh;
+exports.pushAlloc = pushAlloc;
+exports.takePv = takePv;
+exports.hardPvConsumersFromInput = hardPvConsumersFromInput;
+exports.scoreCandidate = scoreCandidate;
+exports.runScoreBasedAllocation = runScoreBasedAllocation;
 const mode_policy_1 = require("../../../planner/mode_policy");
 const battery_price_bridge_1 = require("./battery_price_bridge");
 const battery_reserve_floor_1 = require("./battery_reserve_floor");
@@ -30,7 +43,6 @@ function projectedSocAt(state, slotIdx) {
     }
     return soc;
 }
-exports.projectedSocAt = projectedSocAt;
 function syncFinalSoc(state) {
     state.socKwh =
         state.slots.length === 0
@@ -66,11 +78,9 @@ function round3(n) {
 function energyFromPowerW(powerW) {
     return (powerW / 1000) * exports.SLOT_H;
 }
-exports.energyFromPowerW = energyFromPowerW;
 function powerFromEnergyKwh(kwh) {
     return (kwh / exports.SLOT_H) * 1000;
 }
-exports.powerFromEnergyKwh = powerFromEnergyKwh;
 function pvConfidenceFactor(input) {
     const c = input.pv.uncertainty.confidencePct;
     if (c === null || !Number.isFinite(c))
@@ -251,13 +261,11 @@ function buildSlots(input) {
     }
     return slots;
 }
-exports.buildSlots = buildSlots;
 /** Bereits allokierte Energie eines Consumers in einem Slot (max. eine Zelle pro Slot). */
 function allocatedInSlotKwh(out, consumerId, slotStartIso) {
     const cell = out.find((a) => a.consumerId === consumerId && a.slot.startIso === slotStartIso);
     return cell?.allocatedEnergyKwh ?? 0;
 }
-exports.allocatedInSlotKwh = allocatedInSlotKwh;
 /** Heizstab Hard+Soft teilen dieselbe Leistungsstufe pro Slot. */
 function immersionAllocatedInSlotKwh(out, slotStartIso) {
     let sum = 0;
@@ -268,7 +276,6 @@ function immersionAllocatedInSlotKwh(out, slotStartIso) {
     }
     return sum;
 }
-exports.immersionAllocatedInSlotKwh = immersionAllocatedInSlotKwh;
 /** Wallbox Hard+Target teilen dieselbe AC-Ladeleistung pro Slot. */
 function wallboxAllocatedInSlotKwh(out, slotStartIso) {
     let sum = 0;
@@ -279,7 +286,6 @@ function wallboxAllocatedInSlotKwh(out, slotStartIso) {
     }
     return sum;
 }
-exports.wallboxAllocatedInSlotKwh = wallboxAllocatedInSlotKwh;
 function wallboxGridInSlotKwh(out, slotStartIso) {
     let sum = 0;
     for (const a of out) {
@@ -318,7 +324,6 @@ function climateSharedGroupElectricalKwh(out, consumers, slotStartIso, groupId) 
     }
     return maxE;
 }
-exports.climateSharedGroupElectricalKwh = climateSharedGroupElectricalKwh;
 function sharedClimateGroupCapKwh(consumers, groupId) {
     let maxW = 0;
     for (const c of consumers) {
@@ -383,13 +388,11 @@ function pushAlloc(out, slot, consumerId, kind, energyKwh, source, constraintIds
     });
     return e;
 }
-exports.pushAlloc = pushAlloc;
 function takePv(slot, wantKwh) {
     const take = Math.min(slot.remainPvKwh, wantKwh);
     slot.remainPvKwh = Math.max(0, slot.remainPvKwh - take);
     return take;
 }
-exports.takePv = takePv;
 function resolveVehicleNeedKwh(input) {
     const wb = input.wallbox;
     if (!wb)
@@ -506,7 +509,6 @@ function hardPvConsumersFromInput(input) {
     }
     return out;
 }
-exports.hardPvConsumersFromInput = hardPvConsumersFromInput;
 function hardPvBoundForPlanning(input, slots) {
     const nowMs = Date.parse(input.time.nowIso);
     return (0, next_reliable_pv_1.estimateHardPvBoundKwhBySlot)(slots, nowMs, hardPvConsumersFromInput(input));
@@ -1548,7 +1550,6 @@ function scoreCandidate(input, state, candidate, weights) {
         score += e * 0.1 * weights.deadlineWeight;
     return score;
 }
-exports.scoreCandidate = scoreCandidate;
 function reasonCodesForCandidate(input, candidate, state, wbPresenceCodes) {
     const codes = [];
     const slot = state.slots[candidate.slotIdx];
@@ -2412,4 +2413,3 @@ function runScoreBasedAllocation(input, slots, opts) {
         thermalLearningExplanation: (0, thermal_opportunity_gate_1.toThermalLearningExplanation)(state.thermalOpportunityLastExplanation),
     };
 }
-exports.runScoreBasedAllocation = runScoreBasedAllocation;

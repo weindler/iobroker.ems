@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyLiveNowFromSurplusResult = exports.buildOperatorLiveSurplus = exports.slotBalanceIsConsistent = exports.LIVE_NOW_MAX_AGE_SEC = exports.isPlausibleLivePowerW = exports.isLiveNowTelemetryUsable = exports.computeLiveNowBalanceW = exports.applyLiveSurplusFloorToCurrentSlot = exports.applyLiveNowBalanceToCurrentSlot = void 0;
+exports.slotBalanceIsConsistent = exports.LIVE_NOW_MAX_AGE_SEC = exports.isPlausibleLivePowerW = exports.isLiveNowTelemetryUsable = exports.computeLiveNowBalanceW = exports.applyLiveSurplusFloorToCurrentSlot = exports.applyLiveNowBalanceToCurrentSlot = void 0;
+exports.buildOperatorLiveSurplus = buildOperatorLiveSurplus;
+exports.applyLiveNowFromSurplusResult = applyLiveNowFromSurplusResult;
 const battery_1 = require("../planning/battery");
 const surplus_1 = require("../planning/surplus");
 const slots_1 = require("./slots");
@@ -25,7 +27,6 @@ function buildOperatorLiveSurplus(input) {
         status: pvPowerW !== null && houseLoadW !== null ? "valid" : "missing",
     };
 }
-exports.buildOperatorLiveSurplus = buildOperatorLiveSurplus;
 /** Convenience: Live-NOW-Bilanz auf Daily-Plan-Slots anwenden. */
 function applyLiveNowFromSurplusResult(slots, nowMs, live) {
     const telemetry = {
@@ -36,4 +37,3 @@ function applyLiveNowFromSurplusResult(slots, nowMs, live) {
     };
     return (0, live_now_balance_1.applyLiveNowBalanceToCurrentSlot)(slots, nowMs, telemetry);
 }
-exports.applyLiveNowFromSurplusResult = applyLiveNowFromSurplusResult;

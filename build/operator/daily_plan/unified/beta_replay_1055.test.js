@@ -6,7 +6,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.betaReplay1055Input = void 0;
+exports.betaReplay1055Input = betaReplay1055Input;
 const node_test_1 = require("node:test");
 const strict_1 = __importDefault(require("node:assert/strict"));
 const quality_1 = require("../../quality");
@@ -153,7 +153,6 @@ function betaReplay1055Input() {
     base.globalMode = "balanced";
     return base;
 }
-exports.betaReplay1055Input = betaReplay1055Input;
 function sumKind(plan, kind) {
     return plan.allocations
         .filter((a) => a.kind === kind)

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.snapshotToBatteryManualOverride = exports.processIobrokerBatteryRequest = void 0;
+exports.processIobrokerBatteryRequest = processIobrokerBatteryRequest;
+exports.snapshotToBatteryManualOverride = snapshotToBatteryManualOverride;
 const iobroker_request_shared_1 = require("../core/iobroker_request_shared");
 const normalize_1 = require("../battery/normalize");
 const resolve_1 = require("../battery/resolve");
@@ -100,10 +101,8 @@ function processIobrokerBatteryRequest(input) {
         accepted: true,
     };
 }
-exports.processIobrokerBatteryRequest = processIobrokerBatteryRequest;
 function snapshotToBatteryManualOverride(snapshot) {
     if (!snapshot?.manual_override?.active)
         return null;
     return snapshot.manual_override;
 }
-exports.snapshotToBatteryManualOverride = snapshotToBatteryManualOverride;

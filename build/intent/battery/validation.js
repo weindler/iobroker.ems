@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.nextBatteryRevision = exports.lastBatteryChangedAt = exports.deriveBatteryIntentState = exports.semanticBatteryHash = void 0;
+exports.semanticBatteryHash = semanticBatteryHash;
+exports.deriveBatteryIntentState = deriveBatteryIntentState;
+exports.lastBatteryChangedAt = lastBatteryChangedAt;
+exports.nextBatteryRevision = nextBatteryRevision;
 const node_crypto_1 = require("node:crypto");
 function stableStringify(v) {
     return JSON.stringify(v, Object.keys(v).sort());
@@ -19,7 +22,6 @@ function semanticBatteryHash(intent) {
     };
     return (0, node_crypto_1.createHash)("sha256").update(stableStringify(payload), "utf8").digest("hex");
 }
-exports.semanticBatteryHash = semanticBatteryHash;
 function deriveBatteryIntentState(intent) {
     const fields = [
         intent.operating_request,
@@ -37,7 +39,6 @@ function deriveBatteryIntentState(intent) {
         return "available";
     return "none";
 }
-exports.deriveBatteryIntentState = deriveBatteryIntentState;
 function lastBatteryChangedAt(intent) {
     const times = [];
     for (const f of [
@@ -55,7 +56,6 @@ function lastBatteryChangedAt(intent) {
     }
     return times.length ? new Date(Math.max(...times)).toISOString() : intent.resolved_at;
 }
-exports.lastBatteryChangedAt = lastBatteryChangedAt;
 function nextBatteryRevision(prev, next) {
     if (!prev) {
         const has = [
@@ -71,4 +71,3 @@ function nextBatteryRevision(prev, next) {
         return prev.revision;
     return prev.revision + 1;
 }
-exports.nextBatteryRevision = nextBatteryRevision;

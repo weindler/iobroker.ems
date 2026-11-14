@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateBatteryIntent = void 0;
+exports.validateBatteryIntent = validateBatteryIntent;
 const intent_1 = require("./intent");
 const capabilities_1 = require("./capabilities");
 const limits_1 = require("./limits");
@@ -83,7 +83,6 @@ function validateBatteryIntent(input) {
         checksFailed,
     };
 }
-exports.validateBatteryIntent = validateBatteryIntent;
 function clampSoc(requested, limits, clamps) {
     let soc = requested;
     const min = limits.minSocPct ?? 0;

@@ -5,14 +5,15 @@
  * bleibt vollständig von aktivem Learning entkoppelt.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateLearningMetric = exports.confidenceFromSampleCount = exports.LEARNING_MIN_SAMPLES_FOR_CONFIDENCE = void 0;
+exports.LEARNING_MIN_SAMPLES_FOR_CONFIDENCE = void 0;
+exports.confidenceFromSampleCount = confidenceFromSampleCount;
+exports.updateLearningMetric = updateLearningMetric;
 exports.LEARNING_MIN_SAMPLES_FOR_CONFIDENCE = 5;
 function confidenceFromSampleCount(n, targetSamples) {
     if (n < exports.LEARNING_MIN_SAMPLES_FOR_CONFIDENCE)
         return null;
     return Math.round(Math.min(1, n / targetSamples) * 100);
 }
-exports.confidenceFromSampleCount = confidenceFromSampleCount;
 /**
  * Online-Update (Welford) für Mittelwert/Varianz — kein voller History-Speicher nötig,
  * bleibt ein kompakter Zustand pro Metrik.
@@ -40,4 +41,3 @@ function updateLearningMetric(prev, newValue, atIso, targetSamplesForConfidence)
         reasonDe: `Aktualisiert aus ${n} Sample(n), zuletzt am ${atIso}.`,
     };
 }
-exports.updateLearningMetric = updateLearningMetric;

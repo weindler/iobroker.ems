@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addonAllocationPublishView = exports.filterRunnableAllocations = exports.addonAllocationEntries = exports.RUNNABLE_ALLOCATION_FLOOR_W = void 0;
+exports.RUNNABLE_ALLOCATION_FLOOR_W = void 0;
+exports.addonAllocationEntries = addonAllocationEntries;
+exports.filterRunnableAllocations = filterRunnableAllocations;
+exports.addonAllocationPublishView = addonAllocationPublishView;
 /** Unter dieser Leistung gilt ein Allocation-Eintrag als nicht fahrbar (VIS/Status). */
 exports.RUNNABLE_ALLOCATION_FLOOR_W = 50;
 function addonAllocationEntries(plan, addonPrefix) {
@@ -11,11 +14,9 @@ function addonAllocationEntries(plan, addonPrefix) {
         a.contributionId.startsWith(`${addonPrefix}.`) ||
         (a.contributor.id === addonPrefix && addonPrefix !== "air_conditioning"));
 }
-exports.addonAllocationEntries = addonAllocationEntries;
 function filterRunnableAllocations(entries, floorW = exports.RUNNABLE_ALLOCATION_FLOOR_W) {
     return entries.filter((a) => (a.allocatedPowerW ?? 0) >= floorW);
 }
-exports.filterRunnableAllocations = filterRunnableAllocations;
 function addonAllocationPublishView(plan, addonPrefix, opts) {
     const all = addonAllocationEntries(plan, addonPrefix);
     const runnable = filterRunnableAllocations(all, opts?.floorW);
@@ -40,4 +41,3 @@ function addonAllocationPublishView(plan, addonPrefix, opts) {
         reasonDe: `Keine Allocation für ${addonPrefix}.`,
     };
 }
-exports.addonAllocationPublishView = addonAllocationPublishView;

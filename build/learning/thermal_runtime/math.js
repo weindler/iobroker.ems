@@ -1,6 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.invalidConfigResult = exports.disabledResult = exports.noSourceResult = exports.computeThermalRuntimeLearning = exports.liveRemainingHoursFromEmptyAt = exports.estimatedEmptyAtIso = exports.estimateRemainingHours = exports.groupByDayType = exports.groupBySeason = exports.estimateCoolingConstantPerH = exports.estimateCoolingModel = exports.estimateActiveCoolingRateCPerH = exports.collectCoolingSegments = exports.detectRuntimeCycles = exports.summarizeTempHistory = exports.median = exports.average = void 0;
+exports.average = average;
+exports.median = median;
+exports.summarizeTempHistory = summarizeTempHistory;
+exports.detectRuntimeCycles = detectRuntimeCycles;
+exports.collectCoolingSegments = collectCoolingSegments;
+exports.estimateActiveCoolingRateCPerH = estimateActiveCoolingRateCPerH;
+exports.estimateCoolingModel = estimateCoolingModel;
+exports.estimateCoolingConstantPerH = estimateCoolingConstantPerH;
+exports.groupBySeason = groupBySeason;
+exports.groupByDayType = groupByDayType;
+exports.estimateRemainingHours = estimateRemainingHours;
+exports.estimatedEmptyAtIso = estimatedEmptyAtIso;
+exports.liveRemainingHoursFromEmptyAt = liveRemainingHoursFromEmptyAt;
+exports.computeThermalRuntimeLearning = computeThermalRuntimeLearning;
+exports.noSourceResult = noSourceResult;
+exports.disabledResult = disabledResult;
+exports.invalidConfigResult = invalidConfigResult;
+exports.errorResult = errorResult;
 const time_1 = require("../house_load/time");
 const constants_1 = require("./constants");
 function round2(n) {
@@ -14,7 +31,6 @@ function average(values) {
         return null;
     return round2(values.reduce((a, b) => a + b, 0) / values.length);
 }
-exports.average = average;
 function median(values) {
     if (values.length === 0)
         return null;
@@ -25,7 +41,6 @@ function median(values) {
     }
     return round2(sorted[mid]);
 }
-exports.median = median;
 const MIN_COOLING_DROP_C = 1;
 /** Mindest-Abkühlung eines echten Fall-Segments — schließt Plateaus/Nachheizen aus. */
 const MIN_ACTIVE_SEGMENT_DROP_C = 2;
@@ -109,7 +124,6 @@ function summarizeTempHistory(points, emptyThresholdC) {
     }
     return { minC, maxC, pointsAboveFloor, pointsAtOrBelowFloor };
 }
-exports.summarizeTempHistory = summarizeTempHistory;
 /**
  * Erkennt Abkühl-Segmente: lokaler Peak (Überschuss-/Pufferstand) → Betriebs-Untergrenze.
  * Kein fester „Voll bei 60 °C“-Start — Start kann überall im Betriebsband liegen (z. B. 52–59 °C).
@@ -188,7 +202,6 @@ function detectRuntimeCycles(points, cfg) {
     }
     return cycles;
 }
-exports.detectRuntimeCycles = detectRuntimeCycles;
 /**
  * Sammelt echte Abkühl-Segmente (Peak → Tal) aus dem Verlauf.
  * Plateaus und Wiederaufheizen (Sonne/Überschuss) trennen Segmente und zählen NICHT
@@ -243,7 +256,6 @@ function collectCoolingSegments(points, minRuntimeHours) {
     tryPush(peakIdx, troughIdx);
     return segments;
 }
-exports.collectCoolingSegments = collectCoolingSegments;
 /**
  * Natürliche Kühlrate (°C/h) aus echten Fall-Segmenten — Median, robust gegen
  * Plateaus und einzelne Ausreißer. Untergrenze wird hier nicht gebraucht, da nur
@@ -259,7 +271,6 @@ function estimateActiveCoolingRateCPerH(points, cfg) {
     const rate = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
     return rate > 0 ? round3(rate) : null;
 }
-exports.estimateActiveCoolingRateCPerH = estimateActiveCoolingRateCPerH;
 /**
  * Schätzt Newton-Modell (k, effektive Asymptote) aus Fall-Segmenten.
  * rate ≈ k·(T − T_asym): Regression liefert T_asym (wo die Rate → 0 geht),
@@ -302,7 +313,6 @@ function estimateCoolingModel(points, cfg) {
         asymptoteSource: "fitted",
     };
 }
-exports.estimateCoolingModel = estimateCoolingModel;
 /**
  * Newton'sche Abkühlkonstante k (1/h) — Kompatibilitäts-Wrapper um estimateCoolingModel.
  */
@@ -315,7 +325,6 @@ function estimateCoolingConstantPerH(points, cfg, ambientC = constants_1.DEFAULT
     const segments = collectCoolingSegments(points, cfg.minRuntimeHours);
     return medianCoolingConstant(coolingConstantsFromSegments(segments, ambientC));
 }
-exports.estimateCoolingConstantPerH = estimateCoolingConstantPerH;
 function summarizeGroup(cycles) {
     const runtimes = cycles.map((c) => c.runtimeHours);
     const rates = cycles.map((c) => c.coolingRateCPerH);
@@ -336,7 +345,6 @@ function groupBySeason(cycles) {
     }
     return out;
 }
-exports.groupBySeason = groupBySeason;
 function groupByDayType(cycles) {
     const out = {};
     for (const dt of ["weekday", "weekend"]) {
@@ -347,7 +355,6 @@ function groupByDayType(cycles) {
     }
     return out;
 }
-exports.groupByDayType = groupByDayType;
 function estimateRemainingHours(params) {
     const { currentTempC, fullThresholdC, emptyThresholdC, typicalRuntimeHours, coolingRateCPerHAvg } = params;
     const coolingConstantPerH = params.coolingConstantPerH ?? null;
@@ -380,7 +387,6 @@ function estimateRemainingHours(params) {
     }
     return null;
 }
-exports.estimateRemainingHours = estimateRemainingHours;
 function estimatedEmptyAtIso(now, remainingHours) {
     if (remainingHours === null || !Number.isFinite(remainingHours)) {
         return null;
@@ -388,7 +394,6 @@ function estimatedEmptyAtIso(now, remainingHours) {
     const ms = now.getTime() + remainingHours * constants_1.MS_PER_HOUR;
     return new Date(ms).toISOString();
 }
-exports.estimatedEmptyAtIso = estimatedEmptyAtIso;
 /**
  * Live-Restlaufzeit aus absolutem `estimated_empty_at` (nicht der eingefrorene Snapshot
  * vom letzten Learning-Lauf). `null` wenn kein gültiger zukünftiger Leer-Zeitpunkt.
@@ -406,7 +411,6 @@ function liveRemainingHoursFromEmptyAt(estimatedEmptyAtIso, now) {
         return 0;
     return round3(hours);
 }
-exports.liveRemainingHoursFromEmptyAt = liveRemainingHoursFromEmptyAt;
 function deriveHealth(samples, hasSource, configValid, hasCoolingModel) {
     if (!configValid)
         return "invalid_config";
@@ -473,7 +477,6 @@ function computeThermalRuntimeLearning(params) {
         lastError: "",
     };
 }
-exports.computeThermalRuntimeLearning = computeThermalRuntimeLearning;
 function noSourceResult() {
     return {
         status: "no_source",
@@ -495,7 +498,6 @@ function noSourceResult() {
         lastError: "Keine Temperatur-Quelle — Admin-State oder addons.immersion_heater.mapping.buffer_temp_c konfigurieren.",
     };
 }
-exports.noSourceResult = noSourceResult;
 function disabledResult() {
     return {
         ...noSourceResult(),
@@ -503,7 +505,6 @@ function disabledResult() {
         lastError: "Thermal Runtime Learning in Admin deaktiviert.",
     };
 }
-exports.disabledResult = disabledResult;
 function invalidConfigResult(sourceStateId) {
     return {
         status: "invalid_config",
@@ -525,7 +526,6 @@ function invalidConfigResult(sourceStateId) {
         lastError: "Ungültige Schwellwerte: full_threshold_c muss größer als empty_threshold_c sein.",
     };
 }
-exports.invalidConfigResult = invalidConfigResult;
 function errorResult(message, sourceStateId) {
     return {
         ...noSourceResult(),
@@ -535,4 +535,3 @@ function errorResult(message, sourceStateId) {
         lastError: message,
     };
 }
-exports.errorResult = errorResult;

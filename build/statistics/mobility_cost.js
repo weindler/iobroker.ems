@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.measuredMobilityCost = void 0;
+exports.measuredMobilityCost = measuredMobilityCost;
 /** Gemessene Ladung behalten; fehlende zeitgleiche Quellen sperren nur die monetäre Bewertung. */
 function measuredMobilityCost(day, feedInCtPerKwh) {
     let charged = 0;
@@ -76,4 +76,3 @@ function measuredMobilityCost(day, feedInCtPerKwh) {
         otherKwh: pvKnown ? Math.round((charged - pvCharged) * 1000) / 1000 : null,
         costEur: costKnown ? Math.round(cost * 100) / 100 : null, runs };
 }
-exports.measuredMobilityCost = measuredMobilityCost;

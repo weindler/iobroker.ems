@@ -4,7 +4,9 @@
  * Keine zweite Planner-Engine — reine Input-Trennung für resolveThermalPlannerEnergy.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveBoilerBufferThermalEnergy = exports.bufferSoftHeadroomKwh = exports.thermalHardCoverUntilMs = void 0;
+exports.thermalHardCoverUntilMs = thermalHardCoverUntilMs;
+exports.bufferSoftHeadroomKwh = bufferSoftHeadroomKwh;
+exports.resolveBoilerBufferThermalEnergy = resolveBoilerBufferThermalEnergy;
 const flex_demand_1 = require("../../contributions/flexible/flex_demand");
 const EPS = 1e-9;
 const FLOOR_EPS = 0.05;
@@ -34,7 +36,6 @@ function thermalHardCoverUntilMs(input) {
     }
     return null;
 }
-exports.thermalHardCoverUntilMs = thermalHardCoverUntilMs;
 /**
  * Soft-Headroom aus Puffer-Max − Puffer (physikalisch).
  * Contribution darf zusätzlich ein Soft-Ziel ≤ Max liefern — hier Cap.
@@ -53,7 +54,6 @@ function bufferSoftHeadroomKwh(input) {
     const k = input.kwhPerDegreeC != null && input.kwhPerDegreeC > 0 ? input.kwhPerDegreeC : flex_demand_1.IMMERSION_DEFAULT_KWH_PER_DEGREE_C;
     return round3(delta * k);
 }
-exports.bufferSoftHeadroomKwh = bufferSoftHeadroomKwh;
 /**
  * Hard-Bridge nur aus Boiler. Puffer erzeugt keinen Warmwasser-Hard-Bedarf.
  * Fehlendes Boiler-Learning → keine Fake-emptyAt-Deadline; nur Temp vs Min.
@@ -160,4 +160,3 @@ function resolveBoilerBufferThermalEnergy(input) {
         hardFromBoiler: hard > EPS || hygiene > EPS,
     };
 }
-exports.resolveBoilerBufferThermalEnergy = resolveBoilerBufferThermalEnergy;

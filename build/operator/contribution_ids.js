@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acUnitContributionId = exports.CONTRIBUTION_IDS = void 0;
+exports.CONTRIBUTION_IDS = void 0;
+exports.acUnitContributionId = acUnitContributionId;
 /** Stabile Contribution-IDs — keine Zeitstempel, keine dynamischen Werte. */
 exports.CONTRIBUTION_IDS = {
     PV_SUPPLY: "pv_forecast.supply",
@@ -23,4 +24,3 @@ function acUnitContributionId(unitIndex) {
     }
     return `air_conditioning.unit_${unitIndex}`;
 }
-exports.acUnitContributionId = acUnitContributionId;

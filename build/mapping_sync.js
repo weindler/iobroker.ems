@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.wallboxMappingFromConfig = exports.WALLBOX_MAPPING_COMMANDS = exports.syncNativeMappingToStates = exports.ensureAddonMappingStates = exports.mappingCommandsFromEntries = void 0;
+exports.wallboxMappingFromConfig = exports.WALLBOX_MAPPING_COMMANDS = void 0;
+exports.mappingCommandsFromEntries = mappingCommandsFromEntries;
+exports.ensureAddonMappingStates = ensureAddonMappingStates;
+exports.syncNativeMappingToStates = syncNativeMappingToStates;
 const mapping_config_1 = require("./mapping_config");
 Object.defineProperty(exports, "WALLBOX_MAPPING_COMMANDS", { enumerable: true, get: function () { return mapping_config_1.WALLBOX_MAPPING_COMMANDS; } });
 Object.defineProperty(exports, "wallboxMappingFromConfig", { enumerable: true, get: function () { return mapping_config_1.wallboxMappingFromConfig; } });
@@ -18,7 +21,6 @@ function mappingCommandsFromEntries(entries, opts) {
     })
         .map(([cmd]) => cmd);
 }
-exports.mappingCommandsFromEntries = mappingCommandsFromEntries;
 async function ensureAddonMappingStates(host, addonId, commands, options) {
     const ensureAllowed = options?.ensureAllowedValues === true;
     for (const cmd of commands) {
@@ -51,7 +53,6 @@ async function ensureAddonMappingStates(host, addonId, commands, options) {
         }
     }
 }
-exports.ensureAddonMappingStates = ensureAddonMappingStates;
 async function ensureAllowedValuesLeaf(host, base, addonId, cmd) {
     await host.setObjectNotExistsAsync(`${base}.allowed_values`, {
         type: "state",
@@ -76,7 +77,6 @@ async function syncNativeMappingToStates(host, addonId, fromConfig) {
         await applyMappingEntry(host, addonId, cmd, entry);
     }
 }
-exports.syncNativeMappingToStates = syncNativeMappingToStates;
 async function applyMappingEntry(host, addonId, cmd, entry) {
     const base = (0, tree_paths_1.mappingBase)(addonId, cmd);
     const objectExists = async (id) => {

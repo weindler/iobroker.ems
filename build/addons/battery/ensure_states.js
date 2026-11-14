@@ -1,7 +1,8 @@
 "use strict";
 /** Runtime-, Status- und Diagnose-States der neuen Batteriearchitektur. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureBatteryArchitectureStates = exports.BATTERY_BALLAST_STATE_IDS = exports.BATTERY_PUBLIC_STATE_IDS = exports.BAT = exports.BATTERY_BASE = void 0;
+exports.BATTERY_BALLAST_STATE_IDS = exports.BATTERY_PUBLIC_STATE_IDS = exports.BAT = exports.BATTERY_BASE = void 0;
+exports.ensureBatteryArchitectureStates = ensureBatteryArchitectureStates;
 exports.BATTERY_BASE = "addons.battery";
 exports.BAT = {
     identity: {
@@ -500,4 +501,3 @@ async function ensureBatteryArchitectureStates(adapter) {
         }
     }
 }
-exports.ensureBatteryArchitectureStates = ensureBatteryArchitectureStates;

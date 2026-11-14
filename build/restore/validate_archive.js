@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.REQUIRED_BACKUP_PATHS = exports.validateRestoreArchiveBuffer = exports.assertRestoreManifest = void 0;
+exports.REQUIRED_BACKUP_PATHS = void 0;
+exports.assertRestoreManifest = assertRestoreManifest;
+exports.validateRestoreArchiveBuffer = validateRestoreArchiveBuffer;
 const checksum_1 = require("../backup/checksum");
 const types_1 = require("../backup/types");
 const schema_1 = require("../backup/schema");
@@ -43,7 +45,6 @@ function assertRestoreManifest(manifest) {
         }
     }
 }
-exports.assertRestoreManifest = assertRestoreManifest;
 function validateRestoreArchiveBuffer(archive) {
     const archiveSha256 = (0, checksum_1.sha256Buffer)(archive);
     const zipEntries = (0, zip_reader_1.readStoreZipArchive)(archive);
@@ -74,4 +75,3 @@ function validateRestoreArchiveBuffer(archive) {
     }));
     return { archiveSha256, manifest, payload, payloadMap };
 }
-exports.validateRestoreArchiveBuffer = validateRestoreArchiveBuffer;

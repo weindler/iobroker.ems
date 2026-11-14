@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.weatherHorizonConfigFromAdapter = exports.runWeatherHorizon = exports.ensureWeatherHorizonStates = exports.dayResultToPersist = exports.writeWeatherDayPersist = exports.healthFromValidHours = exports.confidenceFromValidHours = exports.isValidMetricValue = exports.computeWeatherLearning = exports.runWeatherLearning = exports.stopWeatherLearning = exports.initWeatherLearning = void 0;
+exports.weatherHorizonConfigFromAdapter = exports.runWeatherHorizon = exports.ensureWeatherHorizonStates = exports.dayResultToPersist = exports.writeWeatherDayPersist = exports.healthFromValidHours = exports.confidenceFromValidHours = exports.isValidMetricValue = exports.computeWeatherLearning = exports.runWeatherLearning = void 0;
+exports.initWeatherLearning = initWeatherLearning;
+exports.stopWeatherLearning = stopWeatherLearning;
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
 const horizon_1 = require("./horizon");
@@ -30,14 +32,12 @@ async function initWeatherLearning(adapter) {
     }, cfg.intervalSec * 1000);
     adapter.log.debug?.(`EMS-Light Weather-Learning ready (read-only, interval ${cfg.intervalSec}s)`);
 }
-exports.initWeatherLearning = initWeatherLearning;
 function stopWeatherLearning() {
     if (weatherTimer) {
         clearInterval(weatherTimer);
         weatherTimer = null;
     }
 }
-exports.stopWeatherLearning = stopWeatherLearning;
 var run_2 = require("./run");
 Object.defineProperty(exports, "runWeatherLearning", { enumerable: true, get: function () { return run_2.runWeatherLearning; } });
 var math_1 = require("./math");

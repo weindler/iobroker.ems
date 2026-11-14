@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureWeatherLearningStates = void 0;
+exports.ensureWeatherLearningStates = ensureWeatherLearningStates;
 const state_util_1 = require("../../ems_light/state_util");
 function numState(id, name, unit) {
     return {
@@ -36,4 +36,3 @@ async function ensureWeatherLearningStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureWeatherLearningStates = ensureWeatherLearningStates;

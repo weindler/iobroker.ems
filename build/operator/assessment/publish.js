@@ -3,7 +3,8 @@
  * Schreibt die operative Einschätzung aus bereits bekanntem Plan + Live-States.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.publishOperationalAssessment = exports.OPERATOR_ASSESSMENT_DE = exports.OPERATOR_ASSESSMENT_JSON = void 0;
+exports.OPERATOR_ASSESSMENT_DE = exports.OPERATOR_ASSESSMENT_JSON = void 0;
+exports.publishOperationalAssessment = publishOperationalAssessment;
 const state_util_1 = require("../../ems_light/state_util");
 const ensure_states_1 = require("../../addons/battery/ensure_states");
 const types_1 = require("../../addons/immersion_heater/runtime/types");
@@ -150,13 +151,19 @@ async function publishOperationalAssessment(host, input) {
     };
     if (buildInput.ev)
         buildInput.ev.sourceFresh = await readBool(host, "addons.wallbox.status.ev_foundation.ev_execution_source_fresh");
-    const assessment = (0, build_1.buildOperationalAssessment)(buildInput);
     const outlook = (0, outlook_72h_1.buildOperatorOutlook72h)({
         now: input.now,
         timezone: input.timezone,
         plan: input.plan,
         plannerInput: input.plannerInput,
     });
+    // "Heute X kWh PV" muss zur Kachel passen: bisher erzeugt + noch erwarteter Rest laut Plan.
+    const actualTodayKwh = await readNum(host, "learning.pv_bias.actual_today_kwh");
+    const day0 = outlook.days[0];
+    if (actualTodayKwh !== null && day0 && day0.expectedPvKwh !== null && day0.partialDay !== false) {
+        buildInput.pvTodayKwh = Math.round((actualTodayKwh + day0.expectedPvKwh) * 10) / 10;
+    }
+    const assessment = (0, build_1.buildOperationalAssessment)(buildInput);
     const writer = host;
     const todayBattery = outlook.days[0]?.battery;
     if ((await readStr(host, "addons.battery.mode")) === "off") {
@@ -172,4 +179,3 @@ async function publishOperationalAssessment(host, input) {
     await (0, state_write_1.setStateIfChanged)(writer, outlook_72h_1.OPERATOR_OUTLOOK_72H_JSON, JSON.stringify(outlook));
     await (0, state_write_1.setStateIfChanged)(writer, outlook_72h_1.OPERATOR_OUTLOOK_72H_DE, (0, outlook_72h_1.formatOperatorOutlook72hDe)(outlook));
 }
-exports.publishOperationalAssessment = publishOperationalAssessment;

@@ -8,7 +8,10 @@
  * Reporting/Nachweis.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SHADOW_ENGINE_STATE_CATEGORY = exports.readShadowDayResult = exports.runShadowEngineBatch = exports.buildShadowDayRecord = void 0;
+exports.SHADOW_ENGINE_STATE_CATEGORY = void 0;
+exports.buildShadowDayRecord = buildShadowDayRecord;
+exports.runShadowEngineBatch = runShadowEngineBatch;
+exports.readShadowDayResult = readShadowDayResult;
 const constants_1 = require("../day_telemetry/constants");
 const persist_1 = require("../day_telemetry/persist");
 const time_1 = require("../../operator/time");
@@ -71,7 +74,6 @@ function buildShadowDayRecord(dateKey, day, previousDay, batteryParams, feedInCt
         },
     };
 }
-exports.buildShadowDayRecord = buildShadowDayRecord;
 function lastNonNull(arr) {
     for (let i = arr.length - 1; i >= 0; i--) {
         if (arr[i] !== null)
@@ -183,9 +185,7 @@ async function runShadowEngineBatch(host, opts = {}) {
     }
     return result;
 }
-exports.runShadowEngineBatch = runShadowEngineBatch;
 async function readShadowDayResult(host, dateKey) {
     const resultsDir = host.getAbsolutePath(constants_2.SHADOW_ENGINE_RESULTS_CATEGORY);
     return (0, persist_2.readShadowDayRecord)(resultsDir, dateKey);
 }
-exports.readShadowDayResult = readShadowDayResult;

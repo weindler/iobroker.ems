@@ -1,7 +1,17 @@
 "use strict";
 /** Statistik-Zeiträume: von–bis aus Perioden-ID. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fixedTariffCostForRange = exports.resolveStatisticsStartKey = exports.clipPeriodRangeToStart = exports.earliestDayKey = exports.dayKeysInRange = exports.listPeriodOptions = exports.resolvePeriodRange = exports.normalizePeriodId = exports.isValidPeriodId = exports.makeDateKey = exports.parseDateKey = void 0;
+exports.parseDateKey = parseDateKey;
+exports.makeDateKey = makeDateKey;
+exports.isValidPeriodId = isValidPeriodId;
+exports.normalizePeriodId = normalizePeriodId;
+exports.resolvePeriodRange = resolvePeriodRange;
+exports.listPeriodOptions = listPeriodOptions;
+exports.dayKeysInRange = dayKeysInRange;
+exports.earliestDayKey = earliestDayKey;
+exports.clipPeriodRangeToStart = clipPeriodRangeToStart;
+exports.resolveStatisticsStartKey = resolveStatisticsStartKey;
+exports.fixedTariffCostForRange = fixedTariffCostForRange;
 function pad2(n) {
     return n < 10 ? `0${n}` : String(n);
 }
@@ -11,11 +21,9 @@ function parseDateKey(dateKey) {
         return null;
     return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
 }
-exports.parseDateKey = parseDateKey;
 function makeDateKey(y, m, d) {
     return `${y}-${pad2(m)}-${pad2(d)}`;
 }
-exports.makeDateKey = makeDateKey;
 function daysInMonthNum(y, m) {
     return new Date(y, m, 0).getDate();
 }
@@ -44,12 +52,10 @@ function isValidPeriodId(id) {
     }
     return /^year_\d{4}$/.test(id) || /^month_\d{4}-(0[1-9]|1[0-2])$/.test(id);
 }
-exports.isValidPeriodId = isValidPeriodId;
 function normalizePeriodId(raw, fallback = "this_month") {
     const s = typeof raw === "string" ? raw.trim() : "";
     return isValidPeriodId(s) ? s : fallback;
 }
-exports.normalizePeriodId = normalizePeriodId;
 function resolvePeriodRange(periodId, todayKey) {
     const today = parseDateKey(todayKey);
     if (!today)
@@ -165,7 +171,6 @@ function resolvePeriodRange(periodId, todayKey) {
     }
     return null;
 }
-exports.resolvePeriodRange = resolvePeriodRange;
 /** Feste Perioden + Jahre aus Persistenz (älteste zuerst). */
 function listPeriodOptions(todayKey, dayKeys) {
     const fixed = [
@@ -198,19 +203,16 @@ function listPeriodOptions(todayKey, dayKeys) {
             .format(new Date(`${month}-01T00:00:00Z`)) }));
     return [...fixed, ...yearOpts, ...monthOpts];
 }
-exports.listPeriodOptions = listPeriodOptions;
 function dayKeysInRange(days, fromKey, toKey) {
     return Object.keys(days)
         .filter((k) => k >= fromKey && k <= toKey)
         .sort();
 }
-exports.dayKeysInRange = dayKeysInRange;
 /** Frühestes YYYY-MM-DD aus Persistenz-Tagen. */
 function earliestDayKey(dayKeys) {
     const sorted = dayKeys.filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
     return sorted[0] ?? null;
 }
-exports.earliestDayKey = earliestDayKey;
 /**
  * Zeitraum nicht vor Statistik-Start (Installation) beginnen.
  * Wenn der ganze Zeitraum vor dem Start liegt → null (keine Daten).
@@ -230,7 +232,6 @@ function clipPeriodRangeToStart(range, statisticsStartKey) {
         labelDe: clipped ? `${range.labelDe} (ab ${statisticsStartKey})` : range.labelDe,
     };
 }
-exports.clipPeriodRangeToStart = clipPeriodRangeToStart;
 /** Wirksamer Statistik-Start: Admin-Datum, sonst frühester Persist-/Tibber-Tag. */
 function resolveStatisticsStartKey(input) {
     if (input.adminStartKey && /^\d{4}-\d{2}-\d{2}$/.test(input.adminStartKey)) {
@@ -244,7 +245,6 @@ function resolveStatisticsStartKey(input) {
         return null;
     return candidates.sort()[0];
 }
-exports.resolveStatisticsStartKey = resolveStatisticsStartKey;
 /** Monatliche Grundgebühr anteilig über alle Kalendermonate in [from,to]. */
 function fixedTariffCostForRange(input) {
     if (input.gridImportKwh === null || input.compareTariffCtPerKwh === null)
@@ -273,4 +273,3 @@ function fixedTariffCostForRange(input) {
     }
     return Math.round((energyEur + base) * 100) / 100;
 }
-exports.fixedTariffCostForRange = fixedTariffCostForRange;

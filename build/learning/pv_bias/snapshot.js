@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadDailyPersist = exports.backfillDailyPersist = exports.runActualDailySnapshot = exports.recordForecastDailySnapshot = exports.shouldCaptureActualSnapshot = exports.actualSnapshotCapturedForDate = void 0;
+exports.actualSnapshotCapturedForDate = actualSnapshotCapturedForDate;
+exports.shouldCaptureActualSnapshot = shouldCaptureActualSnapshot;
+exports.recordForecastDailySnapshot = recordForecastDailySnapshot;
+exports.runActualDailySnapshot = runActualDailySnapshot;
+exports.backfillDailyPersist = backfillDailyPersist;
+exports.loadDailyPersist = loadDailyPersist;
 const config_1 = require("./config");
 const daily_persist_1 = require("./daily_persist");
 const history_1 = require("./history");
@@ -15,7 +20,6 @@ function actualSnapshotCapturedForDate(persist, dateKey) {
     const row = (0, daily_persist_1.dailyRecord)(persist, dateKey);
     return row?.actualKwh != null && row.actualCapturedAt != null;
 }
-exports.actualSnapshotCapturedForDate = actualSnapshotCapturedForDate;
 /** Nach Snapshot-Zeit am selben Kalendertag, noch nicht gespeichert. */
 function shouldCaptureActualSnapshot(now, snapshotTime, alreadyCapturedToday) {
     if (alreadyCapturedToday) {
@@ -29,7 +33,6 @@ function shouldCaptureActualSnapshot(now, snapshotTime, alreadyCapturedToday) {
     snapshotMs.setHours(parsed.hours, parsed.minutes, 0, 0);
     return now.getTime() >= snapshotMs.getTime();
 }
-exports.shouldCaptureActualSnapshot = shouldCaptureActualSnapshot;
 async function recordForecastDailySnapshot(host, cfg, forecastKwh, source, now = new Date()) {
     const dir = persistDir(host);
     if (!dir || !cfg.freezeEnabled) {
@@ -48,7 +51,6 @@ async function recordForecastDailySnapshot(host, cfg, forecastKwh, source, now =
     });
     await (0, daily_persist_1.writeDailyPersist)(dir, updated);
 }
-exports.recordForecastDailySnapshot = recordForecastDailySnapshot;
 async function runActualDailySnapshot(host, cfg, now = new Date()) {
     if (!cfg.actualSnapshotEnabled || !cfg.historyActualStateId) {
         return false;
@@ -80,7 +82,6 @@ async function runActualDailySnapshot(host, cfg, now = new Date()) {
     host.log.debug?.(`PV-Bias Snapshot: Ist ${actualKwh} kWh für ${todayKey} um ${now.toISOString()} gespeichert.`);
     return true;
 }
-exports.runActualDailySnapshot = runActualDailySnapshot;
 /** Fehlende Tage aus History nachziehen (letzter Tageswert, kein MAX). */
 async function backfillDailyPersist(host, cfg, maxDays = 30) {
     const dir = persistDir(host);
@@ -134,7 +135,6 @@ async function backfillDailyPersist(host, cfg, maxDays = 30) {
     }
     return filled;
 }
-exports.backfillDailyPersist = backfillDailyPersist;
 async function loadDailyPersist(host) {
     const dir = persistDir(host);
     if (!dir) {
@@ -142,4 +142,3 @@ async function loadDailyPersist(host) {
     }
     return (0, daily_persist_1.readDailyPersist)(dir);
 }
-exports.loadDailyPersist = loadDailyPersist;

@@ -8,7 +8,14 @@
  * dieses Modul liefert dann nur `status:"disabled"`/`"no_token"`, wirft nie.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runDailyAnalystManual = exports.handleDailyAnalystRunNowRequest = exports.runDailyAnalystFromAdminButton = exports.formatAiDailyAnalystAdminHint = exports.maybeRunDailyAnalystAutomatically = exports.runDailyAnalystForDate = exports.resetDailyAnalystInFlightForTest = exports.asDailyAnalystAdapterHost = void 0;
+exports.asDailyAnalystAdapterHost = asDailyAnalystAdapterHost;
+exports.resetDailyAnalystInFlightForTest = resetDailyAnalystInFlightForTest;
+exports.runDailyAnalystForDate = runDailyAnalystForDate;
+exports.maybeRunDailyAnalystAutomatically = maybeRunDailyAnalystAutomatically;
+exports.formatAiDailyAnalystAdminHint = formatAiDailyAnalystAdminHint;
+exports.runDailyAnalystFromAdminButton = runDailyAnalystFromAdminButton;
+exports.handleDailyAnalystRunNowRequest = handleDailyAnalystRunNowRequest;
+exports.runDailyAnalystManual = runDailyAnalystManual;
 const time_1 = require("../../operator/time");
 const constants_1 = require("../../learning/daily_evaluator/constants");
 const persist_1 = require("../../learning/daily_evaluator/persist");
@@ -34,7 +41,6 @@ const dedupe_findings_1 = require("./dedupe_findings");
 function asDailyAnalystAdapterHost(adapter) {
     return (0, data_dir_1.withLearningDataPath)(adapter, adapter);
 }
-exports.asDailyAnalystAdapterHost = asDailyAnalystAdapterHost;
 function hostHasDataPath(host) {
     return typeof host.getAbsolutePath === "function";
 }
@@ -63,7 +69,6 @@ let dailyAnalystInFlight = false;
 function resetDailyAnalystInFlightForTest() {
     dailyAnalystInFlight = false;
 }
-exports.resetDailyAnalystInFlightForTest = resetDailyAnalystInFlightForTest;
 /**
  * Führt den Analysten für genau einen bereits vom Daily Evaluator abgeschlossenen Tag aus.
  * Persistiert das Ergebnis (auch `disabled`/`no_token`/Fehler — damit ist der Tag "erledigt"
@@ -92,7 +97,6 @@ async function runDailyAnalystForDate(host, dateKey, provider = (0, provider_1.c
         dailyAnalystInFlight = false;
     }
 }
-exports.runDailyAnalystForDate = runDailyAnalystForDate;
 async function runDailyAnalystForDateUnlocked(host, dateKey, provider, now) {
     const cfg = await (0, ensure_states_1.syncAiDailyAnalystRuntimeFromConfig)(host);
     const aiCfg = (0, config_2.aiConfigFromAdapter)(host.config);
@@ -243,7 +247,6 @@ async function maybeRunDailyAnalystAutomatically(host, now = new Date(), provide
         return null; // bereits verarbeitet (auch disabled/no_token/error zählt als "erledigt" für diesen Tag)
     return runDailyAnalystForDate(host, yesterdayKey, provider, now);
 }
-exports.maybeRunDailyAnalystAutomatically = maybeRunDailyAnalystAutomatically;
 function emptyManualResult(status, reasonDe, dateKey = null) {
     return {
         ran: false,
@@ -274,7 +277,6 @@ function formatAiDailyAnalystAdminHint(outcome) {
             return outcome.reasonDe || outcome.status;
     }
 }
-exports.formatAiDailyAnalystAdminHint = formatAiDailyAnalystAdminHint;
 /**
  * Admin-„Jetzt analysieren“: derselbe Manual-Pfad wie der Objektbaum-Button
  * (`handleDailyAnalystRunNowRequest`). Overrides werden dadurch nicht eingeschaltet.
@@ -297,7 +299,6 @@ async function runDailyAnalystFromAdminButton(host, now = new Date(), provider) 
         : "ok";
     return { result, status: outcome.status, hint, text: hint };
 }
-exports.runDailyAnalystFromAdminButton = runDailyAnalystFromAdminButton;
 /** Gemeinsamer Handler für Objektbaum-Button und Admin-sendTo. */
 async function handleDailyAnalystRunNowRequest(host, now = new Date(), provider) {
     try {
@@ -313,7 +314,6 @@ async function handleDailyAnalystRunNowRequest(host, now = new Date(), provider)
     }
     return runDailyAnalystManual(host, now, provider);
 }
-exports.handleDailyAnalystRunNowRequest = handleDailyAnalystRunNowRequest;
 /**
  * Für den manuellen Button: analysiert den zuletzt vom Daily Evaluator bewerteten Tag.
  * `manual`: immer (erneut). `daily_auto`: nur wenn der Tag noch nicht persistiert ist
@@ -345,4 +345,3 @@ async function runDailyAnalystManual(host, now = new Date(), provider) {
     }
     return runDailyAnalystForDate(host, yesterdayKey, provider, now);
 }
-exports.runDailyAnalystManual = runDailyAnalystManual;

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.normalizeTelemetry = exports.normalizeBatteryPower = exports.DEFAULT_TELEMETRY_MAX_AGE_MS = void 0;
+exports.DEFAULT_TELEMETRY_MAX_AGE_MS = void 0;
+exports.normalizeBatteryPower = normalizeBatteryPower;
+exports.normalizeTelemetry = normalizeTelemetry;
 const capacity_1 = require("./capacity");
 /** Maximal zulässiges Telemetriealter (ms), bevor Werte als stale gelten. */
 exports.DEFAULT_TELEMETRY_MAX_AGE_MS = 120_000;
@@ -20,7 +22,6 @@ function normalizeBatteryPower(powerW, signConvention) {
     const discharging = normalized < 0 ? -normalized : 0;
     return { powerW: normalized, chargingPowerW: charging, dischargingPowerW: discharging };
 }
-exports.normalizeBatteryPower = normalizeBatteryPower;
 function normalizeTelemetry(input) {
     const { reading, signConvention, nowMs } = input;
     const maxAgeMs = input.maxAgeMs ?? exports.DEFAULT_TELEMETRY_MAX_AGE_MS;
@@ -72,4 +73,3 @@ function normalizeTelemetry(input) {
     };
     return { telemetry, quality };
 }
-exports.normalizeTelemetry = normalizeTelemetry;

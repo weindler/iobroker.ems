@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emptyResolvedThermalIntent = void 0;
+exports.emptyResolvedThermalIntent = emptyResolvedThermalIntent;
 const constants_1 = require("../core/constants");
 function emptyResolvedThermalIntent(now, targetId) {
     const iso = now.toISOString();
@@ -26,4 +26,3 @@ function emptyResolvedThermalIntent(now, targetId) {
         source_summary: [],
     };
 }
-exports.emptyResolvedThermalIntent = emptyResolvedThermalIntent;

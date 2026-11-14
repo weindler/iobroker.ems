@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EXECUTION_MODE_KEYS = exports.mergeNativeForRestore = exports.exportCurrentNativeProjection = exports.countChangedConfigFields = exports.buildRestoreProjection = void 0;
+exports.EXECUTION_MODE_KEYS = void 0;
+exports.buildRestoreProjection = buildRestoreProjection;
+exports.countChangedConfigFields = countChangedConfigFields;
+exports.exportCurrentNativeProjection = exportCurrentNativeProjection;
+exports.mergeNativeForRestore = mergeNativeForRestore;
 const schema_1 = require("../backup/schema");
 const collect_config_1 = require("../backup/collect_config");
 const collect_persistence_1 = require("../backup/collect_persistence");
@@ -104,7 +108,6 @@ function buildRestoreProjection(payloadMap) {
         skippedClasses,
     };
 }
-exports.buildRestoreProjection = buildRestoreProjection;
 function countChangedConfigFields(current, projected) {
     let n = 0;
     for (const [k, v] of Object.entries(projected)) {
@@ -113,7 +116,6 @@ function countChangedConfigFields(current, projected) {
     }
     return n;
 }
-exports.countChangedConfigFields = countChangedConfigFields;
 function exportCurrentNativeProjection(current) {
     const out = {};
     for (const [k, v] of Object.entries(current)) {
@@ -123,7 +125,6 @@ function exportCurrentNativeProjection(current) {
     }
     return out;
 }
-exports.exportCurrentNativeProjection = exportCurrentNativeProjection;
 function mergeNativeForRestore(current, projection) {
     const out = { ...current };
     const restoreKeys = new Set();
@@ -144,4 +145,3 @@ function mergeNativeForRestore(current, projection) {
     }
     return out;
 }
-exports.mergeNativeForRestore = mergeNativeForRestore;

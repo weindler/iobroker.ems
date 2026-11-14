@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateImmersionDeviceConfig = void 0;
+exports.validateImmersionDeviceConfig = validateImmersionDeviceConfig;
 const device_config_1 = require("./device_config");
 function validateImmersionDeviceConfig(config) {
     const errors = [];
@@ -46,4 +46,3 @@ function validateImmersionDeviceConfig(config) {
     }
     return { valid: errors.length === 0, errors };
 }
-exports.validateImmersionDeviceConfig = validateImmersionDeviceConfig;

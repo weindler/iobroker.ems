@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureAddonPolicyStates = exports.ensureGlobalPolicyStates = exports.ensureSystemPolicyStates = exports.ensurePolicyChannels = void 0;
+exports.ensurePolicyChannels = ensurePolicyChannels;
+exports.ensureSystemPolicyStates = ensureSystemPolicyStates;
+exports.ensureGlobalPolicyStates = ensureGlobalPolicyStates;
+exports.ensureAddonPolicyStates = ensureAddonPolicyStates;
 const state_util_1 = require("../../ems_light/state_util");
 function strState(id, name, def) {
     return {
@@ -21,7 +24,6 @@ async function ensurePolicyChannels(host) {
     await (0, state_util_1.ensureChannel)(host, "policy.system", "EMS-Light Policy System");
     await (0, state_util_1.ensureChannel)(host, "policy.global", "EMS-Light Policy Global");
 }
-exports.ensurePolicyChannels = ensurePolicyChannels;
 async function ensureSystemPolicyStates(host) {
     await ensurePolicyChannels(host);
     const defs = [
@@ -33,7 +35,6 @@ async function ensureSystemPolicyStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureSystemPolicyStates = ensureSystemPolicyStates;
 async function ensureGlobalPolicyStates(host) {
     await ensurePolicyChannels(host);
     const defs = [
@@ -47,7 +48,6 @@ async function ensureGlobalPolicyStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureGlobalPolicyStates = ensureGlobalPolicyStates;
 /** Vorbereitung Phase 3B — States für Add-on-Instanzen */
 async function ensureAddonPolicyStates(host, addonType, instanceId) {
     const base = `policy.${addonType}.${instanceId}`;
@@ -65,4 +65,3 @@ async function ensureAddonPolicyStates(host, addonType, instanceId) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureAddonPolicyStates = ensureAddonPolicyStates;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureThermalRuntimeLearningStates = void 0;
+exports.ensureThermalRuntimeLearningStates = ensureThermalRuntimeLearningStates;
 const state_util_1 = require("../../ems_light/state_util");
 function numState(id, name, unit) {
     return {
@@ -44,4 +44,3 @@ async function ensureThermalRuntimeLearningStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureThermalRuntimeLearningStates = ensureThermalRuntimeLearningStates;

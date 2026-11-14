@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveDailyEnergySources = exports.DAILY_ENERGY_SOURCES = void 0;
+exports.DAILY_ENERGY_SOURCES = void 0;
+exports.resolveDailyEnergySources = resolveDailyEnergySources;
 const config_1 = require("../pv_bias/config");
 exports.DAILY_ENERGY_SOURCES = [
     { sourceKey: "pv.day_energy" },
@@ -17,4 +18,3 @@ function resolveDailyEnergySources(config) {
         lookbackDays: DEFAULT_LOOKBACK_DAYS,
     }));
 }
-exports.resolveDailyEnergySources = resolveDailyEnergySources;

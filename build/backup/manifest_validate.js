@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.extractManifestFromArchiveEntries = exports.validateManifestPayloadConsistency = exports.assertUniqueArchivePaths = exports.assertSafeArchivePath = void 0;
+exports.assertSafeArchivePath = assertSafeArchivePath;
+exports.assertUniqueArchivePaths = assertUniqueArchivePaths;
+exports.validateManifestPayloadConsistency = validateManifestPayloadConsistency;
+exports.extractManifestFromArchiveEntries = extractManifestFromArchiveEntries;
 const checksum_1 = require("./checksum");
 /** Archivpfad muss relativ, ohne Traversal und ohne Nullbyte sein. */
 function assertSafeArchivePath(archivePath) {
@@ -18,7 +21,6 @@ function assertSafeArchivePath(archivePath) {
         throw new Error("path traversal in archive path");
     }
 }
-exports.assertSafeArchivePath = assertSafeArchivePath;
 function assertUniqueArchivePaths(entries) {
     const seen = new Set();
     for (const e of entries) {
@@ -30,7 +32,6 @@ function assertUniqueArchivePaths(entries) {
         seen.add(p);
     }
 }
-exports.assertUniqueArchivePaths = assertUniqueArchivePaths;
 /**
  * Manifest-Regeln:
  * - manifest.json steht nicht in files[]
@@ -71,7 +72,6 @@ function validateManifestPayloadConsistency(manifest, payloadEntries) {
         }
     }
 }
-exports.validateManifestPayloadConsistency = validateManifestPayloadConsistency;
 function extractManifestFromArchiveEntries(allEntries) {
     const manifestEntry = allEntries.find((e) => e.path.replace(/\\/g, "/") === "manifest.json");
     if (!manifestEntry) {
@@ -80,4 +80,3 @@ function extractManifestFromArchiveEntries(allEntries) {
     const text = typeof manifestEntry.content === "string" ? manifestEntry.content : manifestEntry.content.toString("utf8");
     return JSON.parse(text);
 }
-exports.extractManifestFromArchiveEntries = extractManifestFromArchiveEntries;

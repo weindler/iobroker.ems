@@ -4,7 +4,10 @@
  * Verivox/Statistik-Festtarif bleibt separat (dort alles im Vergleichstarif enthalten).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncEconomicsTariffFeesFromConfig = exports.readNativeTariffGridFeeMonthlyEur = exports.readNativeTariffMonthlyBaseEur = exports.ECONOMICS_GRID_FEE_MONTHLY_EUR_STATE = exports.ECONOMICS_MONTHLY_BASE_FEE_EUR_STATE = exports.TARIFF_GRID_FEE_MONTHLY_EUR_NATIVE_KEY = exports.TARIFF_MONTHLY_BASE_EUR_NATIVE_KEY = void 0;
+exports.ECONOMICS_GRID_FEE_MONTHLY_EUR_STATE = exports.ECONOMICS_MONTHLY_BASE_FEE_EUR_STATE = exports.TARIFF_GRID_FEE_MONTHLY_EUR_NATIVE_KEY = exports.TARIFF_MONTHLY_BASE_EUR_NATIVE_KEY = void 0;
+exports.readNativeTariffMonthlyBaseEur = readNativeTariffMonthlyBaseEur;
+exports.readNativeTariffGridFeeMonthlyEur = readNativeTariffGridFeeMonthlyEur;
+exports.syncEconomicsTariffFeesFromConfig = syncEconomicsTariffFeesFromConfig;
 const state_write_1 = require("../policy/core/state_write");
 exports.TARIFF_MONTHLY_BASE_EUR_NATIVE_KEY = "tariff_monthly_base_eur";
 exports.TARIFF_GRID_FEE_MONTHLY_EUR_NATIVE_KEY = "tariff_grid_fee_monthly_eur";
@@ -20,13 +23,11 @@ function readNativeTariffMonthlyBaseEur(config) {
         return null;
     return normalizeNonNeg(config[exports.TARIFF_MONTHLY_BASE_EUR_NATIVE_KEY]);
 }
-exports.readNativeTariffMonthlyBaseEur = readNativeTariffMonthlyBaseEur;
 function readNativeTariffGridFeeMonthlyEur(config) {
     if (!config || typeof config !== "object")
         return null;
     return normalizeNonNeg(config[exports.TARIFF_GRID_FEE_MONTHLY_EUR_NATIVE_KEY]);
 }
-exports.readNativeTariffGridFeeMonthlyEur = readNativeTariffGridFeeMonthlyEur;
 async function syncEconomicsTariffFeesFromConfig(host) {
     await host.setObjectNotExistsAsync(exports.ECONOMICS_GRID_FEE_MONTHLY_EUR_STATE, {
         type: "state",
@@ -50,4 +51,3 @@ async function syncEconomicsTariffFeesFromConfig(host) {
             mirrored;
     return { monthlyBaseEur: monthly, gridFeeMonthlyEur: gridMonthly, mirrored };
 }
-exports.syncEconomicsTariffFeesFromConfig = syncEconomicsTariffFeesFromConfig;

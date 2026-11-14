@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.noteSampleTimestamps = exports.refreshDayCoverage = exports.emptyDayTelemetryStore = exports.emptyDayRecord = exports.emptyBuckets = void 0;
+exports.emptyBuckets = emptyBuckets;
+exports.emptyDayRecord = emptyDayRecord;
+exports.emptyDayTelemetryStore = emptyDayTelemetryStore;
+exports.refreshDayCoverage = refreshDayCoverage;
+exports.noteSampleTimestamps = noteSampleTimestamps;
 const constants_1 = require("./constants");
 function emptyBuckets(slotCount) {
     const n = () => Array.from({ length: slotCount }, () => null);
@@ -34,7 +38,6 @@ function emptyBuckets(slotCount) {
         qualityMask: nMask(),
     };
 }
-exports.emptyBuckets = emptyBuckets;
 function emptyDayRecord(dateKey, timezone, startMs, endMs, slotCount) {
     return {
         dateKey,
@@ -64,7 +67,6 @@ function emptyDayRecord(dateKey, timezone, startMs, endMs, slotCount) {
         statusEvents: [],
     };
 }
-exports.emptyDayRecord = emptyDayRecord;
 function emptyDayTelemetryStore() {
     return {
         module: constants_1.DAY_TELEMETRY_MODULE,
@@ -73,7 +75,6 @@ function emptyDayTelemetryStore() {
         days: {},
     };
 }
-exports.emptyDayTelemetryStore = emptyDayTelemetryStore;
 /** Coverage-Metadaten aus qualityMask neu berechnen (keine erfundenen Messwerte). */
 function refreshDayCoverage(day) {
     let observed = 0;
@@ -86,7 +87,6 @@ function refreshDayCoverage(day) {
         day.slotCount > 0 ? Math.round((observed / day.slotCount) * 1000) / 10 : 0;
     day.evaluable = day.coveragePct >= constants_1.DAY_TELEMETRY_EVALUABLE_COVERAGE_PCT;
 }
-exports.refreshDayCoverage = refreshDayCoverage;
 function noteSampleTimestamps(day, nowMs) {
     const iso = new Date(nowMs).toISOString();
     if (day.firstSampleMs == null) {
@@ -96,4 +96,3 @@ function noteSampleTimestamps(day, nowMs) {
     day.lastSampleMs = nowMs;
     day.lastSampleIso = iso;
 }
-exports.noteSampleTimestamps = noteSampleTimestamps;

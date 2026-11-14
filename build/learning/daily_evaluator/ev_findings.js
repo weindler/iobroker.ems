@@ -11,7 +11,7 @@
  * Mitternacht des Folgetages) — solche Fälle bleiben insufficient_data statt geraten.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateEvFindings = void 0;
+exports.evaluateEvFindings = evaluateEvFindings;
 const slots_1 = require("../day_telemetry/slots");
 function sum(arr) {
     let s = 0;
@@ -104,4 +104,3 @@ function evaluateEvFindings(day) {
     }
     return findings;
 }
-exports.evaluateEvFindings = evaluateEvFindings;

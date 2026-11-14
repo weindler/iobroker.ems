@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.zipCrc32 = exports.zipEntriesToMap = exports.readStoreZipArchive = void 0;
+exports.readStoreZipArchive = readStoreZipArchive;
+exports.zipEntriesToMap = zipEntriesToMap;
+exports.zipCrc32 = crc32;
 const manifest_validate_1 = require("../backup/manifest_validate");
 const limits_1 = require("../backup/limits");
 const limits_2 = require("../backup/limits");
@@ -18,7 +20,6 @@ function crc32(buf) {
     }
     return (crc ^ 0xffffffff) >>> 0;
 }
-exports.zipCrc32 = crc32;
 function findEocd(archive) {
     for (let i = archive.length - 22; i >= Math.max(0, archive.length - 65557); i--) {
         if (archive.readUInt32LE(i) === SIG_EOC) {
@@ -95,7 +96,6 @@ function readStoreZipArchive(archive) {
     }
     return entries;
 }
-exports.readStoreZipArchive = readStoreZipArchive;
 function zipEntriesToMap(entries) {
     const map = new Map();
     for (const e of entries) {
@@ -103,4 +103,3 @@ function zipEntriesToMap(entries) {
     }
     return map;
 }
-exports.zipEntriesToMap = zipEntriesToMap;

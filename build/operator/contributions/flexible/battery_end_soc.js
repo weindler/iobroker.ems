@@ -6,7 +6,7 @@
  * nicht aus pauschalen 90/95/100 %-Policy-Werten. 100 % nur bei Top-off / starkem Defizit.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.planDynamicBatteryEndSoc = void 0;
+exports.planDynamicBatteryEndSoc = planDynamicBatteryEndSoc;
 function round1(n) {
     return Math.round(n * 10) / 10;
 }
@@ -104,4 +104,3 @@ function planDynamicBatteryEndSoc(input) {
         reasonDe: parts.join("; ") + ".",
     };
 }
-exports.planDynamicBatteryEndSoc = planDynamicBatteryEndSoc;

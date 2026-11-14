@@ -4,7 +4,9 @@
  * Keine Hardware-Writes, keine Fake-Leistungs-Allocations.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildAddonStrategicPlanSnapshot = exports.deriveWallboxStrategicStatus = exports.deriveBatteryStrategicStatus = void 0;
+exports.deriveBatteryStrategicStatus = deriveBatteryStrategicStatus;
+exports.deriveWallboxStrategicStatus = deriveWallboxStrategicStatus;
+exports.buildAddonStrategicPlanSnapshot = buildAddonStrategicPlanSnapshot;
 const ON_W = 50;
 const FULL_SOC_PCT = 99;
 function hasAlloc(cells, kind, nowMs, opts) {
@@ -142,7 +144,6 @@ function deriveBatteryStrategicStatus(input) {
         nightReserveKwh: night,
     };
 }
-exports.deriveBatteryStrategicStatus = deriveBatteryStrategicStatus;
 /**
  * Strategischer Wallbox-Status — keine erfundenen Ladeallocations.
  */
@@ -222,7 +223,6 @@ function deriveWallboxStrategicStatus(input) {
         deadlineIso: deadline,
     };
 }
-exports.deriveWallboxStrategicStatus = deriveWallboxStrategicStatus;
 /** Komplettsnapshot für States/VIS. */
 function buildAddonStrategicPlanSnapshot(input) {
     const bat = input.plannerInput.battery;
@@ -256,4 +256,3 @@ function buildAddonStrategicPlanSnapshot(input) {
         }),
     };
 }
-exports.buildAddonStrategicPlanSnapshot = buildAddonStrategicPlanSnapshot;

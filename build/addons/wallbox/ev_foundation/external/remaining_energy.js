@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.currentOrFutureSlots = exports.computeExternalPlanRemainingEnergy = void 0;
+exports.computeExternalPlanRemainingEnergy = computeExternalPlanRemainingEnergy;
+exports.currentOrFutureSlots = currentOrFutureSlots;
 function originalDurationHours(slot) {
     const start = Date.parse(slot.start);
     const end = Date.parse(slot.end);
@@ -106,11 +107,9 @@ function computeExternalPlanRemainingEnergy(input) {
         clippedSlotCount: segs.length,
     };
 }
-exports.computeExternalPlanRemainingEnergy = computeExternalPlanRemainingEnergy;
 function currentOrFutureSlots(slots, nowMs) {
     return slots.filter((s) => {
         const end = Date.parse(s.end);
         return Number.isFinite(end) && end > nowMs;
     });
 }
-exports.currentOrFutureSlots = currentOrFutureSlots;

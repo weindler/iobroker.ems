@@ -15,15 +15,34 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assertPathWithinRoot = exports.categoryDataPath = exports.resolveEmsPaths = exports.resolveNamespace = exports.resolveDurableDataDir = exports.resolveIoBrokerDataRoot = exports.runtimeDataDirFromRoot = exports.durableDataDirFromRoot = exports.assertSafeRelativeSegment = exports.parseInstanceFromNamespace = void 0;
+exports.parseInstanceFromNamespace = parseInstanceFromNamespace;
+exports.assertSafeRelativeSegment = assertSafeRelativeSegment;
+exports.durableDataDirFromRoot = durableDataDirFromRoot;
+exports.runtimeDataDirFromRoot = runtimeDataDirFromRoot;
+exports.resolveIoBrokerDataRoot = resolveIoBrokerDataRoot;
+exports.resolveDurableDataDir = resolveDurableDataDir;
+exports.resolveNamespace = resolveNamespace;
+exports.resolveEmsPaths = resolveEmsPaths;
+exports.categoryDataPath = categoryDataPath;
+exports.assertPathWithinRoot = assertPathWithinRoot;
 const path = __importStar(require("node:path"));
 const TRAVERSAL_RE = /\.\.|[/\\]|\0/;
 function parseInstanceFromNamespace(namespace) {
@@ -31,21 +50,17 @@ function parseInstanceFromNamespace(namespace) {
     const n = Number.parseInt(parts[parts.length - 1] ?? "0", 10);
     return Number.isFinite(n) && n >= 0 ? n : 0;
 }
-exports.parseInstanceFromNamespace = parseInstanceFromNamespace;
 function assertSafeRelativeSegment(segment) {
     if (!segment || TRAVERSAL_RE.test(segment)) {
         throw new Error("invalid path segment");
     }
 }
-exports.assertSafeRelativeSegment = assertSafeRelativeSegment;
 function durableDataDirFromRoot(ioBrokerDataRoot, instance) {
     return path.join(ioBrokerDataRoot, `ems.${instance}`);
 }
-exports.durableDataDirFromRoot = durableDataDirFromRoot;
 function runtimeDataDirFromRoot(ioBrokerDataRoot, instance) {
     return path.join(ioBrokerDataRoot, `ems-runtime.${instance}`);
 }
-exports.runtimeDataDirFromRoot = runtimeDataDirFromRoot;
 function resolveIoBrokerDataRoot(durableDataDir, namespace) {
     const normalized = path.resolve(durableDataDir);
     const instance = parseInstanceFromNamespace(namespace);
@@ -55,7 +70,6 @@ function resolveIoBrokerDataRoot(durableDataDir, namespace) {
     }
     return normalized;
 }
-exports.resolveIoBrokerDataRoot = resolveIoBrokerDataRoot;
 function resolveDurableDataDir(input) {
     if (typeof input === "string") {
         return path.resolve(input);
@@ -71,7 +85,6 @@ function resolveDurableDataDir(input) {
     const utils = require("@iobroker/adapter-core");
     return path.resolve(utils.getAbsoluteInstanceDataDir(input));
 }
-exports.resolveDurableDataDir = resolveDurableDataDir;
 function resolveNamespace(input) {
     if (typeof input === "string") {
         const base = path.basename(input);
@@ -81,7 +94,6 @@ function resolveNamespace(input) {
     }
     return input.namespace;
 }
-exports.resolveNamespace = resolveNamespace;
 function resolveEmsPaths(input) {
     const namespace = resolveNamespace(input);
     const instance = parseInstanceFromNamespace(namespace);
@@ -106,7 +118,6 @@ function resolveEmsPaths(input) {
         legacyTransactionsDir: path.join(durableDataDir, "restore", "transactions"),
     };
 }
-exports.resolveEmsPaths = resolveEmsPaths;
 /** Category-aware absolute path — learning/policy under durable, runtime categories under runtime. */
 function categoryDataPath(layout, category) {
     if (!category) {
@@ -132,7 +143,6 @@ function categoryDataPath(layout, category) {
     }
     return path.join(layout.durableDataDir, category);
 }
-exports.categoryDataPath = categoryDataPath;
 function assertPathWithinRoot(resolvedPath, root) {
     const resolved = path.resolve(resolvedPath);
     const base = path.resolve(root);
@@ -140,4 +150,3 @@ function assertPathWithinRoot(resolvedPath, root) {
         throw new Error("path outside allowed root");
     }
 }
-exports.assertPathWithinRoot = assertPathWithinRoot;

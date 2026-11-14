@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveImmersionNightBridge = exports.nextBridgeUntilIso = exports.IMMERSION_NIGHT_BRIDGE_SAFETY_HOURS = exports.IMMERSION_NIGHT_BRIDGE_MORNING_HOUR = void 0;
+exports.IMMERSION_NIGHT_BRIDGE_SAFETY_HOURS = exports.IMMERSION_NIGHT_BRIDGE_MORNING_HOUR = void 0;
+exports.nextBridgeUntilIso = nextBridgeUntilIso;
+exports.resolveImmersionNightBridge = resolveImmersionNightBridge;
 const time_1 = require("../../time");
 const types_1 = require("./types");
 const MS_PER_HOUR = 3600_000;
@@ -23,7 +25,6 @@ function nextBridgeUntilIso(now, timezone, bridgeMorningHour = exports.IMMERSION
         return todayBridge;
     return (0, time_1.isoAtTimezoneLocal)((0, time_1.addDaysToDateKey)(todayKey, 1), hour, 0, tz);
 }
-exports.nextBridgeUntilIso = nextBridgeUntilIso;
 /**
  * Thermal Learning → Nachtbrücke: Wenn `estimated_empty_at` vor dem nächsten Morgen liegt,
  * Zieltemperatur so anheben, dass die Nacht ohne Netz/Batterie-Nachheizen durchsteht, und
@@ -92,4 +93,3 @@ function resolveImmersionNightBridge(input) {
             `(~${shortfallHours.toFixed(1)} h Defizit) — Ziel ≥ ${bridgeTargetTempC} °C aus PV vor der Deadline.`,
     };
 }
-exports.resolveImmersionNightBridge = resolveImmersionNightBridge;

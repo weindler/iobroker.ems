@@ -4,7 +4,7 @@
  * Bleibt für bestehende Replan-Tests kompatibel.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildDayEvaluationDraft = void 0;
+exports.buildDayEvaluationDraft = buildDayEvaluationDraft;
 function buildDayEvaluationDraft(input) {
     return {
         date: input.date,
@@ -27,4 +27,3 @@ function buildDayEvaluationDraft(input) {
         goalsMet: input.goalsMet.map((g) => ({ ...g })),
     };
 }
-exports.buildDayEvaluationDraft = buildDayEvaluationDraft;

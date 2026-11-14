@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveEvCapabilities = void 0;
+exports.resolveEvCapabilities = resolveEvCapabilities;
 const types_1 = require("./types");
 function mapped(id) {
     return id.trim().length > 0;
@@ -46,4 +46,3 @@ function resolveEvCapabilities(telemetryCfg, snap, foundation, external) {
         externalControlConfigured: external?.externalControlConfigured === true,
     };
 }
-exports.resolveEvCapabilities = resolveEvCapabilities;

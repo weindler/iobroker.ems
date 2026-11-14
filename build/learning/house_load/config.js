@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sourceLabelFromStateId = exports.houseLoadConfigFromAdapter = void 0;
+exports.houseLoadConfigFromAdapter = houseLoadConfigFromAdapter;
+exports.sourceLabelFromStateId = sourceLabelFromStateId;
 const constants_1 = require("./constants");
 function strField(config, key) {
     const v = config[key];
@@ -34,9 +35,7 @@ function houseLoadConfigFromAdapter(config) {
         powerStateId: strField(c, "learning_house_load_power_state"),
     };
 }
-exports.houseLoadConfigFromAdapter = houseLoadConfigFromAdapter;
 function sourceLabelFromStateId(stateId) {
     const m = stateId.match(/^([a-z0-9_-]+)\.\d+\./i);
     return m ? m[1] : stateId.split(".")[0] || "unknown";
 }
-exports.sourceLabelFromStateId = sourceLabelFromStateId;

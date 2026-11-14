@@ -7,7 +7,11 @@
  * Ergebnis: on | off | hold | idle — keine zweite parallele Authority.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.controlToPermission = exports.computeAcCoolingDesired = exports.isSlotBudgetMissing = exports.isPlannerBudgetOn = exports.isExplicitPlannerOff = void 0;
+exports.isExplicitPlannerOff = isExplicitPlannerOff;
+exports.isPlannerBudgetOn = isPlannerBudgetOn;
+exports.isSlotBudgetMissing = isSlotBudgetMissing;
+exports.computeAcCoolingDesired = computeAcCoolingDesired;
+exports.controlToPermission = controlToPermission;
 const hard_off_worth_it_1 = require("./hard_off_worth_it");
 /** Expliziter 0-W-Eintrag (nicht: fehlender Slot-Eintrag). */
 function isExplicitPlannerOff(dailyPlan) {
@@ -23,18 +27,15 @@ function isExplicitPlannerOff(dailyPlan) {
         return false;
     return true;
 }
-exports.isExplicitPlannerOff = isExplicitPlannerOff;
 function isPlannerBudgetOn(dailyPlan) {
     return (dailyPlan.useDailyPlan &&
         dailyPlan.allocatedPowerW !== null &&
         Number.isFinite(dailyPlan.allocatedPowerW) &&
         dailyPlan.allocatedPowerW > 0);
 }
-exports.isPlannerBudgetOn = isPlannerBudgetOn;
 function isSlotBudgetMissing(dailyPlan) {
     return dailyPlan.useDailyPlan && dailyPlan.allocationStatus === "none";
 }
-exports.isSlotBudgetMissing = isSlotBudgetMissing;
 /**
  * Einzige Desired-Funktion. Alle START/STOP/HOLD-Entscheidungen leiten sich daraus ab.
  */
@@ -235,7 +236,6 @@ function computeAcCoolingDesired(input) {
         reasonDe: dailyPlan.allocationReasonDe || fsm.reasonDe,
     };
 }
-exports.computeAcCoolingDesired = computeAcCoolingDesired;
 /** Map Control-Decision → legacy Permission-Shape (Tests / Surface). */
 function controlToPermission(d) {
     return {
@@ -247,4 +247,3 @@ function controlToPermission(d) {
         deviceWritesAllowed: d.deviceWritesAllowed,
     };
 }
-exports.controlToPermission = controlToPermission;

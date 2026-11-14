@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryConsumerConstraintStateWrites = exports.BATTERY_CONSUMER_CONSTRAINT_STATES = void 0;
+exports.BATTERY_CONSUMER_CONSTRAINT_STATES = void 0;
+exports.batteryConsumerConstraintStateWrites = batteryConsumerConstraintStateWrites;
 /** Live diagnostic states advertised in Admin (Batterie für Verbraucher). */
 exports.BATTERY_CONSUMER_CONSTRAINT_STATES = {
     immersion_heater: {
@@ -31,4 +32,3 @@ function batteryConsumerConstraintStateWrites(access) {
     }
     return out;
 }
-exports.batteryConsumerConstraintStateWrites = batteryConsumerConstraintStateWrites;

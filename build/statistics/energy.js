@@ -6,7 +6,10 @@
  * unvollständige Messketten ergeben `null` statt einer erfundenen Null.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sumEnergeticDays = exports.reconcileEnergeticGridTruth = exports.buildEnergeticDayTotals = exports.fastChargeAttribution = void 0;
+exports.fastChargeAttribution = fastChargeAttribution;
+exports.buildEnergeticDayTotals = buildEnergeticDayTotals;
+exports.reconcileEnergeticGridTruth = reconcileEnergeticGridTruth;
+exports.sumEnergeticDays = sumEnergeticDays;
 const quality_mask_1 = require("../learning/day_telemetry/quality_mask");
 const energy_scopes_1 = require("../operator/daily_plan/unified/energy_scopes");
 function finite(value) {
@@ -191,7 +194,6 @@ function fastChargeAttribution(day) {
         sourcesComplete,
     };
 }
-exports.fastChargeAttribution = fastChargeAttribution;
 /**
  * Ordnet die gleichzeitig vor Ort genutzte PV proportional zur gemessenen Hauslast zu.
  * Sobald für einen positiven Verbraucher-Slot eine der drei Messgrößen fehlt, bleibt dessen
@@ -396,7 +398,6 @@ function buildEnergeticDayTotals(day) {
         notesDe,
     };
 }
-exports.buildEnergeticDayTotals = buildEnergeticDayTotals;
 /**
  * Verwendet 1.8.0/2.8.0 als einzige Wahrheit für Netzbezug und Einspeisung.
  * Davon abhängige Quoten werden mit derselben Zählerbasis neu berechnet.
@@ -430,7 +431,6 @@ function reconcileEnergeticGridTruth(energy, input) {
         notesDe: notes,
     };
 }
-exports.reconcileEnergeticGridTruth = reconcileEnergeticGridTruth;
 function sumField(days, pick) {
     let total = 0;
     let count = 0;
@@ -562,4 +562,3 @@ function sumEnergeticDays(days, meta) {
         notesDe,
     };
 }
-exports.sumEnergeticDays = sumEnergeticDays;

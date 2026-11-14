@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildLocalPvRawKwh = exports.buildPriceOutlook = exports.learnTibberSpreadFromPairs = exports.learnTibberSpread = void 0;
+exports.learnTibberSpread = learnTibberSpread;
+exports.learnTibberSpreadFromPairs = learnTibberSpreadFromPairs;
+exports.buildPriceOutlook = buildPriceOutlook;
+exports.buildLocalPvRawKwh = buildLocalPvRawKwh;
 const time_1 = require("../../operator/time");
 const slots_1 = require("../day_telemetry/slots");
 const round = (value, digits = 2) => {
@@ -21,11 +24,9 @@ function learnTibberSpread(smard, tibber) {
         return market === undefined ? [] : [slot.priceCtPerKwh - market];
     }));
 }
-exports.learnTibberSpread = learnTibberSpread;
 function learnTibberSpreadFromPairs(pairs) {
     return learnTibberSpreadFromDifferences(pairs.map((pair) => pair.tibberCtPerKwh - pair.smardCtPerKwh));
 }
-exports.learnTibberSpreadFromPairs = learnTibberSpreadFromPairs;
 function learnTibberSpreadFromDifferences(differences) {
     const expected = median(differences);
     const mad = expected === null ? null : median(differences.map((value) => Math.abs(value - expected)));
@@ -246,7 +247,6 @@ function buildPriceOutlook(args) {
         days,
     };
 }
-exports.buildPriceOutlook = buildPriceOutlook;
 function buildLocalPvRawKwh(args) {
     const today = (0, time_1.localDateKeyInTimezone)(args.now, args.timezone);
     const points = args.weather.flatMap((region) => region.points);
@@ -263,4 +263,3 @@ function buildLocalPvRawKwh(args) {
         return round(solarKwhM2 * args.pvKwp * 0.82, 3);
     });
 }
-exports.buildLocalPvRawKwh = buildLocalPvRawKwh;

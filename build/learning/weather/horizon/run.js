@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runWeatherHorizon = void 0;
+exports.runWeatherHorizon = runWeatherHorizon;
 const state_util_1 = require("../../../ems_light/state_util");
 const config_1 = require("../config");
 const config_2 = require("./config");
@@ -180,4 +180,3 @@ async function runWeatherHorizon(host) {
     });
     host.log.debug?.(`Weather-Horizon: ${available}/${constants_1.WEATHER_HORIZON_DAY_INDEXES.length} days (bias min=${minBiasC ?? "n/a"} max=${maxBiasC ?? "n/a"})`);
 }
-exports.runWeatherHorizon = runWeatherHorizon;

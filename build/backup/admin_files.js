@@ -15,15 +15,32 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readSupportFileBase64 = exports.writeRestoreUploadToInbox = exports.listRestoreFileOptions = exports.syncAdapterRestoreInboxToHost = exports.parseBackupFileStamp = exports.mirrorHostExportFile = exports.mirrorExportIntoAdapterFiles = exports.ensureAdapterFilesMeta = void 0;
+exports.ensureAdapterFilesMeta = ensureAdapterFilesMeta;
+exports.mirrorExportIntoAdapterFiles = mirrorExportIntoAdapterFiles;
+exports.mirrorHostExportFile = mirrorHostExportFile;
+exports.parseBackupFileStamp = parseBackupFileStamp;
+exports.syncAdapterRestoreInboxToHost = syncAdapterRestoreInboxToHost;
+exports.listRestoreFileOptions = listRestoreFileOptions;
+exports.writeRestoreUploadToInbox = writeRestoreUploadToInbox;
+exports.readSupportFileBase64 = readSupportFileBase64;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const retention_1 = require("./retention");
@@ -43,7 +60,6 @@ async function ensureAdapterFilesMeta(host) {
         native: {},
     });
 }
-exports.ensureAdapterFilesMeta = ensureAdapterFilesMeta;
 /** Datei zusätzlich in die Adapter-File-DB legen (Admin-Download). */
 async function mirrorExportIntoAdapterFiles(host, kind, fileName, data) {
     if (typeof host.writeFileAsync !== "function") {
@@ -55,14 +71,12 @@ async function mirrorExportIntoAdapterFiles(host, kind, fileName, data) {
     await host.writeFileAsync(host.namespace, rel, data);
     host.log?.info?.(`backup: mirrored ${rel} into adapter files for Admin download`);
 }
-exports.mirrorExportIntoAdapterFiles = mirrorExportIntoAdapterFiles;
 async function mirrorHostExportFile(host, kind, fileName) {
     const dir = kind === "backup" ? (0, retention_1.backupDir)(host) : (0, retention_1.supportDir)(host);
     const full = path.join(dir, fileName);
     const data = await fs.readFile(full);
     await mirrorExportIntoAdapterFiles(host, kind, fileName, data);
 }
-exports.mirrorHostExportFile = mirrorHostExportFile;
 /** Zeitstempel aus ems-light-…-backup-2026-07-19T095123951Z.emsbackup lesen. */
 function parseBackupFileStamp(fileName) {
     const m = fileName.match(/(\d{4}-\d{2}-\d{2})T(\d{2})(\d{2})(\d{2})(\d{3})?Z/);
@@ -74,7 +88,6 @@ function parseBackupFileStamp(fileName) {
         labelWhen: `${day} ${hh}:${mm}:${ss} UTC`,
     };
 }
-exports.parseBackupFileStamp = parseBackupFileStamp;
 function formatRestoreOptionLabel(fileName, tag, newest) {
     const stamp = parseBackupFileStamp(fileName);
     const when = stamp?.labelWhen ?? fileName;
@@ -129,7 +142,6 @@ async function syncAdapterRestoreInboxToHost(host) {
     }
     return synced;
 }
-exports.syncAdapterRestoreInboxToHost = syncAdapterRestoreInboxToHost;
 async function listRestoreFileOptions(host) {
     await syncAdapterRestoreInboxToHost(host);
     const dirs = [
@@ -169,7 +181,6 @@ async function listRestoreFileOptions(host) {
     }
     return collected.map((c, i) => formatRestoreOptionLabel(c.name, c.tag, i === 0));
 }
-exports.listRestoreFileOptions = listRestoreFileOptions;
 async function writeRestoreUploadToInbox(host, _fileName, base64OrDataUrl) {
     try {
         const raw = String(base64OrDataUrl || "");
@@ -193,7 +204,6 @@ async function writeRestoreUploadToInbox(host, _fileName, base64OrDataUrl) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
-exports.writeRestoreUploadToInbox = writeRestoreUploadToInbox;
 async function readSupportFileBase64(host, fileName) {
     try {
         let name = String(fileName || "").trim();
@@ -223,4 +233,3 @@ async function readSupportFileBase64(host, fileName) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
 }
-exports.readSupportFileBase64 = readSupportFileBase64;

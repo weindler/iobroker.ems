@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MEASURED_CONSUMERS_AGGREGATE_STATES = exports.measuredConsumerSlotStateIds = exports.measuredConsumerSlotBase = exports.MEASURED_CONSUMERS_BASE = void 0;
+exports.MEASURED_CONSUMERS_AGGREGATE_STATES = exports.MEASURED_CONSUMERS_BASE = void 0;
+exports.measuredConsumerSlotBase = measuredConsumerSlotBase;
+exports.measuredConsumerSlotStateIds = measuredConsumerSlotStateIds;
 const math_1 = require("../math");
 exports.MEASURED_CONSUMERS_BASE = "addons.measured_consumers";
 function measuredConsumerSlotBase(index) {
     return `${exports.MEASURED_CONSUMERS_BASE}.consumer_${(0, math_1.padSlotIndex)(index)}`;
 }
-exports.measuredConsumerSlotBase = measuredConsumerSlotBase;
 function measuredConsumerSlotStateIds(index) {
     const base = measuredConsumerSlotBase(index);
     return {
@@ -24,7 +25,6 @@ function measuredConsumerSlotStateIds(index) {
         reasonDe: `${base}.reason_de`,
     };
 }
-exports.measuredConsumerSlotStateIds = measuredConsumerSlotStateIds;
 exports.MEASURED_CONSUMERS_AGGREGATE_STATES = {
     totalPowerW: `${exports.MEASURED_CONSUMERS_BASE}.total_power_w`,
     totalEnergyTodayKwh: `${exports.MEASURED_CONSUMERS_BASE}.total_energy_today_kwh`,

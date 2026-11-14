@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.planBatteryPriceBridge = void 0;
+exports.planBatteryPriceBridge = planBatteryPriceBridge;
 function unavailable(reasonDe) {
     return { usable: false, targetSocPct: null, gridEnergyKwh: 0, chargeStartIso: null,
         chargeEndIso: null, peakStartIso: null, holdStartIso: null, holdEndIso: null, reasonDe };
@@ -89,4 +89,3 @@ function planBatteryPriceBridge(input) {
         reasonDe: `Bis zur Hochpreisphase werden ${gridEnergyKwh.toFixed(2)} kWh Netzladung für ${Math.round(targetStored / cap * 100)} % Ziel-SOC benötigt; sicherer PV-Überschuss vorher ${storedPvBeforePeak.toFixed(2)} kWh.`,
     };
 }
-exports.planBatteryPriceBridge = planBatteryPriceBridge;

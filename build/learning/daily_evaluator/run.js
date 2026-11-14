@@ -10,7 +10,8 @@
  * reales Planner-/Control-Verhalten.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readDailyEvaluatorScores = exports.runDailyEvaluatorBatch = void 0;
+exports.runDailyEvaluatorBatch = runDailyEvaluatorBatch;
+exports.readDailyEvaluatorScores = readDailyEvaluatorScores;
 const constants_1 = require("../day_telemetry/constants");
 const persist_1 = require("../day_telemetry/persist");
 const time_1 = require("../../operator/time");
@@ -110,9 +111,7 @@ async function runDailyEvaluatorBatch(host, opts = {}) {
     }
     return result;
 }
-exports.runDailyEvaluatorBatch = runDailyEvaluatorBatch;
 async function readDailyEvaluatorScores(host, dateKey) {
     const scoresDir = host.getAbsolutePath(constants_2.DAILY_EVALUATOR_SCORES_CATEGORY);
     return (0, persist_2.readScoresDay)(scoresDir, dateKey);
 }
-exports.readDailyEvaluatorScores = readDailyEvaluatorScores;

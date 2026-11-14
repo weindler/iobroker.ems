@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopEnergyDailyRollup = exports.fetchRollupDayKwh = exports.ensureEnergyDailyRollupForLearning = exports.handleEnergyDailyRollupStateChange = exports.tickEnergyDailyRollup = exports.initEnergyDailyRollup = void 0;
+exports.fetchRollupDayKwh = void 0;
+exports.initEnergyDailyRollup = initEnergyDailyRollup;
+exports.tickEnergyDailyRollup = tickEnergyDailyRollup;
+exports.handleEnergyDailyRollupStateChange = handleEnergyDailyRollupStateChange;
+exports.ensureEnergyDailyRollupForLearning = ensureEnergyDailyRollupForLearning;
+exports.stopEnergyDailyRollup = stopEnergyDailyRollup;
 const state_util_1 = require("../../ems_light/state_util");
 const backfill_1 = require("./backfill");
 const buffer_1 = require("./buffer");
@@ -193,7 +198,6 @@ async function initEnergyDailyRollup(host) {
     }
     host.log.debug?.(`Energy-Daily-Rollup ready (${sources.length} source(s))`);
 }
-exports.initEnergyDailyRollup = initEnergyDailyRollup;
 async function tickEnergyDailyRollup(host) {
     if (!baseDir(host)) {
         return;
@@ -224,7 +228,6 @@ async function tickEnergyDailyRollup(host) {
     }
     await flushPersist(host);
 }
-exports.tickEnergyDailyRollup = tickEnergyDailyRollup;
 function handleEnergyDailyRollupStateChange(id, state) {
     if (!rollupHost || !state) {
         return;
@@ -250,7 +253,6 @@ function handleEnergyDailyRollupStateChange(id, state) {
         rollupHost?.log.warn(`Energy-Daily-Rollup ingest ${id}: ${e}`);
     });
 }
-exports.handleEnergyDailyRollupStateChange = handleEnergyDailyRollupStateChange;
 async function ensureEnergyDailyRollupForLearning(host) {
     if (!baseDir(host)) {
         return;
@@ -259,7 +261,6 @@ async function ensureEnergyDailyRollupForLearning(host) {
     await (0, backfill_1.ensureEnergyDailyRollupBackfill)(host, sources);
     persistCache = null;
 }
-exports.ensureEnergyDailyRollupForLearning = ensureEnergyDailyRollupForLearning;
 var read_1 = require("./read");
 Object.defineProperty(exports, "fetchRollupDayKwh", { enumerable: true, get: function () { return read_1.fetchRollupDayKwh; } });
 function stopEnergyDailyRollup() {
@@ -269,4 +270,3 @@ function stopEnergyDailyRollup() {
     subscribedStateIds.clear();
     persistDirty = false;
 }
-exports.stopEnergyDailyRollup = stopEnergyDailyRollup;

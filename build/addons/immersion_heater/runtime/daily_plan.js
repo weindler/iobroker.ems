@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveImmersionDecisionSource = exports.resolveImmersionDailyPlanAllocation = exports.resolveImmersionDailyPlanFromData = exports.mergeSlotAllocations = exports.stageIndexForMaxPowerW = exports.parseDailyAllocationEntries = exports.resetImmersionDailyPlanCache = void 0;
+exports.resetImmersionDailyPlanCache = resetImmersionDailyPlanCache;
+exports.parseDailyAllocationEntries = parseDailyAllocationEntries;
+exports.stageIndexForMaxPowerW = stageIndexForMaxPowerW;
+exports.mergeSlotAllocations = mergeSlotAllocations;
+exports.resolveImmersionDailyPlanFromData = resolveImmersionDailyPlanFromData;
+exports.resolveImmersionDailyPlanAllocation = resolveImmersionDailyPlanAllocation;
+exports.resolveImmersionDecisionSource = resolveImmersionDecisionSource;
 const config_1 = require("../../../intent/config");
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
@@ -16,7 +22,6 @@ let planCache = null;
 function resetImmersionDailyPlanCache() {
     planCache = null;
 }
-exports.resetImmersionDailyPlanCache = resetImmersionDailyPlanCache;
 function isValidTimezone(timezone) {
     if (!timezone.trim())
         return false;
@@ -90,7 +95,6 @@ function parseDailyAllocationEntries(raw) {
     }
     return out;
 }
-exports.parseDailyAllocationEntries = parseDailyAllocationEntries;
 function parseFullDailyPlan(raw) {
     if (raw === null || raw === undefined)
         return null;
@@ -164,7 +168,6 @@ function stageIndexForMaxPowerW(config, maxPowerW) {
         reasonDe: `Daily-Plan-Allocation ${maxPowerW} W kleiner als kleinste Stufe (${minStage.nominalPowerW} W).`,
     };
 }
-exports.stageIndexForMaxPowerW = stageIndexForMaxPowerW;
 function mergeSlotAllocations(entries, slotStartIso, slotEndIso) {
     const key = (0, slots_1.slotKey)(slotStartIso, slotEndIso);
     const seen = new Set();
@@ -231,7 +234,6 @@ function mergeSlotAllocations(entries, slotStartIso, slotEndIso) {
         valid: true,
     };
 }
-exports.mergeSlotAllocations = mergeSlotAllocations;
 function attachThermalTarget(r, thermal) {
     const t = thermal ?? {
         effectiveTargetTempC: null,
@@ -399,7 +401,6 @@ function resolveImmersionDailyPlanFromData(input) {
         targetRevision: null,
     }, thermal);
 }
-exports.resolveImmersionDailyPlanFromData = resolveImmersionDailyPlanFromData;
 async function loadThermalTarget(host) {
     const ids = states_1.ALLOCATION_ADDON_STATE_IDS.immersion_heater;
     return {
@@ -471,7 +472,6 @@ async function resolveImmersionDailyPlanAllocation(host, config, now, opts) {
         liveSurplusHold: opts?.liveSurplusHold ?? null,
     });
 }
-exports.resolveImmersionDailyPlanAllocation = resolveImmersionDailyPlanAllocation;
 function resolveImmersionDecisionSource(resolvedMode, failsafeActive, faultLockout, fsmState, autoSource) {
     if (faultLockout) {
         return fsmState === "fault_lockout" ? "lockout" : "fault";
@@ -486,4 +486,3 @@ function resolveImmersionDecisionSource(resolvedMode, failsafeActive, faultLocko
         return autoSource;
     return "safe_default";
 }
-exports.resolveImmersionDecisionSource = resolveImmersionDecisionSource;

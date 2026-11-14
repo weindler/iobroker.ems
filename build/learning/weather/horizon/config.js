@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.weatherHorizonHasAnyMapping = exports.weatherHorizonConfigFromAdapter = void 0;
+exports.weatherHorizonConfigFromAdapter = weatherHorizonConfigFromAdapter;
+exports.weatherHorizonHasAnyMapping = weatherHorizonHasAnyMapping;
 const constants_1 = require("./constants");
 function strField(config, key) {
     const v = config[key];
@@ -37,8 +38,6 @@ function weatherHorizonConfigFromAdapter(config) {
         days,
     };
 }
-exports.weatherHorizonConfigFromAdapter = weatherHorizonConfigFromAdapter;
 function weatherHorizonHasAnyMapping(cfg) {
     return cfg.days.some((d) => d.minTempStateId || d.maxTempStateId);
 }
-exports.weatherHorizonHasAnyMapping = weatherHorizonHasAnyMapping;

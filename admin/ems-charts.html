@@ -1971,7 +1971,7 @@ function visLageLine(s){
 	var outlook=visHorizonOutlook(s.todayKwh,n?sum/n:null);
 	if(outlook)bits.push(outlook);
 	if(s.minC!=null&&s.maxC!=null&&isFinite(s.minC)&&isFinite(s.maxC)){
-		bits.push(Math.round(s.minC)+"–"+Math.round(s.maxC)+" °C");
+		bits.push(Math.round(s.minC)+" bis "+Math.round(s.maxC)+" °C");
 	}
 	return bits.join(" · ");
 }
@@ -2249,7 +2249,7 @@ function visHorizonDayLine(label,kwh,minC,maxC){
 	var bits=[label];
 	var e=visFmtKwhShort(kwh);
 	if(e)bits.push(e+" kWh");
-	if(minC!=null&&maxC!=null&&isFinite(minC)&&isFinite(maxC))bits.push(Math.round(minC)+"–"+Math.round(maxC)+" °C");
+	if(minC!=null&&maxC!=null&&isFinite(minC)&&isFinite(maxC))bits.push(Math.round(minC)+" bis "+Math.round(maxC)+" °C");
 	else if(maxC!=null&&isFinite(maxC))bits.push("bis "+Math.round(maxC)+" °C");
 	return bits.length>1?bits.join(" · "):null;
 }
@@ -2666,7 +2666,7 @@ function renderLage(){
 	if(!line){el.style.display="none";el.innerHTML="";return;}
 	el.style.display="";
 	var bias=snap.appliedBiasPct;
-	var biasTxt=bias===null?'Korrektur noch in Lernphase':('angewendete Korrektur '+(bias>0?'+':'')+bias.toFixed(1).replace('.',',')+' % · Confidence '+(snap.confidencePct===null?'—':Math.round(snap.confidencePct)+' %'));
+	var biasTxt=bias===null?'Korrektur noch in Lernphase':('Lern-Korrektur '+(bias>0?'+':'')+bias.toFixed(1).replace('.',',')+' % · Confidence '+(snap.confidencePct===null?'—':Math.round(snap.confidencePct)+' %'));
 	var todayDelta=snap.biasTodayPct===null?'':('<br>Abweichung heute bisher '+(snap.biasTodayPct>0?'+':'')+snap.biasTodayPct.toFixed(1).replace('.',',')+' % · nicht für die Korrektur verwendet');
 	var details='<details class="ems-q-note"'+(detailsOpen?' open':'')+'><summary>Berechnungsdetails</summary>Modell-Bias '+fmtDec(snap.modelBiasPct,1,'%')+' · 14-Tage-Trend '+fmtDec(snap.bias14dPct,1,'%')+' · Langzeitbasis '+fmtDec(snap.bias90dPct,1,'%')+'<br>Gültige Tage '+(snap.sampleDays90d===null?'—':Math.round(snap.sampleDays90d))+' · Abdeckung '+fmtDec(snap.coveragePct,0,'%')+' · Stabilität '+fmtDec(snap.stabilityPct,0,'%')+todayDelta+'</details>';
 	el.innerHTML='<div class="ems-lage-k">PV-Prognose</div><div class="ems-pv-grid">'
@@ -2848,7 +2848,7 @@ function climateTodayLines(){
 		lines.push(line);
 	}
 	if(!anyRunning&&maxC!=null&&maxC<25)lines.unshift("Außentemperatur zu gering — voraussichtlich keine Kühlung erforderlich; Entfeuchtung wird getrennt nach Raumfeuchte bewertet");
-	if(minC!=null&&maxC!=null)lines.unshift("Außen heute "+Math.round(minC)+"–"+Math.round(maxC)+" °C");
+	if(minC!=null&&maxC!=null)lines.unshift("Außen heute "+Math.round(minC)+" bis "+Math.round(maxC)+" °C");
 	return lines;
 }
 var paintedHtml={next:"",horizon:"",stack:""};

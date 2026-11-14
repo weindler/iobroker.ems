@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateAiAnalystResponse = void 0;
+exports.validateAiAnalystResponse = validateAiAnalystResponse;
 const types_1 = require("./types");
 const MAX_FINDINGS = 10;
 function str(v) {
@@ -89,4 +89,3 @@ function validateAiAnalystResponse(raw, dateKey) {
     }
     return { ok: true, findings };
 }
-exports.validateAiAnalystResponse = validateAiAnalystResponse;

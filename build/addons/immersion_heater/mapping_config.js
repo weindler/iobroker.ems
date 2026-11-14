@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.immersionHeaterMappingFromConfig = exports.IMMERSION_FLAT_PREFIX = exports.IMMERSION_HEATER_MAPPING_COMMANDS = void 0;
+exports.IMMERSION_FLAT_PREFIX = exports.IMMERSION_HEATER_MAPPING_COMMANDS = void 0;
+exports.immersionHeaterMappingFromConfig = immersionHeaterMappingFromConfig;
 exports.IMMERSION_HEATER_MAPPING_COMMANDS = ["set_enabled", "buffer_temp_c", "boiler_temp_c"];
 exports.IMMERSION_FLAT_PREFIX = {
     set_enabled: "ih_set_enabled",
@@ -30,4 +31,3 @@ function immersionHeaterMappingFromConfig(config) {
     }
     return out;
 }
-exports.immersionHeaterMappingFromConfig = immersionHeaterMappingFromConfig;

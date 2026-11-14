@@ -4,7 +4,10 @@
  * Bewusst kleiner als voller UnifiedDayPlannerInput.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.upsertForecastSnapshot = exports.withSnapshotId = exports.hashPlannerKnowledgeContent = exports.buildPlannerKnowledgeSnapshot = void 0;
+exports.buildPlannerKnowledgeSnapshot = buildPlannerKnowledgeSnapshot;
+exports.hashPlannerKnowledgeContent = hashPlannerKnowledgeContent;
+exports.withSnapshotId = withSnapshotId;
+exports.upsertForecastSnapshot = upsertForecastSnapshot;
 const node_crypto_1 = require("node:crypto");
 const time_1 = require("../../operator/time");
 function digestPresence(windows) {
@@ -122,18 +125,15 @@ function buildPlannerKnowledgeSnapshot(input, tsIso, extra) {
         batteryDecision: deriveBatteryDecisionSnapshot(extra?.batteryDecision),
     };
 }
-exports.buildPlannerKnowledgeSnapshot = buildPlannerKnowledgeSnapshot;
 /** Content-Hash über Snapshot ohne id/tsIso (tsIso ändert sich bei gleichem Inhalt). */
 function hashPlannerKnowledgeContent(snap) {
     const { tsIso: _t, ...rest } = snap;
     const payload = JSON.stringify(rest);
     return (0, node_crypto_1.createHash)("sha256").update(payload).digest("hex").slice(0, 16);
 }
-exports.hashPlannerKnowledgeContent = hashPlannerKnowledgeContent;
 function withSnapshotId(snap) {
     return { ...snap, id: hashPlannerKnowledgeContent(snap) };
 }
-exports.withSnapshotId = withSnapshotId;
 /**
  * Fügt Snapshot nur hinzu, wenn Inhalt neu ist.
  * Returns snapshotId (neu oder bestehend).
@@ -145,4 +145,3 @@ function upsertForecastSnapshot(list, snap) {
     }
     return { list: [...list, snap], snapshotId: snap.id, inserted: true };
 }
-exports.upsertForecastSnapshot = upsertForecastSnapshot;

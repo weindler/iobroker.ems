@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveClimateSharedPowerW = exports.computeClimateSharedPowerStats = exports.trimOutliersIqr = exports.climateSegmentPowerW = exports.parseClimateSharedPowerKey = exports.climateSharedPowerKey = exports.CLIMATE_SHARED_POWER_MIN_CONFIDENCE = exports.CLIMATE_SHARED_POWER_FRESHNESS_ZERO_DAYS = exports.CLIMATE_SHARED_POWER_FRESHNESS_FULL_DAYS = exports.CLIMATE_SHARED_POWER_TARGET_SAMPLE_COUNT = exports.CLIMATE_SHARED_POWER_MIN_SAMPLE_COUNT = exports.CLIMATE_SHARED_POWER_MIN_SEGMENT_RUNTIME_SEC = void 0;
+exports.CLIMATE_SHARED_POWER_MIN_CONFIDENCE = exports.CLIMATE_SHARED_POWER_FRESHNESS_ZERO_DAYS = exports.CLIMATE_SHARED_POWER_FRESHNESS_FULL_DAYS = exports.CLIMATE_SHARED_POWER_TARGET_SAMPLE_COUNT = exports.CLIMATE_SHARED_POWER_MIN_SAMPLE_COUNT = exports.CLIMATE_SHARED_POWER_MIN_SEGMENT_RUNTIME_SEC = void 0;
+exports.climateSharedPowerKey = climateSharedPowerKey;
+exports.parseClimateSharedPowerKey = parseClimateSharedPowerKey;
+exports.climateSegmentPowerW = climateSegmentPowerW;
+exports.trimOutliersIqr = trimOutliersIqr;
+exports.computeClimateSharedPowerStats = computeClimateSharedPowerStats;
+exports.resolveClimateSharedPowerW = resolveClimateSharedPowerW;
 /** Anlaufphasen/kurze Spikes (Kompressorstart, Sensorrauschen) ausschließen. */
 exports.CLIMATE_SHARED_POWER_MIN_SEGMENT_RUNTIME_SEC = 300;
 /** Unterhalb dieser Sample-Anzahl gilt die Kombination als nicht belastbar (Confidence 0). */
@@ -16,14 +22,12 @@ exports.CLIMATE_SHARED_POWER_MIN_CONFIDENCE = 0.3;
 function climateSharedPowerKey(groupId, mode, combo) {
     return `${groupId}|${mode}|${combo}`;
 }
-exports.climateSharedPowerKey = climateSharedPowerKey;
 function parseClimateSharedPowerKey(key) {
     const parts = key.split("|");
     if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2])
         return null;
     return { sharedPowerGroupId: parts[0], mode: parts[1], activeUnitCombination: parts[2] };
 }
-exports.parseClimateSharedPowerKey = parseClimateSharedPowerKey;
 /** Effektive Leistung eines einzelnen Segments (kWh/Laufzeit) — nicht die Learning-Größe selbst. */
 function climateSegmentPowerW(seg) {
     if (seg.runtimeSec < exports.CLIMATE_SHARED_POWER_MIN_SEGMENT_RUNTIME_SEC)
@@ -34,7 +38,6 @@ function climateSegmentPowerW(seg) {
     const w = (seg.energyKwh * 1000) / hours;
     return Number.isFinite(w) && w > 0 ? w : null;
 }
-exports.climateSegmentPowerW = climateSegmentPowerW;
 function quantile(sortedAsc, q) {
     if (sortedAsc.length === 0)
         return 0;
@@ -67,7 +70,6 @@ function trimOutliersIqr(values) {
     const kept = values.filter((v) => v >= lo && v <= hi);
     return kept.length > 0 ? kept : values;
 }
-exports.trimOutliersIqr = trimOutliersIqr;
 function confidenceFromSamples(sampleCount, ageDays) {
     if (sampleCount < exports.CLIMATE_SHARED_POWER_MIN_SAMPLE_COUNT)
         return 0;
@@ -132,7 +134,6 @@ function computeClimateSharedPowerStats(segments, nowMs) {
     }
     return result;
 }
-exports.computeClimateSharedPowerStats = computeClimateSharedPowerStats;
 /**
  * Reliability-/Confidence-Gate für den Planner: gelernter (p75-)Wert nur bei ausreichender
  * Sample-Anzahl/Aktualität, sonst der bestehende sichere Config-Fallback. Nie erfunden, nie
@@ -161,4 +162,3 @@ function resolveClimateSharedPowerW(stat, fallbackConfigPowerW) {
             `${stat.activeUnitCombination} (p75=${stat.p75PowerW} W, Confidence ${Math.round(stat.confidence * 100)}%).`,
     };
 }
-exports.resolveClimateSharedPowerW = resolveClimateSharedPowerW;

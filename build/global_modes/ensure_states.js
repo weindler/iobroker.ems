@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureGlobalModesStates = exports.ensureGlobalModesChannels = exports.GLOBAL_MODES_CHANNEL = void 0;
+exports.GLOBAL_MODES_CHANNEL = void 0;
+exports.ensureGlobalModesChannels = ensureGlobalModesChannels;
+exports.ensureGlobalModesStates = ensureGlobalModesStates;
 const state_util_1 = require("../ems_light/state_util");
 const constants_1 = require("./constants");
 const GLOBAL_MODE_STATE_LABELS = {
@@ -49,7 +51,6 @@ exports.GLOBAL_MODES_CHANNEL = "global_modes";
 async function ensureGlobalModesChannels(host) {
     await (0, state_util_1.ensureChannel)(host, exports.GLOBAL_MODES_CHANNEL, "EMS-Light Global Modes");
 }
-exports.ensureGlobalModesChannels = ensureGlobalModesChannels;
 async function ensureGlobalModesStates(host, adminDefault) {
     await ensureGlobalModesChannels(host);
     const defs = [
@@ -64,4 +65,3 @@ async function ensureGlobalModesStates(host, adminDefault) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureGlobalModesStates = ensureGlobalModesStates;

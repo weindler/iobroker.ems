@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectConfiguredControlTargetStateIds = exports.buildWallboxControlMappingSnapshot = exports.classifyWallboxControlTargetKind = void 0;
+exports.collectConfiguredControlTargetStateIds = exports.classifyWallboxControlTargetKind = void 0;
+exports.buildWallboxControlMappingSnapshot = buildWallboxControlMappingSnapshot;
 const mapping_config_1 = require("../../../mapping_config");
 const evcc_control_config_1 = require("../evcc_control_config");
 Object.defineProperty(exports, "collectConfiguredControlTargetStateIds", { enumerable: true, get: function () { return evcc_control_config_1.collectConfiguredControlTargetStateIds; } });
@@ -314,4 +315,3 @@ function buildWallboxControlMappingSnapshot(input) {
         return buildEvccSnapshot(input.config, input.telemetryCfg, objectMetas);
     return buildLegacyDirectSnapshot(input.config, input.telemetryCfg, objectMetas);
 }
-exports.buildWallboxControlMappingSnapshot = buildWallboxControlMappingSnapshot;

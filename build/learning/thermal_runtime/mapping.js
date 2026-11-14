@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveThermalTemperatureStateId = void 0;
+exports.resolveThermalTemperatureStateId = resolveThermalTemperatureStateId;
 const mapping_resolve_1 = require("../../mapping_resolve");
 /** Admin-State oder native Heizstab-Mapping buffer_temp_c. */
 async function resolveThermalTemperatureStateId(host, configuredStateId) {
@@ -13,4 +13,3 @@ async function resolveThermalTemperatureStateId(host, configuredStateId) {
     }
     return { stateId: mapped.targetState, sourceKind: "immersion_mapping" };
 }
-exports.resolveThermalTemperatureStateId = resolveThermalTemperatureStateId;

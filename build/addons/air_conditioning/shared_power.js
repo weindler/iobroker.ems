@@ -12,7 +12,9 @@
  * verhalten sich unverändert wie bisher (volle Rückwärtskompatibilität, kein Sonderfall nötig).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.estimateAcGroupElectricalPowerW = exports.totalAcSystemPowerW = exports.resolveAcSystemPower = void 0;
+exports.resolveAcSystemPower = resolveAcSystemPower;
+exports.totalAcSystemPowerW = totalAcSystemPowerW;
+exports.estimateAcGroupElectricalPowerW = estimateAcGroupElectricalPowerW;
 /**
  * Ein Ergebnis pro Gruppe (`sharedPowerGroupId`) bzw. pro eigenständiger Unit (`groupId: null`,
  * ein Ergebnis je Unit). Reine Funktion, kein State/IO.
@@ -86,12 +88,10 @@ function resolveAcSystemPower(units) {
     }
     return results;
 }
-exports.resolveAcSystemPower = resolveAcSystemPower;
 /** Gesamtsystemleistung über alle Gruppen/Standalone-Units (für Diagnose/Statistik). */
 function totalAcSystemPowerW(results) {
     return Math.round(results.reduce((sum, r) => sum + r.totalPowerW, 0));
 }
-exports.totalAcSystemPowerW = totalAcSystemPowerW;
 /**
  * Planner-/Forecast-Helfer: elektrische Gruppenleistung aus Unit-Schätzungen ohne Live-Running.
  * Units mit gleicher `sharedPowerGroupId` → max(estimated); ohne Gruppe → eigene Schätzung.
@@ -107,4 +107,3 @@ function estimateAcGroupElectricalPowerW(units) {
     }));
     return totalAcSystemPowerW(resolveAcSystemPower(live));
 }
-exports.estimateAcGroupElectricalPowerW = estimateAcGroupElectricalPowerW;

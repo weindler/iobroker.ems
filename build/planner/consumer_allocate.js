@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sumAllocatedConsumerPeakW = exports.allocateOutdoorUnitPowerW = void 0;
+exports.allocateOutdoorUnitPowerW = allocateOutdoorUnitPowerW;
+exports.sumAllocatedConsumerPeakW = sumAllocatedConsumerPeakW;
 /** Außenleistung auf parallele Innengeräte verteilen — gleiche Formel wie AC-Runtime. */
 function allocateOutdoorUnitPowerW(runningCount, outdoorMaxPowerW, unitPowerW) {
     if (runningCount <= 0 || unitPowerW <= 0) {
@@ -14,7 +15,6 @@ function allocateOutdoorUnitPowerW(runningCount, outdoorMaxPowerW, unitPowerW) {
     }
     return Math.min(unitPowerW, Math.round(outdoorMaxPowerW / runningCount));
 }
-exports.allocateOutdoorUnitPowerW = allocateOutdoorUnitPowerW;
 /** Summe geplanter Verbraucherlast (z. B. Klima), begrenzt auf Außengerät-Cap. */
 function sumAllocatedConsumerPeakW(unitPowerWs, outdoorMaxPowerW) {
     const active = unitPowerWs.filter((w) => w > 0);
@@ -31,4 +31,3 @@ function sumAllocatedConsumerPeakW(unitPowerWs, outdoorMaxPowerW) {
     }
     return total;
 }
-exports.sumAllocatedConsumerPeakW = sumAllocatedConsumerPeakW;

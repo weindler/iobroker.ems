@@ -4,7 +4,7 @@
  * Verhindert Halluzinationen bei kWh, Deadline, Kosten, Savings, SOC, Goal-Sicherheit.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateExplanationAgainstFacts = void 0;
+exports.validateExplanationAgainstFacts = validateExplanationAgainstFacts;
 const SAFE_GOAL_PATTERNS = /ziel\s+(sicher|erreicht|garantiert)|sicher\s+erreichbar|definitely\s+reach|guaranteed/i;
 const SAVINGS_CLAIM = /ersparnis|sparst|gespart|savings?\s*(of|von)?\s*[0-9]|€\s*[0-9]+,[0-9]+\s*gespart/i;
 function extractEuroAmounts(text) {
@@ -126,4 +126,3 @@ function validateExplanationAgainstFacts(ctx, explanationText) {
     }
     return { ok: issues.length === 0, issues };
 }
-exports.validateExplanationAgainstFacts = validateExplanationAgainstFacts;

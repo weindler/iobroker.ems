@@ -10,7 +10,7 @@
  * Nie über planningMax / unter planningMin. Kein pauschales Max bei PV.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveThermalPvPrecharge = void 0;
+exports.resolveThermalPvPrecharge = resolveThermalPvPrecharge;
 const types_1 = require("./types");
 function clamp(min, max, v) {
     return Math.min(max, Math.max(min, v));
@@ -191,4 +191,3 @@ function resolveThermalPvPrecharge(input) {
         reasonDe: parts.join("; ") + ".",
     };
 }
-exports.resolveThermalPvPrecharge = resolveThermalPvPrecharge;

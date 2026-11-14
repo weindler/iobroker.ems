@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runRestoreRuntimeCleanup = void 0;
+exports.runRestoreRuntimeCleanup = runRestoreRuntimeCleanup;
 const diagnostic_mode_1 = require("../support/diagnostic_mode");
 /** Neutralisiert bekannte Runtime-States nach Restore — keine Objekte löschen. */
 async function runRestoreRuntimeCleanup(host) {
@@ -30,4 +30,3 @@ async function runRestoreRuntimeCleanup(host) {
         }
     }
 }
-exports.runRestoreRuntimeCleanup = runRestoreRuntimeCleanup;

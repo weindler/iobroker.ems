@@ -5,7 +5,7 @@
  * Slot-Preferences/Decisions), reine Analyse ohne jede Ausführungswirkung.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createOpenAiAnalystProvider = void 0;
+exports.createOpenAiAnalystProvider = createOpenAiAnalystProvider;
 const validate_response_1 = require("./validate_response");
 const OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
 const SYSTEM_PROMPT = [
@@ -118,4 +118,3 @@ function createOpenAiAnalystProvider(fetchImpl = fetch) {
         },
     };
 }
-exports.createOpenAiAnalystProvider = createOpenAiAnalystProvider;

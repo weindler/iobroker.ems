@@ -15,15 +15,30 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateBootGuardAfterBootstrap = exports.readManifestFromDisk = exports.runBackupIntegrationStartup = exports.runLegacyRestoreRecoveryBeforeMigration = exports.resetBackupIntegrationContextForTest = exports.getBackupIntegrationContext = void 0;
+exports.getBackupIntegrationContext = getBackupIntegrationContext;
+exports.resetBackupIntegrationContextForTest = resetBackupIntegrationContextForTest;
+exports.runLegacyRestoreRecoveryBeforeMigration = runLegacyRestoreRecoveryBeforeMigration;
+exports.runBackupIntegrationStartup = runBackupIntegrationStartup;
+exports.readManifestFromDisk = readManifestFromDisk;
+exports.updateBootGuardAfterBootstrap = updateBootGuardAfterBootstrap;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const journal_1 = require("../restore/journal");
@@ -42,11 +57,9 @@ let lastContext = null;
 function getBackupIntegrationContext() {
     return lastContext;
 }
-exports.getBackupIntegrationContext = getBackupIntegrationContext;
 function resetBackupIntegrationContextForTest() {
     lastContext = null;
 }
-exports.resetBackupIntegrationContextForTest = resetBackupIntegrationContextForTest;
 async function ensureRuntimeDirs(layout) {
     const dirs = [
         layout.runtimeIntentDir,
@@ -133,7 +146,6 @@ async function runLegacyRestoreRecoveryBeforeMigration(host) {
     }
     await (0, startup_recovery_1.runRestoreStartupRecoveryAtPath)(host, layout.legacyTransactionsDir);
 }
-exports.runLegacyRestoreRecoveryBeforeMigration = runLegacyRestoreRecoveryBeforeMigration;
 async function runBackupIntegrationStartup(host) {
     const layout = (0, paths_1.resolveEmsPaths)(host);
     await ensureRuntimeDirs(layout);
@@ -229,7 +241,6 @@ async function runBackupIntegrationStartup(host) {
     });
     return ctx;
 }
-exports.runBackupIntegrationStartup = runBackupIntegrationStartup;
 async function readManifestFromDisk(manifestPath) {
     try {
         const raw = await fs.readFile(manifestPath, "utf8");
@@ -239,7 +250,6 @@ async function readManifestFromDisk(manifestPath) {
         return null;
     }
 }
-exports.readManifestFromDisk = readManifestFromDisk;
 async function updateBootGuardAfterBootstrap(host, manifest) {
     const layout = (0, paths_1.resolveEmsPaths)(host);
     const record = {
@@ -252,4 +262,3 @@ async function updateBootGuardAfterBootstrap(host, manifest) {
     const { writeBootGuardAtomic } = await import("./boot_guard.js");
     await writeBootGuardAtomic(layout.bootGuardPath, record);
 }
-exports.updateBootGuardAfterBootstrap = updateBootGuardAfterBootstrap;

@@ -4,7 +4,15 @@
  * Nur 15-Minuten-Zellen — Hauslast-Segmente dürfen die Timeline nicht verzerren.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.executableGeometryRejectReasonDe = exports.isExecutableDailyEntry = exports.isExecutableUnifiedCell = exports.isExecutableAllocationGeometry = exports.expectedEnergyKwhForPower = exports.slotDurationHours = exports.isCanonicalQuarterTimeSlot = exports.isCanonicalQuarterSlot = exports.ENERGY_POWER_TOLERANCE_KWH = exports.CANONICAL_SLOT_H = exports.CANONICAL_SLOT_MS = void 0;
+exports.ENERGY_POWER_TOLERANCE_KWH = exports.CANONICAL_SLOT_H = exports.CANONICAL_SLOT_MS = void 0;
+exports.isCanonicalQuarterSlot = isCanonicalQuarterSlot;
+exports.isCanonicalQuarterTimeSlot = isCanonicalQuarterTimeSlot;
+exports.slotDurationHours = slotDurationHours;
+exports.expectedEnergyKwhForPower = expectedEnergyKwhForPower;
+exports.isExecutableAllocationGeometry = isExecutableAllocationGeometry;
+exports.isExecutableUnifiedCell = isExecutableUnifiedCell;
+exports.isExecutableDailyEntry = isExecutableDailyEntry;
+exports.executableGeometryRejectReasonDe = executableGeometryRejectReasonDe;
 /** Ausführbare Slot-Dauer (ms). */
 exports.CANONICAL_SLOT_MS = 15 * 60_000;
 /** Ausführbare Slot-Dauer (Stunden) — konsistent mit score_allocate.SLOT_H. */
@@ -16,11 +24,9 @@ function isCanonicalQuarterSlot(startIso, endIso) {
     const b = Date.parse(endIso);
     return Number.isFinite(a) && Number.isFinite(b) && b - a === exports.CANONICAL_SLOT_MS;
 }
-exports.isCanonicalQuarterSlot = isCanonicalQuarterSlot;
 function isCanonicalQuarterTimeSlot(slot) {
     return isCanonicalQuarterSlot(slot.startIso, slot.endIso);
 }
-exports.isCanonicalQuarterTimeSlot = isCanonicalQuarterTimeSlot;
 function slotDurationHours(startIso, endIso) {
     const a = Date.parse(startIso);
     const b = Date.parse(endIso);
@@ -28,12 +34,10 @@ function slotDurationHours(startIso, endIso) {
         return null;
     return (b - a) / 3_600_000;
 }
-exports.slotDurationHours = slotDurationHours;
 /** Erwartete Energie bei konstanter Leistung über Slotdauer. */
 function expectedEnergyKwhForPower(powerW, durationHours) {
     return (powerW / 1000) * durationHours;
 }
-exports.expectedEnergyKwhForPower = expectedEnergyKwhForPower;
 /**
  * Ausführbare Allocation: exakt 15 min und
  * allocatedEnergyKwh ≈ allocatedPowerW/1000 * 0.25.
@@ -52,7 +56,6 @@ function isExecutableAllocationGeometry(slot) {
     const expected = expectedEnergyKwhForPower(power, exports.CANONICAL_SLOT_H);
     return Math.abs(energy - expected) <= exports.ENERGY_POWER_TOLERANCE_KWH;
 }
-exports.isExecutableAllocationGeometry = isExecutableAllocationGeometry;
 function isExecutableUnifiedCell(cell) {
     return isExecutableAllocationGeometry({
         startIso: cell.slot.startIso,
@@ -61,7 +64,6 @@ function isExecutableUnifiedCell(cell) {
         allocatedEnergyKwh: cell.allocatedEnergyKwh,
     });
 }
-exports.isExecutableUnifiedCell = isExecutableUnifiedCell;
 function isExecutableDailyEntry(entry) {
     return isExecutableAllocationGeometry({
         startIso: entry.slot.startIso,
@@ -70,7 +72,6 @@ function isExecutableDailyEntry(entry) {
         allocatedEnergyKwh: entry.allocatedEnergyKwh,
     });
 }
-exports.isExecutableDailyEntry = isExecutableDailyEntry;
 /** Reason wenn eine Allocation die Executable-Invariante verletzt. */
 function executableGeometryRejectReasonDe(slot) {
     const hours = slotDurationHours(slot.startIso, slot.endIso);
@@ -82,4 +83,3 @@ function executableGeometryRejectReasonDe(slot) {
     const expected = expectedEnergyKwhForPower(power, exports.CANONICAL_SLOT_H);
     return `Energy/Power-Invariante verletzt: ${power} W / 15 min erwartet ~${expected.toFixed(3)} kWh, ist ${energy} kWh.`;
 }
-exports.executableGeometryRejectReasonDe = executableGeometryRejectReasonDe;

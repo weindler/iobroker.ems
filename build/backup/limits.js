@@ -1,7 +1,8 @@
 "use strict";
 /** Harte Ressourcenlimits — kein ZIP64; Archive bleiben darunter. */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assertWithinLimit = exports.EXPORT_LIMITS = void 0;
+exports.EXPORT_LIMITS = void 0;
+exports.assertWithinLimit = assertWithinLimit;
 exports.EXPORT_LIMITS = {
     /** Max. Nutzdateien pro Archiv (ohne manifest.json). */
     MAX_ARCHIVE_PAYLOAD_FILES: 64,
@@ -24,4 +25,3 @@ function assertWithinLimit(actual, limit, label) {
         throw new Error(`${label} exceeds limit (${actual} > ${limit})`);
     }
 }
-exports.assertWithinLimit = assertWithinLimit;

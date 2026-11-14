@@ -4,7 +4,7 @@
  * Hard/Hygiene/Forced bleiben unberührt — nur optionaler Puffer-Headroom.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveThermalSoftUrgency = void 0;
+exports.resolveThermalSoftUrgency = resolveThermalSoftUrgency;
 const LONG_RANGE_H = 36;
 const COHERENT_RANGE_H = 24;
 function resolveThermalSoftUrgency(input) {
@@ -61,4 +61,3 @@ function resolveThermalSoftUrgency(input) {
         requireCoherentBlock: false,
     };
 }
-exports.resolveThermalSoftUrgency = resolveThermalSoftUrgency;

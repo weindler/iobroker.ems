@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateStopCondition = void 0;
+exports.evaluateStopCondition = evaluateStopCondition;
 /**
  * Liefert den ersten zutreffenden Stopgrund einer aktiven Ladeaktion oder null.
  * Reihenfolge nach Sicherheitsrelevanz.
@@ -30,4 +30,3 @@ function evaluateStopCondition(input) {
         return "higher_priority_intent";
     return null;
 }
-exports.evaluateStopCondition = evaluateStopCondition;

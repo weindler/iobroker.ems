@@ -11,7 +11,7 @@
  * Modes werden hier nicht mutiert — nur die kombinierte Wirkung dargestellt.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildEffectiveExecutionSnapshot = void 0;
+exports.buildEffectiveExecutionSnapshot = buildEffectiveExecutionSnapshot;
 const execution_mode_1 = require("../execution_mode");
 function buildEffectiveExecutionSnapshot(input) {
     const globalMode = (0, execution_mode_1.parseGlobalMode)(input.globalMode);
@@ -72,4 +72,3 @@ function buildEffectiveExecutionSnapshot(input) {
     }
     return { schemaVersion: 1, globalMode, globalLive, addons, summaryDe };
 }
-exports.buildEffectiveExecutionSnapshot = buildEffectiveExecutionSnapshot;

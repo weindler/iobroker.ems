@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.detectImmersionManualMismatch = exports.IMMERSION_OWNERSHIP_SETTLE_MS = exports.IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT = exports.externalOnStatus = exports.feedbackStageFromReadings = exports.normalizeFeedbackActive = void 0;
+exports.IMMERSION_OWNERSHIP_SETTLE_MS = exports.IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT = void 0;
+exports.normalizeFeedbackActive = normalizeFeedbackActive;
+exports.feedbackStageFromReadings = feedbackStageFromReadings;
+exports.externalOnStatus = externalOnStatus;
+exports.detectImmersionManualMismatch = detectImmersionManualMismatch;
 /**
  * Normalisiert einen Stage-Feedback-Wert auf aktiv/inaktiv.
  *
@@ -32,7 +36,6 @@ function normalizeFeedbackActive(val) {
     }
     return null;
 }
-exports.normalizeFeedbackActive = normalizeFeedbackActive;
 /**
  * Höchste aktiv zurückgemeldete Stufe (0 = keine aktiv). Mehrere aktive Stufen →
  * höchster Index gewinnt (defensive Annahme bei exklusiven Stufen).
@@ -46,7 +49,6 @@ function feedbackStageFromReadings(readings) {
     }
     return stage;
 }
-exports.feedbackStageFromReadings = feedbackStageFromReadings;
 /**
  * Erkennt Fremdsteuerung: EMS befiehlt AUS (Stufe 0), aber Gerät meldet/zieht Leistung.
  * - feedback aktiv → `external_on` (Rückmeldung zeigt eindeutig fremden Betrieb)
@@ -62,7 +64,6 @@ function externalOnStatus(params) {
         return "unexpected_external_on";
     return null;
 }
-exports.externalOnStatus = externalOnStatus;
 /** Klima-/Ownership-Block: Manual-Override zeitbegrenzt, bevor EMS erneut selbst greift. */
 exports.IMMERSION_MANUAL_OVERRIDE_DURATION_MS_DEFAULT = 30 * 60_000;
 /** Kein Mismatch-Alarm kurz nach einem eigenen EMS-Stufenwechsel (Relais-/Feedback-Verzögerung). */
@@ -91,4 +92,3 @@ function detectImmersionManualMismatch(params) {
         return fallingOff ? "manual_off" : "";
     return "";
 }
-exports.detectImmersionManualMismatch = detectImmersionManualMismatch;

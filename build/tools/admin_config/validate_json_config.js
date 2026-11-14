@@ -8,7 +8,9 @@
  * reportet — erlaubte Keys je Control-Typ aus den if/then-$ref des Schemas.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateJsonConfig = exports.collectControls = exports.allowedKeysByType = void 0;
+exports.allowedKeysByType = allowedKeysByType;
+exports.collectControls = collectControls;
+exports.validateJsonConfig = validateJsonConfig;
 function resolveRef(schema, ref) {
     if (!ref.startsWith("#/")) {
         throw new Error(`unsupported $ref: ${ref}`);
@@ -70,7 +72,6 @@ function allowedKeysByType(schema) {
     walk(schema);
     return map;
 }
-exports.allowedKeysByType = allowedKeysByType;
 function collectControls(node, path, out) {
     if (!node || typeof node !== "object")
         return;
@@ -93,7 +94,6 @@ function collectControls(node, path, out) {
         }
     }
 }
-exports.collectControls = collectControls;
 function validateJsonConfig(config, schema) {
     const issues = [];
     if (!config || typeof config !== "object") {
@@ -134,4 +134,3 @@ function validateJsonConfig(config, schema) {
     }
     return issues;
 }
-exports.validateJsonConfig = validateJsonConfig;

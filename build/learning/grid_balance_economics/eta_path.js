@@ -4,7 +4,9 @@
  * Kein Tages-charge/discharge-Quotient, keine Jahreswerte als operative η.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sessionsFromChargeSlots = exports.etaForPath = exports.learnEtaPaths = void 0;
+exports.learnEtaPaths = learnEtaPaths;
+exports.etaForPath = etaForPath;
+exports.sessionsFromChargeSlots = sessionsFromChargeSlots;
 const constants_1 = require("./constants");
 const types_1 = require("./types");
 function median(values) {
@@ -57,13 +59,11 @@ function learnEtaPaths(sessions) {
         reasonDe: `Pfad-η PV ${pv.usable ? "usable" : "Fallback"} (${pv.count}), Netz ${grid.usable ? "usable" : "Fallback"} (${grid.count}).`,
     };
 }
-exports.learnEtaPaths = learnEtaPaths;
 function etaForPath(learning, path) {
     if (path === "pv")
         return learning.etaPvUsable && learning.etaPvPath != null ? learning.etaPvPath : constants_1.ETA_PATH_FALLBACK;
     return learning.etaGridUsable && learning.etaGridPath != null ? learning.etaGridPath : constants_1.ETA_PATH_FALLBACK;
 }
-exports.etaForPath = etaForPath;
 /**
  * Aus Slot-Reihen eindeutige Lade→Entlade-Sessions ableiten.
  * mixed/unknown unterbrechen den Pfad (keine Zuordnung).
@@ -116,4 +116,3 @@ function sessionsFromChargeSlots(input) {
     }
     return out;
 }
-exports.sessionsFromChargeSlots = sessionsFromChargeSlots;

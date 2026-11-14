@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.closeAcUnitStatsSession = exports.acStatsDeviceActive = exports.AC_STATS_START_FEEDBACK_GRACE_MS = void 0;
+exports.AC_STATS_START_FEEDBACK_GRACE_MS = void 0;
+exports.acStatsDeviceActive = acStatsDeviceActive;
+exports.closeAcUnitStatsSession = closeAcUnitStatsSession;
 const constants_1 = require("../constants");
 /** Grace after start while feedback_switch may still be off. */
 exports.AC_STATS_START_FEEDBACK_GRACE_MS = constants_1.AC_FEEDBACK_POLL_MS * constants_1.AC_FEEDBACK_POLL_ATTEMPTS + 5_000;
@@ -22,7 +24,6 @@ function acStatsDeviceActive(up, fbOn, upRunning, nowMs = Date.now(), startGrace
     // Sticky only during short feedback lag after EMS start — not forever.
     return nowMs - up.lastStartAtMs <= startGraceMs;
 }
-exports.acStatsDeviceActive = acStatsDeviceActive;
 /** Close an open stats/runtime session (e.g. unit disabled in Admin). */
 function closeAcUnitStatsSession(up, nowMs) {
     const open = up.running ||
@@ -37,4 +38,3 @@ function closeAcUnitStatsSession(up, nowMs) {
     up.lastStopAtMs = nowMs;
     return true;
 }
-exports.closeAcUnitStatsSession = closeAcUnitStatsSession;

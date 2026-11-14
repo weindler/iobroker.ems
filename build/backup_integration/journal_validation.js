@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.shouldQuarantineLegacyJournal = exports.validateBoundJournal = exports.isLegacyRestoreJournal = exports.RESTORE_JOURNAL_SCHEMA_VERSION_V2 = void 0;
+exports.RESTORE_JOURNAL_SCHEMA_VERSION_V2 = void 0;
+exports.isLegacyRestoreJournal = isLegacyRestoreJournal;
+exports.validateBoundJournal = validateBoundJournal;
+exports.shouldQuarantineLegacyJournal = shouldQuarantineLegacyJournal;
 exports.RESTORE_JOURNAL_SCHEMA_VERSION_V2 = 2;
 function isLegacyRestoreJournal(journal) {
     return journal.schema_version === 1 && !("data_epoch" in journal);
 }
-exports.isLegacyRestoreJournal = isLegacyRestoreJournal;
 function validateBoundJournal(journal, manifest, namespace, instance) {
     if (isLegacyRestoreJournal(journal)) {
         return { ok: true, journal: journal };
@@ -30,7 +32,6 @@ function validateBoundJournal(journal, manifest, namespace, instance) {
     }
     return { ok: true, journal: bound };
 }
-exports.validateBoundJournal = validateBoundJournal;
 function shouldQuarantineLegacyJournal(journal, restoreDetection) {
     if (!isLegacyRestoreJournal(journal)) {
         return false;
@@ -39,4 +40,3 @@ function shouldQuarantineLegacyJournal(journal, restoreDetection) {
         restoreDetection === "rollback_suspected" ||
         restoreDetection === "manifest_invalid");
 }
-exports.shouldQuarantineLegacyJournal = shouldQuarantineLegacyJournal;

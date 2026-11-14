@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runWallboxLiveFoundation = exports.resolveWallboxRuntimePhase = exports.executeWallboxWrite = exports.WALLBOX_LIVE_WRITE_RELEASED = void 0;
+exports.WALLBOX_LIVE_WRITE_RELEASED = void 0;
+exports.executeWallboxWrite = executeWallboxWrite;
+exports.resolveWallboxRuntimePhase = resolveWallboxRuntimePhase;
+exports.runWallboxLiveFoundation = runWallboxLiveFoundation;
 const command_1 = require("./command");
 const write_plan_1 = require("./write_plan");
 const feedback_1 = require("./feedback");
@@ -119,7 +122,6 @@ async function executeWallboxWrite(host, input) {
         writeTimestampMs: nowMs,
     };
 }
-exports.executeWallboxWrite = executeWallboxWrite;
 function resolveWallboxRuntimePhase(input) {
     if (!input.addonEnabled || !input.governanceEnabled) {
         return "observe";
@@ -133,7 +135,6 @@ function resolveWallboxRuntimePhase(input) {
     }
     return "live";
 }
-exports.resolveWallboxRuntimePhase = resolveWallboxRuntimePhase;
 async function runWallboxLiveFoundation(host, input) {
     const addonExecutionOff = input.addonExecutionOff === true;
     const phase = resolveWallboxRuntimePhase({
@@ -202,4 +203,3 @@ async function runWallboxLiveFoundation(host, input) {
         writeAllowed: exports.WALLBOX_LIVE_WRITE_RELEASED && writePlan.liveEligible && phase === "live",
     };
 }
-exports.runWallboxLiveFoundation = runWallboxLiveFoundation;

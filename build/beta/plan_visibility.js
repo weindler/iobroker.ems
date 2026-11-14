@@ -7,7 +7,19 @@
  * Keine Write-Gates, kein Planner-/FSM-Umbau.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.climateHeuteLineFromPlanDe = exports.climatePlanLineFromWindowsDe = exports.formatPlanWindowClockDe = exports.isOutsideClockWindowReason = exports.chartStartsAbsentFromPlan = exports.firstOpenPlanVisWindow = exports.nextPlanVisWindow = exports.currentPlanVisWindow = exports.climateUnitTimelineWindowsFromPlanJson = exports.immersionTimelineWindowsFromPlanJson = exports.collapsePlanVisWindows = exports.collectPlanVisSlots = exports.PLAN_SLOT_MS = exports.PLAN_VIS_ON_W = void 0;
+exports.PLAN_SLOT_MS = exports.PLAN_VIS_ON_W = void 0;
+exports.collectPlanVisSlots = collectPlanVisSlots;
+exports.collapsePlanVisWindows = collapsePlanVisWindows;
+exports.immersionTimelineWindowsFromPlanJson = immersionTimelineWindowsFromPlanJson;
+exports.climateUnitTimelineWindowsFromPlanJson = climateUnitTimelineWindowsFromPlanJson;
+exports.currentPlanVisWindow = currentPlanVisWindow;
+exports.nextPlanVisWindow = nextPlanVisWindow;
+exports.firstOpenPlanVisWindow = firstOpenPlanVisWindow;
+exports.chartStartsAbsentFromPlan = chartStartsAbsentFromPlan;
+exports.isOutsideClockWindowReason = isOutsideClockWindowReason;
+exports.formatPlanWindowClockDe = formatPlanWindowClockDe;
+exports.climatePlanLineFromWindowsDe = climatePlanLineFromWindowsDe;
+exports.climateHeuteLineFromPlanDe = climateHeuteLineFromPlanDe;
 exports.PLAN_VIS_ON_W = 50;
 exports.PLAN_SLOT_MS = 15 * 60 * 1000;
 function parseJsonArray(raw) {
@@ -76,7 +88,6 @@ function collectPlanVisSlots(planJson, opts) {
     out.sort((a, b) => a.startMs - b.startMs || a.contributionId.localeCompare(b.contributionId));
     return out;
 }
-exports.collectPlanVisSlots = collectPlanVisSlots;
 /**
  * Benachbarte Slots → Fenster; powerW = Max nur innerhalb dieses Fensters (kein globaler maxW).
  */
@@ -120,7 +131,6 @@ function collapsePlanVisWindows(slots) {
     ranges.push(cur);
     return ranges;
 }
-exports.collapsePlanVisWindows = collapsePlanVisWindows;
 /** Autoritatives Immersion-Timeline: nur plan_json, nie Chart. */
 function immersionTimelineWindowsFromPlanJson(planJson, nowMs = Date.now()) {
     // IH-Slice enthält nur Heizstab-Einträge; Prefix filtert Misch-JSON ab.
@@ -130,30 +140,25 @@ function immersionTimelineWindowsFromPlanJson(planJson, nowMs = Date.now()) {
     });
     return collapsePlanVisWindows(slots.length > 0 ? slots : collectPlanVisSlots(planJson, { nowMs }));
 }
-exports.immersionTimelineWindowsFromPlanJson = immersionTimelineWindowsFromPlanJson;
 function climateUnitTimelineWindowsFromPlanJson(planJson, unitIndex, nowMs = Date.now()) {
     const cid = `air_conditioning.unit_${unitIndex}`;
     return collapsePlanVisWindows(collectPlanVisSlots(planJson, { nowMs, contributionId: cid }));
 }
-exports.climateUnitTimelineWindowsFromPlanJson = climateUnitTimelineWindowsFromPlanJson;
 function currentPlanVisWindow(windows, nowMs) {
     return windows.find((w) => nowMs >= w.startMs && nowMs < w.endMs) ?? null;
 }
-exports.currentPlanVisWindow = currentPlanVisWindow;
 function nextPlanVisWindow(windows, nowMs) {
     const future = windows
         .filter((w) => w.startMs > nowMs)
         .sort((a, b) => a.startMs - b.startMs);
     return future[0] ?? null;
 }
-exports.nextPlanVisWindow = nextPlanVisWindow;
 function firstOpenPlanVisWindow(windows, nowMs) {
     const open = windows
         .filter((w) => w.endMs > nowMs)
         .sort((a, b) => a.startMs - b.startMs);
     return open[0] ?? null;
 }
-exports.firstOpenPlanVisWindow = firstOpenPlanVisWindow;
 /** Chart-Starts, die nicht in plan_json vorkommen — dürfen keine GEPLANT-Zeile erzeugen. */
 function chartStartsAbsentFromPlan(chartStartMs, planWindows, slotMs = exports.PLAN_SLOT_MS) {
     return chartStartMs.filter((start) => {
@@ -161,11 +166,9 @@ function chartStartsAbsentFromPlan(chartStartMs, planWindows, slotMs = exports.P
         return !planWindows.some((w) => start < w.endMs && end > w.startMs);
     });
 }
-exports.chartStartsAbsentFromPlan = chartStartsAbsentFromPlan;
 function isOutsideClockWindowReason(reasonDe) {
     return /Außerhalb Zeitfenster|außerhalb Betriebszeit/i.test(String(reasonDe ?? ""));
 }
-exports.isOutsideClockWindowReason = isOutsideClockWindowReason;
 function formatPlanWindowClockDe(startIso, endIso, timezone = "Europe/Berlin") {
     const fmt = (iso) => {
         try {
@@ -187,7 +190,6 @@ function formatPlanWindowClockDe(startIso, endIso, timezone = "Europe/Berlin") {
     const b = fmt(endIso);
     return a === b ? a : `${a}–${b}`;
 }
-exports.formatPlanWindowClockDe = formatPlanWindowClockDe;
 function climatePlanLineFromWindowsDe(input) {
     const minW = input.minW ?? exports.PLAN_VIS_ON_W;
     const cur = input.currentAllocatedPowerW != null &&
@@ -203,7 +205,6 @@ function climatePlanLineFromWindowsDe(input) {
     }
     return "kein Budget";
 }
-exports.climatePlanLineFromWindowsDe = climatePlanLineFromWindowsDe;
 function climateHeuteLineFromPlanDe(input) {
     if (input.likelyActiveToday === true &&
         input.expectedHoursToday != null &&
@@ -218,4 +219,3 @@ function climateHeuteLineFromPlanDe(input) {
         return "Klima im Tagesplan";
     return "heute keine geplante Klimaaktion";
 }
-exports.climateHeuteLineFromPlanDe = climateHeuteLineFromPlanDe;

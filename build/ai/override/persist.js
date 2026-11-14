@@ -21,15 +21,29 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.appendOverrideToLedger = exports.writeOverrideLedgerStore = exports.readOverrideLedgerStore = exports.emptyOverrideLedgerStore = exports.AI_OVERRIDE_LEDGER_MAX_ENTRIES = exports.AI_OVERRIDE_LEDGER_FILE = exports.AI_OVERRIDE_LEDGER_CATEGORY = void 0;
+exports.AI_OVERRIDE_LEDGER_MAX_ENTRIES = exports.AI_OVERRIDE_LEDGER_FILE = exports.AI_OVERRIDE_LEDGER_CATEGORY = void 0;
+exports.emptyOverrideLedgerStore = emptyOverrideLedgerStore;
+exports.readOverrideLedgerStore = readOverrideLedgerStore;
+exports.writeOverrideLedgerStore = writeOverrideLedgerStore;
+exports.appendOverrideToLedger = appendOverrideToLedger;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
@@ -41,7 +55,6 @@ exports.AI_OVERRIDE_LEDGER_MAX_ENTRIES = 500;
 function emptyOverrideLedgerStore() {
     return { module: "ai_override_ledger", schemaVersion: 1, updatedAtIso: new Date(0).toISOString(), overrides: [] };
 }
-exports.emptyOverrideLedgerStore = emptyOverrideLedgerStore;
 function ledgerPath(baseDir) {
     return path.join(baseDir, exports.AI_OVERRIDE_LEDGER_FILE);
 }
@@ -65,11 +78,9 @@ async function readOverrideLedgerStore(baseDir) {
         return emptyOverrideLedgerStore();
     }
 }
-exports.readOverrideLedgerStore = readOverrideLedgerStore;
 async function writeOverrideLedgerStore(baseDir, store) {
     await (0, atomic_write_1.atomicWriteFile)(ledgerPath(baseDir), `${JSON.stringify(store)}\n`, { mode: atomic_write_1.DIAGNOSTIC_FILE_MODE });
 }
-exports.writeOverrideLedgerStore = writeOverrideLedgerStore;
 /** Neuen validierten Override anhängen, TTL-Sweep anwenden, Ledger auf Maximalgröße begrenzen. */
 async function appendOverrideToLedger(baseDir, override, now = new Date()) {
     const store = await readOverrideLedgerStore(baseDir);
@@ -84,4 +95,3 @@ async function appendOverrideToLedger(baseDir, override, now = new Date()) {
     await writeOverrideLedgerStore(baseDir, next);
     return next;
 }
-exports.appendOverrideToLedger = appendOverrideToLedger;

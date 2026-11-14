@@ -4,7 +4,12 @@
  * Getrennt von Puffer `thermal_runtime`.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.withTimeoutFallback = exports.historyJsonFromBoilerPoints = exports.mergeBoilerTempPoints = exports.trimBoilerTempSamples = exports.appendBoilerTempSample = exports.BOILER_HISTORY_JSON_SAMPLES = exports.BOILER_HISTORY_FETCH_LOOKBACK_DAYS = exports.BOILER_HISTORY_FETCH_TIMEOUT_MS = exports.BOILER_MAX_TEMP_SAMPLES = exports.BOILER_SAMPLE_MIN_DELTA_C = exports.BOILER_SAMPLE_MIN_INTERVAL_MS = void 0;
+exports.BOILER_HISTORY_JSON_SAMPLES = exports.BOILER_HISTORY_FETCH_LOOKBACK_DAYS = exports.BOILER_HISTORY_FETCH_TIMEOUT_MS = exports.BOILER_MAX_TEMP_SAMPLES = exports.BOILER_SAMPLE_MIN_DELTA_C = exports.BOILER_SAMPLE_MIN_INTERVAL_MS = void 0;
+exports.appendBoilerTempSample = appendBoilerTempSample;
+exports.trimBoilerTempSamples = trimBoilerTempSamples;
+exports.mergeBoilerTempPoints = mergeBoilerTempPoints;
+exports.historyJsonFromBoilerPoints = historyJsonFromBoilerPoints;
+exports.withTimeoutFallback = withTimeoutFallback;
 const history_1 = require("../thermal_runtime/history");
 exports.BOILER_SAMPLE_MIN_INTERVAL_MS = 10 * 60 * 1000;
 exports.BOILER_SAMPLE_MIN_DELTA_C = 0.3;
@@ -29,7 +34,6 @@ function appendBoilerTempSample(prev, sample, nowMs, lookbackDays) {
     }
     return trimBoilerTempSamples([...prev, { ts: sample.ts, tempC: Math.round(sample.tempC * 100) / 100 }], nowMs, lookbackDays);
 }
-exports.appendBoilerTempSample = appendBoilerTempSample;
 function trimBoilerTempSamples(points, nowMs, lookbackDays) {
     const lookbackMs = Math.max(1, lookbackDays) * MS_PER_DAY;
     const cutoff = nowMs - lookbackMs;
@@ -38,7 +42,6 @@ function trimBoilerTempSamples(points, nowMs, lookbackDays) {
         return kept;
     return kept.slice(kept.length - exports.BOILER_MAX_TEMP_SAMPLES);
 }
-exports.trimBoilerTempSamples = trimBoilerTempSamples;
 function mergeBoilerTempPoints(local, fromHistory) {
     const byTs = new Map();
     for (const p of [...fromHistory, ...local]) {
@@ -50,13 +53,11 @@ function mergeBoilerTempPoints(local, fromHistory) {
         .map(([ts, tempC]) => ({ ts, tempC }))
         .sort((a, b) => a.ts - b.ts);
 }
-exports.mergeBoilerTempPoints = mergeBoilerTempPoints;
 function historyJsonFromBoilerPoints(points) {
     if (points.length <= exports.BOILER_HISTORY_JSON_SAMPLES)
         return points;
     return points.slice(points.length - exports.BOILER_HISTORY_JSON_SAMPLES);
 }
-exports.historyJsonFromBoilerPoints = historyJsonFromBoilerPoints;
 async function withTimeoutFallback(promise, timeoutMs, fallback) {
     let timer = null;
     try {
@@ -72,4 +73,3 @@ async function withTimeoutFallback(promise, timeoutMs, fallback) {
             clearTimeout(timer);
     }
 }
-exports.withTimeoutFallback = withTimeoutFallback;

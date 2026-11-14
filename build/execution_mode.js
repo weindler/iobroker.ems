@@ -1,6 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureChannelTree = exports.handleExecutionModeStateChange = exports.setAddonModeReplanHook = exports.isExecutionModeStateRelativeId = exports.persistExecutionModeToAdminConfig = exports.executionModeConfigKeyForRelativeId = exports.syncExecutionModesFromConfig = exports.ensureAddonExecutionModeStates = exports.ensureGlobalExecutionStates = exports.clampNativeExecutionModesDryrun = exports.NATIVE_EXECUTION_MODE_KEYS = exports.isLiveWriteAllowed = exports.executionModeCommon = exports.executionModesConfigFingerprint = exports.executionModesFromConfig = exports.isAddonExecutionOff = exports.parseMode = exports.parseAddonMode = exports.parseGlobalMode = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.ADDON_EXECUTION_MODE_STATES = exports.GLOBAL_EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.ADDON_EXECUTION_MODE_STATE_LABELS = exports.GLOBAL_EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = exports.ADDON_EXECUTION_MODES = exports.GLOBAL_EXECUTION_MODES = void 0;
+exports.NATIVE_EXECUTION_MODE_KEYS = exports.EXECUTION_MODE_CONFIG_FINGERPRINT = exports.EXECUTION_MODE_ADDON_IDS = exports.EXECUTION_MODE_STATES = exports.ADDON_EXECUTION_MODE_STATES = exports.GLOBAL_EXECUTION_MODE_STATES = exports.EXECUTION_MODE_STATE_LABELS = exports.ADDON_EXECUTION_MODE_STATE_LABELS = exports.GLOBAL_EXECUTION_MODE_STATE_LABELS = exports.EXECUTION_MODES = exports.ADDON_EXECUTION_MODES = exports.GLOBAL_EXECUTION_MODES = void 0;
+exports.parseGlobalMode = parseGlobalMode;
+exports.parseAddonMode = parseAddonMode;
+exports.parseMode = parseMode;
+exports.isAddonExecutionOff = isAddonExecutionOff;
+exports.executionModesFromConfig = executionModesFromConfig;
+exports.executionModesConfigFingerprint = executionModesConfigFingerprint;
+exports.executionModeCommon = executionModeCommon;
+exports.isLiveWriteAllowed = isLiveWriteAllowed;
+exports.clampNativeExecutionModesDryrun = clampNativeExecutionModesDryrun;
+exports.ensureGlobalExecutionStates = ensureGlobalExecutionStates;
+exports.ensureAddonExecutionModeStates = ensureAddonExecutionModeStates;
+exports.syncExecutionModesFromConfig = syncExecutionModesFromConfig;
+exports.executionModeConfigKeyForRelativeId = executionModeConfigKeyForRelativeId;
+exports.persistExecutionModeToAdminConfig = persistExecutionModeToAdminConfig;
+exports.isExecutionModeStateRelativeId = isExecutionModeStateRelativeId;
+exports.setAddonModeReplanHook = setAddonModeReplanHook;
+exports.handleExecutionModeStateChange = handleExecutionModeStateChange;
+exports.ensureChannelTree = ensureChannelTree;
 const tree_paths_1 = require("./tree_paths");
 const season_control_1 = require("./season_control");
 exports.GLOBAL_EXECUTION_MODES = ["dryrun", "live"];
@@ -41,7 +59,6 @@ exports.EXECUTION_MODE_CONFIG_FINGERPRINT = "global.execution_mode_config_finger
 function parseGlobalMode(raw) {
     return String(raw ?? "dryrun").toLowerCase() === "live" ? "live" : "dryrun";
 }
-exports.parseGlobalMode = parseGlobalMode;
 function parseAddonMode(raw) {
     const s = String(raw ?? "dryrun").toLowerCase();
     if (s === "live")
@@ -50,7 +67,6 @@ function parseAddonMode(raw) {
         return "off";
     return "dryrun";
 }
-exports.parseAddonMode = parseAddonMode;
 /**
  * Add-on-Modus (inkl. off). Für Global immer parseGlobalMode verwenden —
  * „off“ am Global-State wird zu dryrun geklemmt.
@@ -58,11 +74,9 @@ exports.parseAddonMode = parseAddonMode;
 function parseMode(raw) {
     return parseAddonMode(raw);
 }
-exports.parseMode = parseMode;
 function isAddonExecutionOff(raw) {
     return parseAddonMode(raw) === "off";
 }
-exports.isAddonExecutionOff = isAddonExecutionOff;
 function executionModesFromConfig(config) {
     const c = config;
     return {
@@ -73,11 +87,9 @@ function executionModesFromConfig(config) {
         air_conditioning: parseAddonMode(c.ac_addon_mode ?? "dryrun"),
     };
 }
-exports.executionModesFromConfig = executionModesFromConfig;
 function executionModesConfigFingerprint(config) {
     return JSON.stringify(executionModesFromConfig(config));
 }
-exports.executionModesConfigFingerprint = executionModesConfigFingerprint;
 function executionModeCommon(name, def = "dryrun", kind = "addon") {
     return {
         name,
@@ -89,7 +101,6 @@ function executionModeCommon(name, def = "dryrun", kind = "addon") {
         states: kind === "global" ? exports.GLOBAL_EXECUTION_MODE_STATES : exports.ADDON_EXECUTION_MODE_STATES,
     };
 }
-exports.executionModeCommon = executionModeCommon;
 async function isLiveWriteAllowed(getState, addonId) {
     if ((0, season_control_1.isSeasonallyPausedAddon)(addonId))
         return false;
@@ -100,7 +111,6 @@ async function isLiveWriteAllowed(getState, addonId) {
     const addon = await getState((0, tree_paths_1.addonMode)(addonId));
     return parseAddonMode(addon?.val) === "live";
 }
-exports.isLiveWriteAllowed = isLiveWriteAllowed;
 async function ensureExecutionModeObject(host, id, common) {
     await host.setObjectNotExistsAsync(id, {
         type: "state",
@@ -156,7 +166,6 @@ function clampNativeExecutionModesDryrun(config) {
         ac_addon_mode: "dryrun",
     };
 }
-exports.clampNativeExecutionModesDryrun = clampNativeExecutionModesDryrun;
 async function applyExecutionModesFromConfig(host, modes) {
     await host.setStateAsync(tree_paths_1.GLOBAL.executionMode, { val: modes.global, ack: true });
     await host.setStateAsync((0, tree_paths_1.addonMode)("wallbox"), { val: modes.wallbox, ack: true });
@@ -199,13 +208,11 @@ async function ensureGlobalExecutionStates(host) {
         write: false,
     });
 }
-exports.ensureGlobalExecutionStates = ensureGlobalExecutionStates;
 async function ensureAddonExecutionModeStates(host) {
     for (const addonId of exports.EXECUTION_MODE_ADDON_IDS) {
         await ensureExecutionModeObject(host, (0, tree_paths_1.addonMode)(addonId), executionModeCommon(ADDON_EXECUTION_MODE_NAMES[addonId], "dryrun", "addon"));
     }
 }
-exports.ensureAddonExecutionModeStates = ensureAddonExecutionModeStates;
 async function alignAdminConfigWithRuntimeStates(host, config) {
     if (typeof host.updateConfig !== "function") {
         return;
@@ -307,7 +314,6 @@ async function syncExecutionModesFromConfig(host, config, options = {}) {
     await mirrorGlobalExecutionSafety(host);
     await rememberRuntimeModes(host);
 }
-exports.syncExecutionModesFromConfig = syncExecutionModesFromConfig;
 function executionModeConfigKeyForRelativeId(relativeId) {
     switch (relativeId) {
         case tree_paths_1.GLOBAL.executionMode:
@@ -324,7 +330,6 @@ function executionModeConfigKeyForRelativeId(relativeId) {
             return null;
     }
 }
-exports.executionModeConfigKeyForRelativeId = executionModeConfigKeyForRelativeId;
 async function persistExecutionModeToAdminConfig(adapter, relativeId, mode) {
     const configKey = executionModeConfigKeyForRelativeId(relativeId);
     if (!configKey || typeof adapter.updateConfig !== "function") {
@@ -352,20 +357,17 @@ async function persistExecutionModeToAdminConfig(adapter, relativeId, mode) {
     });
     return true;
 }
-exports.persistExecutionModeToAdminConfig = persistExecutionModeToAdminConfig;
 function isExecutionModeStateRelativeId(relativeId) {
     if (relativeId === tree_paths_1.GLOBAL.executionMode) {
         return true;
     }
     return exports.EXECUTION_MODE_ADDON_IDS.some((addonId) => relativeId === (0, tree_paths_1.addonMode)(addonId));
 }
-exports.isExecutionModeStateRelativeId = isExecutionModeStateRelativeId;
 let addonModeReplanHook = null;
 /** Daily-Plan-Tick registriert sich hier, um bei Mode-Wechsel frisch zu replannen. */
 function setAddonModeReplanHook(hook) {
     addonModeReplanHook = hook;
 }
-exports.setAddonModeReplanHook = setAddonModeReplanHook;
 async function processExecutionModeStateChange(adapter, id, state) {
     if (!state || state.ack) {
         return;
@@ -436,7 +438,6 @@ function handleExecutionModeStateChange(adapter, id, state) {
     });
     return next;
 }
-exports.handleExecutionModeStateChange = handleExecutionModeStateChange;
 async function ensureChannelTree(setObjectNotExistsAsync) {
     const channels = [
         { id: "global", name: "Global" },
@@ -457,4 +458,3 @@ async function ensureChannelTree(setObjectNotExistsAsync) {
         });
     }
 }
-exports.ensureChannelTree = ensureChannelTree;

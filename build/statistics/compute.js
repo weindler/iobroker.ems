@@ -1,6 +1,38 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.finalizeMobilityDayTotals = exports.sumMobilityDays = exports.sumHomeDays = exports.emptyMobilityDay = exports.emptyHomeDay = exports.applyMobilityGridRewards = exports.applyHomeGridRewards = exports.estimateKwhFromSocRise = exports.iceCostForKm = exports.estimateKmFromEvKwh = exports.resolveSeedFuelPriceEurPerL = exports.resolveFuelPriceEurPerL = exports.resolveEvKwhPer100 = exports.localDateKey = exports.buildHomeMonthTotals = exports.reconcileCurrentMonthWithToday = exports.resolveHomeMonthFromTibber = exports.siblingTibberConsumptionState = exports.sumTibberPairedRange = exports.pickTibberJsonMonthlyForMonth = exports.sumTibberJsonDailyForRange = exports.earliestTibberJsonDailyDateKey = exports.sumTibberJsonDailyForMonth = exports.daysInMonth = exports.integrateImportCostEur = exports.normalizeWallboxSessionEnergyKwh = exports.energyCounterDeltaKwh = exports.isCounterGap = exports.COUNTER_MAX_GAP_MS = exports.savingsVsFixedEur = exports.tibberDayCostEur = exports.dailyBaseShareEur = exports.fixedTariffCostEur = void 0;
+exports.COUNTER_MAX_GAP_MS = void 0;
+exports.fixedTariffCostEur = fixedTariffCostEur;
+exports.dailyBaseShareEur = dailyBaseShareEur;
+exports.tibberDayCostEur = tibberDayCostEur;
+exports.savingsVsFixedEur = savingsVsFixedEur;
+exports.isCounterGap = isCounterGap;
+exports.energyCounterDeltaKwh = energyCounterDeltaKwh;
+exports.normalizeWallboxSessionEnergyKwh = normalizeWallboxSessionEnergyKwh;
+exports.integrateImportCostEur = integrateImportCostEur;
+exports.daysInMonth = daysInMonth;
+exports.sumTibberJsonDailyForMonth = sumTibberJsonDailyForMonth;
+exports.earliestTibberJsonDailyDateKey = earliestTibberJsonDailyDateKey;
+exports.sumTibberJsonDailyForRange = sumTibberJsonDailyForRange;
+exports.pickTibberJsonMonthlyForMonth = pickTibberJsonMonthlyForMonth;
+exports.sumTibberPairedRange = sumTibberPairedRange;
+exports.siblingTibberConsumptionState = siblingTibberConsumptionState;
+exports.resolveHomeMonthFromTibber = resolveHomeMonthFromTibber;
+exports.reconcileCurrentMonthWithToday = reconcileCurrentMonthWithToday;
+exports.buildHomeMonthTotals = buildHomeMonthTotals;
+exports.localDateKey = localDateKey;
+exports.resolveEvKwhPer100 = resolveEvKwhPer100;
+exports.resolveFuelPriceEurPerL = resolveFuelPriceEurPerL;
+exports.resolveSeedFuelPriceEurPerL = resolveSeedFuelPriceEurPerL;
+exports.estimateKmFromEvKwh = estimateKmFromEvKwh;
+exports.iceCostForKm = iceCostForKm;
+exports.estimateKwhFromSocRise = estimateKwhFromSocRise;
+exports.applyHomeGridRewards = applyHomeGridRewards;
+exports.applyMobilityGridRewards = applyMobilityGridRewards;
+exports.emptyHomeDay = emptyHomeDay;
+exports.emptyMobilityDay = emptyMobilityDay;
+exports.sumHomeDays = sumHomeDays;
+exports.sumMobilityDays = sumMobilityDays;
+exports.finalizeMobilityDayTotals = finalizeMobilityDayTotals;
 const grid_rewards_1 = require("./grid_rewards");
 function round3(n) {
     return Math.round(n * 1000) / 1000;
@@ -22,14 +54,12 @@ function fixedTariffCostEur(input) {
         : 0;
     return round2(energyEur + base);
 }
-exports.fixedTariffCostEur = fixedTariffCostEur;
 /** Tagesanteil einer Monatsgebühr (€). */
 function dailyBaseShareEur(monthlyEur, monthFraction) {
     if (monthlyEur === null || !(monthlyEur > 0) || !(monthFraction > 0))
         return 0;
     return round2(monthlyEur * monthFraction);
 }
-exports.dailyBaseShareEur = dailyBaseShareEur;
 /** Tibber-Tageskosten: Live-Wert + anteilige Monatsgebühren (Grundpreis + Netzentgelt). */
 function tibberDayCostEur(input) {
     if (input.accumulatedCostEur === null || !Number.isFinite(input.accumulatedCostEur)) {
@@ -39,7 +69,6 @@ function tibberDayCostEur(input) {
         dailyBaseShareEur(input.monthlyGridFeeEur, input.monthFraction);
     return round2(input.accumulatedCostEur + fees);
 }
-exports.tibberDayCostEur = tibberDayCostEur;
 /**
  * Tarifvorteil = Festtarif − Tibber. Grid Rewards gehören nicht in diese Größe.
  * Dritter Parameter bleibt aus Kompatibilität ignoriert (nie einrechnen).
@@ -50,7 +79,6 @@ function savingsVsFixedEur(fixedTariffCostEurVal, dynamicCostEur, _rewardsCredit
     }
     return round2(fixedTariffCostEurVal - dynamicCostEur);
 }
-exports.savingsVsFixedEur = savingsVsFixedEur;
 /** Längste Pause zwischen zwei Zählerablesungen, die noch dem laufenden Tag zugerechnet wird. */
 exports.COUNTER_MAX_GAP_MS = 30 * 60 * 1000;
 /**
@@ -62,7 +90,6 @@ function isCounterGap(lastSeenMs, nowMs, maxGapMs = exports.COUNTER_MAX_GAP_MS) 
         return false;
     return nowMs - lastSeenMs > maxGapMs;
 }
-exports.isCounterGap = isCounterGap;
 /** Energie-Delta aus Zählerständen; Reset (neuer Tag / kleiner) → null (kein negativer Sprung). */
 function energyCounterDeltaKwh(previous, current) {
     if (current === null) {
@@ -79,7 +106,6 @@ function energyCounterDeltaKwh(previous, current) {
         return { deltaKwh: 0, newBaseline: previous };
     return { deltaKwh: round3(current - previous), newBaseline: current };
 }
-exports.energyCounterDeltaKwh = energyCounterDeltaKwh;
 /**
  * EVCC status.sessionEnergy = Wh; EMS addons.wallbox.evcc.session_energy_kwh = kWh.
  * Statistik muss Wh→kWh, wenn direkt auf EVCC gemappt wird.
@@ -98,7 +124,6 @@ function normalizeWallboxSessionEnergyKwh(stateId, raw) {
     }
     return round3(raw);
 }
-exports.normalizeWallboxSessionEnergyKwh = normalizeWallboxSessionEnergyKwh;
 /** Leistung × Preis über dt → Kostenanteil. priceCtPerKwh, powerW Import. */
 function integrateImportCostEur(input) {
     if (input.importPowerW === null ||
@@ -112,7 +137,6 @@ function integrateImportCostEur(input) {
     const costEur = (kwh * input.priceCtPerKwh) / 100;
     return { costEur: round3(costEur), kwh: round3(kwh) };
 }
-exports.integrateImportCostEur = integrateImportCostEur;
 function daysInMonth(dateKey) {
     const m = /^(\d{4})-(\d{2})-/.exec(dateKey);
     if (!m)
@@ -121,7 +145,6 @@ function daysInMonth(dateKey) {
     const mo = Number(m[2]);
     return new Date(y, mo, 0).getDate();
 }
-exports.daysInMonth = daysInMonth;
 /** TibberLink Consumption.jsonDaily — Summe kWh/Kosten für den Kalendermonat von dateKey. */
 function tibberEntryDateKey(entry) {
     const raw = entry.from ?? entry.to;
@@ -150,7 +173,6 @@ function sumTibberJsonDailyForMonth(raw, dateKey) {
     const prefix = dateKey.slice(0, 7);
     return sumTibberJsonDailyForRange(raw, `${prefix}-01`, `${prefix}-31`);
 }
-exports.sumTibberJsonDailyForMonth = sumTibberJsonDailyForMonth;
 /** TibberLink jsonDaily — frühestes Tagesdatum (YYYY-MM-DD). */
 function earliestTibberJsonDailyDateKey(raw) {
     try {
@@ -176,7 +198,6 @@ function earliestTibberJsonDailyDateKey(raw) {
         return null;
     }
 }
-exports.earliestTibberJsonDailyDateKey = earliestTibberJsonDailyDateKey;
 /** TibberLink jsonDaily — Summe für inklusives Datumsintervall. */
 function sumTibberJsonDailyForRange(raw, fromKey, toKey, requirePaired = false) {
     try {
@@ -215,7 +236,6 @@ function sumTibberJsonDailyForRange(raw, fromKey, toKey, requirePaired = false) 
         return { gridImportKwh: null, dynamicCostEur: null };
     }
 }
-exports.sumTibberJsonDailyForRange = sumTibberJsonDailyForRange;
 /** TibberLink Consumption.jsonMonthly — ein Monatseintrag (Fallback wenn jsonDaily leer). */
 function pickTibberJsonMonthlyForMonth(raw, dateKey) {
     try {
@@ -241,7 +261,6 @@ function pickTibberJsonMonthlyForMonth(raw, dateKey) {
         return { gridImportKwh: null, dynamicCostEur: null };
     }
 }
-exports.pickTibberJsonMonthlyForMonth = pickTibberJsonMonthlyForMonth;
 /** Gepaarten Tibber-Verbrauch und Kosten über längere Zeiträume ohne doppelte Monatstage summieren. */
 function sumTibberPairedRange(input) {
     let from = input.fromKey.slice(0, 7);
@@ -282,14 +301,12 @@ function sumTibberPairedRange(input) {
         segments,
     };
 }
-exports.sumTibberPairedRange = sumTibberPairedRange;
 /** Geschwister-State im selben Tibber-Home (jsonDaily → jsonMonthly / currentMonthConsumption). */
 function siblingTibberConsumptionState(stateId, leaf) {
     if (!stateId.endsWith("jsonDaily"))
         return "";
     return `${stateId.slice(0, -"jsonDaily".length)}${leaf}`;
 }
-exports.siblingTibberConsumptionState = siblingTibberConsumptionState;
 function resolveHomeMonthFromTibber(input) {
     const fromDaily = sumTibberJsonDailyForMonth(input.jsonDailyRaw, input.dateKey);
     if (fromDaily.gridImportKwh !== null || fromDaily.dynamicCostEur !== null) {
@@ -321,7 +338,6 @@ function resolveHomeMonthFromTibber(input) {
         source: null,
     };
 }
-exports.resolveHomeMonthFromTibber = resolveHomeMonthFromTibber;
 /**
  * Ergänzt einen verzögerten Tibber-Monatsstand um den laufenden Tag.
  *
@@ -360,7 +376,6 @@ function reconcileCurrentMonthWithToday(input) {
     }
     return { gridImportKwh, dynamicCostEur };
 }
-exports.reconcileCurrentMonthWithToday = reconcileCurrentMonthWithToday;
 /** Monats-Haus aus Live-Quellen (Tibber jsonDaily o. ä.) — Festtarif anteilig bis dateKey. */
 function buildHomeMonthTotals(input) {
     const dayNum = Number.parseInt(input.dateKey.slice(8, 10), 10);
@@ -393,7 +408,6 @@ function buildHomeMonthTotals(input) {
         savingsVsFixedEur: savingsVsFixedEur(fixed, dynamic),
     };
 }
-exports.buildHomeMonthTotals = buildHomeMonthTotals;
 function localDateKey(d, timeZone = "Europe/Berlin") {
     return new Intl.DateTimeFormat("en-CA", {
         timeZone,
@@ -402,7 +416,6 @@ function localDateKey(d, timeZone = "Europe/Berlin") {
         day: "2-digit",
     }).format(d);
 }
-exports.localDateKey = localDateKey;
 function resolveEvKwhPer100(input) {
     if (input.mapped !== null && input.mapped > 0) {
         return { value: input.mapped, source: "ford_hass" };
@@ -412,7 +425,6 @@ function resolveEvKwhPer100(input) {
     }
     return { value: null, source: "missing" };
 }
-exports.resolveEvKwhPer100 = resolveEvKwhPer100;
 function resolveFuelPriceEurPerL(input) {
     if (input.mapped !== null && input.mapped > 0)
         return input.mapped;
@@ -420,7 +432,6 @@ function resolveFuelPriceEurPerL(input) {
         return input.fallback;
     return null;
 }
-exports.resolveFuelPriceEurPerL = resolveFuelPriceEurPerL;
 /** Beim manuellen Seed: expliziter Tag-Preis, sonst Admin-Fallback — nicht Live-Tankerkönig. */
 function resolveSeedFuelPriceEurPerL(input) {
     if (input.explicit !== null && input.explicit !== undefined && input.explicit > 0) {
@@ -430,14 +441,12 @@ function resolveSeedFuelPriceEurPerL(input) {
         return input.fallback;
     return null;
 }
-exports.resolveSeedFuelPriceEurPerL = resolveSeedFuelPriceEurPerL;
 /** km aus geladener Batterie-Energie (AC→Batterie grob ohne Effizienz-Erfindung: gelieferte kWh). */
 function estimateKmFromEvKwh(kwh, kwhPer100) {
     if (kwh === null || kwhPer100 === null || !(kwhPer100 > 0) || !(kwh >= 0))
         return null;
     return round1(kwh * (100 / kwhPer100));
 }
-exports.estimateKmFromEvKwh = estimateKmFromEvKwh;
 function round1(n) {
     return Math.round(n * 10) / 10;
 }
@@ -453,7 +462,6 @@ function iceCostForKm(input) {
     const liters = round3((input.km / 100) * input.lPer100Km);
     return { liters, costEur: round2(liters * input.fuelPriceEurPerL) };
 }
-exports.iceCostForKm = iceCostForKm;
 /** SOC-Anstieg ohne Wallbox → geschätzte Batterie-kWh (nur Trigger, nicht Abrechnung). */
 function estimateKwhFromSocRise(input) {
     if (input.socBeforePct === null ||
@@ -467,7 +475,6 @@ function estimateKwhFromSocRise(input) {
         return null;
     return round3((rise / 100) * input.capacityKwh);
 }
-exports.estimateKwhFromSocRise = estimateKwhFromSocRise;
 function applyHomeGridRewards(home, rewards) {
     const present = (0, grid_rewards_1.gridRewardsCreditIsPresent)(rewards.source, rewards.creditEur);
     const credit = present ? rewards.creditEur : null;
@@ -478,7 +485,6 @@ function applyHomeGridRewards(home, rewards) {
         savingsVsFixedEur: savingsVsFixedEur(home.fixedTariffCostEur, home.dynamicCostEur),
     };
 }
-exports.applyHomeGridRewards = applyHomeGridRewards;
 function applyMobilityGridRewards(mob, rewards) {
     if (rewards.source === "off" || rewards.creditEur === null) {
         return {
@@ -520,7 +526,6 @@ function applyMobilityGridRewards(mob, rewards) {
             : mob.savingsVsIceEur,
     };
 }
-exports.applyMobilityGridRewards = applyMobilityGridRewards;
 function emptyHomeDay(dateKey) {
     return {
         dateKey,
@@ -534,7 +539,6 @@ function emptyHomeDay(dateKey) {
         feedInCreditEur: null,
     };
 }
-exports.emptyHomeDay = emptyHomeDay;
 function emptyMobilityDay(dateKey) {
     return {
         dateKey,
@@ -558,7 +562,6 @@ function emptyMobilityDay(dateKey) {
         savingsVsIceEur: null,
     };
 }
-exports.emptyMobilityDay = emptyMobilityDay;
 function sumHomeDays(days) {
     const dateKey = days[0]?.dateKey ?? "";
     const sum = (pick) => {
@@ -588,7 +591,6 @@ function sumHomeDays(days) {
         feedInCreditEur: sum((d) => d.feedInCreditEur),
     };
 }
-exports.sumHomeDays = sumHomeDays;
 function sumMobilityDays(days, monthFinalize, monthGridRewards) {
     const dateKey = days[0]?.dateKey ?? "";
     const sum = (pick) => {
@@ -680,7 +682,6 @@ function sumMobilityDays(days, monthFinalize, monthGridRewards) {
         savingsVsIceEur: evCost !== null && iceCost !== null ? round2(iceCost - evCost) : null,
     };
 }
-exports.sumMobilityDays = sumMobilityDays;
 function mobilityDayChargeKwh(d) {
     return (d.homePvKwh ?? 0) + (d.homeGridKwh ?? 0) + (d.publicInvoicedKwh ?? 0);
 }
@@ -756,4 +757,3 @@ function finalizeMobilityDayTotals(mob, input) {
             ? round2(ice.costEur - mob.evTotalCostEur)
             : null;
 }
-exports.finalizeMobilityDayTotals = finalizeMobilityDayTotals;

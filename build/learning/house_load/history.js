@@ -1,6 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.distinctSampleDaysWithMinHours = exports.distinctSampleDays = exports.fetchHouseLoadSamples = exports.filterOutliers = exports.normalizeHouseLoadPowerW = exports.resolveHouseLoadPowerUnit = exports.detectPowerUnit = exports.isValidHouseLoadW = void 0;
+exports.isValidHouseLoadW = isValidHouseLoadW;
+exports.detectPowerUnit = detectPowerUnit;
+exports.resolveHouseLoadPowerUnit = resolveHouseLoadPowerUnit;
+exports.normalizeHouseLoadPowerW = normalizeHouseLoadPowerW;
+exports.filterOutliers = filterOutliers;
+exports.fetchHouseLoadSamples = fetchHouseLoadSamples;
+exports.distinctSampleDays = distinctSampleDays;
+exports.distinctSampleDaysWithMinHours = distinctSampleDaysWithMinHours;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const power_rollup_1 = require("../power_rollup");
@@ -16,7 +23,6 @@ function isValidHouseLoadW(value) {
     }
     return value >= constants_1.PLAUSIBLE_W_MIN && value <= constants_1.PLAUSIBLE_W_MAX;
 }
-exports.isValidHouseLoadW = isValidHouseLoadW;
 function detectPowerUnit(stateId, unit) {
     const u = (unit ?? "").toLowerCase();
     if (u.includes("kw") || u.includes("kilowatt")) {
@@ -30,7 +36,6 @@ function detectPowerUnit(stateId, unit) {
     }
     return "W";
 }
-exports.detectPowerUnit = detectPowerUnit;
 async function resolveHouseLoadPowerUnit(host, stateId) {
     if (!host.getObjectAsync) {
         return detectPowerUnit(stateId);
@@ -46,7 +51,6 @@ async function resolveHouseLoadPowerUnit(host, stateId) {
         return detectPowerUnit(stateId);
     }
 }
-exports.resolveHouseLoadPowerUnit = resolveHouseLoadPowerUnit;
 /** W/kW → W; fehlende Einheit: Werte < 100 eher kW (z. B. 3.5 statt 3500). */
 function normalizeHouseLoadPowerW(raw, unit) {
     if (!Number.isFinite(raw)) {
@@ -64,7 +68,6 @@ function normalizeHouseLoadPowerW(raw, unit) {
     }
     return watts;
 }
-exports.normalizeHouseLoadPowerW = normalizeHouseLoadPowerW;
 /** Negative und Ausreißer oberhalb PLAUSIBLE_W_MAX verwerfen. */
 function filterOutliers(values) {
     if (values.length < 5) {
@@ -78,7 +81,6 @@ function filterOutliers(values) {
     const high = q3 + 1.5 * iqr;
     return values.filter((v) => v >= low && v <= high);
 }
-exports.filterOutliers = filterOutliers;
 function buildSamplesFromRows(rows, powerUnit, historySource, preBinnedHourly) {
     const samples = [];
     let lastValidTs = null;
@@ -184,11 +186,9 @@ async function fetchHouseLoadSamples(host, stateId, lookbackDays) {
     }
     return fromAggregate;
 }
-exports.fetchHouseLoadSamples = fetchHouseLoadSamples;
 function distinctSampleDays(samples) {
     return new Set(samples.map((s) => s.dateKey)).size;
 }
-exports.distinctSampleDays = distinctSampleDays;
 /** Tage mit mindestens MIN_DAY_HOURS Stunden-Samples (wie Price validHours). */
 function distinctSampleDaysWithMinHours(samples, minHoursPerDay) {
     const byDay = new Map();
@@ -203,4 +203,3 @@ function distinctSampleDaysWithMinHours(samples, minHoursPerDay) {
     }
     return days;
 }
-exports.distinctSampleDaysWithMinHours = distinctSampleDaysWithMinHours;

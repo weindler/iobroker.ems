@@ -4,7 +4,13 @@
  * Kein Classic-Planner-Takeover. Planner schreibt keine Geräte.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearIhAcAuthority = exports.applyReplanFailureAuthority = exports.assessUnifiedReplanFailure = exports.wallboxRestStillSafe = exports.batteryRestStillSafe = exports.climatePlanDispatchStillSafe = exports.immersionRestStillSafe = void 0;
+exports.clearIhAcAuthority = void 0;
+exports.immersionRestStillSafe = immersionRestStillSafe;
+exports.climatePlanDispatchStillSafe = climatePlanDispatchStillSafe;
+exports.batteryRestStillSafe = batteryRestStillSafe;
+exports.wallboxRestStillSafe = wallboxRestStillSafe;
+exports.assessUnifiedReplanFailure = assessUnifiedReplanFailure;
+exports.applyReplanFailureAuthority = applyReplanFailureAuthority;
 const authority_1 = require("./authority");
 Object.defineProperty(exports, "clearIhAcAuthority", { enumerable: true, get: function () { return authority_1.clearIhAcAuthority; } });
 const dispatch_bridge_1 = require("./dispatch_bridge");
@@ -50,7 +56,6 @@ function immersionRestStillSafe(args) {
         return false;
     return true;
 }
-exports.immersionRestStillSafe = immersionRestStillSafe;
 function climatePlanDispatchStillSafe(args) {
     const { nowMs, lastUnifiedPlan, actual, climate, replanReasons } = args;
     if (!hasFutureKind(lastUnifiedPlan, "climate", nowMs) && !hasFutureKind(lastUnifiedPlan, "air_conditioning", nowMs)) {
@@ -66,7 +71,6 @@ function climatePlanDispatchStillSafe(args) {
         return false;
     return true;
 }
-exports.climatePlanDispatchStillSafe = climatePlanDispatchStillSafe;
 /** Battery Charge: im Zweifel idle/hold — kein veralteter Charge-Dispatch. */
 function batteryRestStillSafe(args) {
     const { nowMs, lastUnifiedPlan, actual, battery, replanReasons } = args;
@@ -91,7 +95,6 @@ function batteryRestStillSafe(args) {
     void actual;
     return true;
 }
-exports.batteryRestStillSafe = batteryRestStillSafe;
 /**
  * Wallbox: veralteten EMS-Charge-Intent entfernen bei Disconnect/Presence/Goal-Bruch.
  * EVCC bleibt manuell bedienbar (kein Geräte-Lock).
@@ -114,7 +117,6 @@ function wallboxRestStillSafe(args) {
     }
     return true;
 }
-exports.wallboxRestStillSafe = wallboxRestStillSafe;
 function assessUnifiedReplanFailure(args) {
     const clearImmersion = !immersionRestStillSafe(args);
     const clearClimate = !climatePlanDispatchStillSafe(args);
@@ -157,7 +159,6 @@ function assessUnifiedReplanFailure(args) {
         reasonDe: `${parts.join(" — ")}.`,
     };
 }
-exports.assessUnifiedReplanFailure = assessUnifiedReplanFailure;
 function applyReplanFailureAuthority(classicPlan, lastUnifiedPlan, disposition) {
     if (!lastUnifiedPlan) {
         if (disposition.clearImmersion ||
@@ -204,4 +205,3 @@ function applyReplanFailureAuthority(classicPlan, lastUnifiedPlan, disposition) 
         unifiedPlanId: `${lastUnifiedPlan.planId}:replan-fail-safe`,
     });
 }
-exports.applyReplanFailureAuthority = applyReplanFailureAuthority;

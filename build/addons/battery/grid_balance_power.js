@@ -12,7 +12,17 @@
  * erneut geschrieben werden (Keepalive, unabhängig von der Write-Hysterese).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateGridBalanceTick = exports.gridBalanceSessionReleasePermit = exports.gridBalanceCleanupAllowed = exports.gridBalanceExecutionReleased = exports.gridBalanceSetpointPermit = exports.consumeGridBalanceLiveTest = exports.applyGridBalanceLiveTestPulse = exports.emptyGridBalanceLiveTest = exports.effectiveGridBalanceMaxW = exports.adjustConsumptionForEv = exports.GRID_BALANCE_EV_ACTIVE_MIN_W = exports.GRID_BALANCE_EV_POWER_MAX_AGE_MS = exports.GRID_BALANCE_KEEPALIVE_MAX_MS = exports.GRID_BALANCE_DEADBAND_DEFAULT_W = void 0;
+exports.GRID_BALANCE_EV_ACTIVE_MIN_W = exports.GRID_BALANCE_EV_POWER_MAX_AGE_MS = exports.GRID_BALANCE_KEEPALIVE_MAX_MS = exports.GRID_BALANCE_DEADBAND_DEFAULT_W = void 0;
+exports.adjustConsumptionForEv = adjustConsumptionForEv;
+exports.effectiveGridBalanceMaxW = effectiveGridBalanceMaxW;
+exports.emptyGridBalanceLiveTest = emptyGridBalanceLiveTest;
+exports.applyGridBalanceLiveTestPulse = applyGridBalanceLiveTestPulse;
+exports.consumeGridBalanceLiveTest = consumeGridBalanceLiveTest;
+exports.gridBalanceSetpointPermit = gridBalanceSetpointPermit;
+exports.gridBalanceExecutionReleased = gridBalanceExecutionReleased;
+exports.gridBalanceCleanupAllowed = gridBalanceCleanupAllowed;
+exports.gridBalanceSessionReleasePermit = gridBalanceSessionReleasePermit;
+exports.evaluateGridBalanceTick = evaluateGridBalanceTick;
 const grid_balance_contract_1 = require("./grid_balance_contract");
 exports.GRID_BALANCE_DEADBAND_DEFAULT_W = 0;
 /** Sonnen Mode-2 Override erlischt nach ~10 s — Refresh spätestens hier. */
@@ -56,7 +66,6 @@ function adjustConsumptionForEv(input) {
         blockReason: "",
     };
 }
-exports.adjustConsumptionForEv = adjustConsumptionForEv;
 function effectiveGridBalanceMaxW(input) {
     const configuredMaxW = Math.max(0, Math.round(Number.isFinite(input.configuredMaxW) ? input.configuredMaxW : 0));
     const discharge = input.hardwareMaxDischargeW != null && input.hardwareMaxDischargeW > 0 ? input.hardwareMaxDischargeW : null;
@@ -66,11 +75,9 @@ function effectiveGridBalanceMaxW(input) {
     const effectiveMaxW = hardwareMaxW != null ? Math.min(configuredMaxW, Math.round(hardwareMaxW)) : configuredMaxW;
     return { configuredMaxW, hardwareMaxW, effectiveMaxW: Math.max(0, effectiveMaxW) };
 }
-exports.effectiveGridBalanceMaxW = effectiveGridBalanceMaxW;
 function emptyGridBalanceLiveTest() {
     return { armed: false, consumed: false, armedAtMs: null, consumedAtMs: null, result: "" };
 }
-exports.emptyGridBalanceLiveTest = emptyGridBalanceLiveTest;
 function applyGridBalanceLiveTestPulse(prev, armedVal, armedAck, nowMs) {
     if (armedVal === true && armedAck === false) {
         if (prev.consumed) {
@@ -89,7 +96,6 @@ function applyGridBalanceLiveTestPulse(prev, armedVal, armedAck, nowMs) {
     }
     return prev;
 }
-exports.applyGridBalanceLiveTestPulse = applyGridBalanceLiveTestPulse;
 function consumeGridBalanceLiveTest(prev, nowMs) {
     if (!prev.armed || prev.consumed)
         return prev;
@@ -101,17 +107,14 @@ function consumeGridBalanceLiveTest(prev, nowMs) {
         result: "consumed",
     };
 }
-exports.consumeGridBalanceLiveTest = consumeGridBalanceLiveTest;
 /** Dauerbetrieb oder One-Shot-Session: regulärer Discharge-Setpoint und Mode-2-Keepalive. */
 function gridBalanceSetpointPermit(liveTest, ownsSetpoint = false) {
     return grid_balance_contract_1.GRID_BALANCE_EXECUTION_ENABLED || (liveTest.armed && !liveTest.consumed) || (ownsSetpoint && liveTest.consumed);
 }
-exports.gridBalanceSetpointPermit = gridBalanceSetpointPermit;
 /** @deprecated Use gridBalanceSetpointPermit — does not gate the 0-release. */
 function gridBalanceExecutionReleased(liveTest) {
     return gridBalanceSetpointPermit(liveTest);
 }
-exports.gridBalanceExecutionReleased = gridBalanceExecutionReleased;
 /** GB beendet sich selbst mit discharge=0, auch wenn Hold/Boost/Netzladung übernehmen. */
 function gridBalanceCleanupAllowed(input) {
     if (!input.ownsSetpoint)
@@ -124,7 +127,6 @@ function gridBalanceCleanupAllowed(input) {
     }
     return true;
 }
-exports.gridBalanceCleanupAllowed = gridBalanceCleanupAllowed;
 /**
  * Session-0-Release: unabhängig von One-Shot `consumed`.
  * Hold / Boost / geplante Netzladung: GB schreibt zuerst discharge=0, danach Mode-Wechsel.
@@ -136,7 +138,6 @@ function gridBalanceSessionReleasePermit(input) {
     const liveOk = (input.globalLive && input.addonLive) || input.leavingLiveWithOwnership === true;
     return liveOk && !input.faultActive && !input.lockoutActive && !input.restoreInProgress;
 }
-exports.gridBalanceSessionReleasePermit = gridBalanceSessionReleasePermit;
 function roundW(n) {
     return Math.max(0, Math.round(n));
 }
@@ -311,4 +312,3 @@ function evaluateGridBalanceTick(input) {
         evConflictKind: input.safety.evConflictKind,
     };
 }
-exports.evaluateGridBalanceTick = evaluateGridBalanceTick;

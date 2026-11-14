@@ -1,7 +1,8 @@
 "use strict";
 /** States, die EMS schreibt — Adapter liest (Schritt C). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureBatteryEmsMirrorStates = exports.EMS_MIRROR_BATTERY_IDS = exports.EMS_MIRROR_BATTERY = void 0;
+exports.EMS_MIRROR_BATTERY_IDS = exports.EMS_MIRROR_BATTERY = void 0;
+exports.ensureBatteryEmsMirrorStates = ensureBatteryEmsMirrorStates;
 exports.EMS_MIRROR_BATTERY = {
     gridBalanceEnabled: "ems_mirror.grid_balance_enabled",
     effectivePvRestOfDayKwh: "ems_mirror.effective_pv_rest_of_day_kwh",
@@ -121,4 +122,3 @@ async function ensureBatteryEmsMirrorStates(adapter) {
         }
     }
 }
-exports.ensureBatteryEmsMirrorStates = ensureBatteryEmsMirrorStates;

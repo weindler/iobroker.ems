@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergePolicySections = exports.mergePolicyValues = void 0;
+exports.mergePolicyValues = mergePolicyValues;
+exports.mergePolicySections = mergePolicySections;
 const constants_1 = require("./constants");
 const value_1 = require("./value");
 function pickSource(a, b) {
@@ -122,7 +123,6 @@ function mergePolicyValues(base, overlay, ctx) {
     }
     return overlay.value !== null && overlay.value !== undefined ? { ...overlay } : { ...base };
 }
-exports.mergePolicyValues = mergePolicyValues;
 function mergePolicySections(base, overlay, section, fieldKinds) {
     const keys = [...new Set([...Object.keys(base), ...Object.keys(overlay)])].sort();
     const out = {};
@@ -133,4 +133,3 @@ function mergePolicySections(base, overlay, section, fieldKinds) {
     }
     return out;
 }
-exports.mergePolicySections = mergePolicySections;

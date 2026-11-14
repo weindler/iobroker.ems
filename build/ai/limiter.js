@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.recordDailyCall = exports.readAndRolloverDailyCalls = exports.localMonthKey = exports.localDateKey = void 0;
+exports.localDateKey = localDateKey;
+exports.localMonthKey = localMonthKey;
+exports.readAndRolloverDailyCalls = readAndRolloverDailyCalls;
+exports.recordDailyCall = recordDailyCall;
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
 const ensure_states_1 = require("./ensure_states");
@@ -21,11 +24,9 @@ function localDateKey(now, timeZone = "Europe/Berlin") {
         return `${y}-${m}-${d}`;
     }
 }
-exports.localDateKey = localDateKey;
 function localMonthKey(now, timeZone = "Europe/Berlin") {
     return localDateKey(now, timeZone).slice(0, 7);
 }
-exports.localMonthKey = localMonthKey;
 /**
  * Tagesbezogene KI-Anzeige/Prefs nach Mitternacht leeren — damit VIS nicht gestrige
  * Denkspur/Begründung als „aktuell“ zeigt und Auto-Sperre den neuen Tag nicht blockiert.
@@ -88,7 +89,6 @@ async function readAndRolloverDailyCalls(host, maxCallsPerDay, now = new Date(),
         rolledOver,
     };
 }
-exports.readAndRolloverDailyCalls = readAndRolloverDailyCalls;
 /** Zählt einen tatsächlich durchgeführten KI-Call + addiert Kostenschätzung (Tag + Monat). */
 async function recordDailyCall(host, maxCallsPerDay, addCostEur, now = new Date(), monthlyCostLimitEur = 0, timeZone = "Europe/Berlin", category) {
     const state = await readAndRolloverDailyCalls(host, maxCallsPerDay, now, monthlyCostLimitEur, timeZone);
@@ -118,4 +118,3 @@ async function recordDailyCall(host, maxCallsPerDay, addCostEur, now = new Date(
         rolledOver: state.rolledOver,
     };
 }
-exports.recordDailyCall = recordDailyCall;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isAddonIntentActive = void 0;
+exports.isAddonIntentActive = isAddonIntentActive;
 const governance_1 = require("../../addons/governance");
 const tree_paths_1 = require("../../tree_paths");
 async function isAddonIntentActive(host, addonId) {
@@ -19,4 +19,3 @@ async function isAddonIntentActive(host, addonId) {
         return false;
     }
 }
-exports.isAddonIntentActive = isAddonIntentActive;

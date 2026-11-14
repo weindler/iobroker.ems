@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RESTORE_STATES = exports.handleRestoreStateChange = exports.isRestoreRelatedState = exports.handleRestoreApplyRequest = exports.handleRestoreValidateRequest = exports.initRestoreRuntime = void 0;
+exports.RESTORE_STATES = void 0;
+exports.initRestoreRuntime = initRestoreRuntime;
+exports.handleRestoreValidateRequest = handleRestoreValidateRequest;
+exports.handleRestoreApplyRequest = handleRestoreApplyRequest;
+exports.isRestoreRelatedState = isRestoreRelatedState;
+exports.handleRestoreStateChange = handleRestoreStateChange;
 const ensure_states_1 = require("../backup/ensure_states");
 Object.defineProperty(exports, "RESTORE_STATES", { enumerable: true, get: function () { return ensure_states_1.RESTORE_STATES; } });
 const plan_1 = require("./plan");
@@ -50,7 +55,6 @@ async function initRestoreRuntime(host) {
         restartRequired: (0, barrier_1.isRestoreRestartRequired)(),
     });
 }
-exports.initRestoreRuntime = initRestoreRuntime;
 async function handleRestoreValidateRequest(host, val, ack) {
     if (!isConsciousRequest(val, ack))
         return;
@@ -92,7 +96,6 @@ async function handleRestoreValidateRequest(host, val, ack) {
         await setRestoreStatus(host, { running: false });
     }
 }
-exports.handleRestoreValidateRequest = handleRestoreValidateRequest;
 async function handleRestoreApplyRequest(host, val, ack) {
     if (!isConsciousRequest(val, ack))
         return;
@@ -154,14 +157,12 @@ async function handleRestoreApplyRequest(host, val, ack) {
         await setRestoreStatus(host, { running: false });
     }
 }
-exports.handleRestoreApplyRequest = handleRestoreApplyRequest;
 function isRestoreRelatedState(relativeId) {
     return (relativeId === ensure_states_1.RESTORE_STATES.validateRequest ||
         relativeId === ensure_states_1.RESTORE_STATES.applyRequest ||
         relativeId === ensure_states_1.RESTORE_STATES.selectedFile ||
         relativeId.startsWith("backup.restore."));
 }
-exports.isRestoreRelatedState = isRestoreRelatedState;
 async function handleRestoreStateChange(host, relativeId, val, ack) {
     if (relativeId === ensure_states_1.RESTORE_STATES.validateRequest) {
         await handleRestoreValidateRequest(host, val, ack);
@@ -171,4 +172,3 @@ async function handleRestoreStateChange(host, relativeId, val, ack) {
         await handleRestoreApplyRequest(host, val, ack);
     }
 }
-exports.handleRestoreStateChange = handleRestoreStateChange;

@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.supportOnlySources = exports.restorableSources = exports.inventoryExportJson = exports.PERSISTENCE_INVENTORY = void 0;
+exports.PERSISTENCE_INVENTORY = void 0;
+exports.inventoryExportJson = inventoryExportJson;
+exports.restorableSources = restorableSources;
+exports.supportOnlySources = supportOnlySources;
 /** Explizite Klassifikation aller bekannten Persistenzquellen. */
 exports.PERSISTENCE_INVENTORY = [
     {
@@ -172,12 +175,9 @@ function inventoryExportJson() {
         sources: [...exports.PERSISTENCE_INVENTORY],
     };
 }
-exports.inventoryExportJson = inventoryExportJson;
 function restorableSources() {
     return exports.PERSISTENCE_INVENTORY.filter((s) => s.category === "restorable");
 }
-exports.restorableSources = restorableSources;
 function supportOnlySources() {
     return exports.PERSISTENCE_INVENTORY.filter((s) => s.category === "support_only");
 }
-exports.supportOnlySources = supportOnlySources;

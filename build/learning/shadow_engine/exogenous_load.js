@@ -16,7 +16,7 @@
  * wird die exogene Last auf 0 geklemmt statt negativ zu werden.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.splitExogenousLoad = void 0;
+exports.splitExogenousLoad = splitExogenousLoad;
 function round3(n) {
     return Math.round(n * 1000) / 1000;
 }
@@ -61,4 +61,3 @@ function splitExogenousLoad(day) {
     }
     return { exogenousKwh, controllableKwh, noEmsTotalLoadKwh };
 }
-exports.splitExogenousLoad = splitExogenousLoad;

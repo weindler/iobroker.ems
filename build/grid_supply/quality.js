@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.gridDataQuality = void 0;
+exports.gridDataQuality = gridDataQuality;
 function gridDataQuality(status, reasonDe, confidencePct = null) {
     return {
         status,
@@ -8,4 +8,3 @@ function gridDataQuality(status, reasonDe, confidencePct = null) {
         reasonDe,
     };
 }
-exports.gridDataQuality = gridDataQuality;

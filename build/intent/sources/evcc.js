@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readEvccIntentSnapshot = void 0;
+exports.readEvccIntentSnapshot = readEvccIntentSnapshot;
 const normalize_1 = require("../wallbox/normalize");
 const config_1 = require("../config");
 async function readForeign(host, objectId) {
@@ -117,4 +117,3 @@ async function readEvccIntentSnapshot(host, cfg, timezone, now) {
         };
     }
 }
-exports.readEvccIntentSnapshot = readEvccIntentSnapshot;

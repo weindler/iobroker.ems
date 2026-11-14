@@ -5,20 +5,21 @@
  * Kein pauschales NOW bei normalen PV-/EMS-Ladevorgängen.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateTibberNowPrepare = exports.clampTibberNowStabilizeSeconds = exports.emptyTibberNowPrepareState = exports.TIBBER_NOW_STABILIZE_MAX_S = exports.TIBBER_NOW_STABILIZE_MIN_S = exports.TIBBER_NOW_STABILIZE_DEFAULT_S = void 0;
+exports.TIBBER_NOW_STABILIZE_MAX_S = exports.TIBBER_NOW_STABILIZE_MIN_S = exports.TIBBER_NOW_STABILIZE_DEFAULT_S = void 0;
+exports.emptyTibberNowPrepareState = emptyTibberNowPrepareState;
+exports.clampTibberNowStabilizeSeconds = clampTibberNowStabilizeSeconds;
+exports.evaluateTibberNowPrepare = evaluateTibberNowPrepare;
 exports.TIBBER_NOW_STABILIZE_DEFAULT_S = 180;
 exports.TIBBER_NOW_STABILIZE_MIN_S = 30;
 exports.TIBBER_NOW_STABILIZE_MAX_S = 900;
 function emptyTibberNowPrepareState() {
     return { prevConnected: null, connectedSinceMs: null, prepareIssued: false, lastResult: "idle" };
 }
-exports.emptyTibberNowPrepareState = emptyTibberNowPrepareState;
 function clampTibberNowStabilizeSeconds(raw) {
     if (raw == null || !Number.isFinite(raw))
         return exports.TIBBER_NOW_STABILIZE_DEFAULT_S;
     return Math.max(exports.TIBBER_NOW_STABILIZE_MIN_S, Math.min(exports.TIBBER_NOW_STABILIZE_MAX_S, Math.round(raw)));
 }
-exports.clampTibberNowStabilizeSeconds = clampTibberNowStabilizeSeconds;
 function evaluateTibberNowPrepare(input) {
     if (!input.enabled) {
         return {
@@ -87,4 +88,3 @@ function evaluateTibberNowPrepare(input) {
      */
     return { next, action: "set_now", reason: "tibber_now_after_stabilize" };
 }
-exports.evaluateTibberNowPrepare = evaluateTibberNowPrepare;

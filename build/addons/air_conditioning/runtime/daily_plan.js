@@ -1,6 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.acUnitContributionIds = exports.evaluateAcCoolingPermission = exports.resolveAcUnitDailyPlanAllocation = exports.resolveAcUnitDailyPlanFromData = exports.mergeUnitSlotAllocation = exports.resolveUnitExpectedPower = exports.parseDailyAllocationEntries = exports.resetAcDailyPlanCache = void 0;
+exports.resetAcDailyPlanCache = resetAcDailyPlanCache;
+exports.parseDailyAllocationEntries = parseDailyAllocationEntries;
+exports.resolveUnitExpectedPower = resolveUnitExpectedPower;
+exports.mergeUnitSlotAllocation = mergeUnitSlotAllocation;
+exports.resolveAcUnitDailyPlanFromData = resolveAcUnitDailyPlanFromData;
+exports.resolveAcUnitDailyPlanAllocation = resolveAcUnitDailyPlanAllocation;
+exports.evaluateAcCoolingPermission = evaluateAcCoolingPermission;
+exports.acUnitContributionIds = acUnitContributionIds;
 const config_1 = require("../../../intent/config");
 const contribution_ids_1 = require("../../../operator/contribution_ids");
 const states_1 = require("../../../operator/daily_plan/states");
@@ -15,7 +22,6 @@ let planCache = null;
 function resetAcDailyPlanCache() {
     planCache = null;
 }
-exports.resetAcDailyPlanCache = resetAcDailyPlanCache;
 function isValidTimezone(timezone) {
     if (!timezone.trim())
         return false;
@@ -89,7 +95,6 @@ function parseDailyAllocationEntries(raw) {
     }
     return out;
 }
-exports.parseDailyAllocationEntries = parseDailyAllocationEntries;
 function parseFullDailyPlan(raw) {
     if (raw === null || raw === undefined)
         return null;
@@ -138,7 +143,6 @@ function resolveUnitExpectedPower(unit, consumerStats, nowMs) {
         valid: learned.powerW > 0,
     };
 }
-exports.resolveUnitExpectedPower = resolveUnitExpectedPower;
 function mergeUnitSlotAllocation(entries, contributionId, slotStartIso, slotEndIso) {
     const key = (0, slots_1.slotKey)(slotStartIso, slotEndIso);
     let count = 0;
@@ -186,7 +190,6 @@ function mergeUnitSlotAllocation(entries, contributionId, slotStartIso, slotEndI
         valid: true,
     };
 }
-exports.mergeUnitSlotAllocation = mergeUnitSlotAllocation;
 function resolveAcUnitDailyPlanFromData(input) {
     const { unitIndex, now, timezone, meta, entries, expectedPower } = input;
     const nowMs = now.getTime();
@@ -323,7 +326,6 @@ function resolveAcUnitDailyPlanFromData(input) {
         allocationAllowsStart,
     };
 }
-exports.resolveAcUnitDailyPlanFromData = resolveAcUnitDailyPlanFromData;
 async function loadSharedPlanData(host) {
     const adminCfg = (0, config_1.intentAdminConfigFromAdapter)(host.config);
     const timezone = adminCfg.timezone || "Europe/Berlin";
@@ -377,7 +379,6 @@ async function resolveAcUnitDailyPlanAllocation(host, unit, consumerStats, now) 
         expectedPower,
     });
 }
-exports.resolveAcUnitDailyPlanAllocation = resolveAcUnitDailyPlanAllocation;
 /**
  * Permission leitet sich ausschließlich aus computeAcCoolingDesired ab.
  * feedbackOn aus FSM-State (running ≈ Feedback ON) — Engine nutzt computeAcCoolingDesired direkt.
@@ -395,7 +396,6 @@ function evaluateAcCoolingPermission(input) {
     });
     return (0, compute_desired_1.controlToPermission)(decision);
 }
-exports.evaluateAcCoolingPermission = evaluateAcCoolingPermission;
 function acUnitContributionIds() {
     const out = [];
     for (let i = 1; i <= constants_1.AC_UNIT_COUNT; i++) {
@@ -403,4 +403,3 @@ function acUnitContributionIds() {
     }
     return out;
 }
-exports.acUnitContributionIds = acUnitContributionIds;

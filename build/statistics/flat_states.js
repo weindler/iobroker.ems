@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.publishMobilityFlat = exports.publishHomeFlat = exports.STATISTICS_FLAT = void 0;
+exports.STATISTICS_FLAT = void 0;
+exports.publishHomeFlat = publishHomeFlat;
+exports.publishMobilityFlat = publishMobilityFlat;
 /** Flache Objektbaum-States (Hybrid: JSON + Einzelwerte). */
 exports.STATISTICS_FLAT = {
     homeToday: {
@@ -73,7 +75,6 @@ async function publishHomeFlat(set, ids, sum, labelFallback) {
     await set(ids.fromKey, sum.fromKey ?? "");
     await set(ids.toKey, sum.toKey ?? "");
 }
-exports.publishHomeFlat = publishHomeFlat;
 async function publishMobilityFlat(set, ids, sum, labelFallback) {
     await set(ids.homePvKwh, n(sum.homePvKwh));
     await set(ids.homeGridKwh, n(sum.homeGridKwh));
@@ -90,4 +91,3 @@ async function publishMobilityFlat(set, ids, sum, labelFallback) {
     await set(ids.fromKey, sum.fromKey ?? "");
     await set(ids.toKey, sum.toKey ?? "");
 }
-exports.publishMobilityFlat = publishMobilityFlat;

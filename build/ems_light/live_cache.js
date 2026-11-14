@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deriveHealth = exports.formatLiveCacheSummary = exports.refreshLiveCache = exports.refreshLivePowerStrip = void 0;
+exports.refreshLivePowerStrip = refreshLivePowerStrip;
+exports.refreshLiveCache = refreshLiveCache;
+exports.formatLiveCacheSummary = formatLiveCacheSummary;
+exports.deriveHealth = deriveHealth;
 const state_util_1 = require("./state_util");
 const mapping_resolve_1 = require("../mapping_resolve");
 const BATTERY_SLOTS = [
@@ -134,7 +137,6 @@ async function refreshLivePowerStrip(host) {
     await mirrorPvPower(host, result, true);
     return result;
 }
-exports.refreshLivePowerStrip = refreshLivePowerStrip;
 async function refreshLiveCache(host) {
     const result = { updated: [], missing: [], errors: [] };
     for (const slot of [...BATTERY_SLOTS, ...IMMERSION_SLOTS, ...TARIFF_SLOTS]) {
@@ -143,7 +145,6 @@ async function refreshLiveCache(host) {
     await mirrorPvPower(host, result);
     return result;
 }
-exports.refreshLiveCache = refreshLiveCache;
 function formatLiveCacheSummary(result) {
     const parts = [];
     if (result.updated.length) {
@@ -160,7 +161,6 @@ function formatLiveCacheSummary(result) {
     }
     return parts.join(" ") || "Live-Cache: keine Änderungen.";
 }
-exports.formatLiveCacheSummary = formatLiveCacheSummary;
 function deriveHealth(result, hasExecutionMode) {
     if (result.errors.length > 0) {
         return "degraded";
@@ -176,4 +176,3 @@ function deriveHealth(result, hasExecutionMode) {
     }
     return "ok";
 }
-exports.deriveHealth = deriveHealth;

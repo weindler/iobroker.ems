@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureEmsLightStates = void 0;
+exports.ensureEmsLightStates = ensureEmsLightStates;
 const channels_1 = require("./channels");
 const state_util_1 = require("./state_util");
 const catalog_1 = require("../profiles/catalog");
@@ -102,4 +102,3 @@ async function ensureEmsLightStates(host, adapterVersion) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureEmsLightStates = ensureEmsLightStates;

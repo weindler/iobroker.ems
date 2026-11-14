@@ -3,7 +3,7 @@
  * Beta Notification Surface — Candidates sichtbar machen, kein Push-Provider.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildProductNotificationSurface = void 0;
+exports.buildProductNotificationSurface = buildProductNotificationSurface;
 function severityFor(kind) {
     switch (kind) {
         case "goal_missed":
@@ -43,4 +43,3 @@ function buildProductNotificationSurface(candidates, nowIso) {
         items,
     };
 }
-exports.buildProductNotificationSurface = buildProductNotificationSurface;

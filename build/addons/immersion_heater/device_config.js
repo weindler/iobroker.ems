@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.effectiveForceTarget = exports.stageByIndex = exports.activeStages = exports.immersionDeviceConfigFromAdapter = exports.SINGLE_STAGE_DEFAULT_NOMINAL_W = void 0;
+exports.SINGLE_STAGE_DEFAULT_NOMINAL_W = void 0;
+exports.immersionDeviceConfigFromAdapter = immersionDeviceConfigFromAdapter;
+exports.activeStages = activeStages;
+exports.stageByIndex = stageByIndex;
+exports.effectiveForceTarget = effectiveForceTarget;
 /** Typische Nennleistung Ein/Aus-Heizstab (1-phasig), wenn Admin-Wert fehlt. */
 exports.SINGLE_STAGE_DEFAULT_NOMINAL_W = 1700;
 function numField(c, key, fallback) {
@@ -96,17 +100,13 @@ function immersionDeviceConfigFromAdapter(config) {
         forecastNoDataOffsetC: numField(c, "ih_forecast_no_data_offset_c", 2),
     };
 }
-exports.immersionDeviceConfigFromAdapter = immersionDeviceConfigFromAdapter;
 function activeStages(config) {
     return config.stages.filter((s) => s.enabled && s.setStateId);
 }
-exports.activeStages = activeStages;
 function stageByIndex(config, index) {
     return config.stages.find((s) => s.index === index) ?? null;
 }
-exports.stageByIndex = stageByIndex;
 function effectiveForceTarget(config, override) {
     const t = override ?? config.planningMaxTempC;
     return Math.min(t, config.planningMaxTempC);
 }
-exports.effectiveForceTarget = effectiveForceTarget;

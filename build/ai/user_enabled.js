@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyAiUserEnabledToggle = exports.migrateAiUserEnabledOnce = exports.isAiPublishAllowed = exports.readAiUserEnabled = exports.resetAiEnableEpochForTest = exports.bumpAiEnableEpoch = exports.currentAiEnableEpoch = void 0;
+exports.currentAiEnableEpoch = currentAiEnableEpoch;
+exports.bumpAiEnableEpoch = bumpAiEnableEpoch;
+exports.resetAiEnableEpochForTest = resetAiEnableEpochForTest;
+exports.readAiUserEnabled = readAiUserEnabled;
+exports.isAiPublishAllowed = isAiPublishAllowed;
+exports.migrateAiUserEnabledOnce = migrateAiUserEnabledOnce;
+exports.applyAiUserEnabledToggle = applyAiUserEnabledToggle;
 const state_util_1 = require("../ems_light/state_util");
 const ensure_states_1 = require("./ensure_states");
 /** Enable-Epoch: jeder Toggle invalidiert laufende Requests (Publish-Guard). */
@@ -8,21 +14,17 @@ let aiEnableEpoch = 0;
 function currentAiEnableEpoch() {
     return aiEnableEpoch;
 }
-exports.currentAiEnableEpoch = currentAiEnableEpoch;
 function bumpAiEnableEpoch() {
     aiEnableEpoch += 1;
     return aiEnableEpoch;
 }
-exports.bumpAiEnableEpoch = bumpAiEnableEpoch;
 function resetAiEnableEpochForTest() {
     aiEnableEpoch = 0;
 }
-exports.resetAiEnableEpochForTest = resetAiEnableEpochForTest;
 async function readAiUserEnabled(host) {
     const st = await host.getStateAsync(ensure_states_1.AI_STATES.userEnabled);
     return st?.val === true;
 }
-exports.readAiUserEnabled = readAiUserEnabled;
 /**
  * Publish nur wenn Nutzer weiterhin EIN will und die Request-Epoch unverändert ist.
  * OFF → ON während alter Request: Epoch hat sich zweimal geändert → alter Request bleibt ungültig.
@@ -32,7 +34,6 @@ async function isAiPublishAllowed(host, requestEpoch) {
         return false;
     return readAiUserEnabled(host);
 }
-exports.isAiPublishAllowed = isAiPublishAllowed;
 /**
  * Einmalige Migration native.ai_enabled → ai.user_enabled.
  * Markierung ai.user_enabled_migrated_v1 verhindert erneutes Seed nach State-Löschung.
@@ -53,7 +54,6 @@ async function migrateAiUserEnabledOnce(host) {
     host.log?.info?.(`ai: migrated native.ai_enabled=${fromNative} → ai.user_enabled (once, migrated_v1)`);
     return { ran: true, userEnabled: fromNative };
 }
-exports.migrateAiUserEnabledOnce = migrateAiUserEnabledOnce;
 /** Runtime-Toggle: ack schreiben, Epoch bumpen, bei OFF Status sofort „off“. */
 async function applyAiUserEnabledToggle(host, enabled) {
     bumpAiEnableEpoch();
@@ -63,4 +63,3 @@ async function applyAiUserEnabledToggle(host, enabled) {
     }
     host.log?.info?.(`ai: user_enabled → ${enabled} (epoch=${currentAiEnableEpoch()}, no restart)`);
 }
-exports.applyAiUserEnabledToggle = applyAiUserEnabledToggle;

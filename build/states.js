@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.instanceState = exports.STATE = void 0;
+exports.STATE = void 0;
+exports.instanceState = instanceState;
 const tree_paths_1 = require("./tree_paths");
 /** State IDs under this adapter instance (ems.0 = default instance id 0). */
 exports.STATE = {
@@ -11,4 +12,3 @@ exports.STATE = {
 function instanceState(instanceId, relativeId) {
     return `ems.${instanceId}.${relativeId}`;
 }
-exports.instanceState = instanceState;

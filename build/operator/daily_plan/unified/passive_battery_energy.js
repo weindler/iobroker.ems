@@ -6,7 +6,8 @@
  * autonomen Self-Consumption-Betrieb passiv entladen kann.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolvePassiveBatteryEnergyForecastAvailable = exports.resolvePassiveBatteryEnergyAvailable = void 0;
+exports.resolvePassiveBatteryEnergyAvailable = resolvePassiveBatteryEnergyAvailable;
+exports.resolvePassiveBatteryEnergyForecastAvailable = resolvePassiveBatteryEnergyForecastAvailable;
 /**
  * Nur Self-Consumption ohne Ownership/Hold gilt als verlässlich passive Quelle.
  * Unbekannter oder Manual-/Sonst-Modus → konservativ gesperrt.
@@ -53,7 +54,6 @@ function resolvePassiveBatteryEnergyAvailable(input) {
         reasonCode: "passive_battery_mode_other",
     };
 }
-exports.resolvePassiveBatteryEnergyAvailable = resolvePassiveBatteryEnergyAvailable;
 /**
  * Reine Zukunftsannahme nach einem flüchtigen EMS-/EV-Hold. Die reale aktuelle
  * Verfügbarkeit bleibt davon unberührt. Nach eigener EMS-Ownership wird die von
@@ -76,4 +76,3 @@ function resolvePassiveBatteryEnergyForecastAvailable(input) {
         batteryHoldActive: input.userHoldActive === true,
     });
 }
-exports.resolvePassiveBatteryEnergyForecastAvailable = resolvePassiveBatteryEnergyForecastAvailable;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureWallboxEvFoundationStates = exports.WALLBOX_EV_FOUNDATION_BALLAST_SUFFIXES = exports.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS = exports.WALLBOX_EV_FOUNDATION_STATES = void 0;
+exports.WALLBOX_EV_FOUNDATION_BALLAST_SUFFIXES = exports.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS = exports.WALLBOX_EV_FOUNDATION_STATES = void 0;
+exports.ensureWallboxEvFoundationStates = ensureWallboxEvFoundationStates;
 const tree_paths_1 = require("../../../tree_paths");
 const state_util_1 = require("../../../ems_light/state_util");
 const EV_FOUNDATION_BASE = `${(0, tree_paths_1.addonStatusBase)("wallbox")}.ev_foundation`;
@@ -290,4 +291,3 @@ async function ensureWallboxEvFoundationStates(host) {
         strState(exports.WALLBOX_EV_FOUNDATION_STATES.evExecutionLiveTestBlockReason, "EV Phase-5B Live-Test Sperrgrund"),
     ].filter((d) => exports.WALLBOX_EV_FOUNDATION_PUBLIC_STATE_IDS.has(d.id)));
 }
-exports.ensureWallboxEvFoundationStates = ensureWallboxEvFoundationStates;

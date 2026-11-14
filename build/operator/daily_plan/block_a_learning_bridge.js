@@ -16,7 +16,7 @@
  * von Block-A-Typen entkoppeltes Format für die Planner-Domains.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadBlockALearningSnapshot = void 0;
+exports.loadBlockALearningSnapshot = loadBlockALearningSnapshot;
 const constants_1 = require("../../learning/daily_evaluator/constants");
 const persist_1 = require("../../learning/daily_evaluator/persist");
 function emptySnapshot() {
@@ -56,4 +56,3 @@ async function loadBlockALearningSnapshot(host) {
         return emptyBlockALearningSnapshot();
     }
 }
-exports.loadBlockALearningSnapshot = loadBlockALearningSnapshot;

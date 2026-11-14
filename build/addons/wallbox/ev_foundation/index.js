@@ -14,7 +14,8 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.refreshEvFoundation = exports.publishEvFoundationDiagnosis = exports.ensureWallboxEvFoundationStates = exports.WALLBOX_EV_FOUNDATION_STATES = void 0;
+exports.publishEvFoundationDiagnosis = exports.ensureWallboxEvFoundationStates = exports.WALLBOX_EV_FOUNDATION_STATES = void 0;
+exports.refreshEvFoundation = refreshEvFoundation;
 const grid_read_1 = require("../../../operator/supply/grid_read");
 const capabilities_1 = require("./capabilities");
 const config_1 = require("./config");
@@ -77,4 +78,3 @@ async function refreshEvFoundation(host, snap, telemetryCfg) {
     await (0, publish_1.publishEvFoundationDiagnosis)(host, diagnosed, capabilities, snap.observed_at, external, decision);
     return { model: diagnosed };
 }
-exports.refreshEvFoundation = refreshEvFoundation;

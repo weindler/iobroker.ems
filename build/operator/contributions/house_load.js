@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildHouseLoadContribution = exports.dailyKwhFromHouseLoadDayForecast = void 0;
+exports.dailyKwhFromHouseLoadDayForecast = dailyKwhFromHouseLoadDayForecast;
+exports.buildHouseLoadContribution = buildHouseLoadContribution;
 const constants_1 = require("../../learning/house_load/constants");
 const battery_winter_1 = require("../planning/battery_winter");
 const quality_1 = require("../quality");
@@ -11,7 +12,6 @@ const types_1 = require("./types");
 function dailyKwhFromHouseLoadDayForecast(json) {
     return (0, battery_winter_1.dailyKwhFromHouseLoadForecast)(json);
 }
-exports.dailyKwhFromHouseLoadDayForecast = dailyKwhFromHouseLoadDayForecast;
 function segmentSlotsFromForecast(forecast, timezone, confidence) {
     const slots = [];
     for (const segment of constants_1.SEGMENTS) {
@@ -148,4 +148,3 @@ function buildHouseLoadContribution(input) {
         slots,
     });
 }
-exports.buildHouseLoadContribution = buildHouseLoadContribution;

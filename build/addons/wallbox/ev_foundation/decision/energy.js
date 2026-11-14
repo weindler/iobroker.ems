@@ -3,18 +3,23 @@
  * Neutral energy / charge-power math. Never invents 0 for missing SOC, capacity, power, or efficiency.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.chargingMinutesForEnergy = exports.computeEnergyNeed = exports.resolveChargePower = exports.evccDerivedChargePowerKw = exports.energyForSocDeltaKwh = exports.roundMinutes = exports.roundKwh = exports.EV_AC_VOLTAGE_V = void 0;
+exports.EV_AC_VOLTAGE_V = void 0;
+exports.roundKwh = roundKwh;
+exports.roundMinutes = roundMinutes;
+exports.energyForSocDeltaKwh = energyForSocDeltaKwh;
+exports.evccDerivedChargePowerKw = evccDerivedChargePowerKw;
+exports.resolveChargePower = resolveChargePower;
+exports.computeEnergyNeed = computeEnergyNeed;
+exports.chargingMinutesForEnergy = chargingMinutesForEnergy;
 exports.EV_AC_VOLTAGE_V = 230;
 const KWH_DECIMALS = 3;
 const MIN_DECIMALS = 1;
 function roundKwh(n) {
     return Math.round(n * 10 ** KWH_DECIMALS) / 10 ** KWH_DECIMALS;
 }
-exports.roundKwh = roundKwh;
 function roundMinutes(n) {
     return Math.round(n * 10 ** MIN_DECIMALS) / 10 ** MIN_DECIMALS;
 }
-exports.roundMinutes = roundMinutes;
 function positive(n) {
     return n != null && Number.isFinite(n) && n > 0 ? n : null;
 }
@@ -39,7 +44,6 @@ function energyForSocDeltaKwh(input) {
     const batteryKWh = batteryCapacityKWh * (deltaPct / 100);
     return roundKwh(batteryKWh / chargingEfficiency);
 }
-exports.energyForSocDeltaKwh = energyForSocDeltaKwh;
 function evccDerivedChargePowerKw(input) {
     const currentAUsed = positive(input.effectiveMaxCurrentA) ??
         positive(input.maxCurrentA) ??
@@ -55,7 +59,6 @@ function evccDerivedChargePowerKw(input) {
         phasesUsed,
     };
 }
-exports.evccDerivedChargePowerKw = evccDerivedChargePowerKw;
 /**
  * 1) vehicle max AC  2) EVCC current×phases  3) configured max AC (same field if only config exists)
  * Never uses instantaneous chargePowerW (0 while paused is not available power).
@@ -109,7 +112,6 @@ function resolveChargePower(model) {
         currentAUsed: evcc.currentAUsed,
     };
 }
-exports.resolveChargePower = resolveChargePower;
 function computeEnergyNeed(model, chargePowerKw) {
     const energyToTargetKWh = energyForSocDeltaKwh({
         vehicleSocPct: model.vehicleSocPct,
@@ -133,11 +135,9 @@ function computeEnergyNeed(model, chargePowerKw) {
         efficiencyUsed: model.chargingEfficiency,
     };
 }
-exports.computeEnergyNeed = computeEnergyNeed;
 /** Minutes to deliver `energyKWh` at `chargePowerKw`. Unknown power/energy → null. */
 function chargingMinutesForEnergy(energyKWh, chargePowerKw) {
     if (energyKWh == null || chargePowerKw == null || chargePowerKw <= 0)
         return null;
     return roundMinutes((Math.max(0, energyKWh) / chargePowerKw) * 60);
 }
-exports.chargingMinutesForEnergy = chargingMinutesForEnergy;

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureMeasuredConsumersStates = exports.ensureMeasuredConsumerSlotStates = exports.ensureMeasuredConsumersAggregateStates = void 0;
+exports.ensureMeasuredConsumersAggregateStates = ensureMeasuredConsumersAggregateStates;
+exports.ensureMeasuredConsumerSlotStates = ensureMeasuredConsumerSlotStates;
+exports.ensureMeasuredConsumersStates = ensureMeasuredConsumersStates;
 const state_util_1 = require("../../../ems_light/state_util");
 const state_ids_1 = require("./state_ids");
 function strState(id, name, def = "") {
@@ -32,7 +34,6 @@ async function ensureMeasuredConsumersAggregateStates(host) {
         strState(s.reasonDe, "Diagnose (gesamt)", ""),
     ]);
 }
-exports.ensureMeasuredConsumersAggregateStates = ensureMeasuredConsumersAggregateStates;
 /** Pro-Slot-States nur für tatsächlich konfigurierte Zeilen (Admin-Tabelle) — kein 20-facher Leerlauf. */
 async function ensureMeasuredConsumerSlotStates(host, slot) {
     const ids = (0, state_ids_1.measuredConsumerSlotStateIds)(slot.index);
@@ -51,7 +52,6 @@ async function ensureMeasuredConsumerSlotStates(host, slot) {
         strState(ids.reasonDe, "Diagnose (DE)", ""),
     ]);
 }
-exports.ensureMeasuredConsumerSlotStates = ensureMeasuredConsumerSlotStates;
 /**
  * Aggregat-Channel/States nur anlegen, wenn mindestens eine Zeile konfiguriert ist —
  * hält die States-Oberfläche bei leerer Admin-Config minimal (kein Leerlauf-Overhead).
@@ -64,4 +64,3 @@ async function ensureMeasuredConsumersStates(host, slots) {
         await ensureMeasuredConsumerSlotStates(host, slot);
     }
 }
-exports.ensureMeasuredConsumersStates = ensureMeasuredConsumersStates;

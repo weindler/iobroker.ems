@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildOperatorBriefingDe = exports.climateLearningBriefingDe = void 0;
+exports.climateLearningBriefingDe = climateLearningBriefingDe;
+exports.buildOperatorBriefingDe = buildOperatorBriefingDe;
 const slots_1 = require("./slots");
 const degraded_reason_1 = require("./degraded_reason");
 /**
@@ -60,7 +61,6 @@ function climateLearningBriefingDe(contributions) {
         return null;
     return `Klima laut Learning: ${parts.join("; ")}.`;
 }
-exports.climateLearningBriefingDe = climateLearningBriefingDe;
 /** Baut die Operator-Briefing-Zeile aus dem Daily Plan des aktuellen Slots. */
 function buildOperatorBriefingDe(plan, now, timezone, extras) {
     if (!plan) {
@@ -100,4 +100,3 @@ function buildOperatorBriefingDe(plan, now, timezone, extras) {
     }
     return lines.join(" ").slice(0, DAILY_PLAN_BRIEFING_MAX_LEN);
 }
-exports.buildOperatorBriefingDe = buildOperatorBriefingDe;

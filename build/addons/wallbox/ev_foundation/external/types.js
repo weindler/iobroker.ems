@@ -4,7 +4,8 @@
  * Source adapters map HA/Tibber/other payloads here — Unified Planner never sees vendor state IDs.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emptySmartPlanEval = exports.SMART_PLAN_SLOT_QUALITIES = exports.EXTERNAL_SOURCE_QUALITIES = void 0;
+exports.SMART_PLAN_SLOT_QUALITIES = exports.EXTERNAL_SOURCE_QUALITIES = void 0;
+exports.emptySmartPlanEval = emptySmartPlanEval;
 exports.EXTERNAL_SOURCE_QUALITIES = [
     "unconfigured",
     "unknown",
@@ -34,4 +35,3 @@ function emptySmartPlanEval() {
         parseError: null,
     };
 }
-exports.emptySmartPlanEval = emptySmartPlanEval;

@@ -4,7 +4,9 @@
  * Dann gilt climate.state (feedback_mode) als On/Off-Wahrheit.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveAcFeedbackModeTarget = exports.resolveAcDevicePowered = exports.deriveHassClimateStateId = void 0;
+exports.deriveHassClimateStateId = deriveHassClimateStateId;
+exports.resolveAcDevicePowered = resolveAcDevicePowered;
+exports.resolveAcFeedbackModeTarget = resolveAcFeedbackModeTarget;
 const registry_1 = require("../profiles/registry");
 const sequences_1 = require("./sequences");
 const time_1 = require("./time");
@@ -15,7 +17,6 @@ function deriveHassClimateStateId(feedbackSwitchId) {
     }
     return "";
 }
-exports.deriveHassClimateStateId = deriveHassClimateStateId;
 function resolveAcDevicePowered(input) {
     if ((0, time_1.switchIsOn)(input.switchRaw)) {
         return { on: true, effectiveRaw: input.switchRaw, via: "switch" };
@@ -31,7 +32,6 @@ function resolveAcDevicePowered(input) {
     }
     return { on: false, effectiveRaw: input.switchRaw, via: "none" };
 }
-exports.resolveAcDevicePowered = resolveAcDevicePowered;
 function resolveAcFeedbackModeTarget(table, unit, feedbackSwitchId) {
     if (!(0, registry_1.isLocalthingsHassProfile)(unit.profileId)) {
         return "";
@@ -41,4 +41,3 @@ function resolveAcFeedbackModeTarget(table, unit, feedbackSwitchId) {
         return mapped;
     return deriveHassClimateStateId(feedbackSwitchId);
 }
-exports.resolveAcFeedbackModeTarget = resolveAcFeedbackModeTarget;

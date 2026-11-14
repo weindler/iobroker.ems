@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isCapabilityAvailable = exports.emptyCapabilityMatrix = exports.capability = exports.ALL_BATTERY_CAPABILITIES = void 0;
+exports.ALL_BATTERY_CAPABILITIES = void 0;
+exports.capability = capability;
+exports.emptyCapabilityMatrix = emptyCapabilityMatrix;
+exports.isCapabilityAvailable = isCapabilityAvailable;
 exports.ALL_BATTERY_CAPABILITIES = [
     "read_soc",
     "read_power",
@@ -26,7 +29,6 @@ function capability(supported, configured, reason) {
     }
     return status;
 }
-exports.capability = capability;
 function emptyCapabilityMatrix() {
     const matrix = {};
     for (const id of exports.ALL_BATTERY_CAPABILITIES) {
@@ -34,8 +36,6 @@ function emptyCapabilityMatrix() {
     }
     return matrix;
 }
-exports.emptyCapabilityMatrix = emptyCapabilityMatrix;
 function isCapabilityAvailable(matrix, id) {
     return matrix[id]?.available === true;
 }
-exports.isCapabilityAvailable = isCapabilityAvailable;

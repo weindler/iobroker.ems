@@ -1,6 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleWallboxStateChange = exports.handleWallboxForeignStateChange = exports.stopWallboxModule = exports.initWallboxModule = exports.startWallboxModuleRuntime = exports.ensureWallboxStateTree = exports.ensureWallboxDynamicVehicleProfiles = exports.ensureWallboxStaticStateTree = exports.refreshWallboxEvccTelemetry = void 0;
+exports.refreshWallboxEvccTelemetry = refreshWallboxEvccTelemetry;
+exports.ensureWallboxStaticStateTree = ensureWallboxStaticStateTree;
+exports.ensureWallboxDynamicVehicleProfiles = ensureWallboxDynamicVehicleProfiles;
+exports.ensureWallboxStateTree = ensureWallboxStateTree;
+exports.startWallboxModuleRuntime = startWallboxModuleRuntime;
+exports.initWallboxModule = initWallboxModule;
+exports.stopWallboxModule = stopWallboxModule;
+exports.handleWallboxForeignStateChange = handleWallboxForeignStateChange;
+exports.handleWallboxStateChange = handleWallboxStateChange;
 const evcc_config_1 = require("./evcc_config");
 const ensure_evcc_states_1 = require("./ensure_evcc_states");
 const evcc_telemetry_1 = require("./evcc_telemetry");
@@ -360,7 +368,6 @@ async function refreshWallboxEvccTelemetry(host) {
         governanceEnabled: runtime.governanceEnabled,
     });
 }
-exports.refreshWallboxEvccTelemetry = refreshWallboxEvccTelemetry;
 function scheduleRefresh(host) {
     if (debounceTimer)
         clearTimeout(debounceTimer);
@@ -374,7 +381,6 @@ async function ensureWallboxStaticStateTree(host) {
     await (0, ev_foundation_1.ensureWallboxEvFoundationStates)(host);
     await (0, runtime_1.ensureWallboxRuntimeStates)(host);
 }
-exports.ensureWallboxStaticStateTree = ensureWallboxStaticStateTree;
 /**
  * Phase C (v0.1.227+) — no-op: fat `addons.wallbox.vehicles.*` trees are no longer created.
  * Orphan folders are purged by surface cleanup. Optional capacity/maxW live in `wb_vehicle_map`.
@@ -382,12 +388,10 @@ exports.ensureWallboxStaticStateTree = ensureWallboxStaticStateTree;
 async function ensureWallboxDynamicVehicleProfiles(_host) {
     void _host;
 }
-exports.ensureWallboxDynamicVehicleProfiles = ensureWallboxDynamicVehicleProfiles;
 async function ensureWallboxStateTree(host) {
     await ensureWallboxStaticStateTree(host);
     await ensureWallboxDynamicVehicleProfiles(host);
 }
-exports.ensureWallboxStateTree = ensureWallboxStateTree;
 async function startWallboxModuleRuntime(host) {
     if (activeHost === host)
         return;
@@ -446,12 +450,10 @@ async function startWallboxModuleRuntime(host) {
     }, SAFETY_TICK_MS);
     host.log.debug("Wallbox EVCC telemetry module initialized (EVCC-Live-Foundation aktiv)");
 }
-exports.startWallboxModuleRuntime = startWallboxModuleRuntime;
 async function initWallboxModule(host) {
     await ensureWallboxStateTree(host);
     await startWallboxModuleRuntime(host);
 }
-exports.initWallboxModule = initWallboxModule;
 function stopWallboxModule() {
     if (debounceTimer) {
         clearTimeout(debounceTimer);
@@ -487,7 +489,6 @@ function stopWallboxModule() {
     pendingWallboxFeedback = null;
     (0, ev_foundation_1.resetEvExecutionSession)();
 }
-exports.stopWallboxModule = stopWallboxModule;
 const DAILY_PLAN_TRIGGER_IDS = new Set([
     states_1.DAILY_PLAN_STATE_IDS.revision,
     states_1.DAILY_PLAN_STATE_IDS.status,
@@ -508,7 +509,6 @@ function handleWallboxForeignStateChange(namespace, id) {
     }
     void namespace;
 }
-exports.handleWallboxForeignStateChange = handleWallboxForeignStateChange;
 function handleWallboxStateChange(namespace, id) {
     if (!activeHost)
         return;
@@ -532,4 +532,3 @@ function handleWallboxStateChange(namespace, id) {
         scheduleRefresh(activeHost);
     }
 }
-exports.handleWallboxStateChange = handleWallboxStateChange;

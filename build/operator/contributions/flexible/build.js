@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildFlexibleContributions = void 0;
+exports.buildFlexibleContributions = buildFlexibleContributions;
 const battery_1 = require("./battery");
 const wallbox_1 = require("./wallbox");
 const immersion_heater_1 = require("./immersion_heater");
@@ -48,4 +48,3 @@ function buildFlexibleContributions(params) {
     }
     return out;
 }
-exports.buildFlexibleContributions = buildFlexibleContributions;

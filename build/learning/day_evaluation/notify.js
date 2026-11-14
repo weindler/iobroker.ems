@@ -4,7 +4,8 @@
  * Nur materiell relevante Kandidaten; Dedup-Key gegen Event-Spam.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergeNotificationCandidates = exports.buildNotificationCandidates = void 0;
+exports.buildNotificationCandidates = buildNotificationCandidates;
+exports.mergeNotificationCandidates = mergeNotificationCandidates;
 const MATERIAL_PV_COLLAPSE_KWH = 4;
 const MATERIAL_GRID_CHARGE_KWH = 1;
 const MATERIAL_SAVINGS_CT = 20;
@@ -162,7 +163,6 @@ function buildNotificationCandidates(input) {
     void MATERIAL_SAVINGS_CT;
     return [...byKey.values()];
 }
-exports.buildNotificationCandidates = buildNotificationCandidates;
 function sumKind(plan, kind) {
     return Math.round(plan.allocations.filter((a) => a.kind === kind).reduce((s, a) => s + a.allocatedEnergyKwh, 0) *
         1000) / 1000;
@@ -178,4 +178,3 @@ function mergeNotificationCandidates(existing, incoming) {
     }
     return [...map.values()];
 }
-exports.mergeNotificationCandidates = mergeNotificationCandidates;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyStatisticsAdjust = exports.parseStatisticsAdjustSubmit = void 0;
+exports.parseStatisticsAdjustSubmit = parseStatisticsAdjustSubmit;
+exports.applyStatisticsAdjust = applyStatisticsAdjust;
 const state_util_1 = require("../ems_light/state_util");
 const archive_1 = require("./archive");
 const persist_1 = require("./persist");
@@ -55,7 +56,6 @@ function parseStatisticsAdjustSubmit(raw) {
         return null;
     }
 }
-exports.parseStatisticsAdjustSubmit = parseStatisticsAdjustSubmit;
 function monthPrefix(dateKey) {
     return dateKey.slice(0, 7);
 }
@@ -219,4 +219,3 @@ function applyStatisticsAdjust(persist, submit, now) {
             `Statistik ${dateKey}: ${parts.join(" + ")} gesetzt — ab nächstem Tick weitergezählt.`,
     };
 }
-exports.applyStatisticsAdjust = applyStatisticsAdjust;

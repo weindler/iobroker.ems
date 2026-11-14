@@ -1,7 +1,8 @@
 "use strict";
 /** Dynamischer Tarif: read-only Mess-Mapping (z. B. Tibber). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dynamicTariffMappingFromConfig = exports.DYNAMIC_TARIFF_FLAT_PREFIX = exports.DYNAMIC_TARIFF_MAPPING_ROLES = void 0;
+exports.DYNAMIC_TARIFF_FLAT_PREFIX = exports.DYNAMIC_TARIFF_MAPPING_ROLES = void 0;
+exports.dynamicTariffMappingFromConfig = dynamicTariffMappingFromConfig;
 exports.DYNAMIC_TARIFF_MAPPING_ROLES = ["price_now_ct_per_kwh"];
 exports.DYNAMIC_TARIFF_FLAT_PREFIX = {
     price_now_ct_per_kwh: "dt_price_now",
@@ -25,4 +26,3 @@ function dynamicTariffMappingFromConfig(config) {
     }
     return out;
 }
-exports.dynamicTariffMappingFromConfig = dynamicTariffMappingFromConfig;

@@ -4,7 +4,9 @@
  * Unified already decided; this layer only executes when allowed.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearPending = exports.emptyEvExecutionSession = exports.EV_MAX_RETRIES = exports.EV_RETRY_MIN_INTERVAL_MS = exports.EV_FEEDBACK_TIMEOUT_MS = exports.EV_FEEDBACK_SETTLE_MS = exports.EV_FEEDBACK_CLOCK_SKEW_MS = exports.EV_MODE_STALE_AFTER_MS = exports.EV_SOURCE_STALE_AFTER_MS = exports.EV_AUTHORITY_CONFIRM_MS = exports.EV_AUTHORITY_HOLD_MS = exports.EV_EXECUTION_OWNERSHIPS = exports.EV_EXECUTION_PHASES = exports.EV_EXECUTION_AUTHORITIES = void 0;
+exports.EV_MAX_RETRIES = exports.EV_RETRY_MIN_INTERVAL_MS = exports.EV_FEEDBACK_TIMEOUT_MS = exports.EV_FEEDBACK_SETTLE_MS = exports.EV_FEEDBACK_CLOCK_SKEW_MS = exports.EV_MODE_STALE_AFTER_MS = exports.EV_SOURCE_STALE_AFTER_MS = exports.EV_AUTHORITY_CONFIRM_MS = exports.EV_AUTHORITY_HOLD_MS = exports.EV_EXECUTION_OWNERSHIPS = exports.EV_EXECUTION_PHASES = exports.EV_EXECUTION_AUTHORITIES = void 0;
+exports.emptyEvExecutionSession = emptyEvExecutionSession;
+exports.clearPending = clearPending;
 exports.EV_EXECUTION_AUTHORITIES = ["external", "ems", "none"];
 exports.EV_EXECUTION_PHASES = [
     "idle",
@@ -62,7 +64,6 @@ function emptyEvExecutionSession() {
         explain: "",
     };
 }
-exports.emptyEvExecutionSession = emptyEvExecutionSession;
 function clearPending(session) {
     return {
         ...session,
@@ -70,4 +71,3 @@ function clearPending(session) {
         pendingSinceMs: null,
     };
 }
-exports.clearPending = clearPending;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.aiConfigFromAdapter = exports.AI_THINKING_TIMEOUT_MS = exports.AI_DEFAULT_TIMEOUT_MS = exports.AI_SOFT_WARNING_FRACTION = exports.AI_DEFAULT_MONTHLY_COST_LIMIT_EUR = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = void 0;
+exports.AI_THINKING_TIMEOUT_MS = exports.AI_DEFAULT_TIMEOUT_MS = exports.AI_SOFT_WARNING_FRACTION = exports.AI_DEFAULT_MONTHLY_COST_LIMIT_EUR = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = void 0;
+exports.aiConfigFromAdapter = aiConfigFromAdapter;
 const state_util_1 = require("../ems_light/state_util");
 /** Whitelist statt Freitext — verhindert Tippfehler/nicht existente Modelle im Admin. */
 exports.AI_ALLOWED_MODELS = ["gpt-4.1-mini", "gpt-4o-mini", "gpt-4.1", "gpt-5-mini"];
@@ -46,4 +47,3 @@ function aiConfigFromAdapter(config) {
         thinkingMode,
     };
 }
-exports.aiConfigFromAdapter = aiConfigFromAdapter;

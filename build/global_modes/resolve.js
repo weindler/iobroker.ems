@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveGlobalModes = exports.decideRequestedWrite = exports.validateRequestedMode = void 0;
+exports.validateRequestedMode = validateRequestedMode;
+exports.decideRequestedWrite = decideRequestedWrite;
+exports.resolveGlobalModes = resolveGlobalModes;
 const node_crypto_1 = require("node:crypto");
 const normalize_1 = require("../policy/core/normalize");
 const hash_1 = require("../policy/core/hash");
@@ -28,7 +30,6 @@ function validateRequestedMode(raw) {
         },
     };
 }
-exports.validateRequestedMode = validateRequestedMode;
 /**
  * Entscheidet, ob global_modes.requested überschrieben werden soll.
  * - Erstinitialisierung (kein Laufzeitwert): Admin-Default übernehmen.
@@ -50,7 +51,6 @@ function decideRequestedWrite(input) {
     }
     return { writeRequested: null, reason: "keep" };
 }
-exports.decideRequestedWrite = decideRequestedWrite;
 function resolveGlobalModes(input) {
     const issues = [];
     const validated = validateRequestedMode(input.requestedRaw);
@@ -100,4 +100,3 @@ function resolveGlobalModes(input) {
         revision: hash.slice(0, 16),
     };
 }
-exports.resolveGlobalModes = resolveGlobalModes;

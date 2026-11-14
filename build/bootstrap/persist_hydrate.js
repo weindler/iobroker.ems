@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.hydratePersistedState = void 0;
+exports.hydratePersistedState = hydratePersistedState;
 const engine_1 = require("../addons/air_conditioning/runtime/engine");
 const engine_2 = require("../addons/immersion_heater/runtime/engine");
 const engine_3 = require("../intent/engine");
@@ -57,4 +57,3 @@ async function hydratePersistedState(host) {
     await (0, engine_2.hydrateImmersionRuntimePersist)(immersionHydrateHost(host));
     await (0, engine_1.hydrateAcRuntimePersist)(acHydrateHost(host));
 }
-exports.hydratePersistedState = hydratePersistedState;

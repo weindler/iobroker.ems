@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__resetBatteryFailsafeForTest = exports.runBatteryFailsafeCheck = void 0;
+exports.runBatteryFailsafeCheck = runBatteryFailsafeCheck;
+exports.__resetBatteryFailsafeForTest = __resetBatteryFailsafeForTest;
 const config_1 = require("./config");
 const mapping_1 = require("./mapping");
 const registry_1 = require("./profiles/registry");
@@ -105,9 +106,7 @@ async function runBatteryFailsafeCheck(adapter) {
         (0, setpoint_session_1.markFailsafeSetpointTakeover)(ts);
     }
 }
-exports.runBatteryFailsafeCheck = runBatteryFailsafeCheck;
 /** Nur für Tests: Kanten-Erkennung (Log-Debounce) zurücksetzen. */
 function __resetBatteryFailsafeForTest() {
     lastEmsReachable = null;
 }
-exports.__resetBatteryFailsafeForTest = __resetBatteryFailsafeForTest;

@@ -7,12 +7,12 @@
  * External → EMS: only after the last hold signal aged out (no flicker takeover).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stabilizeExecutionAuthority = exports.rawExternalHolds = void 0;
+exports.rawExternalHolds = rawExternalHolds;
+exports.stabilizeExecutionAuthority = stabilizeExecutionAuthority;
 const types_1 = require("./types");
 function rawExternalHolds(raw) {
     return raw === "active" || raw === "planned" || raw === "active_without_plan";
 }
-exports.rawExternalHolds = rawExternalHolds;
 function stabilizeExecutionAuthority(input) {
     if (!input.externalExpected) {
         return {
@@ -81,4 +81,3 @@ function stabilizeExecutionAuthority(input) {
         failsafeReason: "",
     };
 }
-exports.stabilizeExecutionAuthority = stabilizeExecutionAuthority;

@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryConsumerIdFromAddon = exports.batteryConsumerRule = exports.batteryConsumersConfigFromAdapter = exports.DEFAULT_MIN_SOC = void 0;
+exports.DEFAULT_MIN_SOC = void 0;
+exports.batteryConsumersConfigFromAdapter = batteryConsumersConfigFromAdapter;
+exports.batteryConsumerRule = batteryConsumerRule;
+exports.batteryConsumerIdFromAddon = batteryConsumerIdFromAddon;
 function boolField(c, key, def) {
     const v = c[key];
     if (v === true || v === false)
@@ -42,11 +45,9 @@ function batteryConsumersConfigFromAdapter(config) {
         maxDischargePowerW: null,
     };
 }
-exports.batteryConsumersConfigFromAdapter = batteryConsumersConfigFromAdapter;
 function batteryConsumerRule(cfg, id) {
     return cfg[id];
 }
-exports.batteryConsumerRule = batteryConsumerRule;
 /** Map contribution addon id → battery consumer id (or null). */
 function batteryConsumerIdFromAddon(addonId) {
     if (addonId === "immersion_heater")
@@ -57,4 +58,3 @@ function batteryConsumerIdFromAddon(addonId) {
         return "wallbox";
     return null;
 }
-exports.batteryConsumerIdFromAddon = batteryConsumerIdFromAddon;

@@ -4,20 +4,21 @@
  * Puffer-Max bleibt absolute physische Grenze (kein Endlos-Heizen).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateHygieneDuty = exports.recordBoilerHygieneIfMet = exports.emptyHygienePersist = exports.DEFAULT_HYGIENE_INTERVAL_MS = exports.DEFAULT_HYGIENE_TARGET_C = void 0;
+exports.DEFAULT_HYGIENE_INTERVAL_MS = exports.DEFAULT_HYGIENE_TARGET_C = void 0;
+exports.emptyHygienePersist = emptyHygienePersist;
+exports.recordBoilerHygieneIfMet = recordBoilerHygieneIfMet;
+exports.evaluateHygieneDuty = evaluateHygieneDuty;
 exports.DEFAULT_HYGIENE_TARGET_C = 60;
 exports.DEFAULT_HYGIENE_INTERVAL_MS = 7 * 24 * 3600_000;
 function emptyHygienePersist() {
     return { lastBoilerHygieneAtIso: null };
 }
-exports.emptyHygienePersist = emptyHygienePersist;
 function recordBoilerHygieneIfMet(input) {
     if (input.boilerTempC != null && input.boilerTempC >= input.hygieneTargetTempC) {
         return { lastBoilerHygieneAtIso: input.nowIso };
     }
     return input.persist;
 }
-exports.recordBoilerHygieneIfMet = recordBoilerHygieneIfMet;
 function evaluateHygieneDuty(input) {
     const interval = input.intervalMs ?? exports.DEFAULT_HYGIENE_INTERVAL_MS;
     const lastMs = input.lastBoilerHygieneAtIso ? Date.parse(input.lastBoilerHygieneAtIso) : Number.NaN;
@@ -71,4 +72,3 @@ function evaluateHygieneDuty(input) {
         deadlineMs,
     };
 }
-exports.evaluateHygieneDuty = evaluateHygieneDuty;

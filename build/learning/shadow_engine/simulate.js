@@ -13,7 +13,10 @@
  * die Batterie wird abweichend simuliert (naive Eigenverbrauchslogik, siehe battery_model.ts).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.simulateEmsWithoutAi = exports.simulateReferenceSonnenNative = exports.simulateReferenceNoEms = exports.computeRealDayResult = void 0;
+exports.computeRealDayResult = computeRealDayResult;
+exports.simulateReferenceNoEms = simulateReferenceNoEms;
+exports.simulateReferenceSonnenNative = simulateReferenceSonnenNative;
+exports.simulateEmsWithoutAi = simulateEmsWithoutAi;
 const battery_model_1 = require("./battery_model");
 const constants_1 = require("./constants");
 const exogenous_load_1 = require("./exogenous_load");
@@ -113,7 +116,6 @@ function computeRealDayResult(day, feedInCtPerKwh) {
         missingSlotCount: missing,
     };
 }
-exports.computeRealDayResult = computeRealDayResult;
 const NO_EMS_ASSUMPTIONS_DE = [
     "IDEAL-BENCHMARK: perfekte 0-W-Eigenverbrauchsbatterie — NICHT die reale Sonnen ohne EMS.",
     "Exogene Grundlast = reale Hauslast minus steuerbare EMS-Verbraucher (Klima Shared-Power, Heizstab, EV) — keine Doppelzählung.",
@@ -201,7 +203,6 @@ function simulateReferenceNoEms(day, params, feedInCtPerKwh) {
         netCostEur: haveImportCost ? round2(importCostEur - (haveExportCredit ? exportCreditEur : 0)) : null,
     };
 }
-exports.simulateReferenceNoEms = simulateReferenceNoEms;
 function simulateReferenceSonnenNative(real, day, learning, feedInCtPerKwh) {
     if (!learning.usable || learning.alpha == null || learning.beta == null) {
         return (0, types_1.notEvaluableStrategyResult)("reference_sonnen_native", [
@@ -272,7 +273,6 @@ function simulateReferenceSonnenNative(real, day, learning, feedInCtPerKwh) {
         netCostEur: round2(importCostEur - (exportCreditEur ?? 0)),
     };
 }
-exports.simulateReferenceSonnenNative = simulateReferenceSonnenNative;
 const WITHOUT_AI_ASSUMPTIONS_DE = [
     "KI mutiert im Live-Betrieb keine Allokationen (AI_ALLOCATION_LIVE_MUTATION_ENABLED=false, siehe src/ai/writeback/authority.ts) — der real gemessene Tag entspricht daher exakt dem KI-freien EMS-Betrieb.",
 ];
@@ -309,4 +309,3 @@ function simulateEmsWithoutAi(real, aiOverrideActiveForDay) {
         netCostEur: real.netCostEur,
     };
 }
-exports.simulateEmsWithoutAi = simulateEmsWithoutAi;

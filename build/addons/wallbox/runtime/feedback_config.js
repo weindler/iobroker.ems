@@ -1,7 +1,9 @@
 "use strict";
 /** Wallbox-Feedback-Timing — analog Batterie-Defaults (wait 5 s / timeout 30 s). */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateWallboxFeedbackTiming = exports.wallboxFeedbackConfigFromAdapter = exports.WB_FEEDBACK_MAX_CURRENT_TOLERANCE_A = exports.WB_FEEDBACK_TIMEOUT_MS_DEFAULT = exports.WB_FEEDBACK_SETTLE_MS_DEFAULT = void 0;
+exports.WB_FEEDBACK_MAX_CURRENT_TOLERANCE_A = exports.WB_FEEDBACK_TIMEOUT_MS_DEFAULT = exports.WB_FEEDBACK_SETTLE_MS_DEFAULT = void 0;
+exports.wallboxFeedbackConfigFromAdapter = wallboxFeedbackConfigFromAdapter;
+exports.validateWallboxFeedbackTiming = validateWallboxFeedbackTiming;
 exports.WB_FEEDBACK_SETTLE_MS_DEFAULT = 5_000;
 exports.WB_FEEDBACK_TIMEOUT_MS_DEFAULT = 30_000;
 /** Exakter numerischer Vergleich — keine willkürliche Ampere-Toleranz. */
@@ -41,7 +43,6 @@ function wallboxFeedbackConfigFromAdapter(config) {
         maxCurrentToleranceA: exports.WB_FEEDBACK_MAX_CURRENT_TOLERANCE_A,
     };
 }
-exports.wallboxFeedbackConfigFromAdapter = wallboxFeedbackConfigFromAdapter;
 function validateWallboxFeedbackTiming(config) {
     if (config.settleTimeMs < 0) {
         return { valid: false, reason: "invalid_feedback_timing" };
@@ -51,4 +52,3 @@ function validateWallboxFeedbackTiming(config) {
     }
     return { valid: true, reason: null };
 }
-exports.validateWallboxFeedbackTiming = validateWallboxFeedbackTiming;

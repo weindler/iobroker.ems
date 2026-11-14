@@ -4,7 +4,11 @@
  * Planner liest weiterhin nur den State (unverändert). Keine Faktor-100-Umwandlung.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncEconomicsFeedInFromConfig = exports.migrateAndSyncEconomicsFeedInFromConfig = exports.readNativeFeedInCtPerKwh = exports.normalizeFeedInCtPerKwhConfig = exports.FEED_IN_MIGRATED_V1_STATE = exports.FEED_IN_CT_PER_KWH_STATE = exports.FEED_IN_CT_PER_KWH_NATIVE_KEY = void 0;
+exports.FEED_IN_MIGRATED_V1_STATE = exports.FEED_IN_CT_PER_KWH_STATE = exports.FEED_IN_CT_PER_KWH_NATIVE_KEY = void 0;
+exports.normalizeFeedInCtPerKwhConfig = normalizeFeedInCtPerKwhConfig;
+exports.readNativeFeedInCtPerKwh = readNativeFeedInCtPerKwh;
+exports.migrateAndSyncEconomicsFeedInFromConfig = migrateAndSyncEconomicsFeedInFromConfig;
+exports.syncEconomicsFeedInFromConfig = syncEconomicsFeedInFromConfig;
 const state_write_1 = require("../policy/core/state_write");
 const state_util_1 = require("./state_util");
 exports.FEED_IN_CT_PER_KWH_NATIVE_KEY = "feed_in_ct_per_kwh";
@@ -16,14 +20,12 @@ function normalizeFeedInCtPerKwhConfig(raw) {
         return null;
     return raw;
 }
-exports.normalizeFeedInCtPerKwhConfig = normalizeFeedInCtPerKwhConfig;
 function readNativeFeedInCtPerKwh(config) {
     if (!config || typeof config !== "object")
         return null;
     const raw = config[exports.FEED_IN_CT_PER_KWH_NATIVE_KEY];
     return normalizeFeedInCtPerKwhConfig(raw);
 }
-exports.readNativeFeedInCtPerKwh = readNativeFeedInCtPerKwh;
 async function ensureMigrationMarkerObject(host) {
     await host.setObjectNotExistsAsync(exports.FEED_IN_MIGRATED_V1_STATE, {
         type: "state",
@@ -92,10 +94,8 @@ async function migrateAndSyncEconomicsFeedInFromConfig(host) {
     /** else: Legacy-State unangetastet bis Migration möglich */
     return { canonicalCtPerKwh: canonical, migratedFromState, mirrored };
 }
-exports.migrateAndSyncEconomicsFeedInFromConfig = migrateAndSyncEconomicsFeedInFromConfig;
 /** Nur Spiegelung native → State (z. B. EMS-Light-Tick nach Admin-Save/Restart). */
 async function syncEconomicsFeedInFromConfig(host) {
     const r = await migrateAndSyncEconomicsFeedInFromConfig(host);
     return r.mirrored;
 }
-exports.syncEconomicsFeedInFromConfig = syncEconomicsFeedInFromConfig;

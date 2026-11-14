@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runImmersionFailsafeCheck = exports.forceImmersionHeaterOff = void 0;
+exports.forceImmersionHeaterOff = forceImmersionHeaterOff;
+exports.runImmersionFailsafeCheck = runImmersionFailsafeCheck;
 const execution_mode_1 = require("../../execution_mode");
 const device_write_1 = require("../../device_write");
 const failsafe_common_1 = require("../../failsafe_common");
@@ -43,7 +44,6 @@ async function forceImmersionHeaterOff(adapter, reason) {
         return false;
     }
 }
-exports.forceImmersionHeaterOff = forceImmersionHeaterOff;
 async function runImmersionFailsafeCheck(adapter) {
     const cfg = adapter.config && typeof adapter.config === "object"
         ? adapter.config
@@ -78,4 +78,3 @@ async function runImmersionFailsafeCheck(adapter) {
         await adapter.setStateAsync(status_1.IMMERSION_STATUS_STATES.lastFailsafeAt, { val: ts, ack: true });
     }
 }
-exports.runImmersionFailsafeCheck = runImmersionFailsafeCheck;

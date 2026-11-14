@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.publishAddonRuntimeSurface = exports.buildAddonRuntimeSurfaceSnapshot = void 0;
+exports.buildAddonRuntimeSurfaceSnapshot = buildAddonRuntimeSurfaceSnapshot;
+exports.publishAddonRuntimeSurface = publishAddonRuntimeSurface;
 const map_decision_1 = require("./map_decision");
 function buildAddonRuntimeSurfaceSnapshot(input) {
     return {
@@ -17,9 +18,7 @@ function buildAddonRuntimeSurfaceSnapshot(input) {
         lockout: input.lockout === true,
     };
 }
-exports.buildAddonRuntimeSurfaceSnapshot = buildAddonRuntimeSurfaceSnapshot;
 /** Snapshot intern — keine ioBroker-Spiegel unter runtime.surface.*. */
 async function publishAddonRuntimeSurface(_host, _runtimeAddonId, input) {
     return buildAddonRuntimeSurfaceSnapshot(input);
 }
-exports.publishAddonRuntimeSurface = publishAddonRuntimeSurface;

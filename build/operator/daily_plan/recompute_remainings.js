@@ -3,7 +3,7 @@
  * Nach Unified-Authority Remaining-/Allocated-Felder aus derselben Slot-Bilanz neu ableiten.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.recomputeDailyPlanSlotRemainings = void 0;
+exports.recomputeDailyPlanSlotRemainings = recomputeDailyPlanSlotRemainings;
 function recomputeOneSlot(slot) {
     let allocatedFlexiblePowerW = 0;
     let allocatedPvPowerW = 0;
@@ -39,4 +39,3 @@ function recomputeDailyPlanSlotRemainings(plan) {
         slots: plan.slots.map(recomputeOneSlot),
     };
 }
-exports.recomputeDailyPlanSlotRemainings = recomputeDailyPlanSlotRemainings;

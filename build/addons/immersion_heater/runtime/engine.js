@@ -1,6 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getImmersionEmsOnWriteAtMsForTest = exports.getImmersionLastCommandedStageForTest = exports.getImmersionDailyPlanContextForTest = exports.getImmersionPersistForTest = exports.resetImmersionRuntimeForTest = exports.stopImmersionRuntimeEngine = exports.initImmersionRuntimeEngine = exports.hydrateImmersionRuntimePersist = exports.handleImmersionFaultReset = exports.runImmersionRuntimeTick = exports.immersionRuntimeWatchedForeignIds = void 0;
+exports.immersionRuntimeWatchedForeignIds = immersionRuntimeWatchedForeignIds;
+exports.runImmersionRuntimeTick = runImmersionRuntimeTick;
+exports.handleImmersionFaultReset = handleImmersionFaultReset;
+exports.hydrateImmersionRuntimePersist = hydrateImmersionRuntimePersist;
+exports.initImmersionRuntimeEngine = initImmersionRuntimeEngine;
+exports.stopImmersionRuntimeEngine = stopImmersionRuntimeEngine;
+exports.resetImmersionRuntimeForTest = resetImmersionRuntimeForTest;
+exports.getImmersionPersistForTest = getImmersionPersistForTest;
+exports.getImmersionDailyPlanContextForTest = getImmersionDailyPlanContextForTest;
+exports.getImmersionLastCommandedStageForTest = getImmersionLastCommandedStageForTest;
+exports.getImmersionEmsOnWriteAtMsForTest = getImmersionEmsOnWriteAtMsForTest;
 const ems_activity_1 = require("../../../ems_activity");
 const execution_mode_1 = require("../../../execution_mode");
 const device_write_1 = require("../../../device_write");
@@ -119,7 +129,6 @@ function immersionRuntimeWatchedForeignIds(config) {
     }
     return [...ids];
 }
-exports.immersionRuntimeWatchedForeignIds = immersionRuntimeWatchedForeignIds;
 function readHygienePersist(raw) {
     if (!raw)
         return (0, hygiene_1.emptyHygienePersist)();
@@ -655,7 +664,6 @@ async function runImmersionRuntimeTick(host) {
     }
     scheduleTick();
 }
-exports.runImmersionRuntimeTick = runImmersionRuntimeTick;
 async function publishRuntime(host, s, decisionSource, dailyPlan) {
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.available, s.available);
     await (0, state_write_1.setStateIfChanged)(host, types_1.IMMERSION_RUNTIME_STATES.state, s.state);
@@ -753,7 +761,6 @@ async function handleImmersionFaultReset(host, state) {
     await host.setStateAsync(types_1.IMMERSION_RUNTIME_STATES.faultReset, { val: false, ack: true });
     await runImmersionRuntimeTick(host);
 }
-exports.handleImmersionFaultReset = handleImmersionFaultReset;
 let immersionPersistHydrated = false;
 /** Phase D — Heizstab-Runtime-Persistenz von Disk laden (ohne Subscriptions/Ticks). */
 async function hydrateImmersionRuntimePersist(host) {
@@ -773,7 +780,6 @@ async function hydrateImmersionRuntimePersist(host) {
     }
     immersionPersistHydrated = true;
 }
-exports.hydrateImmersionRuntimePersist = hydrateImmersionRuntimePersist;
 async function initImmersionRuntimeEngine(host) {
     // Ensure immer — auch bei erneutem Init nach Adapter-Update (neue States wie plan_target_*).
     await (0, ensure_states_1.ensureImmersionRuntimeStates)(host);
@@ -827,7 +833,6 @@ async function initImmersionRuntimeEngine(host) {
     await runImmersionRuntimeTick(host);
     host.log.debug?.("immersion_heater: runtime engine initialized");
 }
-exports.initImmersionRuntimeEngine = initImmersionRuntimeEngine;
 function stopImmersionRuntimeEngine() {
     const host = hostRef;
     clearTick();
@@ -864,26 +869,20 @@ function stopImmersionRuntimeEngine() {
     subscribedIds.length = 0;
     chatter = { timestampsMs: [] };
 }
-exports.stopImmersionRuntimeEngine = stopImmersionRuntimeEngine;
 function resetImmersionRuntimeForTest() {
     stopImmersionRuntimeEngine();
 }
-exports.resetImmersionRuntimeForTest = resetImmersionRuntimeForTest;
 function getImmersionPersistForTest() {
     return persist;
 }
-exports.getImmersionPersistForTest = getImmersionPersistForTest;
 function getImmersionDailyPlanContextForTest() {
     return lastDailyPlanContext;
 }
-exports.getImmersionDailyPlanContextForTest = getImmersionDailyPlanContextForTest;
 /** Test-Hook: zuletzt erfolgreich angewandte Stufe (−1 = noch nie bestätigt). */
 function getImmersionLastCommandedStageForTest() {
     return lastCommandedStage;
 }
-exports.getImmersionLastCommandedStageForTest = getImmersionLastCommandedStageForTest;
 /** Test-Hook: Zeitpunkt des letzten bestätigten EMS-ON-Writes / ON-Readbacks. */
 function getImmersionEmsOnWriteAtMsForTest() {
     return emsOnWriteAtMs;
 }
-exports.getImmersionEmsOnWriteAtMsForTest = getImmersionEmsOnWriteAtMsForTest;

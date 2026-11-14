@@ -8,7 +8,11 @@
  * Zeitpunkt kein Snapshot existiert, ist decisionQuality für diesen Zeitpunkt insufficient_data.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pvRankPercentileAtDecisionTime = exports.resolveKnownPvAtSlotStart = exports.priceRankPercentileAtDecisionTime = exports.resolveKnownPriceAtSlotStart = exports.resolveKnowledgeSnapshotAt = void 0;
+exports.resolveKnowledgeSnapshotAt = resolveKnowledgeSnapshotAt;
+exports.resolveKnownPriceAtSlotStart = resolveKnownPriceAtSlotStart;
+exports.priceRankPercentileAtDecisionTime = priceRankPercentileAtDecisionTime;
+exports.resolveKnownPvAtSlotStart = resolveKnownPvAtSlotStart;
+exports.pvRankPercentileAtDecisionTime = pvRankPercentileAtDecisionTime;
 /** Letzter Snapshot mit tsIso <= atMs — null wenn keiner existiert (kein Fallback auf später/früher erfinden). */
 function resolveKnowledgeSnapshotAt(day, atMs) {
     let best = null;
@@ -24,7 +28,6 @@ function resolveKnowledgeSnapshotAt(day, atMs) {
     }
     return best;
 }
-exports.resolveKnowledgeSnapshotAt = resolveKnowledgeSnapshotAt;
 /**
  * Zum Entscheidungszeitpunkt bekannter Preis für einen Slot-Start (ct/kWh) — aus
  * snapshot.priceSlots (Forecast/Tarif-Snapshot zum Zeitpunkt der Entscheidung), NICHT
@@ -39,7 +42,6 @@ function resolveKnownPriceAtSlotStart(snapshot, slotStartMs) {
     }
     return null;
 }
-exports.resolveKnownPriceAtSlotStart = resolveKnownPriceAtSlotStart;
 /**
  * Perzentil (0–1) eines Preiswerts innerhalb der zum Entscheidungszeitpunkt bekannten
  * Preisreihe (priceSlots desselben Snapshots) — 0 = günstigstes bekanntes Fenster,
@@ -58,7 +60,6 @@ function priceRankPercentileAtDecisionTime(snapshot, priceCtPerKwh) {
             below++;
     return below / sorted.length;
 }
-exports.priceRankPercentileAtDecisionTime = priceRankPercentileAtDecisionTime;
 /**
  * Zum Entscheidungszeitpunkt bekannte erwartete PV-Energie für einen Slot-Start (kWh) — aus
  * snapshot.pvSlotKwh (Forecast zum Zeitpunkt der Entscheidung), NICHT die tatsächliche PV.
@@ -73,7 +74,6 @@ function resolveKnownPvAtSlotStart(snapshot, slotStartMs) {
     }
     return null;
 }
-exports.resolveKnownPvAtSlotStart = resolveKnownPvAtSlotStart;
 /**
  * Perzentil (0–1) eines PV-Werts innerhalb der zum Entscheidungszeitpunkt bekannten PV-Reihe
  * (pvSlotKwh desselben Snapshots) — 0 = am wenigsten erwartete PV, 1 = am meisten. null wenn
@@ -93,4 +93,3 @@ function pvRankPercentileAtDecisionTime(snapshot, pvKwh) {
             below++;
     return below / sorted.length;
 }
-exports.pvRankPercentileAtDecisionTime = pvRankPercentileAtDecisionTime;

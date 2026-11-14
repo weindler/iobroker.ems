@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isValueAllowed = exports.resolvePlannedValue = exports.loadMapping = void 0;
+exports.loadMapping = loadMapping;
+exports.resolvePlannedValue = resolvePlannedValue;
+exports.isValueAllowed = isValueAllowed;
 const mapping_resolve_1 = require("./mapping_resolve");
 async function loadMapping(ctx, addonId, mappingId) {
     const resolved = (0, mapping_resolve_1.resolveMappingTargetFromConfig)(ctx.config, addonId, mappingId);
@@ -14,7 +16,6 @@ async function loadMapping(ctx, addonId, mappingId) {
         allowedValues: parseAllowedValues(resolved.allowedValues),
     };
 }
-exports.loadMapping = loadMapping;
 function parseAllowedValues(val) {
     if (val === null || val === undefined || val === "")
         return null;
@@ -44,13 +45,11 @@ function resolvePlannedValue(command, value, targetState) {
     }
     return value;
 }
-exports.resolvePlannedValue = resolvePlannedValue;
 function isValueAllowed(value, allowed) {
     if (!allowed?.length)
         return true;
     return allowed.some((a) => valuesEqual(a, value));
 }
-exports.isValueAllowed = isValueAllowed;
 function valuesEqual(a, b) {
     if (a === b)
         return true;

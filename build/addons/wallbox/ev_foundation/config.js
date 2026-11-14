@@ -3,7 +3,12 @@
  * EV-foundation admin config — extends existing Wallbox/EVCC keys, no parallel addon.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveEvPlanningHints = exports.configuredExternalSourceStateIds = exports.evFoundationConfigFromAdapter = exports.normalizeChargingEfficiency = exports.parseOptionalAdminNumber = exports.WB_TIBBER_NOW_STABILIZE_SECONDS = exports.WB_EXTERNAL_SMART_CHARGING_MIN_SOC_STATE = exports.WB_EXTERNAL_SOURCE_UPDATED_AT_STATE = exports.WB_EXTERNAL_SOURCE_STALE_AFTER_MIN = exports.WB_VEHICLE_CHARGE_PAUSE_STATE = exports.WB_EXTERNAL_SMART_PLAN_END_STATE = exports.WB_EXTERNAL_SMART_PLAN_START_STATE = exports.WB_EXTERNAL_TARGET_SOC_STATE = exports.WB_EXTERNAL_PLAN_DEADLINE_STATE = exports.WB_EXTERNAL_SMART_CHARGING_STATUS_STATE = exports.WB_EXTERNAL_SMART_PLAN_ENABLED_STATE = exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE_STATE = exports.WB_EXTERNAL_CONTROL_ACTIVE_STATE = exports.WB_EXTERNAL_SMART_PLAN_STATE = exports.WB_HA_DATA_SOURCE_ENABLED = exports.WB_EV_AVAILABLE_UNTIL = exports.WB_EV_DEPARTURE_AT = exports.WB_EV_SAFETY_MARGIN_MIN = exports.WB_EV_CHARGING_EFFICIENCY = exports.WB_EV_MAX_AC_CHARGE_POWER_KW = exports.WB_EV_BATTERY_CAPACITY_KWH = exports.WB_EV_MINIMUM_DEPARTURE_SOC_PCT = exports.WB_EV_TARGET_SOC_PCT = exports.WB_EXTERNAL_CONTROL_TYPE = exports.WB_EXTERNAL_SMART_PLAN_AVAILABLE = exports.WB_VEHICLE_LIVE_DATA_AVAILABLE = exports.WB_TIBBER_GRID_REWARDS_WALLBOX_ENABLED = exports.WB_TIBBER_GRID_REWARDS_VEHICLE_ENABLED = exports.WB_EVCC_INTEGRATION_ENABLED = void 0;
+exports.WB_TIBBER_NOW_STABILIZE_SECONDS = exports.WB_EXTERNAL_SMART_CHARGING_MIN_SOC_STATE = exports.WB_EXTERNAL_SOURCE_UPDATED_AT_STATE = exports.WB_EXTERNAL_SOURCE_STALE_AFTER_MIN = exports.WB_VEHICLE_CHARGE_PAUSE_STATE = exports.WB_EXTERNAL_SMART_PLAN_END_STATE = exports.WB_EXTERNAL_SMART_PLAN_START_STATE = exports.WB_EXTERNAL_TARGET_SOC_STATE = exports.WB_EXTERNAL_PLAN_DEADLINE_STATE = exports.WB_EXTERNAL_SMART_CHARGING_STATUS_STATE = exports.WB_EXTERNAL_SMART_PLAN_ENABLED_STATE = exports.WB_EXTERNAL_GRID_REWARDS_ACTIVE_STATE = exports.WB_EXTERNAL_CONTROL_ACTIVE_STATE = exports.WB_EXTERNAL_SMART_PLAN_STATE = exports.WB_HA_DATA_SOURCE_ENABLED = exports.WB_EV_AVAILABLE_UNTIL = exports.WB_EV_DEPARTURE_AT = exports.WB_EV_SAFETY_MARGIN_MIN = exports.WB_EV_CHARGING_EFFICIENCY = exports.WB_EV_MAX_AC_CHARGE_POWER_KW = exports.WB_EV_BATTERY_CAPACITY_KWH = exports.WB_EV_MINIMUM_DEPARTURE_SOC_PCT = exports.WB_EV_TARGET_SOC_PCT = exports.WB_EXTERNAL_CONTROL_TYPE = exports.WB_EXTERNAL_SMART_PLAN_AVAILABLE = exports.WB_VEHICLE_LIVE_DATA_AVAILABLE = exports.WB_TIBBER_GRID_REWARDS_WALLBOX_ENABLED = exports.WB_TIBBER_GRID_REWARDS_VEHICLE_ENABLED = exports.WB_EVCC_INTEGRATION_ENABLED = void 0;
+exports.parseOptionalAdminNumber = parseOptionalAdminNumber;
+exports.normalizeChargingEfficiency = normalizeChargingEfficiency;
+exports.evFoundationConfigFromAdapter = evFoundationConfigFromAdapter;
+exports.configuredExternalSourceStateIds = configuredExternalSourceStateIds;
+exports.resolveEvPlanningHints = resolveEvPlanningHints;
 const config_1 = require("../../../intent/config");
 const evcc_config_1 = require("../evcc_config");
 const lookup_1 = require("../vehicle_map/lookup");
@@ -67,7 +72,6 @@ function parseOptionalAdminNumber(raw) {
         return Number.isFinite(raw) ? raw : null;
     return null;
 }
-exports.parseOptionalAdminNumber = parseOptionalAdminNumber;
 function optionalNumber(c, key) {
     return parseOptionalAdminNumber(c[key]);
 }
@@ -92,7 +96,6 @@ function normalizeChargingEfficiency(raw) {
         return raw;
     return null;
 }
-exports.normalizeChargingEfficiency = normalizeChargingEfficiency;
 function clampSoc(raw) {
     if (raw === null || !Number.isFinite(raw))
         return null;
@@ -150,7 +153,6 @@ function evFoundationConfigFromAdapter(config) {
         })(),
     };
 }
-exports.evFoundationConfigFromAdapter = evFoundationConfigFromAdapter;
 function configuredExternalSourceStateIds(cfg) {
     const ids = [
         cfg.externalSmartPlanStateId,
@@ -168,7 +170,6 @@ function configuredExternalSourceStateIds(cfg) {
     ];
     return [...new Set(ids.filter((id) => id.trim().length > 0))];
 }
-exports.configuredExternalSourceStateIds = configuredExternalSourceStateIds;
 /**
  * Capacity / max AC from foundation config, else vehicle mini-map match, else null.
  * Never invents values when map and config are empty.
@@ -190,4 +191,3 @@ function resolveEvPlanningHints(config, vehicleName, vehicleTitle) {
     }
     return { batteryCapacityKWh: capacity, maxAcChargePowerKw: maxAcKw };
 }
-exports.resolveEvPlanningHints = resolveEvPlanningHints;

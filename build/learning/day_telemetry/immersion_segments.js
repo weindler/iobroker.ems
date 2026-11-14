@@ -7,7 +7,8 @@
  * Rekonstruktion aus heutigem State.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.advanceImmersionSegment = exports.closeImmersionSegment = void 0;
+exports.closeImmersionSegment = closeImmersionSegment;
+exports.advanceImmersionSegment = advanceImmersionSegment;
 /** Schließt offenes Segment und hängt es an die Liste. */
 function closeImmersionSegment(open, endTs, list) {
     if (!open || endTs <= open.startTs || !(open.runtimeSec > 0))
@@ -28,7 +29,6 @@ function closeImmersionSegment(open, endTs, list) {
         },
     ];
 }
-exports.closeImmersionSegment = closeImmersionSegment;
 /**
  * Aktualisiert laufendes Segment mit Messprobe.
  * Bei on→off: Segment schließen. Bei off→on: neues Segment öffnen (Kontext bei Start einfrieren).
@@ -59,4 +59,3 @@ function advanceImmersionSegment(open, nowTs, on, deltaKwh, deltaRuntimeSec, con
         list,
     };
 }
-exports.advanceImmersionSegment = advanceImmersionSegment;

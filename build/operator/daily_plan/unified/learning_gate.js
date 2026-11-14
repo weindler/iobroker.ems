@@ -13,7 +13,8 @@
  * confidencePct`, `learning/battery_runtime`).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clampToBounds = exports.evaluateLearningGate = void 0;
+exports.evaluateLearningGate = evaluateLearningGate;
+exports.clampToBounds = clampToBounds;
 /**
  * Prüft ein einzelnes gelerntes/prognostiziertes Signal gegen Mindest-Sample-Count und
  * Mindest-Confidence. `sampleCount: null` gilt als "nicht anwendbar für diese Metrik" und
@@ -34,11 +35,9 @@ function evaluateLearningGate(input, config) {
     }
     return { usable: true };
 }
-exports.evaluateLearningGate = evaluateLearningGate;
 /** Harte Bounds gegen Scheingenauigkeit — jeder Block-B-Wert muss hierdurch. */
 function clampToBounds(value, min, max) {
     if (!Number.isFinite(value))
         return min;
     return Math.max(min, Math.min(max, value));
 }
-exports.clampToBounds = clampToBounds;

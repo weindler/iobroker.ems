@@ -4,7 +4,11 @@
  * Beeinflusst Steuerung nicht; Fehler werden isoliert.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DAY_TELEMETRY_PERSIST_CATEGORY = exports.noteDayTelemetryPlanPublished = exports.tickDayTelemetry = exports.__dayTelemetryCachedDateKeysForTest = exports.__resetDayTelemetryRuntimeForTest = void 0;
+exports.DAY_TELEMETRY_PERSIST_CATEGORY = void 0;
+exports.__resetDayTelemetryRuntimeForTest = __resetDayTelemetryRuntimeForTest;
+exports.__dayTelemetryCachedDateKeysForTest = __dayTelemetryCachedDateKeysForTest;
+exports.tickDayTelemetry = tickDayTelemetry;
+exports.noteDayTelemetryPlanPublished = noteDayTelemetryPlanPublished;
 const state_util_1 = require("../../ems_light/state_util");
 const config_1 = require("../../intent/config");
 const time_1 = require("../../operator/time");
@@ -51,12 +55,10 @@ function __resetDayTelemetryRuntimeForTest() {
     storeCache = null;
     storeDir = null;
 }
-exports.__resetDayTelemetryRuntimeForTest = __resetDayTelemetryRuntimeForTest;
 /** Nur Tests: belegt, dass die Produktions-Cache-Hydration begrenzt bleibt. */
 function __dayTelemetryCachedDateKeysForTest() {
     return Object.keys(storeCache?.days ?? {}).sort();
 }
-exports.__dayTelemetryCachedDateKeysForTest = __dayTelemetryCachedDateKeysForTest;
 async function publishStatus(host, id, val) {
     try {
         const cur = await host.getStateAsync(id);
@@ -215,7 +217,6 @@ async function tickDayTelemetry(host, now = new Date()) {
         await publishStatus(host, constants_1.DAY_TELEMETRY_STATES.status, "error");
     }
 }
-exports.tickDayTelemetry = tickDayTelemetry;
 async function tickDayTelemetryInner(host, now) {
     const timezone = (0, config_1.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
     const nowMs = now.getTime();
@@ -539,7 +540,6 @@ async function noteDayTelemetryPlanPublished(input) {
         input.host.log?.warn?.(`day_telemetry note plan: ${e instanceof Error ? e.message : String(e)}`);
     }
 }
-exports.noteDayTelemetryPlanPublished = noteDayTelemetryPlanPublished;
 async function notePlanInner(input) {
     const { host, now, timezone, plan, plannerInput, replanReasons, batteryDecision } = input;
     const dateKey = (0, time_1.localDateKeyInTimezone)(now, timezone);

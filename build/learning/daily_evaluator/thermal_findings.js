@@ -8,7 +8,7 @@
  * Preisverteilung des Tages — nie ein fester Cent-Schwellwert.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateThermalFindings = void 0;
+exports.evaluateThermalFindings = evaluateThermalFindings;
 const slots_1 = require("../day_telemetry/slots");
 const knowledge_time_1 = require("./knowledge_time");
 /**
@@ -185,7 +185,6 @@ function evaluateThermalFindings(day) {
     }
     return findings;
 }
-exports.evaluateThermalFindings = evaluateThermalFindings;
 function buildExplanation(seg, decisionQuality, outcomeQuality, reasonCodes) {
     const runtimeMin = Math.round(seg.runtimeSec / 60);
     const base = `Heizstab-Lauf ${runtimeMin} min, ${seg.energyKwh.toFixed(2)} kWh`;

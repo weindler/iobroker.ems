@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchWeatherDayResults = exports.evaluateWeatherDay = exports.fetchHourlyMap = exports.dateKeyFromOffset = exports.dayBoundsMs = exports.readStateNum = void 0;
+exports.readStateNum = readStateNum;
+exports.dayBoundsMs = dayBoundsMs;
+exports.dateKeyFromOffset = dateKeyFromOffset;
+exports.fetchHourlyMap = fetchHourlyMap;
+exports.evaluateWeatherDay = evaluateWeatherDay;
+exports.fetchWeatherDayResults = fetchWeatherDayResults;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const constants_1 = require("./constants");
@@ -34,7 +39,6 @@ async function readStateNum(host, stateId) {
         return own;
     return tryRead(host.getForeignStateAsync);
 }
-exports.readStateNum = readStateNum;
 /** Lokale Mitternachtsgrenzen (dayOffset 0 = heute, 1 = gestern). */
 function dayBoundsMs(dayOffset) {
     const d = new Date();
@@ -43,7 +47,6 @@ function dayBoundsMs(dayOffset) {
     const start = d.getTime();
     return { start, end: start + constants_1.MS_PER_DAY };
 }
-exports.dayBoundsMs = dayBoundsMs;
 function dateKeyFromOffset(dayOffset) {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -53,7 +56,6 @@ function dateKeyFromOffset(dayOffset) {
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
 }
-exports.dateKeyFromOffset = dateKeyFromOffset;
 function hourBucketMs(ts) {
     return Math.floor(ts / 3_600_000) * 3_600_000;
 }
@@ -72,7 +74,6 @@ async function fetchHourlyMap(host, stateId, startMs, endMs) {
     }
     return map;
 }
-exports.fetchHourlyMap = fetchHourlyMap;
 async function evaluateWeatherDay(host, metrics, dayOffset) {
     const { start, end } = dayBoundsMs(dayOffset);
     const dateKey = dateKeyFromOffset(dayOffset);
@@ -132,9 +133,7 @@ async function evaluateWeatherDay(host, metrics, dayOffset) {
         health: (0, math_1.healthFromValidHours)(validHours),
     };
 }
-exports.evaluateWeatherDay = evaluateWeatherDay;
 async function fetchWeatherDayResults(host, metrics, maxDays = 30) {
     const results = await Promise.all(Array.from({ length: maxDays }, (_, dayOffset) => evaluateWeatherDay(host, metrics, dayOffset)));
     return results;
 }
-exports.fetchWeatherDayResults = fetchWeatherDayResults;

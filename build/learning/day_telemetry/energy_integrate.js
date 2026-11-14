@@ -7,7 +7,13 @@
  * - Lange Gaps: kein Erfinden von Konstantleistung
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applySharesToBucket = exports.addToBucket = exports.decideIntegrationGap = exports.integratePowerAcrossSlots = exports.splitAmountAcrossSlots = exports.roundTelemetryKwh = exports.energyCounterDeltaPreciseKwh = void 0;
+exports.energyCounterDeltaPreciseKwh = energyCounterDeltaPreciseKwh;
+exports.roundTelemetryKwh = roundTelemetryKwh;
+exports.splitAmountAcrossSlots = splitAmountAcrossSlots;
+exports.integratePowerAcrossSlots = integratePowerAcrossSlots;
+exports.decideIntegrationGap = decideIntegrationGap;
+exports.addToBucket = addToBucket;
+exports.applySharesToBucket = applySharesToBucket;
 const constants_1 = require("./constants");
 const slots_1 = require("./slots");
 /** Präzises Zähler-Delta — Round erst bei Persistenz, nicht vor Akkumulation. */
@@ -23,12 +29,10 @@ function energyCounterDeltaPreciseKwh(previous, current) {
     }
     return { deltaKwh: current - previous, newBaseline: current, reset: false };
 }
-exports.energyCounterDeltaPreciseKwh = energyCounterDeltaPreciseKwh;
 function roundTelemetryKwh(kwh) {
     const f = 10 ** constants_1.DAY_TELEMETRY_KWH_DECIMALS;
     return Math.round(kwh * f) / f;
 }
-exports.roundTelemetryKwh = roundTelemetryKwh;
 /**
  * Verteilt amountKwh proportional zur Zeitüberlappung auf alle betroffenen Slots.
  * Beispiel 14:14:45–14:15:45 → Anteile an beiden 15-Min-Slots.
@@ -53,7 +57,6 @@ function splitAmountAcrossSlots(layout, fromMs, toMs, amountKwh) {
     }
     return out;
 }
-exports.splitAmountAcrossSlots = splitAmountAcrossSlots;
 /** powerW × Δt → kWh, dann split. */
 function integratePowerAcrossSlots(layout, fromMs, toMs, powerW) {
     if (!Number.isFinite(powerW) || !(toMs > fromMs))
@@ -62,7 +65,6 @@ function integratePowerAcrossSlots(layout, fromMs, toMs, powerW) {
     const kwh = (powerW * hours) / 1000;
     return splitAmountAcrossSlots(layout, fromMs, toMs, kwh);
 }
-exports.integratePowerAcrossSlots = integratePowerAcrossSlots;
 /**
  * Entscheidet, ob ein Messintervall integriert werden darf.
  * Lange Gaps → missing, keine Konstantleistungs-Annahme.
@@ -79,7 +81,6 @@ function decideIntegrationGap(prevTs, curTs, maxGapMs = constants_1.DAY_TELEMETR
         return { kind: "gap_too_long", gapMs: gap };
     return { kind: "ok", fromMs: prevTs, toMs: curTs };
 }
-exports.decideIntegrationGap = decideIntegrationGap;
 /** Addiert energyKwh in ein Bucket-Array (null → Wert, sonst Summe). */
 function addToBucket(arr, index, energyKwh) {
     if (index < 0 || index >= arr.length || !Number.isFinite(energyKwh))
@@ -87,10 +88,8 @@ function addToBucket(arr, index, energyKwh) {
     const prev = arr[index];
     arr[index] = prev === null ? energyKwh : prev + energyKwh;
 }
-exports.addToBucket = addToBucket;
 function applySharesToBucket(arr, shares) {
     for (const s of shares) {
         addToBucket(arr, s.slotIndex, s.energyKwh);
     }
 }
-exports.applySharesToBucket = applySharesToBucket;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureWallboxRuntimeStates = void 0;
+exports.ensureWallboxRuntimeStates = ensureWallboxRuntimeStates;
 const state_util_1 = require("../../../ems_light/state_util");
 const states_1 = require("./states");
 function strState(id, name, def = "") {
@@ -116,4 +116,3 @@ async function ensureWallboxRuntimeStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs.filter((d) => states_1.WALLBOX_RUNTIME_PUBLIC_STATE_IDS.has(d.id)));
 }
-exports.ensureWallboxRuntimeStates = ensureWallboxRuntimeStates;

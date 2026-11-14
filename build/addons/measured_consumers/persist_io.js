@@ -15,15 +15,29 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.persistTauchpumpeWhResetMigrationIfNeeded = exports.writeMeasuredConsumersPersist = exports.readMeasuredConsumersPersist = exports.applyTauchpumpeWhResetMigration = exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID = exports.TAUCHPUMPE_MEASURED_CONSUMER_POWER_KEY = void 0;
+exports.TAUCHPUMPE_WH_RESET_MIGRATION_ID = exports.TAUCHPUMPE_MEASURED_CONSUMER_POWER_KEY = void 0;
+exports.applyTauchpumpeWhResetMigration = applyTauchpumpeWhResetMigration;
+exports.readMeasuredConsumersPersist = readMeasuredConsumersPersist;
+exports.writeMeasuredConsumersPersist = writeMeasuredConsumersPersist;
+exports.persistTauchpumpeWhResetMigrationIfNeeded = persistTauchpumpeWhResetMigrationIfNeeded;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../../persistence/atomic_write");
@@ -75,7 +89,6 @@ function applyTauchpumpeWhResetMigration(persist) {
         previousRawEnergyBaselineKwh,
     };
 }
-exports.applyTauchpumpeWhResetMigration = applyTauchpumpeWhResetMigration;
 /** Reiner Dateileser — ohne Migration (Migration läuft in hydrate + sofortigem Write). */
 async function readMeasuredConsumersPersist(baseDir) {
     try {
@@ -114,12 +127,10 @@ async function readMeasuredConsumersPersist(baseDir) {
     }
     return (0, persist_1.emptyMeasuredConsumersPersist)();
 }
-exports.readMeasuredConsumersPersist = readMeasuredConsumersPersist;
 async function writeMeasuredConsumersPersist(baseDir, persist) {
     await fs.mkdir(baseDir, { recursive: true });
     await (0, atomic_write_1.atomicWriteFile)(path.join(baseDir, persist_1.MEASURED_CONSUMERS_RUNTIME_FILENAME), `${JSON.stringify(persist, null, 2)}\n`, { mode: atomic_write_1.DIAGNOSTIC_FILE_MODE });
 }
-exports.writeMeasuredConsumersPersist = writeMeasuredConsumersPersist;
 /**
  * Wendet Tauchpumpen-Migration an und schreibt bei Änderung sofort atomar.
  * Bei Write-Fehler: Marker/Reset gelten als nicht abgeschlossen (unveränderter Stand bleibt).
@@ -147,4 +158,3 @@ async function persistTauchpumpeWhResetMigrationIfNeeded(baseDir, current, host)
     }
     return result.persist;
 }
-exports.persistTauchpumpeWhResetMigrationIfNeeded = persistTauchpumpeWhResetMigrationIfNeeded;

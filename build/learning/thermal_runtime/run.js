@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runThermalRuntimeLearning = exports.refreshThermalRemainingCountdown = void 0;
+exports.refreshThermalRemainingCountdown = refreshThermalRemainingCountdown;
+exports.runThermalRuntimeLearning = runThermalRuntimeLearning;
 const state_util_1 = require("../../ems_light/state_util");
 const config_1 = require("./config");
 const history_1 = require("./history");
@@ -50,7 +51,6 @@ async function refreshThermalRemainingCountdown(host) {
         // fail-soft — Countdown ist Diagnose, kein Steuerpfad
     }
 }
-exports.refreshThermalRemainingCountdown = refreshThermalRemainingCountdown;
 async function readCurrentTemp(host, stateId) {
     try {
         const st = host.getForeignStateAsync
@@ -145,4 +145,3 @@ async function runThermalRuntimeLearning(host) {
         await writeResult(host, (0, math_1.errorResult)(msg, resolved.stateId), lastRun);
     }
 }
-exports.runThermalRuntimeLearning = runThermalRuntimeLearning;

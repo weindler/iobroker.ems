@@ -4,7 +4,8 @@
  * Mapping auf bestehende Audit-Familien (src/audit/state_surface_catalog.ts).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.countBySurfaceClass = exports.BETA_SURFACE_CLASSES = void 0;
+exports.BETA_SURFACE_CLASSES = void 0;
+exports.countBySurfaceClass = countBySurfaceClass;
 /** Klassifikation der bekannten State-Familien für Beta UI. */
 exports.BETA_SURFACE_CLASSES = [
     {
@@ -120,4 +121,3 @@ function countBySurfaceClass() {
         out[e.surfaceClass] += 1;
     return out;
 }
-exports.countBySurfaceClass = countBySurfaceClass;

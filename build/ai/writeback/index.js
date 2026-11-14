@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildPlanBAdvisory = exports.AI_ALLOCATION_LIVE_MUTATION_ENABLED = exports.republishDailyPlanAfterWriteback = exports.applyAiPreferencesToDailyPlan = exports.finalizeAiRunWithWritebackGate = exports.maybeApplyAiWritebackOnDailyPlan = exports.clearAiAutoSuspend = exports.suspendAiAuto = exports.isAiAutoSuspended = void 0;
+exports.buildPlanBAdvisory = exports.AI_ALLOCATION_LIVE_MUTATION_ENABLED = exports.republishDailyPlanAfterWriteback = exports.applyAiPreferencesToDailyPlan = void 0;
+exports.isAiAutoSuspended = isAiAutoSuspended;
+exports.suspendAiAuto = suspendAiAuto;
+exports.clearAiAutoSuspend = clearAiAutoSuspend;
+exports.maybeApplyAiWritebackOnDailyPlan = maybeApplyAiWritebackOnDailyPlan;
+exports.finalizeAiRunWithWritebackGate = finalizeAiRunWithWritebackGate;
 const context_1 = require("../context");
 const ensure_states_1 = require("../ensure_states");
 const strategy_preferences_1 = require("../strategy_preferences");
@@ -56,18 +61,15 @@ async function isAiAutoSuspended(host) {
     const st = await host.getStateAsync(ensure_states_1.AI_STATES.autoSuspended);
     return st?.val === true;
 }
-exports.isAiAutoSuspended = isAiAutoSuspended;
 async function suspendAiAuto(host, reasonDe) {
     await host.setStateAsync(ensure_states_1.AI_STATES.autoSuspended, { val: true, ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.autoSuspendReasonDe, { val: reasonDe.slice(0, 480), ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.lastSlotPreferencesJson, { val: "[]", ack: true });
 }
-exports.suspendAiAuto = suspendAiAuto;
 async function clearAiAutoSuspend(host) {
     await host.setStateAsync(ensure_states_1.AI_STATES.autoSuspended, { val: false, ack: true });
     await host.setStateAsync(ensure_states_1.AI_STATES.autoSuspendReasonDe, { val: "", ack: true });
 }
-exports.clearAiAutoSuspend = clearAiAutoSuspend;
 /**
  * Nach Daily-Plan-Build: Plan-B-Compare schreiben (advisory).
  * Beta: Allocation wird nie mutiert — Unified bleibt alleinige Planwahrheit.
@@ -91,7 +93,6 @@ async function maybeApplyAiWritebackOnDailyPlan(host, plan) {
     }
     return writebackApplied ? next : plan;
 }
-exports.maybeApplyAiWritebackOnDailyPlan = maybeApplyAiWritebackOnDailyPlan;
 /**
  * Nach einem KI-Lauf: Plan B vergleichen — advisory Compare publizieren.
  * Beta: kein republish mutierter Allocations; Prefs bleiben als Empfehlung erhalten,
@@ -149,7 +150,6 @@ async function finalizeAiRunWithWritebackGate(host, plan, slotPreferences, optio
         advisory,
     };
 }
-exports.finalizeAiRunWithWritebackGate = finalizeAiRunWithWritebackGate;
 var apply_plan_b_2 = require("./apply_plan_b");
 Object.defineProperty(exports, "applyAiPreferencesToDailyPlan", { enumerable: true, get: function () { return apply_plan_b_2.applyAiPreferencesToDailyPlan; } });
 var publish_2 = require("./publish");

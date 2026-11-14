@@ -9,10 +9,10 @@
  * einer LLM-Selbsteinschätzung. Grid Rewards separat, nie mit dem Tarifvorteil vermischt.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emptyEconomicsPersist = exports.ECONOMICS_SCHEMA_VERSION = exports.ECONOMICS_MODULE = void 0;
+exports.ECONOMICS_SCHEMA_VERSION = exports.ECONOMICS_MODULE = void 0;
+exports.emptyEconomicsPersist = emptyEconomicsPersist;
 exports.ECONOMICS_MODULE = "economics";
 exports.ECONOMICS_SCHEMA_VERSION = 1;
 function emptyEconomicsPersist(now = new Date()) {
     return { module: exports.ECONOMICS_MODULE, schemaVersion: exports.ECONOMICS_SCHEMA_VERSION, updatedAtIso: now.toISOString(), days: {} };
 }
-exports.emptyEconomicsPersist = emptyEconomicsPersist;

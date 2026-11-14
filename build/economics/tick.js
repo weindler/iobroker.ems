@@ -7,7 +7,7 @@
  * (transient, nie in der Historie gespeichert) — der Tag ist noch nicht abgeschlossen.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.tickEconomics = void 0;
+exports.tickEconomics = tickEconomics;
 const time_1 = require("../operator/time");
 const persist_1 = require("../statistics/persist");
 const archive_1 = require("../statistics/archive");
@@ -156,4 +156,3 @@ async function tickEconomics(host, now = new Date()) {
     const { formatEmsAdvantagePhraseDe } = await import("./format.js");
     await setIfChanged(host, ensure_states_2.ECONOMICS_STATES.reasonDe, `Tarifvorteil ${periodSummary?.periodLabelDe ?? ""}: ${periodSummary?.tarifvorteilEur ?? "—"} €. ${formatEmsAdvantagePhraseDe(periodSummary?.emsVorteilEur ?? null)}. KI-Mehrwert: ${periodSummary?.kiMehrwertEur ?? "—"} €.`);
 }
-exports.tickEconomics = tickEconomics;

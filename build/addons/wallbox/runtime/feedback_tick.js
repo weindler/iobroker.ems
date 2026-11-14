@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.tickWallboxFeedback = exports.isWallboxFeedbackStatusTerminal = void 0;
+exports.isWallboxFeedbackStatusTerminal = isWallboxFeedbackStatusTerminal;
+exports.tickWallboxFeedback = tickWallboxFeedback;
 const feedback_1 = require("./feedback");
 /** Terminal-Status — kein weiterer Tick nötig (erfolgreich, endgültig gescheitert, oder gar nicht erforderlich). */
 function isWallboxFeedbackStatusTerminal(status) {
     return status === "matched" || status === "mismatch" || status === "timeout" || status === "invalid" || status === "not_required";
 }
-exports.isWallboxFeedbackStatusTerminal = isWallboxFeedbackStatusTerminal;
 async function readActualValues(host, contract) {
     const values = {};
     for (const exp of contract.expectations) {
@@ -38,4 +38,3 @@ async function tickWallboxFeedback(host, contract, writeTimestampMs, nowMs) {
         writeTimestampMs,
     });
 }
-exports.tickWallboxFeedback = tickWallboxFeedback;

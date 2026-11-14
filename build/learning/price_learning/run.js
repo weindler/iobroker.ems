@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runPriceLearning = void 0;
+exports.runPriceLearning = runPriceLearning;
 const config_1 = require("./config");
 const history_1 = require("./history");
 const math_1 = require("./math");
@@ -78,4 +78,3 @@ async function runPriceLearning(host) {
         await writePriceLearningResult(host, result, lastRun);
     }
 }
-exports.runPriceLearning = runPriceLearning;

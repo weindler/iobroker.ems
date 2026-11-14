@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pvShapeConfigReady = exports.pvShapeConfigFromAdapter = void 0;
+exports.pvShapeConfigFromAdapter = pvShapeConfigFromAdapter;
+exports.pvShapeConfigReady = pvShapeConfigReady;
 function strField(config, key) {
     const v = config[key];
     return typeof v === "string" ? v.trim() : "";
@@ -29,9 +30,7 @@ function pvShapeConfigFromAdapter(config) {
         kwpState2: strField(c, "pv_shape_kwp_state_2"),
     };
 }
-exports.pvShapeConfigFromAdapter = pvShapeConfigFromAdapter;
 /** Feature nur aktiv, wenn explizit aktiviert UND eine Stundenquelle konfiguriert ist. */
 function pvShapeConfigReady(cfg) {
     return cfg.enabled && cfg.brightskyHourlyPrefix.trim().length > 0;
 }
-exports.pvShapeConfigReady = pvShapeConfigReady;

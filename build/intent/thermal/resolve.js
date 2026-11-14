@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyThermalClearFields = exports.resolveThermalIntent = void 0;
+exports.resolveThermalIntent = resolveThermalIntent;
+exports.applyThermalClearFields = applyThermalClearFields;
 const resolver_1 = require("../core/resolver");
 const validation_1 = require("../core/validation");
 const validation_2 = require("./validation");
@@ -77,7 +78,6 @@ function resolveThermalIntent(input) {
     const resolvedAt = previous && (0, validation_2.nextThermalRevision)(previous, draft) === previous.revision ? previous.resolved_at : now.toISOString();
     return { ...draft, revision, resolved_at: resolvedAt };
 }
-exports.resolveThermalIntent = resolveThermalIntent;
 function fieldToCandidate(field, priority) {
     return {
         value: field.value,
@@ -117,4 +117,3 @@ function applyThermalClearFields(snapshot, clearFields) {
     }
     return out;
 }
-exports.applyThermalClearFields = applyThermalClearFields;

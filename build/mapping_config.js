@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.wallboxMappingFromConfig = exports.legacyWallboxMappingFromConfig = exports.goeWallboxTemplateFlat = exports.WALLBOX_FLAT_PREFIX_READ = exports.WALLBOX_FLAT_PREFIX = exports.WALLBOX_ALL_MAPPING_IDS = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WALLBOX_READ_MAPPING_ROLES = exports.WALLBOX_MAPPING_COMMANDS = exports.WALLBOX_LEGACY_MAPPING_COMMANDS = void 0;
+exports.WALLBOX_FLAT_PREFIX_READ = exports.WALLBOX_FLAT_PREFIX = exports.WALLBOX_ALL_MAPPING_IDS = exports.WALLBOX_EVCC_TELEMETRY_ROLES = exports.WALLBOX_READ_MAPPING_ROLES = exports.WALLBOX_MAPPING_COMMANDS = exports.WALLBOX_LEGACY_MAPPING_COMMANDS = void 0;
+exports.goeWallboxTemplateFlat = goeWallboxTemplateFlat;
+exports.legacyWallboxMappingFromConfig = legacyWallboxMappingFromConfig;
+exports.wallboxMappingFromConfig = wallboxMappingFromConfig;
 const evcc_config_1 = require("./addons/wallbox/evcc_config");
 Object.defineProperty(exports, "WALLBOX_EVCC_TELEMETRY_ROLES", { enumerable: true, get: function () { return evcc_config_1.WALLBOX_EVCC_TELEMETRY_ROLES; } });
 /** @deprecated Legacy go-e write mappings — config keys preserved, not used by EVCC runtime. */
@@ -46,7 +49,6 @@ function goeWallboxTemplateFlat() {
         wb_set_phase_switch_allowed: "[true,false]",
     };
 }
-exports.goeWallboxTemplateFlat = goeWallboxTemplateFlat;
 function legacyWallboxMappingFromConfig(config) {
     const nested = config.mapping?.wallbox;
     const out = {};
@@ -107,11 +109,9 @@ function legacyWallboxMappingFromConfig(config) {
     }
     return out;
 }
-exports.legacyWallboxMappingFromConfig = legacyWallboxMappingFromConfig;
 /** EVCC telemetry + legacy mappings (config keys preserved for backward compatibility). */
 function wallboxMappingFromConfig(config) {
     const evcc = (0, evcc_config_1.wallboxEvccTelemetryMappingFromConfig)(config);
     const legacy = legacyWallboxMappingFromConfig(config);
     return { ...evcc, ...legacy };
 }
-exports.wallboxMappingFromConfig = wallboxMappingFromConfig;

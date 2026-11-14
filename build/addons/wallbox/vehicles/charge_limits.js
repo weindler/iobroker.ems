@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveActiveVehicleChargeLimits = void 0;
+exports.resolveActiveVehicleChargeLimits = resolveActiveVehicleChargeLimits;
 const types_1 = require("./types");
 function resolveActiveVehicleChargeLimits(snapshot) {
     const reasons = [];
@@ -43,4 +43,3 @@ function resolveActiveVehicleChargeLimits(snapshot) {
         reasons,
     };
 }
-exports.resolveActiveVehicleChargeLimits = resolveActiveVehicleChargeLimits;

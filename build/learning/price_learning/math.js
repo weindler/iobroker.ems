@@ -1,6 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.missingMappingResult = exports.disabledResult = exports.errorResult = exports.computePriceLearning = exports.computeConfidence = exports.healthFromMetrics = exports.computeCoverage = exports.buildHourPatterns = exports.robustWeightedMean = exports.volatilityCoefficient = exports.stdDev = exports.meanOrNull = void 0;
+exports.meanOrNull = meanOrNull;
+exports.stdDev = stdDev;
+exports.volatilityCoefficient = volatilityCoefficient;
+exports.robustWeightedMean = robustWeightedMean;
+exports.buildHourPatterns = buildHourPatterns;
+exports.computeCoverage = computeCoverage;
+exports.healthFromMetrics = healthFromMetrics;
+exports.computeConfidence = computeConfidence;
+exports.computePriceLearning = computePriceLearning;
+exports.errorResult = errorResult;
+exports.disabledResult = disabledResult;
+exports.missingMappingResult = missingMappingResult;
 const constants_1 = require("./constants");
 function meanOrNull(values) {
     if (values.length === 0) {
@@ -8,7 +19,6 @@ function meanOrNull(values) {
     }
     return values.reduce((a, b) => a + b, 0) / values.length;
 }
-exports.meanOrNull = meanOrNull;
 function stdDev(values) {
     if (values.length < 2) {
         return null;
@@ -20,7 +30,6 @@ function stdDev(values) {
     const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
     return Math.sqrt(variance);
 }
-exports.stdDev = stdDev;
 function volatilityCoefficient(values) {
     const mean = meanOrNull(values);
     const sd = stdDev(values);
@@ -29,7 +38,6 @@ function volatilityCoefficient(values) {
     }
     return sd / mean;
 }
-exports.volatilityCoefficient = volatilityCoefficient;
 function validDaySummaries(days) {
     return days.filter((d) => d.validHours >= constants_1.MIN_VALID_HOURS_PER_DAY && d.avgPriceEur !== null);
 }
@@ -67,7 +75,6 @@ function robustWeightedMean(values) {
     }
     return weightSum > 0 ? weightedSum / weightSum : null;
 }
-exports.robustWeightedMean = robustWeightedMean;
 function avgForWindow(validDays, maxDayOffset, doubleRecent = false) {
     const prices = validDays
         .filter((d) => d.dayOffset <= maxDayOffset && d.avgPriceEur !== null)
@@ -127,7 +134,6 @@ function buildHourPatterns(samples, topN = constants_1.HOUR_PATTERN_TOP_N) {
     }
     return { cheapHours, expensiveHours };
 }
-exports.buildHourPatterns = buildHourPatterns;
 function computeCoverage(validDays, lookbackDays) {
     const expected = lookbackDays;
     const covered = validDays.length;
@@ -135,7 +141,6 @@ function computeCoverage(validDays, lookbackDays) {
     const coveragePct = expected > 0 ? round((covered / expected) * 100, 1) : 0;
     return { coveragePct, missingDays };
 }
-exports.computeCoverage = computeCoverage;
 function healthFromMetrics(sampleDays, coveragePct) {
     if (sampleDays >= 30 && coveragePct >= 80) {
         return "ok";
@@ -147,7 +152,6 @@ function healthFromMetrics(sampleDays, coveragePct) {
     // (keine Quelle, Exception, deaktiviert) vorbehalten.
     return "degraded";
 }
-exports.healthFromMetrics = healthFromMetrics;
 function computeConfidence(params) {
     let score = 0;
     const sampleRatio = Math.min(1, params.sampleDays / Math.max(1, params.lookbackDays));
@@ -162,7 +166,6 @@ function computeConfidence(params) {
     }
     return Math.round(Math.min(100, Math.max(0, score)));
 }
-exports.computeConfidence = computeConfidence;
 function round(n, digits) {
     const f = 10 ** digits;
     return Math.round(n * f) / f;
@@ -212,7 +215,6 @@ function computePriceLearning(samples, daySummaries, lookbackDays, priceSource) 
         error: "",
     };
 }
-exports.computePriceLearning = computePriceLearning;
 function errorResult(priceSource, message) {
     return {
         status: "error",
@@ -232,7 +234,6 @@ function errorResult(priceSource, message) {
         error: message,
     };
 }
-exports.errorResult = errorResult;
 function disabledResult() {
     return {
         status: "disabled",
@@ -252,7 +253,6 @@ function disabledResult() {
         error: "Price Learning in Admin deaktiviert.",
     };
 }
-exports.disabledResult = disabledResult;
 function missingMappingResult() {
     return {
         status: "missing_mapping",
@@ -272,4 +272,3 @@ function missingMappingResult() {
         error: "Keine Preis-Quelle konfiguriert.",
     };
 }
-exports.missingMappingResult = missingMappingResult;

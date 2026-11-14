@@ -4,7 +4,8 @@
  * emsVorteilEur = reference_no_ems.netCost − real.netCost (positiv = EMS günstiger).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formatNetCostPhraseDe = exports.formatEmsAdvantagePhraseDe = void 0;
+exports.formatEmsAdvantagePhraseDe = formatEmsAdvantagePhraseDe;
+exports.formatNetCostPhraseDe = formatNetCostPhraseDe;
 function absEur(n) {
     return `${Math.abs(n).toFixed(2).replace(".", ",")} €`;
 }
@@ -20,7 +21,6 @@ function formatEmsAdvantagePhraseDe(emsVorteilEur) {
     }
     return "EMS hat weder gespart noch Mehrkosten verursacht";
 }
-exports.formatEmsAdvantagePhraseDe = formatEmsAdvantagePhraseDe;
 /** Netto-Kosten: negativ = Ertrag (Exportgutschrift > Bezug). */
 function formatNetCostPhraseDe(netCostEur, roleDe) {
     if (netCostEur == null || !Number.isFinite(netCostEur)) {
@@ -34,4 +34,3 @@ function formatNetCostPhraseDe(netCostEur, roleDe) {
     }
     return `${roleDe}: 0,00 €`;
 }
-exports.formatNetCostPhraseDe = formatNetCostPhraseDe;

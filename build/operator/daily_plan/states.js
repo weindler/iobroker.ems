@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureDailyPlanStates = exports.ALLOCATION_ADDON_STATE_IDS = exports.DAILY_PLAN_STATE_IDS = void 0;
+exports.ALLOCATION_ADDON_STATE_IDS = exports.DAILY_PLAN_STATE_IDS = void 0;
+exports.ensureDailyPlanStates = ensureDailyPlanStates;
 const state_util_1 = require("../../ems_light/state_util");
 function strState(id, name, def) {
     return {
@@ -86,4 +87,3 @@ async function ensureDailyPlanStates(host) {
     }
     await (0, state_util_1.ensureStates)(host, allocDefs);
 }
-exports.ensureDailyPlanStates = ensureDailyPlanStates;

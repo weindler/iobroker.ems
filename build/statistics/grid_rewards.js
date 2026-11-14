@@ -1,17 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.gridRewardsLabelDe = exports.resolvePeriodGridRewards = exports.resolveMonthGridRewards = exports.resolveTodayGridRewards = exports.netHomeGridCostEur = exports.gridRewardsCreditIsPresent = exports.gridRewardsPendingHintDe = exports.gridRewardsShowEuroRow = exports.gridRewardsIsEstimated = exports.gridRewardsIsSettled = void 0;
+exports.gridRewardsIsSettled = gridRewardsIsSettled;
+exports.gridRewardsIsEstimated = gridRewardsIsEstimated;
+exports.gridRewardsShowEuroRow = gridRewardsShowEuroRow;
+exports.gridRewardsPendingHintDe = gridRewardsPendingHintDe;
+exports.gridRewardsCreditIsPresent = gridRewardsCreditIsPresent;
+exports.netHomeGridCostEur = netHomeGridCostEur;
+exports.resolveTodayGridRewards = resolveTodayGridRewards;
+exports.resolveMonthGridRewards = resolveMonthGridRewards;
+exports.resolvePeriodGridRewards = resolvePeriodGridRewards;
+exports.gridRewardsLabelDe = gridRewardsLabelDe;
 function round2(n) {
     return Math.round(n * 100) / 100;
 }
 function gridRewardsIsSettled(source) {
     return source === "billing";
 }
-exports.gridRewardsIsSettled = gridRewardsIsSettled;
 function gridRewardsIsEstimated(source) {
     return source === "estimate_day" || source === "estimate_month";
 }
-exports.gridRewardsIsEstimated = gridRewardsIsEstimated;
 /** Euro-Zeile nur bei belastbarer Abrechnung — auch echter 0,00 €. Schätzung nie. */
 function gridRewardsShowEuroRow(source, creditEur) {
     if (!gridRewardsIsSettled(source))
@@ -20,7 +27,6 @@ function gridRewardsShowEuroRow(source, creditEur) {
         return false;
     return creditEur >= 0;
 }
-exports.gridRewardsShowEuroRow = gridRewardsShowEuroRow;
 /** Dezenter Hinweis statt Reward-Euro, wenn nur eine Schätzung vorliegt. */
 function gridRewardsPendingHintDe(source, creditEur) {
     if (!gridRewardsIsEstimated(source))
@@ -30,7 +36,6 @@ function gridRewardsPendingHintDe(source, creditEur) {
     }
     return "Grid Rewards: noch nicht abgerechnet";
 }
-exports.gridRewardsPendingHintDe = gridRewardsPendingHintDe;
 /**
  * Vorhandener Reward-Datensatz (Schätzung oder Abrechnung) — nicht „0,00 € erfunden“.
  * Euro-Anzeige als realisierter Vorteil nur über `gridRewardsShowEuroRow`.
@@ -44,7 +49,6 @@ function gridRewardsCreditIsPresent(source, creditEur) {
         return creditEur >= 0;
     return creditEur > 0;
 }
-exports.gridRewardsCreditIsPresent = gridRewardsCreditIsPresent;
 function positiveCredit(n) {
     if (n === null || !Number.isFinite(n))
         return null;
@@ -59,7 +63,6 @@ function netHomeGridCostEur(homeGridCostEur, rewardsCreditEur) {
         return homeGridCostEur;
     return round2(homeGridCostEur - rewardsCreditEur);
 }
-exports.netHomeGridCostEur = netHomeGridCostEur;
 function resolveTodayGridRewards(input) {
     if (!input.enabled) {
         return { creditEur: null, source: "off" };
@@ -72,7 +75,6 @@ function resolveTodayGridRewards(input) {
     }
     return { creditEur: null, source: "off" };
 }
-exports.resolveTodayGridRewards = resolveTodayGridRewards;
 function resolveMonthGridRewards(input) {
     if (!input.enabled) {
         return { creditEur: null, source: "off" };
@@ -88,7 +90,6 @@ function resolveMonthGridRewards(input) {
     }
     return { creditEur: null, source: "off" };
 }
-exports.resolveMonthGridRewards = resolveMonthGridRewards;
 /** Rewards über eine Periode: Abrechnung je Monat, sonst Schätzung (nur laufender Monat) bzw. Tages-Persist. */
 function resolvePeriodGridRewards(input) {
     if (!input.enabled)
@@ -155,7 +156,6 @@ function resolvePeriodGridRewards(input) {
     const src = anyBilling && !anyEstimate ? "billing" : "estimate_month";
     return { creditEur: round2(total), source: src };
 }
-exports.resolvePeriodGridRewards = resolvePeriodGridRewards;
 function gridRewardsLabelDe(source) {
     switch (source) {
         case "estimate_day":
@@ -167,4 +167,3 @@ function gridRewardsLabelDe(source) {
             return "";
     }
 }
-exports.gridRewardsLabelDe = gridRewardsLabelDe;

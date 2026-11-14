@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runPostBootstrapReconciliation = void 0;
+exports.runPostBootstrapReconciliation = runPostBootstrapReconciliation;
 const air_conditioning_1 = require("../addons/air_conditioning");
 const battery_1 = require("../addons/battery");
 const immersion_heater_1 = require("../addons/immersion_heater");
@@ -17,4 +17,3 @@ async function runPostBootstrapReconciliation(host) {
     await (0, air_conditioning_1.refreshAirConditioningRuntime)(host);
     await (0, measured_consumers_1.refreshMeasuredConsumersRuntime)(host);
 }
-exports.runPostBootstrapReconciliation = runPostBootstrapReconciliation;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sumEconomicsDays = exports.buildEconomicsDayRecord = void 0;
+exports.buildEconomicsDayRecord = buildEconomicsDayRecord;
+exports.sumEconomicsDays = sumEconomicsDays;
 function round2(n) {
     return Math.round(n * 100) / 100;
 }
@@ -62,7 +63,6 @@ function buildEconomicsDayRecord(input) {
         notesDe,
     };
 }
-exports.buildEconomicsDayRecord = buildEconomicsDayRecord;
 /** Summiert nur bewertbare Tage; null bleibt null statt einer erfundenen 0, wenn kein Tag bewertbar ist. */
 function sumEconomicsDays(days, meta) {
     let tarif = 0;
@@ -114,4 +114,3 @@ function sumEconomicsDays(days, meta) {
         reasonDe: reasonParts.join(" ") || `${meta.periodLabelDe}: ${days.length} Tag(e) verbucht.`,
     };
 }
-exports.sumEconomicsDays = sumEconomicsDays;

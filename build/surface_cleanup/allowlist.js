@@ -4,7 +4,9 @@
  * Only relative IDs matching these patterns may be deleted.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CLEANUP_ALLOWLIST_DESCRIPTION = exports.isAllowlistedCleanupRelativeId = exports.isLeanPlannerPurgeRoot = exports.AC_MAPPING_LEAF_SUFFIXES = exports.STUB_ADDON_PURGE_RE = exports.BATTERY_RUNTIME_DIAG_PURGE_RE = exports.LEARNING_MIRROR_PURGE_RE = exports.LEAN_PLANNER_PURGE_ROOTS = exports.COMPATIBILITY_STATE_PREFIXES = exports.PROTECTED_PREFIXES = void 0;
+exports.CLEANUP_ALLOWLIST_DESCRIPTION = exports.AC_MAPPING_LEAF_SUFFIXES = exports.STUB_ADDON_PURGE_RE = exports.BATTERY_RUNTIME_DIAG_PURGE_RE = exports.LEARNING_MIRROR_PURGE_RE = exports.LEAN_PLANNER_PURGE_ROOTS = exports.COMPATIBILITY_STATE_PREFIXES = exports.PROTECTED_PREFIXES = void 0;
+exports.isLeanPlannerPurgeRoot = isLeanPlannerPurgeRoot;
+exports.isAllowlistedCleanupRelativeId = isAllowlistedCleanupRelativeId;
 const ensure_states_1 = require("../addons/wallbox/ev_foundation/ensure_states");
 /** Never delete these families (core intent / learning status / modes). */
 exports.PROTECTED_PREFIXES = [
@@ -130,7 +132,6 @@ exports.AC_MAPPING_LEAF_SUFFIXES = ["enabled", "target_state", "allowed_values"]
 function isLeanPlannerPurgeRoot(relativeId) {
     return exports.LEAN_PLANNER_PURGE_ROOTS.includes(relativeId);
 }
-exports.isLeanPlannerPurgeRoot = isLeanPlannerPurgeRoot;
 function isAllowlistedCleanupRelativeId(relativeId) {
     if (!relativeId || relativeId.includes("..") || relativeId.startsWith(".") || relativeId.includes("/")) {
         return false;
@@ -213,7 +214,6 @@ function isAllowlistedCleanupRelativeId(relativeId) {
     }
     return AC_UNIT_RE.test(relativeId) || AC_MAPPING_RE.test(relativeId) || VEHICLE_FOLDER_RE.test(relativeId);
 }
-exports.isAllowlistedCleanupRelativeId = isAllowlistedCleanupRelativeId;
 exports.CLEANUP_ALLOWLIST_DESCRIPTION = [
     "addons.air_conditioning.units.unit_{1-5} (only when unit not enabled)",
     "addons.air_conditioning.mapping.unit_{1-5}_* (+ .enabled/.target_state/.allowed_values)",

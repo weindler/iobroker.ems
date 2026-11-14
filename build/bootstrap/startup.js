@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBootstrapRunContext = exports.resetBootstrapBarrierForTest = exports.bootstrapFailurePhase = exports.isBootstrapComplete = exports.runAdapterBootstrap = void 0;
+exports.getBootstrapRunContext = exports.resetBootstrapBarrierForTest = exports.bootstrapFailurePhase = exports.isBootstrapComplete = void 0;
+exports.runAdapterBootstrap = runAdapterBootstrap;
 const air_conditioning_1 = require("../addons/air_conditioning");
 const battery_1 = require("../addons/battery");
 const immersion_heater_1 = require("../addons/immersion_heater");
@@ -121,4 +122,3 @@ async function runAdapterBootstrap(host, step, options = {}) {
     await step("post-bootstrap reconciliation", () => (0, reconcile_1.runPostBootstrapReconciliation)(host));
     (0, context_1.endBootstrapRun)();
 }
-exports.runAdapterBootstrap = runAdapterBootstrap;

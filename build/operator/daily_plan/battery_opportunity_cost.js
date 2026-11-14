@@ -15,7 +15,8 @@
  * Scheingenauigkeit (siehe `BATTERY_OPPORTUNITY_MAX_CT`).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateBatteryOpportunityCost = exports.BATTERY_OPPORTUNITY_SURPLUS_DISCOUNT = exports.BATTERY_OPPORTUNITY_SURPLUS_HEADROOM_MULTIPLIER = exports.BATTERY_OPPORTUNITY_NO_DEMAND_DISCOUNT = exports.BATTERY_OPPORTUNITY_MAX_CT = exports.BATTERY_OPPORTUNITY_MIN_CT = void 0;
+exports.BATTERY_OPPORTUNITY_SURPLUS_DISCOUNT = exports.BATTERY_OPPORTUNITY_SURPLUS_HEADROOM_MULTIPLIER = exports.BATTERY_OPPORTUNITY_NO_DEMAND_DISCOUNT = exports.BATTERY_OPPORTUNITY_MAX_CT = exports.BATTERY_OPPORTUNITY_MIN_CT = void 0;
+exports.evaluateBatteryOpportunityCost = evaluateBatteryOpportunityCost;
 const learning_gate_1 = require("./unified/learning_gate");
 exports.BATTERY_OPPORTUNITY_MIN_CT = 0;
 /** Realistische Obergrenze (ct/kWh) — verhindert Scheingenauigkeit bei Preis-Ausreißern. */
@@ -97,4 +98,3 @@ function evaluateBatteryOpportunityCost(input) {
         usable: true,
     };
 }
-exports.evaluateBatteryOpportunityCost = evaluateBatteryOpportunityCost;

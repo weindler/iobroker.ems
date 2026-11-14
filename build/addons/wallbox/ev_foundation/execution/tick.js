@@ -3,7 +3,13 @@
  * One EV-execution tick: desired → authority → gates → machine → optional button write.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evExecutionBooted = exports.tickEvExecution = exports.peekEvLiveTestState = exports.peekEvExecutionSession = exports.replaceEvLiveTestState = exports.replaceEvExecutionSession = exports.resetEvExecutionSession = void 0;
+exports.resetEvExecutionSession = resetEvExecutionSession;
+exports.replaceEvExecutionSession = replaceEvExecutionSession;
+exports.replaceEvLiveTestState = replaceEvLiveTestState;
+exports.peekEvExecutionSession = peekEvExecutionSession;
+exports.peekEvLiveTestState = peekEvLiveTestState;
+exports.tickEvExecution = tickEvExecution;
+exports.evExecutionBooted = evExecutionBooted;
 const barrier_1 = require("../../../../restore/barrier");
 const execution_mode_1 = require("../../../../execution_mode");
 const tree_paths_1 = require("../../../../tree_paths");
@@ -35,24 +41,19 @@ function resetEvExecutionSession() {
     tibberNowPrepare = (0, tibber_now_prepare_1.emptyTibberNowPrepareState)();
     booted = false;
 }
-exports.resetEvExecutionSession = resetEvExecutionSession;
 /** Test helper — never used to reconstruct ownership after a real restart. */
 function replaceEvExecutionSession(next) {
     session = next;
 }
-exports.replaceEvExecutionSession = replaceEvExecutionSession;
 function replaceEvLiveTestState(next) {
     liveTest = next;
 }
-exports.replaceEvLiveTestState = replaceEvLiveTestState;
 function peekEvExecutionSession() {
     return session;
 }
-exports.peekEvExecutionSession = peekEvExecutionSession;
 function peekEvLiveTestState() {
     return liveTest;
 }
-exports.peekEvLiveTestState = peekEvLiveTestState;
 async function publishSession(host, s, extra) {
     const st = ensure_states_1.WALLBOX_EV_FOUNDATION_STATES;
     await (0, state_write_1.setStateIfChanged)(host, st.evExecutionEnabled, extra.enabled);
@@ -386,8 +387,6 @@ async function tickEvExecution(host, input) {
     });
     return session;
 }
-exports.tickEvExecution = tickEvExecution;
 function evExecutionBooted() {
     return booted;
 }
-exports.evExecutionBooted = evExecutionBooted;

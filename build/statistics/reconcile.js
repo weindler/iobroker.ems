@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.reconcileMobilityEnergy = exports.reconcileHomeEnergy = void 0;
+exports.reconcileHomeEnergy = reconcileHomeEnergy;
+exports.reconcileMobilityEnergy = reconcileMobilityEnergy;
 const compute_1 = require("./compute");
 /** Netzmenge des Smart Meters ist die sichtbare Bezugsbasis; abweichende Tibber-Perioden bleiben markiert. */
 function reconcileHomeEnergy(home, energy, options = {}) {
@@ -30,7 +31,6 @@ function reconcileHomeEnergy(home, energy, options = {}) {
                 : "Smart-Meter-Netzbezug und Tibber-Kosten beziehen sich auf unterschiedliche Erfassungsstände; Festtarifvergleich bis zum gemeinsamen Datenstand derzeit nicht berechenbar. ") + home.reasonDe,
     };
 }
-exports.reconcileHomeEnergy = reconcileHomeEnergy;
 /** Dieselbe Wallboxmessung für Energie- und Mobilitätskarte verwenden. */
 function reconcileMobilityEnergy(mobility, energy, options = {}) {
     const publicKwh = options.invoicedKwh ?? mobility.publicInvoicedKwh ?? 0;
@@ -99,4 +99,3 @@ function reconcileMobilityEnergy(mobility, energy, options = {}) {
             (!sameEnergy ? "Alte Sitzungszählung weicht von der Wallbox-Messung ab. " : "") + mobility.reasonDe,
     };
 }
-exports.reconcileMobilityEnergy = reconcileMobilityEnergy;

@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dateKeyFromMs = exports.targetDateForTodayFreeze = exports.targetDateForTomorrowFreeze = exports.diagnoseTibberPriceJson = exports.parseTibberPriceJsonToHourlySlots = exports.parseTibberPriceJsonTo15MinSlots = exports.MS_PER_15MIN = void 0;
+exports.MS_PER_15MIN = void 0;
+exports.parseTibberPriceJsonTo15MinSlots = parseTibberPriceJsonTo15MinSlots;
+exports.parseTibberPriceJsonToHourlySlots = parseTibberPriceJsonToHourlySlots;
+exports.diagnoseTibberPriceJson = diagnoseTibberPriceJson;
+exports.targetDateForTomorrowFreeze = targetDateForTomorrowFreeze;
+exports.targetDateForTodayFreeze = targetDateForTodayFreeze;
+exports.dateKeyFromMs = dateKeyFromMs;
 exports.MS_PER_15MIN = 15 * 60 * 1000;
 function asNum(v) {
     if (v === null || v === undefined || v === "")
@@ -24,7 +30,6 @@ function dateKeyFromMs(ts) {
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
 }
-exports.dateKeyFromMs = dateKeyFromMs;
 function tomorrowDateKey(ref) {
     const d = new Date(ref);
     d.setHours(12, 0, 0, 0);
@@ -70,7 +75,6 @@ function parseTibberPriceJsonTo15MinSlots(raw, options = {}) {
     }
     return slots.sort((a, b) => a.slotStartMs - b.slotStartMs);
 }
-exports.parseTibberPriceJsonTo15MinSlots = parseTibberPriceJsonTo15MinSlots;
 /** Parse Tibber PricesToday/Tomorrow JSON → stündliche Forecast-Slots in ct/kWh. */
 function parseTibberPriceJsonToHourlySlots(raw, targetDateKey) {
     const byHour = new Map();
@@ -97,7 +101,6 @@ function parseTibberPriceJsonToHourlySlots(raw, targetDateKey) {
     }
     return slots.sort((a, b) => a.hourStartMs - b.hourStartMs);
 }
-exports.parseTibberPriceJsonToHourlySlots = parseTibberPriceJsonToHourlySlots;
 /** Read-only diagnosis of a Tibber PricesToday/Tomorrow JSON payload vs. a target date — for log output only. */
 function diagnoseTibberPriceJson(raw, targetDateKey) {
     const rawType = typeof raw;
@@ -135,14 +138,11 @@ function diagnoseTibberPriceJson(raw, targetDateKey) {
         matchedTargetCount,
     };
 }
-exports.diagnoseTibberPriceJson = diagnoseTibberPriceJson;
 function targetDateForTomorrowFreeze(ref) {
     return tomorrowDateKey(ref);
 }
-exports.targetDateForTomorrowFreeze = targetDateForTomorrowFreeze;
 function targetDateForTodayFreeze(ref) {
     const d = new Date(ref);
     d.setHours(12, 0, 0, 0);
     return dateKeyFromMs(d.getTime());
 }
-exports.targetDateForTodayFreeze = targetDateForTodayFreeze;

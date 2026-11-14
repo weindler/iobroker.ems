@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureWallboxEvccStates = exports.WALLBOX_EVCC_BALLAST_SUFFIXES = exports.WALLBOX_EVCC_PUBLIC_STATE_IDS = exports.WALLBOX_EVCC_STATES = void 0;
+exports.WALLBOX_EVCC_BALLAST_SUFFIXES = exports.WALLBOX_EVCC_PUBLIC_STATE_IDS = exports.WALLBOX_EVCC_STATES = void 0;
+exports.ensureWallboxEvccStates = ensureWallboxEvccStates;
 const tree_paths_1 = require("../../tree_paths");
 const state_util_1 = require("../../ems_light/state_util");
 const EVCC_BASE = `${(0, tree_paths_1.addonStatusBase)("wallbox")}.evcc`;
@@ -348,4 +349,3 @@ async function ensureWallboxEvccStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs.filter((d) => exports.WALLBOX_EVCC_PUBLIC_STATE_IDS.has(d.id)));
 }
-exports.ensureWallboxEvccStates = ensureWallboxEvccStates;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureEnergyDailyRollupBackfill = exports.backfillDailyEnergySource = void 0;
+exports.backfillDailyEnergySource = backfillDailyEnergySource;
+exports.ensureEnergyDailyRollupBackfill = ensureEnergyDailyRollupBackfill;
 const history_1 = require("../pv_bias/history");
 const dates_1 = require("../pv_bias/dates");
 const persist_1 = require("./persist");
@@ -45,7 +46,6 @@ async function backfillDailyEnergySource(host, source) {
     host.log.debug?.(`Energy-Daily-Rollup backfill done: ${source.sourceKey} persisted_days=${Object.keys(mergedDays).length}`);
     return true;
 }
-exports.backfillDailyEnergySource = backfillDailyEnergySource;
 async function ensureEnergyDailyRollupBackfill(host, sources) {
     for (const source of sources) {
         try {
@@ -56,4 +56,3 @@ async function ensureEnergyDailyRollupBackfill(host, sources) {
         }
     }
 }
-exports.ensureEnergyDailyRollupBackfill = ensureEnergyDailyRollupBackfill;

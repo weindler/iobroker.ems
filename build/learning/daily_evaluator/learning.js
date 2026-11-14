@@ -12,7 +12,7 @@
  * nicht doppelt eingerechnet.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyDayToLearningState = void 0;
+exports.applyDayToLearningState = applyDayToLearningState;
 const learning_math_1 = require("./learning_math");
 const TARGET_SAMPLES_DAILY_METRIC = 20;
 function classificationToScore(q) {
@@ -89,4 +89,3 @@ function applyDayToLearningState(state, record, findings, nowIso = new Date().to
     next = { ...next, lastProcessedDateKey: record.dateKey, updatedAtIso: nowIso };
     return next;
 }
-exports.applyDayToLearningState = applyDayToLearningState;

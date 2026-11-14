@@ -4,7 +4,10 @@
  * Unknown bleibt null — keine Fake-0.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pctError = exports.absError = exports.emptyDayEvaluationStore = exports.DAY_EVAL_PERSIST_FILE = exports.DAY_EVAL_RETENTION_DAYS = exports.DAY_EVAL_SCHEMA = exports.DAY_EVAL_MODULE = void 0;
+exports.DAY_EVAL_PERSIST_FILE = exports.DAY_EVAL_RETENTION_DAYS = exports.DAY_EVAL_SCHEMA = exports.DAY_EVAL_MODULE = void 0;
+exports.emptyDayEvaluationStore = emptyDayEvaluationStore;
+exports.absError = absError;
+exports.pctError = pctError;
 exports.DAY_EVAL_MODULE = "day_evaluation";
 exports.DAY_EVAL_SCHEMA = 1;
 exports.DAY_EVAL_RETENTION_DAYS = 120;
@@ -17,7 +20,6 @@ function emptyDayEvaluationStore() {
         days: {},
     };
 }
-exports.emptyDayEvaluationStore = emptyDayEvaluationStore;
 function absError(expected, actual) {
     if (expected === null || actual === null)
         return null;
@@ -25,7 +27,6 @@ function absError(expected, actual) {
         return null;
     return Math.round(Math.abs(actual - expected) * 1000) / 1000;
 }
-exports.absError = absError;
 function pctError(expected, actual) {
     if (expected === null || actual === null || !Number.isFinite(expected) || expected === 0)
         return null;
@@ -33,4 +34,3 @@ function pctError(expected, actual) {
         return null;
     return Math.round(((actual - expected) / expected) * 1000) / 10;
 }
-exports.pctError = pctError;

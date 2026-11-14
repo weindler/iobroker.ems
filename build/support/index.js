@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runSupportBundleExport = exports.readAllNdjson = exports.appendNdjsonRotating = exports.DIAGNOSTIC_ALLOWED_DURATIONS = exports.DIAGNOSTIC_MAX_DURATION_MIN = exports.DIAGNOSTIC_DEFAULT_DURATION_MIN = exports.resetDiagnosticOnStartup = exports.resetDiagnosticModeForTest = exports.totalSupportLogBytes = exports.collectSupportLogEntries = exports.recordErrorLog = exports.recordDiagnosticEvent = exports.diagnosticModeStatus = exports.isDiagnosticModeActive = exports.stopDiagnosticMode = exports.startDiagnosticMode = void 0;
+exports.readAllNdjson = exports.appendNdjsonRotating = exports.DIAGNOSTIC_ALLOWED_DURATIONS = exports.DIAGNOSTIC_MAX_DURATION_MIN = exports.DIAGNOSTIC_DEFAULT_DURATION_MIN = exports.resetDiagnosticOnStartup = exports.resetDiagnosticModeForTest = exports.totalSupportLogBytes = exports.collectSupportLogEntries = exports.recordErrorLog = exports.recordDiagnosticEvent = exports.diagnosticModeStatus = exports.isDiagnosticModeActive = exports.stopDiagnosticMode = exports.startDiagnosticMode = void 0;
+exports.runSupportBundleExport = runSupportBundleExport;
 var diagnostic_mode_1 = require("./diagnostic_mode");
 Object.defineProperty(exports, "startDiagnosticMode", { enumerable: true, get: function () { return diagnostic_mode_1.startDiagnosticMode; } });
 Object.defineProperty(exports, "stopDiagnosticMode", { enumerable: true, get: function () { return diagnostic_mode_1.stopDiagnosticMode; } });
@@ -23,4 +24,3 @@ const diagnostic_mode_2 = require("./diagnostic_mode");
 async function runSupportBundleExport(host) {
     return (0, service_1.runSupportExport)(host, async (h) => (0, diagnostic_mode_2.collectSupportLogEntries)(h));
 }
-exports.runSupportBundleExport = runSupportBundleExport;

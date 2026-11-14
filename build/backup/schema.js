@@ -1,12 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stableJsonStringify = exports.validateManifest = exports.assertJsonSerializable = exports.isSecretKey = void 0;
+exports.isSecretKey = isSecretKey;
+exports.assertJsonSerializable = assertJsonSerializable;
+exports.validateManifest = validateManifest;
+exports.stableJsonStringify = stableJsonStringify;
 const types_1 = require("./types");
 const SECRET_KEY_RE = /(password|passwd|token|access_token|refresh_token|secret|api_key|authorization|cookie|private_key|client_secret)/i;
 function isSecretKey(key) {
     return SECRET_KEY_RE.test(key);
 }
-exports.isSecretKey = isSecretKey;
 function assertJsonSerializable(value, path = "root") {
     if (value === undefined) {
         throw new Error(`undefined not allowed at ${path}`);
@@ -43,7 +45,6 @@ function assertJsonSerializable(value, path = "root") {
     }
     throw new Error(`non-serializable type at ${path}`);
 }
-exports.assertJsonSerializable = assertJsonSerializable;
 function validateManifest(manifest, kind) {
     if (manifest.format !== types_1.EXPORT_FORMAT) {
         throw new Error("invalid manifest format");
@@ -83,8 +84,6 @@ function validateManifest(manifest, kind) {
         }
     }
 }
-exports.validateManifest = validateManifest;
 function stableJsonStringify(value) {
     return `${JSON.stringify(value, null, 2)}\n`;
 }
-exports.stableJsonStringify = stableJsonStringify;

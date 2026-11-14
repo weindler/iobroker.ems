@@ -15,7 +15,7 @@
  * Mitternacht in den Folgetag hinein, falls dessen Telemetrie bereits vorliegt).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evaluateBatteryFindings = void 0;
+exports.evaluateBatteryFindings = evaluateBatteryFindings;
 const slots_1 = require("../day_telemetry/slots");
 const RESERVE_CHECK_WINDOW_MS = 18 * 3600_000;
 function minSocInWindow(day, fromMs, toMs) {
@@ -135,4 +135,3 @@ function evaluateBatteryFindings(day, nextDay) {
     });
     return findings;
 }
-exports.evaluateBatteryFindings = evaluateBatteryFindings;

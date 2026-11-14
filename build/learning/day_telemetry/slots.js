@@ -4,7 +4,9 @@
  * Nutzt operator/time + daily_plan/slots (localDayBoundsMs / endOfLocalDayIso).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.overlappingSlotIndices = exports.slotIndexForMs = exports.buildDaySlotLayout = void 0;
+exports.buildDaySlotLayout = buildDaySlotLayout;
+exports.slotIndexForMs = slotIndexForMs;
+exports.overlappingSlotIndices = overlappingSlotIndices;
 const energy_scopes_1 = require("../../operator/daily_plan/unified/energy_scopes");
 const constants_1 = require("./constants");
 /** Baut Slot-Layout für einen lokalen Kalendertag (92/96/100 je nach DST). */
@@ -22,7 +24,6 @@ function buildDaySlotLayout(dateKey, timezone) {
     }
     return { dateKey, timezone, startMs, endMs, slotCount, slots };
 }
-exports.buildDaySlotLayout = buildDaySlotLayout;
 /** Slot-Index für absolute Zeit; null wenn außerhalb des Tages. */
 function slotIndexForMs(layout, ms) {
     if (ms < layout.startMs || ms >= layout.endMs)
@@ -32,7 +33,6 @@ function slotIndexForMs(layout, ms) {
         return null;
     return idx;
 }
-exports.slotIndexForMs = slotIndexForMs;
 /** Alle Slots, die [fromMs, toMs) überlappen. */
 function overlappingSlotIndices(layout, fromMs, toMs) {
     if (!(toMs > fromMs))
@@ -45,4 +45,3 @@ function overlappingSlotIndices(layout, fromMs, toMs) {
     }
     return out;
 }
-exports.overlappingSlotIndices = overlappingSlotIndices;

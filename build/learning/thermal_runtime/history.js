@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchTemperatureHistory = exports.isValidTempC = void 0;
+exports.isValidTempC = isValidTempC;
+exports.fetchTemperatureHistory = fetchTemperatureHistory;
 const state_util_1 = require("../../ems_light/state_util");
 const history_query_1 = require("../history_query");
 const constants_1 = require("./constants");
@@ -11,7 +12,6 @@ function isValidTempC(value) {
     }
     return value >= constants_1.PLAUSIBLE_TEMP_MIN_C && value <= constants_1.PLAUSIBLE_TEMP_MAX_C;
 }
-exports.isValidTempC = isValidTempC;
 async function fetchTemperatureHistory(host, stateId, lookbackDays) {
     const points = [];
     let lastValidTs = null;
@@ -30,4 +30,3 @@ async function fetchTemperatureHistory(host, stateId, lookbackDays) {
     points.sort((a, b) => a.ts - b.ts);
     return { points, lastValidTs };
 }
-exports.fetchTemperatureHistory = fetchTemperatureHistory;

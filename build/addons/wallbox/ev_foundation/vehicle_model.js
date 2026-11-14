@@ -5,7 +5,8 @@
  * must not blanket-block foundation capability when missing.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyEvFoundationIntegration = exports.assessVehicleModelPath = void 0;
+exports.assessVehicleModelPath = assessVehicleModelPath;
+exports.applyEvFoundationIntegration = applyEvFoundationIntegration;
 const evcc_config_1 = require("../evcc_config");
 const evcc_control_config_1 = require("../evcc_control_config");
 const evcc_mode_control_1 = require("../evcc_mode_control");
@@ -28,7 +29,6 @@ function assessVehicleModelPath(input) {
     }
     return { source: "none", ready: false };
 }
-exports.assessVehicleModelPath = assessVehicleModelPath;
 /** Overlay control-contract and vehicle-path diagnosis onto EvModelV1. No planner decision. */
 function applyEvFoundationIntegration(model, capabilities, adapterConfig) {
     const controlModel = (0, evcc_control_config_1.resolveWallboxControlModel)(adapterConfig);
@@ -56,4 +56,3 @@ function applyEvFoundationIntegration(model, capabilities, adapterConfig) {
         vehicleModelReady: path.ready,
     };
 }
-exports.applyEvFoundationIntegration = applyEvFoundationIntegration;

@@ -1,6 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runAiOptimizationManual = exports.handleAiStateChange = exports.isAiRelatedState = exports.clearStaleAiOptimizeNowRequest = exports.maybeTriggerAiOptimizationOnDailyPlanChange = exports.syncAiDailyCounters = exports.ensureAiStateTree = exports.resetAiPipelineHookForTest = exports.resetAiEnableEpochForTest = exports.isAiPublishAllowed = exports.bumpAiEnableEpoch = exports.currentAiEnableEpoch = exports.applyAiUserEnabledToggle = exports.readAiUserEnabled = exports.migrateAiUserEnabledOnce = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
+exports.resetAiEnableEpochForTest = exports.isAiPublishAllowed = exports.bumpAiEnableEpoch = exports.currentAiEnableEpoch = exports.applyAiUserEnabledToggle = exports.readAiUserEnabled = exports.migrateAiUserEnabledOnce = exports.aiTriggerDigestPayload = exports.resolveAllowedAddonIds = exports.AI_DEFAULT_MIN_INTERVAL_MINUTES = exports.AI_DEFAULT_MAX_CALLS_PER_DAY = exports.AI_DEFAULT_MODEL = exports.AI_ALLOWED_MODELS = exports.aiConfigFromAdapter = exports.AI_STATES = exports.ensureAiStates = void 0;
+exports.resetAiPipelineHookForTest = resetAiPipelineHookForTest;
+exports.ensureAiStateTree = ensureAiStateTree;
+exports.syncAiDailyCounters = syncAiDailyCounters;
+exports.maybeTriggerAiOptimizationOnDailyPlanChange = maybeTriggerAiOptimizationOnDailyPlanChange;
+exports.clearStaleAiOptimizeNowRequest = clearStaleAiOptimizeNowRequest;
+exports.isAiRelatedState = isAiRelatedState;
+exports.handleAiStateChange = handleAiStateChange;
+exports.runAiOptimizationManual = runAiOptimizationManual;
 const states_1 = require("../operator/daily_plan/states");
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
@@ -42,7 +50,6 @@ function resetAiPipelineHookForTest() {
     (0, user_enabled_1.resetAiEnableEpochForTest)();
     (0, run_1.resetAiOptimizationInFlightForTest)();
 }
-exports.resetAiPipelineHookForTest = resetAiPipelineHookForTest;
 async function ensureAiStateTree(host) {
     await (0, ensure_states_1.ensureAiStates)(host);
     await (0, ensure_states_2.ensureAiValidatorStates)(host);
@@ -57,7 +64,6 @@ async function ensureAiStateTree(host) {
         await (0, ensure_states_3.clearStaleDailyAnalystRunNowRequest)(aiHost);
     }
 }
-exports.ensureAiStateTree = ensureAiStateTree;
 function houseTimezoneFromConfig(config) {
     const tz = typeof config?.timezone === "string" ? config.timezone.trim() : "";
     return tz || "Europe/Berlin";
@@ -70,7 +76,6 @@ async function syncAiDailyCounters(host, now = new Date()) {
     const cfg = (0, config_1.aiConfigFromAdapter)(host.config);
     return (0, limiter_1.readAndRolloverDailyCalls)(host, cfg.maxCallsPerDay, now, cfg.monthlyCostLimitEur, houseTimezoneFromConfig(host.config));
 }
-exports.syncAiDailyCounters = syncAiDailyCounters;
 /**
  * Wird nach jedem Daily-Plan-Tick aufgerufen. Löst NICHT bei jeder Operator-Revision einen
  * KI-Versuch aus (die wechselt praktisch jeden Tick — Horizont-Roll, Allocation-Fortschritt,
@@ -129,7 +134,6 @@ async function maybeTriggerAiOptimizationOnDailyPlanChange(host, plan, now = new
     const provider = (0, openai_provider_1.createOpenAiProvider)();
     return (0, run_1.runAiOptimizationNow)(host, plan, "daily_plan_digest_change", provider);
 }
-exports.maybeTriggerAiOptimizationOnDailyPlanChange = maybeTriggerAiOptimizationOnDailyPlanChange;
 const AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX = "ai.optimize_now_request";
 const AI_USER_ENABLED_ID_SUFFIX = "ai.user_enabled";
 const AI_DAILY_ANALYST_RUN_NOW_ID_SUFFIX = ensure_states_3.AI_ANALYST_STATES.runNowRequest;
@@ -142,14 +146,12 @@ async function clearStaleAiOptimizeNowRequest(host) {
     await host.setStateAsync(ensure_states_1.AI_STATES.optimizeNowRequest, { val: false, ack: true });
     return true;
 }
-exports.clearStaleAiOptimizeNowRequest = clearStaleAiOptimizeNowRequest;
 /** Erlaubt Runtime-Toggle, "Jetzt optimieren" und Daily-Analyst-Button direkt über den Objektbaum. */
 function isAiRelatedState(relativeId) {
     return (relativeId === AI_OPTIMIZE_NOW_REQUEST_ID_SUFFIX ||
         relativeId === AI_USER_ENABLED_ID_SUFFIX ||
         relativeId === AI_DAILY_ANALYST_RUN_NOW_ID_SUFFIX);
 }
-exports.isAiRelatedState = isAiRelatedState;
 async function handleAiStateChange(host, relativeId, val, ack) {
     if (relativeId === AI_USER_ENABLED_ID_SUFFIX) {
         if (ack)
@@ -192,7 +194,6 @@ async function handleAiStateChange(host, relativeId, val, ack) {
     }
     return true;
 }
-exports.handleAiStateChange = handleAiStateChange;
 /** Für den manuellen "Jetzt optimieren"-Button — liest den aktuellen Daily Plan direkt aus dem State. */
 async function runAiOptimizationManual(host) {
     const raw = await host.getStateAsync(states_1.DAILY_PLAN_STATE_IDS.planJson);
@@ -212,4 +213,3 @@ async function runAiOptimizationManual(host) {
     const provider = (0, openai_provider_1.createOpenAiProvider)();
     return (0, run_1.runAiOptimizationNow)(host, plan, "manual", provider);
 }
-exports.runAiOptimizationManual = runAiOptimizationManual;

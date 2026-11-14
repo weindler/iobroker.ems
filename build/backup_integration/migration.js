@@ -15,15 +15,28 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.legacyRuntimePathsRemain = exports.runRuntimeMigration = exports.readMigrationStatus = exports.emptyMigrationStatus = void 0;
+exports.emptyMigrationStatus = emptyMigrationStatus;
+exports.readMigrationStatus = readMigrationStatus;
+exports.runRuntimeMigration = runRuntimeMigration;
+exports.legacyRuntimePathsRemain = legacyRuntimePathsRemain;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const atomic_write_1 = require("../persistence/atomic_write");
@@ -38,7 +51,6 @@ function emptyMigrationStatus() {
         moved_entries: [],
     };
 }
-exports.emptyMigrationStatus = emptyMigrationStatus;
 async function readMigrationStatus(migrationStatusPath) {
     try {
         const raw = await fs.readFile(migrationStatusPath, "utf8");
@@ -48,7 +60,6 @@ async function readMigrationStatus(migrationStatusPath) {
         return null;
     }
 }
-exports.readMigrationStatus = readMigrationStatus;
 async function writeMigrationStatus(migrationStatusPath, record) {
     await (0, atomic_write_1.atomicWriteJson)(migrationStatusPath, record, schema_1.stableJsonStringify);
 }
@@ -160,7 +171,6 @@ async function runRuntimeMigration(layout, options = {}) {
         return { ok: false, status: "failed", error: msg };
     }
 }
-exports.runRuntimeMigration = runRuntimeMigration;
 async function legacyRuntimePathsRemain(layout) {
     const remain = [];
     for (const spec of RUNTIME_MOVE_SPECS) {
@@ -173,4 +183,3 @@ async function legacyRuntimePathsRemain(layout) {
     }
     return remain;
 }
-exports.legacyRuntimePathsRemain = legacyRuntimePathsRemain;

@@ -5,7 +5,9 @@
  * Unplausibel / zu streuend → usable=false.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.filterWindowsByLookback = exports.learnAlphaBeta = exports.windowsMatch = void 0;
+exports.windowsMatch = windowsMatch;
+exports.learnAlphaBeta = learnAlphaBeta;
+exports.filterWindowsByLookback = filterWindowsByLookback;
 const constants_1 = require("./constants");
 const types_1 = require("./types");
 function median(values) {
@@ -52,7 +54,6 @@ function windowsMatch(on, off) {
         return false;
     return true;
 }
-exports.windowsMatch = windowsMatch;
 function pairFromMatch(on, off) {
     if (!(on.eGbKwh >= constants_1.MIN_GB_ENERGY_KWH))
         return null;
@@ -178,9 +179,7 @@ function learnAlphaBeta(windows) {
             : "Confidence zu niedrig — Economics nicht usable.",
     };
 }
-exports.learnAlphaBeta = learnAlphaBeta;
 function filterWindowsByLookback(windows, nowMs, lookbackDays = constants_1.LOOKBACK_DAYS) {
     const cutoff = nowMs - lookbackDays * 86_400_000;
     return windows.filter((w) => w.startTs >= cutoff);
 }
-exports.filterWindowsByLookback = filterWindowsByLookback;

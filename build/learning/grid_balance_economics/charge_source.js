@@ -4,7 +4,8 @@
  * Keine erfundene Zuordnung — sonst unknown/mixed.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergeChargeSource = exports.classifyChargeSource = void 0;
+exports.classifyChargeSource = classifyChargeSource;
+exports.mergeChargeSource = mergeChargeSource;
 const CHARGE_W_MIN = 50;
 const SURPLUS_W_MIN = 80;
 const IMPORT_NEAR_ZERO_W = 60;
@@ -34,7 +35,6 @@ function classifyChargeSource(input) {
     }
     return "unknown";
 }
-exports.classifyChargeSource = classifyChargeSource;
 /** Slot-Zusammenführung: Konflikte → mixed, unknown weicht eindeutigen Werten. */
 function mergeChargeSource(prev, next) {
     if (prev == null || prev === "unknown")
@@ -45,4 +45,3 @@ function mergeChargeSource(prev, next) {
         return prev;
     return "mixed";
 }
-exports.mergeChargeSource = mergeChargeSource;

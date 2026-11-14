@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.pvHorizonConfigFromAdapter = exports.hasPvForecastTodayTomorrow = void 0;
+exports.hasPvForecastTodayTomorrow = hasPvForecastTodayTomorrow;
+exports.pvHorizonConfigFromAdapter = pvHorizonConfigFromAdapter;
 const constants_1 = require("./constants");
 const config_1 = require("../pv_bias/config");
 function strField(config, key) {
@@ -36,7 +37,6 @@ function hasPvForecastTodayTomorrow(config) {
     const biasCfg = (0, config_1.pvBiasConfigFromAdapter)(config);
     return Boolean(biasCfg.rawTodayStateId && biasCfg.rawTomorrowStateId);
 }
-exports.hasPvForecastTodayTomorrow = hasPvForecastTodayTomorrow;
 function pvHorizonConfigFromAdapter(config) {
     const c = config && typeof config === "object" ? config : {};
     const biasCfg = (0, config_1.pvBiasConfigFromAdapter)(config);
@@ -60,4 +60,3 @@ function pvHorizonConfigFromAdapter(config) {
         skipTodayTomorrowFromPvBias: skipTodayTomorrow,
     };
 }
-exports.pvHorizonConfigFromAdapter = pvHorizonConfigFromAdapter;

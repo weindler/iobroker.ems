@@ -15,7 +15,9 @@
  * - `solar_estimate` (falls vorhanden) hat Vorrang vor reiner Bewölkung als Formquelle je Stunde.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildPvShapeForDay = exports.clearSkyWeight = exports.solarElevationDeg = void 0;
+exports.solarElevationDeg = solarElevationDeg;
+exports.clearSkyWeight = clearSkyWeight;
+exports.buildPvShapeForDay = buildPvShapeForDay;
 const CLOUD_DAMPING_FACTOR = 0.75;
 const MIN_CLOUD_FACTOR = 0.05;
 function degToRad(deg) {
@@ -42,14 +44,12 @@ function solarElevationDeg(date, latDeg, lonDeg) {
     const sinElevation = Math.sin(latRad) * Math.sin(declRad) + Math.cos(latRad) * Math.cos(declRad) * Math.cos(hourAngleRad);
     return radToDeg(Math.asin(Math.max(-1, Math.min(1, sinElevation))));
 }
-exports.solarElevationDeg = solarElevationDeg;
 /** Clear-Sky-Gewicht ~ sin(Sonnenhöhe); 0 unter dem Horizont. */
 function clearSkyWeight(elevationDeg) {
     if (elevationDeg <= 0)
         return 0;
     return Math.sin(degToRad(elevationDeg));
 }
-exports.clearSkyWeight = clearSkyWeight;
 function hourBucketMs(iso) {
     return Math.floor(Date.parse(iso) / 3_600_000) * 3_600_000;
 }
@@ -120,4 +120,3 @@ function buildPvShapeForDay(slots, dailyKwh, latDeg, lonDeg, hourlyPoints, capW)
         return { slot: { startIso: s.startIso, endIso: s.endIso }, pvPowerW: Math.round(pvPowerW) };
     });
 }
-exports.buildPvShapeForDay = buildPvShapeForDay;

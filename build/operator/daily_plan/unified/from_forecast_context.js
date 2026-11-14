@@ -9,7 +9,12 @@
  * Wallbox/Battery: Planung/Simulation — kein Unified-Live-Takeover.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.summarizeUnifiedDayPlanForReason = exports.buildUnifiedInputFromForecastContext = exports.normalizeFeedInCtPerKwh = exports.buildCanonicalQuarterSlots = exports.findCurrentHouseLoadSlot = exports.findCurrentFifteenMinuteSlot = void 0;
+exports.findCurrentFifteenMinuteSlot = findCurrentFifteenMinuteSlot;
+exports.findCurrentHouseLoadSlot = findCurrentHouseLoadSlot;
+exports.buildCanonicalQuarterSlots = buildCanonicalQuarterSlots;
+exports.normalizeFeedInCtPerKwh = normalizeFeedInCtPerKwh;
+exports.buildUnifiedInputFromForecastContext = buildUnifiedInputFromForecastContext;
+exports.summarizeUnifiedDayPlanForReason = summarizeUnifiedDayPlanForReason;
 const contribution_ids_1 = require("../../contribution_ids");
 const quality_1 = require("../../quality");
 const flex_demand_1 = require("../../contributions/flexible/flex_demand");
@@ -38,7 +43,6 @@ function findCurrentFifteenMinuteSlot(slots, nowMs) {
     }
     return null;
 }
-exports.findCurrentFifteenMinuteSlot = findCurrentFifteenMinuteSlot;
 /**
  * Aktuelles Hauslast-Fenster: now im Slot und Slot trägt Hauslast-Leistung.
  * Segment-Auflösung bleibt unverändert (Mehrstunden ok); kein smearing per startIso.
@@ -56,7 +60,6 @@ function findCurrentHouseLoadSlot(slots, nowMs) {
     }
     return null;
 }
-exports.findCurrentHouseLoadSlot = findCurrentHouseLoadSlot;
 function slotWindowsEqual(a, b) {
     return a.startIso === b.startIso && a.endIso === b.endIso;
 }
@@ -83,7 +86,6 @@ function buildCanonicalQuarterSlots(sourceSlots) {
     }
     return slots;
 }
-exports.buildCanonicalQuarterSlots = buildCanonicalQuarterSlots;
 /** Pro Viertelstunde gewinnt der zeitlich genaueste bekannte Quellwert. */
 function sourceValueForQuarter(sourceSlots, quarter, read) {
     const quarterBounds = validBounds(quarter);
@@ -189,7 +191,6 @@ function normalizeFeedInCtPerKwh(raw) {
         return null;
     return raw;
 }
-exports.normalizeFeedInCtPerKwh = normalizeFeedInCtPerKwh;
 /**
  * Baut UnifiedDayPlannerInput aus dem bestehenden ForecastPlan-Snapshot.
  * Keine parallelen 30-State-Reads — Contributions + optionale Live-Overrides.
@@ -577,7 +578,6 @@ function buildUnifiedInputFromForecastContext(ctx) {
         continueImmersionSoftCurrentSlot: ctx.continueImmersionSoftCurrentSlot === true,
     };
 }
-exports.buildUnifiedInputFromForecastContext = buildUnifiedInputFromForecastContext;
 function mergeWorstQuality(list) {
     const rank = {
         invalid: 7,
@@ -752,4 +752,3 @@ function summarizeUnifiedDayPlanForReason(plan) {
         `Imp=${plan.expectedGridImportEnergyKwh ?? "?"} Exp=${plan.expectedGridExportEnergyKwh ?? "?"} ` +
         `Cost=${plan.expectedCostCt ?? "?"}ct ${vehicleTxt}`).slice(0, 320);
 }
-exports.summarizeUnifiedDayPlanForReason = summarizeUnifiedDayPlanForReason;

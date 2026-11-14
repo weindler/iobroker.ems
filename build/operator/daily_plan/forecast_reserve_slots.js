@@ -5,7 +5,8 @@
  * Netto-Bedarfs-Berechnung bleibt in den bestehenden, unveränderten Funktionen dieser Module.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.findCurrentSlotIdx = exports.buildReserveFloorSlotsFromForecastPlan = void 0;
+exports.buildReserveFloorSlotsFromForecastPlan = buildReserveFloorSlotsFromForecastPlan;
+exports.findCurrentSlotIdx = findCurrentSlotIdx;
 function buildReserveFloorSlotsFromForecastPlan(forecastPlan) {
     const slotHours = Math.max(0.01, (forecastPlan.slotMinutes || 15) / 60);
     const out = [];
@@ -26,7 +27,6 @@ function buildReserveFloorSlotsFromForecastPlan(forecastPlan) {
     }
     return out.sort((a, b) => a.startMs - b.startMs);
 }
-exports.buildReserveFloorSlotsFromForecastPlan = buildReserveFloorSlotsFromForecastPlan;
 /** Erster Slot-Index bei/nach `nowMs` — gemeinsamer „von jetzt“-Ankerpunkt für alle Reserve-Funktionen. */
 function findCurrentSlotIdx(slots, nowMs) {
     if (slots.length === 0)
@@ -34,4 +34,3 @@ function findCurrentSlotIdx(slots, nowMs) {
     const idx = slots.findIndex((s) => s.startMs + 15 * 60_000 > nowMs);
     return idx >= 0 ? idx : Math.max(0, slots.length - 1);
 }
-exports.findCurrentSlotIdx = findCurrentSlotIdx;

@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetMeasuredConsumersEngineForTest = exports.stopMeasuredConsumersRuntimeEngine = exports.initMeasuredConsumersRuntimeEngine = exports.hydrateMeasuredConsumersPersist = exports.runMeasuredConsumersTick = void 0;
+exports.runMeasuredConsumersTick = runMeasuredConsumersTick;
+exports.hydrateMeasuredConsumersPersist = hydrateMeasuredConsumersPersist;
+exports.initMeasuredConsumersRuntimeEngine = initMeasuredConsumersRuntimeEngine;
+exports.stopMeasuredConsumersRuntimeEngine = stopMeasuredConsumersRuntimeEngine;
+exports.resetMeasuredConsumersEngineForTest = resetMeasuredConsumersEngineForTest;
 /**
  * Runtime-Tick für den rein messenden Verbraucherblock.
  *
@@ -261,7 +265,6 @@ async function runMeasuredConsumersTick(host) {
         await (0, persist_io_1.writeMeasuredConsumersPersist)(baseDir, persist).catch((e) => host.log.debug?.(`measured_consumers persist write: ${e}`));
     }
 }
-exports.runMeasuredConsumersTick = runMeasuredConsumersTick;
 async function hydrateMeasuredConsumersPersist(host) {
     if (persistHydrated)
         return;
@@ -272,7 +275,6 @@ async function hydrateMeasuredConsumersPersist(host) {
     }
     persistHydrated = true;
 }
-exports.hydrateMeasuredConsumersPersist = hydrateMeasuredConsumersPersist;
 async function initMeasuredConsumersRuntimeEngine(host) {
     if (engineActive && hostRef === host)
         return;
@@ -283,7 +285,6 @@ async function initMeasuredConsumersRuntimeEngine(host) {
     await (0, ensure_states_1.ensureMeasuredConsumersStates)(host, slots);
     scheduleTick(1000);
 }
-exports.initMeasuredConsumersRuntimeEngine = initMeasuredConsumersRuntimeEngine;
 function stopMeasuredConsumersRuntimeEngine() {
     engineActive = false;
     clearTick();
@@ -296,7 +297,6 @@ function stopMeasuredConsumersRuntimeEngine() {
     }
     hostRef = null;
 }
-exports.stopMeasuredConsumersRuntimeEngine = stopMeasuredConsumersRuntimeEngine;
 /** Für Tests: Engine-Zustand zurücksetzen. */
 function resetMeasuredConsumersEngineForTest() {
     engineActive = false;
@@ -306,4 +306,3 @@ function resetMeasuredConsumersEngineForTest() {
     persistHydrated = false;
     overflowWarned = false;
 }
-exports.resetMeasuredConsumersEngineForTest = resetMeasuredConsumersEngineForTest;

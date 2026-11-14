@@ -14,7 +14,20 @@
  * Ohne Ownership (z. B. Adapterrestart mit altem Geräte-Setpoint) kein Blind-0.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.consumeFailsafeSetpointTakeover = exports.markFailsafeSetpointTakeover = exports.resetBatterySetpointSession = exports.setBatterySetpointSession = exports.getBatterySetpointSession = exports.applyHandover = exports.applyZeroRelease = exports.markReleasePending = exports.decideSetpointRelease = exports.notePositiveSetpointWrite = exports.resolveBatterySetpointHandover = exports.setpointOwnerFromAction = exports.emptySetpointSession = exports.setpointKindFromOwner = void 0;
+exports.setpointKindFromOwner = setpointKindFromOwner;
+exports.emptySetpointSession = emptySetpointSession;
+exports.setpointOwnerFromAction = setpointOwnerFromAction;
+exports.resolveBatterySetpointHandover = resolveBatterySetpointHandover;
+exports.notePositiveSetpointWrite = notePositiveSetpointWrite;
+exports.decideSetpointRelease = decideSetpointRelease;
+exports.markReleasePending = markReleasePending;
+exports.applyZeroRelease = applyZeroRelease;
+exports.applyHandover = applyHandover;
+exports.getBatterySetpointSession = getBatterySetpointSession;
+exports.setBatterySetpointSession = setBatterySetpointSession;
+exports.resetBatterySetpointSession = resetBatterySetpointSession;
+exports.markFailsafeSetpointTakeover = markFailsafeSetpointTakeover;
+exports.consumeFailsafeSetpointTakeover = consumeFailsafeSetpointTakeover;
 function setpointKindFromOwner(owner) {
     if (owner === "grid_balance")
         return "discharge";
@@ -22,7 +35,6 @@ function setpointKindFromOwner(owner) {
         return "charge";
     return "none";
 }
-exports.setpointKindFromOwner = setpointKindFromOwner;
 function emptySetpointSession() {
     return {
         owner: "none",
@@ -35,7 +47,6 @@ function emptySetpointSession() {
         lastReleaseAt: null,
     };
 }
-exports.emptySetpointSession = emptySetpointSession;
 function setpointOwnerFromAction(action) {
     if (action === "grid_balance")
         return "grid_balance";
@@ -45,7 +56,6 @@ function setpointOwnerFromAction(action) {
         return "planned_charge";
     return "none";
 }
-exports.setpointOwnerFromAction = setpointOwnerFromAction;
 function resolveBatterySetpointHandover(input) {
     if (input.restoreOrFault)
         return "restore_fault";
@@ -57,7 +67,6 @@ function resolveBatterySetpointHandover(input) {
         return "higher_priority";
     return "none";
 }
-exports.resolveBatterySetpointHandover = resolveBatterySetpointHandover;
 /** Nur nach akzeptiertem Write (executed / written / simulated) mit powerW > 0. */
 function notePositiveSetpointWrite(session, owner, powerW, live) {
     if (owner === "none" || !(powerW > 0) || !Number.isFinite(powerW))
@@ -74,7 +83,6 @@ function notePositiveSetpointWrite(session, owner, powerW, live) {
         releaseReason: "",
     };
 }
-exports.notePositiveSetpointWrite = notePositiveSetpointWrite;
 function decideSetpointRelease(input) {
     const owns = input.session.owner !== "none" && input.session.wrotePositive;
     if (!owns) {
@@ -91,13 +99,11 @@ function decideSetpointRelease(input) {
     }
     return { shouldWriteZero: true, dropOwnership: true, reason: "regular_end" };
 }
-exports.decideSetpointRelease = decideSetpointRelease;
 function markReleasePending(session, reason) {
     if (session.owner === "none" || !session.wrotePositive)
         return session;
     return { ...session, releasePending: true, releaseReason: reason };
 }
-exports.markReleasePending = markReleasePending;
 function applyZeroRelease(session, nowIso, reason) {
     return {
         owner: "none",
@@ -110,7 +116,6 @@ function applyZeroRelease(session, nowIso, reason) {
         lastReleaseAt: nowIso,
     };
 }
-exports.applyZeroRelease = applyZeroRelease;
 /** Authority-Übergabe: kein 0-Write, Ownership frei. */
 function applyHandover(session, reason) {
     return {
@@ -124,31 +129,25 @@ function applyHandover(session, reason) {
         lastReleaseAt: session.lastReleaseAt,
     };
 }
-exports.applyHandover = applyHandover;
 let held = emptySetpointSession();
 let failsafeTookOver = false;
 function getBatterySetpointSession() {
     return held;
 }
-exports.getBatterySetpointSession = getBatterySetpointSession;
 function setBatterySetpointSession(next) {
     held = next;
 }
-exports.setBatterySetpointSession = setBatterySetpointSession;
 function resetBatterySetpointSession() {
     held = emptySetpointSession();
     failsafeTookOver = false;
 }
-exports.resetBatterySetpointSession = resetBatterySetpointSession;
 /** Failsafe hat 0 W geschrieben — FSM/GB dürfen nicht gegen diese Restore-Authority aufräumen. */
 function markFailsafeSetpointTakeover(nowIso) {
     held = applyZeroRelease(held, nowIso, "failsafe");
     failsafeTookOver = true;
 }
-exports.markFailsafeSetpointTakeover = markFailsafeSetpointTakeover;
 function consumeFailsafeSetpointTakeover() {
     const v = failsafeTookOver;
     failsafeTookOver = false;
     return v;
 }
-exports.consumeFailsafeSetpointTakeover = consumeFailsafeSetpointTakeover;

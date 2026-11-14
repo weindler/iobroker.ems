@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formatDumpAnalysisMarkdown = exports.analyzeObjectDump = exports.extractDumpObjects = void 0;
+exports.extractDumpObjects = extractDumpObjects;
+exports.analyzeObjectDump = analyzeObjectDump;
+exports.formatDumpAnalysisMarkdown = formatDumpAnalysisMarkdown;
 /**
  * Read-only analysis of an exported ioBroker object tree vs the static catalog.
  * Never connects to a live instance; never copies state values or PII into reports.
@@ -115,7 +117,6 @@ function extractDumpObjects(raw) {
     }
     return [];
 }
-exports.extractDumpObjects = extractDumpObjects;
 function analyzeObjectDump(raw, options = {}) {
     const objects = extractDumpObjects(raw);
     const ids = objects.map((o) => String(o._id ?? "")).filter(Boolean);
@@ -215,7 +216,6 @@ function analyzeObjectDump(raw, options = {}) {
         explainedGapNotes,
     };
 }
-exports.analyzeObjectDump = analyzeObjectDump;
 function formatDumpAnalysisMarkdown(analysis) {
     const lines = [
         "# State Surface — Production Gap Analysis",
@@ -258,4 +258,3 @@ function formatDumpAnalysisMarkdown(analysis) {
     lines.push("");
     return lines.join("\n");
 }
-exports.formatDumpAnalysisMarkdown = formatDumpAnalysisMarkdown;

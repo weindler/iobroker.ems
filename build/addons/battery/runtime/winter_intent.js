@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.winterNumOrNull = exports.deviceIntentFromWinterPlanner = exports.parseWinterWindowsJson = void 0;
+exports.parseWinterWindowsJson = parseWinterWindowsJson;
+exports.deviceIntentFromWinterPlanner = deviceIntentFromWinterPlanner;
+exports.winterNumOrNull = numOrNull;
 const battery_winter_windows_1 = require("../../../operator/planning/battery_winter_windows");
 function numOrNull(v) {
     if (v === null || v === undefined || v === "" || v === -1)
@@ -8,7 +10,6 @@ function numOrNull(v) {
     const n = typeof v === "number" ? v : parseFloat(String(v));
     return Number.isFinite(n) ? n : null;
 }
-exports.winterNumOrNull = numOrNull;
 function parseWinterWindowsJson(raw) {
     if (!raw)
         return [];
@@ -25,7 +26,6 @@ function parseWinterWindowsJson(raw) {
         return [];
     }
 }
-exports.parseWinterWindowsJson = parseWinterWindowsJson;
 function deviceIntentFromWinterPlanner(snap, nowMs) {
     if (!snap.active || snap.maxChargeW <= 0)
         return null;
@@ -46,4 +46,3 @@ function deviceIntentFromWinterPlanner(snap, nowMs) {
         source: "winter_planner",
     };
 }
-exports.deviceIntentFromWinterPlanner = deviceIntentFromWinterPlanner;

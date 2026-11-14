@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isLocalthingsHassProfile = exports.getAcProfile = exports.AC_PROFILES = exports.SAMSUNG_LOCALTHINGS_HASS_PROFILE = exports.SAMSUNG_SMARTTHINGS_PROFILE = exports.GENERIC_AC_PROFILE = void 0;
+exports.AC_PROFILES = exports.SAMSUNG_LOCALTHINGS_HASS_PROFILE = exports.SAMSUNG_SMARTTHINGS_PROFILE = exports.GENERIC_AC_PROFILE = void 0;
+exports.getAcProfile = getAcProfile;
+exports.isLocalthingsHassProfile = isLocalthingsHassProfile;
 const constants_1 = require("../constants");
 const localthings_payload_1 = require("./localthings_payload");
 const types_1 = require("./types");
@@ -135,8 +137,6 @@ exports.AC_PROFILES = [
 function getAcProfile(id) {
     return exports.AC_PROFILES.find((p) => p.id === id) ?? exports.GENERIC_AC_PROFILE;
 }
-exports.getAcProfile = getAcProfile;
 function isLocalthingsHassProfile(id) {
     return id === exports.SAMSUNG_LOCALTHINGS_HASS_PROFILE.id;
 }
-exports.isLocalthingsHassProfile = isLocalthingsHassProfile;

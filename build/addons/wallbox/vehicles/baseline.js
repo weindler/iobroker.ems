@@ -1,6 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getStoredBaseline = exports.setStoredBaseline = exports.clearStoredBaseline = exports.resetAllStoredBaselines = exports.hydrateProfileSocPersistenceFromLegacyStates = exports.parseLastTrustedSnapshotFromStateValues = exports.parseRollforwardAnchorFromStateValues = exports.updateProfileSocPersistenceAfterResolution = exports.resetAllProfileSocPersistence = exports.clearProfileSocPersistence = exports.setLastTrustedSnapshot = exports.setRollforwardAnchor = exports.getProfileSocPersistence = exports.getLastTrustedSnapshot = exports.getRollforwardAnchor = void 0;
+exports.getRollforwardAnchor = getRollforwardAnchor;
+exports.getLastTrustedSnapshot = getLastTrustedSnapshot;
+exports.getProfileSocPersistence = getProfileSocPersistence;
+exports.setRollforwardAnchor = setRollforwardAnchor;
+exports.setLastTrustedSnapshot = setLastTrustedSnapshot;
+exports.clearProfileSocPersistence = clearProfileSocPersistence;
+exports.resetAllProfileSocPersistence = resetAllProfileSocPersistence;
+exports.updateProfileSocPersistenceAfterResolution = updateProfileSocPersistenceAfterResolution;
+exports.parseRollforwardAnchorFromStateValues = parseRollforwardAnchorFromStateValues;
+exports.parseLastTrustedSnapshotFromStateValues = parseLastTrustedSnapshotFromStateValues;
+exports.hydrateProfileSocPersistenceFromLegacyStates = hydrateProfileSocPersistenceFromLegacyStates;
+exports.resetAllStoredBaselines = resetAllStoredBaselines;
+exports.clearStoredBaseline = clearStoredBaseline;
+exports.setStoredBaseline = setStoredBaseline;
+exports.getStoredBaseline = getStoredBaseline;
 const LAST_TRUSTED_SNAPSHOT_SOURCES = new Set([
     "direct",
     "energy_rollforward",
@@ -11,11 +25,9 @@ const lastTrustedByVehicleId = new Map();
 function getRollforwardAnchor(vehicleId) {
     return rollforwardAnchorByVehicleId.get(vehicleId) ?? null;
 }
-exports.getRollforwardAnchor = getRollforwardAnchor;
 function getLastTrustedSnapshot(vehicleId) {
     return lastTrustedByVehicleId.get(vehicleId) ?? null;
 }
-exports.getLastTrustedSnapshot = getLastTrustedSnapshot;
 function getProfileSocPersistence(vehicleId) {
     return {
         vehicleId,
@@ -23,25 +35,20 @@ function getProfileSocPersistence(vehicleId) {
         lastTrustedSnapshot: getLastTrustedSnapshot(vehicleId),
     };
 }
-exports.getProfileSocPersistence = getProfileSocPersistence;
 function setRollforwardAnchor(anchor) {
     rollforwardAnchorByVehicleId.set(anchor.vehicleId, anchor);
 }
-exports.setRollforwardAnchor = setRollforwardAnchor;
 function setLastTrustedSnapshot(snapshot) {
     lastTrustedByVehicleId.set(snapshot.vehicleId, snapshot);
 }
-exports.setLastTrustedSnapshot = setLastTrustedSnapshot;
 function clearProfileSocPersistence(vehicleId) {
     rollforwardAnchorByVehicleId.delete(vehicleId);
     lastTrustedByVehicleId.delete(vehicleId);
 }
-exports.clearProfileSocPersistence = clearProfileSocPersistence;
 function resetAllProfileSocPersistence() {
     rollforwardAnchorByVehicleId.clear();
     lastTrustedByVehicleId.clear();
 }
-exports.resetAllProfileSocPersistence = resetAllProfileSocPersistence;
 function isLastTrustedSnapshotSource(source) {
     return LAST_TRUSTED_SNAPSHOT_SOURCES.has(source);
 }
@@ -80,7 +87,6 @@ function updateProfileSocPersistenceAfterResolution(vehicleId, resolution, sessi
     }
     // last_trusted and unknown: do not update anchor or snapshot timestamps
 }
-exports.updateProfileSocPersistenceAfterResolution = updateProfileSocPersistenceAfterResolution;
 function parseRollforwardAnchorFromStateValues(vehicleId, values) {
     const source = String(values.baselineSocSource ?? "").trim();
     if (source !== "direct")
@@ -105,7 +111,6 @@ function parseRollforwardAnchorFromStateValues(vehicleId, values) {
         rootSource: "direct",
     };
 }
-exports.parseRollforwardAnchorFromStateValues = parseRollforwardAnchorFromStateValues;
 function parseLastTrustedSnapshotFromStateValues(vehicleId, values) {
     const soc = typeof values.lastTrustedSocPct === "number" && Number.isFinite(values.lastTrustedSocPct)
         ? values.lastTrustedSocPct
@@ -128,7 +133,6 @@ function parseLastTrustedSnapshotFromStateValues(vehicleId, values) {
         observedAtMs,
     };
 }
-exports.parseLastTrustedSnapshotFromStateValues = parseLastTrustedSnapshotFromStateValues;
 /** Legacy single-baseline parse — maps to persistence without creating invalid rollforward anchors. */
 function hydrateProfileSocPersistenceFromLegacyStates(vehicleId, values) {
     if (!getRollforwardAnchor(vehicleId)) {
@@ -147,16 +151,13 @@ function hydrateProfileSocPersistenceFromLegacyStates(vehicleId, values) {
         }
     }
 }
-exports.hydrateProfileSocPersistenceFromLegacyStates = hydrateProfileSocPersistenceFromLegacyStates;
 // Backward-compatible aliases for tests transitioning from VehicleSocBaseline
 function resetAllStoredBaselines() {
     resetAllProfileSocPersistence();
 }
-exports.resetAllStoredBaselines = resetAllStoredBaselines;
 function clearStoredBaseline(vehicleId) {
     clearProfileSocPersistence(vehicleId);
 }
-exports.clearStoredBaseline = clearStoredBaseline;
 function setStoredBaseline(legacy) {
     if (legacy.baselineSocSource === "direct") {
         const observedAtMs = Date.parse(legacy.baselineAt);
@@ -184,8 +185,6 @@ function setStoredBaseline(legacy) {
         }
     }
 }
-exports.setStoredBaseline = setStoredBaseline;
 function getStoredBaseline(vehicleId) {
     return getRollforwardAnchor(vehicleId);
 }
-exports.getStoredBaseline = getStoredBaseline;

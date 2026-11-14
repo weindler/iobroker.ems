@@ -4,7 +4,13 @@
  * Zukunftsslots bleiben Forecast-only — kein Live-Floor mehr.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyLiveSurplusFloorToCurrentSlot = exports.slotBalanceIsConsistent = exports.applyLiveNowBalanceToCurrentSlot = exports.computeLiveNowBalanceW = exports.isLiveNowTelemetryUsable = exports.isPlausibleLivePowerW = exports.LIVE_NOW_MAX_AGE_SEC = void 0;
+exports.LIVE_NOW_MAX_AGE_SEC = void 0;
+exports.isPlausibleLivePowerW = isPlausibleLivePowerW;
+exports.isLiveNowTelemetryUsable = isLiveNowTelemetryUsable;
+exports.computeLiveNowBalanceW = computeLiveNowBalanceW;
+exports.applyLiveNowBalanceToCurrentSlot = applyLiveNowBalanceToCurrentSlot;
+exports.slotBalanceIsConsistent = slotBalanceIsConsistent;
+exports.applyLiveSurplusFloorToCurrentSlot = applyLiveSurplusFloorToCurrentSlot;
 const surplus_1 = require("../planning/surplus");
 const quality_1 = require("../quality");
 /** Max. Alter Live-Telemetrie für NOW-Bilanz (Sekunden). */
@@ -12,7 +18,6 @@ exports.LIVE_NOW_MAX_AGE_SEC = 120;
 function isPlausibleLivePowerW(powerW) {
     return powerW != null && Number.isFinite(powerW) && powerW >= 0 && powerW <= 100_000;
 }
-exports.isPlausibleLivePowerW = isPlausibleLivePowerW;
 /** Live nur nutzbar wenn PV+HL gültig, plausibel und (falls bekannt) frisch. */
 function isLiveNowTelemetryUsable(input) {
     if (!isPlausibleLivePowerW(input.pvPowerW) || !isPlausibleLivePowerW(input.houseLoadW)) {
@@ -27,7 +32,6 @@ function isLiveNowTelemetryUsable(input) {
     }
     return true;
 }
-exports.isLiveNowTelemetryUsable = isLiveNowTelemetryUsable;
 function computeLiveNowBalanceW(pvPowerW, houseLoadW) {
     const pv = Math.round(pvPowerW);
     const house = Math.round(houseLoadW);
@@ -40,7 +44,6 @@ function computeLiveNowBalanceW(pvPowerW, houseLoadW) {
         availablePvSurplusPowerW: surplus,
     };
 }
-exports.computeLiveNowBalanceW = computeLiveNowBalanceW;
 /**
  * Schreibt die konsistente Live-Bilanz in den aktuellen Slot.
  * Mutiert `slots` in-place. Zukunftsslots bleiben unverändert.
@@ -68,7 +71,6 @@ function applyLiveNowBalanceToCurrentSlot(slots, nowMs, live) {
     }
     return false;
 }
-exports.applyLiveNowBalanceToCurrentSlot = applyLiveNowBalanceToCurrentSlot;
 /**
  * Invariant: Slot ist entweder live-live oder forecast-forecast — nie gemischt.
  * Prüft: availablePvSurplus ≈ max(0, pv − house) wenn beide Komponenten gesetzt.
@@ -87,7 +89,6 @@ function slotBalanceIsConsistent(slot) {
         return false;
     return Math.abs(bal - expectBal) <= 1 && Math.abs(avail - expectAvail) <= 1;
 }
-exports.slotBalanceIsConsistent = slotBalanceIsConsistent;
 /**
  * @deprecated Beta-Befund 002: ersetzt durch applyLiveNowBalanceToCurrentSlot.
  * Behält Signatur für Übergangs-Imports — wendet keinen Forecast/Live-Mix mehr an.
@@ -98,4 +99,3 @@ function applyLiveSurplusFloorToCurrentSlot(slots, nowMs, liveSurplusW) {
     void nowMs;
     // no-op: Mix-Floor entfernt — Aufrufer müssen applyLiveNowBalanceToCurrentSlot nutzen.
 }
-exports.applyLiveSurplusFloorToCurrentSlot = applyLiveSurplusFloorToCurrentSlot;

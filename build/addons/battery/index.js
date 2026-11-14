@@ -1,6 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryUnloadRestore = exports.runBatteryControlTick = exports.detectForeignOwnershipOnStart = exports.handleBatteryForeignStateChange = exports.handleBatteryGridBalanceForeignStateChange = exports.handleBatteryAdapterStateChange = exports.stopBatteryModule = exports.initBatteryModule = exports.startBatteryModuleRuntime = exports.ensureBatteryStateTree = exports.__resetBatteryRuntimeForTest = exports.BATTERY_ADDON_ID = void 0;
+exports.BATTERY_ADDON_ID = void 0;
+exports.__resetBatteryRuntimeForTest = __resetBatteryRuntimeForTest;
+exports.ensureBatteryStateTree = ensureBatteryStateTree;
+exports.startBatteryModuleRuntime = startBatteryModuleRuntime;
+exports.initBatteryModule = initBatteryModule;
+exports.stopBatteryModule = stopBatteryModule;
+exports.handleBatteryAdapterStateChange = handleBatteryAdapterStateChange;
+exports.handleBatteryGridBalanceForeignStateChange = handleBatteryGridBalanceForeignStateChange;
+exports.handleBatteryForeignStateChange = handleBatteryForeignStateChange;
+exports.detectForeignOwnershipOnStart = detectForeignOwnershipOnStart;
+exports.runBatteryControlTick = runBatteryControlTick;
+exports.batteryUnloadRestore = batteryUnloadRestore;
 const governance_1 = require("../governance");
 const runtime_surface_1 = require("../runtime_surface");
 const ems_activity_1 = require("../../ems_activity");
@@ -92,12 +103,10 @@ function __resetBatteryRuntimeForTest(now = Date.now()) {
     (0, daily_plan_1.resetBatteryDailyPlanCache)();
     (0, setpoint_session_1.resetBatterySetpointSession)();
 }
-exports.__resetBatteryRuntimeForTest = __resetBatteryRuntimeForTest;
 async function ensureBatteryStateTree(adapter) {
     await (0, ems_mirror_1.ensureBatteryEmsMirrorStates)(adapter);
     await (0, ensure_states_1.ensureBatteryArchitectureStates)(adapter);
 }
-exports.ensureBatteryStateTree = ensureBatteryStateTree;
 async function startBatteryModuleRuntime(adapter) {
     runtime = (0, fsm_1.initialSonnenRuntime)(Date.now());
     gridBalancePausedByFsm = false;
@@ -140,12 +149,10 @@ async function startBatteryModuleRuntime(adapter) {
     void runBatteryControlTick(host).catch((e) => adapter.log.error(`battery tick (startup): ${e}`));
     return null;
 }
-exports.startBatteryModuleRuntime = startBatteryModuleRuntime;
 async function initBatteryModule(adapter) {
     await ensureBatteryStateTree(adapter);
     return startBatteryModuleRuntime(adapter);
 }
-exports.initBatteryModule = initBatteryModule;
 function stopBatteryModule(_timer) {
     if (controlTimer) {
         clearInterval(controlTimer);
@@ -157,7 +164,6 @@ function stopBatteryModule(_timer) {
     lastGridBalanceWriteAtMs = null;
     (0, daily_plan_1.resetBatteryDailyPlanCache)();
 }
-exports.stopBatteryModule = stopBatteryModule;
 function handleBatteryAdapterStateChange(adapter, stateId) {
     const ns = `${adapter.namespace}.`;
     const rel = stateId.startsWith(ns) ? stateId.slice(ns.length) : stateId;
@@ -175,7 +181,6 @@ function handleBatteryAdapterStateChange(adapter, stateId) {
         void runBatteryControlTick(adapter).catch((e) => adapter.log.error(`battery state change tick: ${e}`));
     }
 }
-exports.handleBatteryAdapterStateChange = handleBatteryAdapterStateChange;
 /** Reagiert auf Änderungen an gemapptem consumption/PV/SOC/Mode (Netzausgleich on-change). */
 function handleBatteryGridBalanceForeignStateChange(adapter, stateId) {
     if (!(0, grid_balance_watch_1.isGridBalanceWatchState)(stateId)) {
@@ -183,12 +188,10 @@ function handleBatteryGridBalanceForeignStateChange(adapter, stateId) {
     }
     (0, grid_balance_watch_1.scheduleGridBalanceTick)(adapter, runBatteryControlTick);
 }
-exports.handleBatteryGridBalanceForeignStateChange = handleBatteryGridBalanceForeignStateChange;
 /** @deprecated use handleBatteryAdapterStateChange */
 function handleBatteryForeignStateChange(adapter, stateId) {
     handleBatteryAdapterStateChange(adapter, stateId);
 }
-exports.handleBatteryForeignStateChange = handleBatteryForeignStateChange;
 // ---------------------------------------------------------------------------
 async function readForeign(host, id) {
     const t = id.trim();
@@ -282,7 +285,6 @@ async function detectForeignOwnershipOnStart(host) {
         runtime.faultSinceMs = Date.now();
     }
 }
-exports.detectForeignOwnershipOnStart = detectForeignOwnershipOnStart;
 function buildReading(host, table, config, profileNormalizeMode, raw) {
     void host;
     void table;
@@ -316,7 +318,6 @@ async function runBatteryControlTick(host) {
         ticking = false;
     }
 }
-exports.runBatteryControlTick = runBatteryControlTick;
 async function controlTickInner(host) {
     (0, ems_activity_1.touchEmsActivity)();
     if ((0, setpoint_session_1.consumeFailsafeSetpointTakeover)()) {
@@ -1169,4 +1170,3 @@ async function batteryUnloadRestore(host) {
         host.log.warn(`battery unload restore best-effort failed: ${String(e)}`);
     }
 }
-exports.batteryUnloadRestore = batteryUnloadRestore;

@@ -8,17 +8,20 @@
  * In-memory only. Restart → unknown. Never reconstruct from diagnosis states.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.grantOrClearOwnershipAfterFeedback = exports.dropExecutionOwnership = exports.resolveDesiredWithOwnership = exports.shouldReleaseOwnedCharge = exports.ownershipLabel = exports.isEmsOwnedChargeMode = void 0;
+exports.isEmsOwnedChargeMode = isEmsOwnedChargeMode;
+exports.ownershipLabel = ownershipLabel;
+exports.shouldReleaseOwnedCharge = shouldReleaseOwnedCharge;
+exports.resolveDesiredWithOwnership = resolveDesiredWithOwnership;
+exports.dropExecutionOwnership = dropExecutionOwnership;
+exports.grantOrClearOwnershipAfterFeedback = grantOrClearOwnershipAfterFeedback;
 function isEmsOwnedChargeMode(mode) {
     return mode === "pv" || mode === "min" || mode === "now";
 }
-exports.isEmsOwnedChargeMode = isEmsOwnedChargeMode;
 function ownershipLabel(ownership, ownedMode) {
     if (ownership === "ems" && ownedMode)
         return `ems:${ownedMode}`;
     return ownership;
 }
-exports.ownershipLabel = ownershipLabel;
 /**
  * Release-OFF only after a positive valid plan that ends the wallbox slot,
  * and only if EMS still owns a charge mode it confirmed.
@@ -38,7 +41,6 @@ function shouldReleaseOwnedCharge(input) {
         return false;
     return true;
 }
-exports.shouldReleaseOwnedCharge = shouldReleaseOwnedCharge;
 function resolveDesiredWithOwnership(input) {
     if (shouldReleaseOwnedCharge({
         projectedDesired: input.projection.desired,
@@ -59,7 +61,6 @@ function resolveDesiredWithOwnership(input) {
     }
     return { ...input.projection, action: "execute" };
 }
-exports.resolveDesiredWithOwnership = resolveDesiredWithOwnership;
 function dropExecutionOwnership(session, input) {
     if (session.ownership !== "ems")
         return session;
@@ -93,7 +94,6 @@ function dropExecutionOwnership(session, input) {
         lastResult: pendingOurCommand ? "ownership_lost" : session.lastResult,
     };
 }
-exports.dropExecutionOwnership = dropExecutionOwnership;
 function grantOrClearOwnershipAfterFeedback(session, nowMs) {
     if (session.lastResult !== "confirmed")
         return session;
@@ -118,4 +118,3 @@ function grantOrClearOwnershipAfterFeedback(session, nowMs) {
     }
     return session;
 }
-exports.grantOrClearOwnershipAfterFeedback = grantOrClearOwnershipAfterFeedback;

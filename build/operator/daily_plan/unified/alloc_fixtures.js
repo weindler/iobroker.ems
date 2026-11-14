@@ -3,7 +3,13 @@
  * Fixtures für ALLOC-001…007 — rufen den echten Allocator auf.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.alloc007Input = exports.alloc006Input = exports.alloc005Input = exports.alloc004Input = exports.alloc003Input = exports.alloc002Input = exports.alloc001Input = void 0;
+exports.alloc001Input = alloc001Input;
+exports.alloc002Input = alloc002Input;
+exports.alloc003Input = alloc003Input;
+exports.alloc004Input = alloc004Input;
+exports.alloc005Input = alloc005Input;
+exports.alloc006Input = alloc006Input;
+exports.alloc007Input = alloc007Input;
 const fixtures_1 = require("./fixtures");
 const Q = (confidencePct) => ({
     status: "valid",
@@ -32,17 +38,14 @@ function alloc001Input() {
     };
     return withConfidence(input, 85);
 }
-exports.alloc001Input = alloc001Input;
 /** ALLOC-002: hohe PV während Abwesenheit. */
 function alloc002Input() {
     return withConfidence((0, fixtures_1.golden002Input)(), 85);
 }
-exports.alloc002Input = alloc002Input;
 /** ALLOC-003: PV reicht vor Deadline, billiger früher Netzslot. */
 function alloc003Input() {
     return withConfidence((0, fixtures_1.golden003Input)(), 90);
 }
-exports.alloc003Input = alloc003Input;
 /** ALLOC-004: harte Deadline, PV unzureichend. */
 function alloc004Input() {
     const input = (0, fixtures_1.golden002Input)();
@@ -64,7 +67,6 @@ function alloc004Input() {
     input.pv.expectedDayEnergyKwh = input.pv.slots.reduce((a, s) => a + (s.energyKwh ?? 0), 0);
     return withConfidence(input, 80);
 }
-exports.alloc004Input = alloc004Input;
 /** ALLOC-005: PV nominal genug, Confidence niedrig, harte Deadline. */
 function alloc005Input() {
     const input = (0, fixtures_1.golden003Input)();
@@ -75,7 +77,6 @@ function alloc005Input() {
     };
     return withConfidence(input, 40);
 }
-exports.alloc005Input = alloc005Input;
 /** ALLOC-006: Batterie fast voll, Thermal Headroom, hoher Surplus. */
 function alloc006Input() {
     const input = (0, fixtures_1.golden001Input)();
@@ -87,7 +88,6 @@ function alloc006Input() {
     };
     return withConfidence(input, 85);
 }
-exports.alloc006Input = alloc006Input;
 /** ALLOC-007: Thermal tagsüber aus PV, nicht abends Batterie. */
 function alloc007Input() {
     const day = (0, fixtures_1.buildSlots)("2026-08-04T08:00:00.000Z", 8);
@@ -132,4 +132,3 @@ function alloc007Input() {
     base.battery = { ...base.battery, socPct: 70 };
     return withConfidence(base, 85);
 }
-exports.alloc007Input = alloc007Input;

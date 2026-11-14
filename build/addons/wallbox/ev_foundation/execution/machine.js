@@ -4,7 +4,7 @@
  * Pure: no I/O. Writes are proposed, never executed here.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stepEvExecution = void 0;
+exports.stepEvExecution = stepEvExecution;
 const freshness_1 = require("./freshness");
 const ownership_1 = require("./ownership");
 const types_1 = require("./types");
@@ -166,4 +166,3 @@ function stepEvExecution(session, input) {
     };
     return { session: s, writeMode: input.desiredMode };
 }
-exports.stepEvExecution = stepEvExecution;

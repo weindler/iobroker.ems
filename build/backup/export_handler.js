@@ -1,6 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.stopDiagnosticMode = exports.handleBackupStateChange = exports.isBackupRelatedState = exports.initBackupExportRuntime = exports.syncDiagnosticStatus = exports.handleDiagnosticStopRequest = exports.handleDiagnosticModeRequest = exports.handleSupportExportRequest = exports.handleBackupExportRequest = void 0;
+exports.stopDiagnosticMode = void 0;
+exports.handleBackupExportRequest = handleBackupExportRequest;
+exports.handleSupportExportRequest = handleSupportExportRequest;
+exports.handleDiagnosticModeRequest = handleDiagnosticModeRequest;
+exports.handleDiagnosticStopRequest = handleDiagnosticStopRequest;
+exports.syncDiagnosticStatus = syncDiagnosticStatus;
+exports.initBackupExportRuntime = initBackupExportRuntime;
+exports.isBackupRelatedState = isBackupRelatedState;
+exports.handleBackupStateChange = handleBackupStateChange;
 const ensure_states_1 = require("./ensure_states");
 const operation_lock_1 = require("./operation_lock");
 const diagnostic_mode_1 = require("../support/diagnostic_mode");
@@ -61,7 +69,6 @@ async function handleBackupExportRequest(host, val, ack) {
         await (0, ensure_states_1.setBackupExportStatus)(host, { running: false });
     }
 }
-exports.handleBackupExportRequest = handleBackupExportRequest;
 async function handleSupportExportRequest(host, val, ack) {
     if (!isConsciousRequest(val, ack))
         return;
@@ -102,7 +109,6 @@ async function handleSupportExportRequest(host, val, ack) {
         await (0, ensure_states_1.setBackupExportStatus)(host, { running: false });
     }
 }
-exports.handleSupportExportRequest = handleSupportExportRequest;
 async function handleDiagnosticModeRequest(host, val, ack, durationOverride) {
     if (!isConsciousRequest(val, ack)) {
         return { ok: false, error: "ignored" };
@@ -148,7 +154,6 @@ async function handleDiagnosticModeRequest(host, val, ack, durationOverride) {
     await host.setStateAsync(ensure_states_1.SUPPORT_STATES.lastError, { val: started.error, ack: true });
     return { ok: false, error: started.error };
 }
-exports.handleDiagnosticModeRequest = handleDiagnosticModeRequest;
 async function handleDiagnosticStopRequest(host) {
     const wasActive = (0, diagnostic_mode_1.diagnosticModeStatus)().active;
     (0, diagnostic_mode_1.stopDiagnosticMode)();
@@ -159,7 +164,6 @@ async function handleDiagnosticStopRequest(host) {
     }
     return { ok: true, wasActive };
 }
-exports.handleDiagnosticStopRequest = handleDiagnosticStopRequest;
 async function syncDiagnosticStatus(host) {
     const st = (0, diagnostic_mode_1.diagnosticModeStatus)();
     await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticMode, { val: st.active, ack: true });
@@ -167,7 +171,6 @@ async function syncDiagnosticStatus(host) {
     const bytes = await (0, diagnostic_mode_1.totalSupportLogBytes)(host);
     await host.setStateAsync(ensure_states_1.SUPPORT_STATES.logSizeBytes, { val: bytes, ack: true });
 }
-exports.syncDiagnosticStatus = syncDiagnosticStatus;
 async function initBackupExportRuntime(host) {
     (0, diagnostic_mode_1.resetDiagnosticOnStartup)();
     await host.setStateAsync(ensure_states_1.BACKUP_STATES.exportRequest, { val: false, ack: true });
@@ -176,7 +179,6 @@ async function initBackupExportRuntime(host) {
     await host.setStateAsync(ensure_states_1.SUPPORT_STATES.diagnosticExpiresAt, { val: "", ack: true });
     await syncDiagnosticStatus(host);
 }
-exports.initBackupExportRuntime = initBackupExportRuntime;
 function isBackupRelatedState(relativeId) {
     return (relativeId.startsWith("backup.") ||
         relativeId.startsWith("support.") ||
@@ -184,7 +186,6 @@ function isBackupRelatedState(relativeId) {
         relativeId === ensure_states_1.BACKUP_STATES.supportExportRequest ||
         relativeId === ensure_states_1.SUPPORT_STATES.diagnosticRequest);
 }
-exports.isBackupRelatedState = isBackupRelatedState;
 async function handleBackupStateChange(host, relativeId, val, ack) {
     if (relativeId === ensure_states_1.BACKUP_STATES.exportRequest) {
         await handleBackupExportRequest(host, val, ack);
@@ -198,4 +199,3 @@ async function handleBackupStateChange(host, relativeId, val, ack) {
         await handleDiagnosticModeRequest(host, val, ack);
     }
 }
-exports.handleBackupStateChange = handleBackupStateChange;

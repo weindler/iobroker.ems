@@ -3,7 +3,9 @@
  * Frozen Planner Allocation — multi-consumer, Shared-AC elektrisch einmal.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sharedGroupMapFromClimateUnits = exports.dedupePlannedConsumers = exports.freezePlannedConsumersForSlot = void 0;
+exports.freezePlannedConsumersForSlot = freezePlannedConsumersForSlot;
+exports.dedupePlannedConsumers = dedupePlannedConsumers;
+exports.sharedGroupMapFromClimateUnits = sharedGroupMapFromClimateUnits;
 /**
  * Baut kompakte Frozen Allocation für einen Slot.
  * Klima-Komfort: pro Unit.
@@ -50,7 +52,6 @@ function freezePlannedConsumersForSlot(allocations, slotStartIso, sharedGroupByC
     }
     return out;
 }
-exports.freezePlannedConsumersForSlot = freezePlannedConsumersForSlot;
 /** Dedup: gleicher Inhalt → bestehender Index, sonst push. */
 function dedupePlannedConsumers(table, entry) {
     const key = JSON.stringify(entry);
@@ -61,7 +62,6 @@ function dedupePlannedConsumers(table, entry) {
     }
     return { table: [...table, entry], index: table.length };
 }
-exports.dedupePlannedConsumers = dedupePlannedConsumers;
 function sharedGroupMapFromClimateUnits(units) {
     const m = new Map();
     for (const u of units) {
@@ -72,4 +72,3 @@ function sharedGroupMapFromClimateUnits(units) {
     }
     return m;
 }
-exports.sharedGroupMapFromClimateUnits = sharedGroupMapFromClimateUnits;

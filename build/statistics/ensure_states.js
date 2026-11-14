@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureStatisticsStateTree = exports.STATISTICS_STATES = exports.statisticsEnergyState = exports.STATISTICS_ENERGY_FIELDS = exports.STATISTICS_BASE = void 0;
+exports.STATISTICS_STATES = exports.STATISTICS_ENERGY_FIELDS = exports.STATISTICS_BASE = void 0;
+exports.statisticsEnergyState = statisticsEnergyState;
+exports.ensureStatisticsStateTree = ensureStatisticsStateTree;
 const state_util_1 = require("../ems_light/state_util");
 const flat_states_1 = require("./flat_states");
 exports.STATISTICS_BASE = "statistics";
@@ -8,7 +10,6 @@ exports.STATISTICS_ENERGY_FIELDS = ["pvGenerationKwh", "houseConsumptionKwh", "g
 function statisticsEnergyState(scope, field) {
     return `statistics.energy.${scope}.${field.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`)}`;
 }
-exports.statisticsEnergyState = statisticsEnergyState;
 exports.STATISTICS_STATES = {
     enabled: `${exports.STATISTICS_BASE}.enabled`,
     lastRunAt: `${exports.STATISTICS_BASE}.last_run_at`,
@@ -209,4 +210,3 @@ async function ensureStatisticsStateTree(host) {
         strState(exports.STATISTICS_STATES.adjustAckDe, "Statistik Korrektur Bestätigung (DE)"),
     ]);
 }
-exports.ensureStatisticsStateTree = ensureStatisticsStateTree;

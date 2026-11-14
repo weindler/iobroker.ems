@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batteryChargeLogicConfigFromAdapter = void 0;
+exports.batteryChargeLogicConfigFromAdapter = batteryChargeLogicConfigFromAdapter;
 const config_1 = require("../../../addons/battery/config");
 /**
  * Liest die Admin-Config für die PV-Defizit-Ladelogik.
@@ -62,4 +62,3 @@ function batteryChargeLogicConfigFromAdapter(config) {
         capacityKwh: battery.capacityManualKwh,
     };
 }
-exports.batteryChargeLogicConfigFromAdapter = batteryChargeLogicConfigFromAdapter;

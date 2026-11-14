@@ -1,6 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolvePolicySnapshotForPlan = exports.gridImportEffective = exports.sortAllocationCandidates = exports.compareAllocationCandidates = exports.buildAllocationCandidate = exports.resolveMutualExclusionAddonId = exports.isMutualExclusionPair = exports.policyOrderFor = exports.matchesPolicyRef = exports.contributionAddonId = void 0;
+exports.contributionAddonId = contributionAddonId;
+exports.matchesPolicyRef = matchesPolicyRef;
+exports.policyOrderFor = policyOrderFor;
+exports.isMutualExclusionPair = isMutualExclusionPair;
+exports.resolveMutualExclusionAddonId = resolveMutualExclusionAddonId;
+exports.buildAllocationCandidate = buildAllocationCandidate;
+exports.compareAllocationCandidates = compareAllocationCandidates;
+exports.sortAllocationCandidates = sortAllocationCandidates;
+exports.gridImportEffective = gridImportEffective;
+exports.resolvePolicySnapshotForPlan = resolvePolicySnapshotForPlan;
 const contribution_ids_1 = require("../contribution_ids");
 const NON_ALLOCATABLE_IDS = new Set([
     contribution_ids_1.CONTRIBUTION_IDS.BATTERY_DISCHARGE,
@@ -18,7 +27,6 @@ function contributionAddonId(contributionId, contributorId) {
         return "air_conditioning";
     return contributorId;
 }
-exports.contributionAddonId = contributionAddonId;
 function matchesPolicyRef(ref, contributionId, addonId) {
     const r = ref.trim();
     if (!r)
@@ -29,7 +37,6 @@ function matchesPolicyRef(ref, contributionId, addonId) {
         return true;
     return false;
 }
-exports.matchesPolicyRef = matchesPolicyRef;
 function policyOrderFor(contributionId, addonId, energyPriority) {
     for (let i = 0; i < energyPriority.length; i++) {
         if (matchesPolicyRef(energyPriority[i], contributionId, addonId)) {
@@ -38,7 +45,6 @@ function policyOrderFor(contributionId, addonId, energyPriority) {
     }
     return energyPriority.length + 1000;
 }
-exports.policyOrderFor = policyOrderFor;
 function isMutualExclusionPair(a, b, rules) {
     for (const rule of rules) {
         if ((a === rule.addonA && b === rule.addonB) ||
@@ -50,11 +56,9 @@ function isMutualExclusionPair(a, b, rules) {
     }
     return false;
 }
-exports.isMutualExclusionPair = isMutualExclusionPair;
 function resolveMutualExclusionAddonId(contributionId, addonId, rules) {
     return addonId || contributionAddonId(contributionId, addonId);
 }
-exports.resolveMutualExclusionAddonId = resolveMutualExclusionAddonId;
 function requiredEnergyFromContribution(c) {
     const fromDetails = c.details.requiredEnergyKwh;
     if (typeof fromDetails === "number" && Number.isFinite(fromDetails)) {
@@ -168,7 +172,6 @@ function buildAllocationCandidate(c, globalMode, energyPriority) {
         reasonDe,
     };
 }
-exports.buildAllocationCandidate = buildAllocationCandidate;
 function compareAllocationCandidates(a, b) {
     if (a.mandatory !== b.mandatory)
         return a.mandatory ? -1 : 1;
@@ -184,11 +187,9 @@ function compareAllocationCandidates(a, b) {
         return bandA - bandB;
     return a.contributionId.localeCompare(b.contributionId);
 }
-exports.compareAllocationCandidates = compareAllocationCandidates;
 function sortAllocationCandidates(candidates) {
     return [...candidates].sort(compareAllocationCandidates);
 }
-exports.sortAllocationCandidates = sortAllocationCandidates;
 function gridImportEffective(slotImportAllowed, policyAllowed, modeAllowsOptimization, globalMode) {
     if (!modeAllowsOptimization || globalMode === "off")
         return false;
@@ -196,7 +197,6 @@ function gridImportEffective(slotImportAllowed, policyAllowed, modeAllowsOptimiz
         return false;
     return slotImportAllowed;
 }
-exports.gridImportEffective = gridImportEffective;
 function resolvePolicySnapshotForPlan(policySnapshot, energyPriority, mutualExclusions, gridImportAllowedPolicy, effectiveMaxGridImportW, configuredHouseFuseLimitW, batteryConsumerAccess) {
     return {
         policySnapshot: {
@@ -225,4 +225,3 @@ function resolvePolicySnapshotForPlan(policySnapshot, energyPriority, mutualExcl
         },
     };
 }
-exports.resolvePolicySnapshotForPlan = resolvePolicySnapshotForPlan;

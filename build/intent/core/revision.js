@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.nextRevision = exports.semanticIntentChanged = exports.computeSemanticHash = exports.semanticIntentPayload = void 0;
+exports.semanticIntentPayload = semanticIntentPayload;
+exports.computeSemanticHash = computeSemanticHash;
+exports.semanticIntentChanged = semanticIntentChanged;
+exports.nextRevision = nextRevision;
 const node_crypto_1 = require("node:crypto");
 function sortKeysDeep(value) {
     if (value === null || typeof value !== "object") {
@@ -44,7 +47,6 @@ function semanticIntentPayload(intent) {
         source_summary: [...intent.source_summary].sort(),
     };
 }
-exports.semanticIntentPayload = semanticIntentPayload;
 /** Plan ohne das pro Lauf neu gesetzte `observed_at` (sonst Revision-Flapping bei jedem Poll). */
 function externalPlanForHash(plan) {
     return {
@@ -70,14 +72,12 @@ function manualOverrideForHash(mo) {
 function computeSemanticHash(intent) {
     return (0, node_crypto_1.createHash)("sha256").update(stableStringify(semanticIntentPayload(intent)), "utf8").digest("hex");
 }
-exports.computeSemanticHash = computeSemanticHash;
 function semanticIntentChanged(prev, next) {
     if (!prev) {
         return true;
     }
     return computeSemanticHash(prev) !== computeSemanticHash(next);
 }
-exports.semanticIntentChanged = semanticIntentChanged;
 function nextRevision(prev, next) {
     if (!prev) {
         return next.charge_strategy.status !== "missing" ||
@@ -92,4 +92,3 @@ function nextRevision(prev, next) {
     }
     return prev.revision + 1;
 }
-exports.nextRevision = nextRevision;

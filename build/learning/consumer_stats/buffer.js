@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.dayRecordFromEntry = exports.snapshotFromEntry = exports.ingestConsumerStatsTick = exports.resolveActivePowerW = exports.computeTickDeltaSec = exports.emptyConsumerEntry = void 0;
+exports.emptyConsumerEntry = emptyConsumerEntry;
+exports.computeTickDeltaSec = computeTickDeltaSec;
+exports.resolveActivePowerW = resolveActivePowerW;
+exports.ingestConsumerStatsTick = ingestConsumerStatsTick;
+exports.snapshotFromEntry = snapshotFromEntry;
+exports.dayRecordFromEntry = dayRecordFromEntry;
 const day_1 = require("../energy_daily_rollup/day");
 const types_1 = require("./types");
 function emptyConsumerEntry(consumerKey, nowMs) {
@@ -24,7 +29,6 @@ function emptyConsumerEntry(consumerKey, nowMs) {
         todayRoomDataOk: false,
     };
 }
-exports.emptyConsumerEntry = emptyConsumerEntry;
 function mergeModesAvailable(a, b) {
     if (!a?.length && !b?.length)
         return a ?? b ?? null;
@@ -65,14 +69,12 @@ function computeTickDeltaSec(nowMs, lastTickMs, maxDeltaSec = types_1.MAX_TICK_D
     }
     return Math.min(raw, maxDeltaSec);
 }
-exports.computeTickDeltaSec = computeTickDeltaSec;
 function resolveActivePowerW(input) {
     if (input.measuredPowerW !== null && input.measuredPowerW >= input.powerOnThresholdW) {
         return input.measuredPowerW;
     }
     return input.commandedPowerW > 0 ? input.commandedPowerW : 0;
 }
-exports.resolveActivePowerW = resolveActivePowerW;
 function rolloverDay(entry, dateKey) {
     if (entry.todayDateKey === dateKey) {
         return entry;
@@ -162,7 +164,6 @@ function ingestConsumerStatsTick(entry, input, config) {
         todayRoomDataOk: next.todayRoomDataOk === true || input.roomDataOk === true,
     };
 }
-exports.ingestConsumerStatsTick = ingestConsumerStatsTick;
 function snapshotFromEntry(entry, config, nowMs, deviceActive = false) {
     return {
         consumerKey: entry.consumerKey,
@@ -179,11 +180,9 @@ function snapshotFromEntry(entry, config, nowMs, deviceActive = false) {
         lastUpdated: new Date(nowMs).toISOString(),
     };
 }
-exports.snapshotFromEntry = snapshotFromEntry;
 function dayRecordFromEntry(entry) {
     return persistableDayRecord(entry);
 }
-exports.dayRecordFromEntry = dayRecordFromEntry;
 function roundKwh(value) {
     return Math.round(value * 1000) / 1000;
 }

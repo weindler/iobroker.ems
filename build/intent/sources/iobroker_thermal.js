@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.snapshotToThermalManualOverride = exports.processIobrokerThermalRequest = void 0;
+exports.processIobrokerThermalRequest = processIobrokerThermalRequest;
+exports.snapshotToThermalManualOverride = snapshotToThermalManualOverride;
 const iobroker_request_shared_1 = require("../core/iobroker_request_shared");
 const normalize_1 = require("../thermal/normalize");
 const resolve_1 = require("../thermal/resolve");
@@ -95,10 +96,8 @@ function processIobrokerThermalRequest(input) {
         accepted: true,
     };
 }
-exports.processIobrokerThermalRequest = processIobrokerThermalRequest;
 function snapshotToThermalManualOverride(snapshot) {
     if (!snapshot?.manual_override?.active)
         return null;
     return snapshot.manual_override;
 }
-exports.snapshotToThermalManualOverride = snapshotToThermalManualOverride;

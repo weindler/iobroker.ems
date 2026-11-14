@@ -9,7 +9,8 @@
  * wird aber nicht mehr still als Live-Authority angewendet.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildPlanBAdvisory = exports.AI_ALLOCATION_LIVE_MUTATION_ENABLED = void 0;
+exports.AI_ALLOCATION_LIVE_MUTATION_ENABLED = void 0;
+exports.buildPlanBAdvisory = buildPlanBAdvisory;
 /** Live-Mutation von Daily-/Unified-Allocations durch AI — für Beta aus. */
 exports.AI_ALLOCATION_LIVE_MUTATION_ENABLED = false;
 function buildPlanBAdvisory(compare) {
@@ -29,4 +30,3 @@ function buildPlanBAdvisory(compare) {
         mutatesLiveSlices: false,
     };
 }
-exports.buildPlanBAdvisory = buildPlanBAdvisory;

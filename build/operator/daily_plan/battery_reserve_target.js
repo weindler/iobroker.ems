@@ -24,7 +24,7 @@
  * (kein wirtschaftliches Ziel ableitbar), niemals ein versteckter fester Prozentwert.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveCentralBatteryReserveTarget = void 0;
+exports.resolveCentralBatteryReserveTarget = resolveCentralBatteryReserveTarget;
 const next_reliable_pv_1 = require("./unified/next_reliable_pv");
 const forecast_reserve_slots_1 = require("./forecast_reserve_slots");
 const reserve_1 = require("../../learning/battery_runtime/reserve");
@@ -137,4 +137,3 @@ function resolveCentralBatteryReserveTarget(input) {
         reasonDe: parts.join(" — ") + ".",
     };
 }
-exports.resolveCentralBatteryReserveTarget = resolveCentralBatteryReserveTarget;

@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bufferToDayRecord = exports.ingestDailyKwhSample = exports.emptyDayBuffer = exports.isValidDayKwh = exports.PLAUSIBLE_DAY_KWH_MAX = void 0;
+exports.PLAUSIBLE_DAY_KWH_MAX = void 0;
+exports.isValidDayKwh = isValidDayKwh;
+exports.emptyDayBuffer = emptyDayBuffer;
+exports.ingestDailyKwhSample = ingestDailyKwhSample;
+exports.bufferToDayRecord = bufferToDayRecord;
 const day_1 = require("./day");
 exports.PLAUSIBLE_DAY_KWH_MAX = 2000;
 function isValidDayKwh(value) {
@@ -9,7 +13,6 @@ function isValidDayKwh(value) {
     }
     return value > 0 && value <= exports.PLAUSIBLE_DAY_KWH_MAX;
 }
-exports.isValidDayKwh = isValidDayKwh;
 function emptyDayBuffer(dateKey) {
     return {
         dateKey,
@@ -18,7 +21,6 @@ function emptyDayBuffer(dateKey) {
         sampleCount: 0,
     };
 }
-exports.emptyDayBuffer = emptyDayBuffer;
 /** Monoton steigender Tageszähler: jeweils letzten gültigen Stand pro Tag behalten. */
 function ingestDailyKwhSample(buffer, ts, rawKwh) {
     if (!isValidDayKwh(rawKwh)) {
@@ -43,7 +45,6 @@ function ingestDailyKwhSample(buffer, ts, rawKwh) {
         sampleCount: next.sampleCount + 1,
     };
 }
-exports.ingestDailyKwhSample = ingestDailyKwhSample;
 function bufferToDayRecord(buffer) {
     if (buffer.sampleCount === 0 || !isValidDayKwh(buffer.kwh)) {
         return null;
@@ -55,4 +56,3 @@ function bufferToDayRecord(buffer) {
         sampleCount: buffer.sampleCount,
     };
 }
-exports.bufferToDayRecord = bufferToDayRecord;

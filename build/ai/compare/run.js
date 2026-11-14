@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runPlanCompare = void 0;
+exports.runPlanCompare = runPlanCompare;
 const context_1 = require("../context");
 const ensure_states_1 = require("../ensure_states");
 const strategy_preferences_1 = require("../strategy_preferences");
@@ -61,4 +61,3 @@ async function runPlanCompare(host, plan) {
     await host.setStateAsync(ensure_states_2.COMPARE_STATES.planRevision, { val: result.planRevision, ack: true });
     return result;
 }
-exports.runPlanCompare = runPlanCompare;

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensureIntentStates = exports.ensureIntentChannels = exports.USER_INTENT_BATTERY_INPUTS_CHANNEL = exports.USER_INTENT_THERMAL_INPUTS_CHANNEL = exports.USER_INTENT_WALLBOX_INPUTS_CHANNEL = exports.USER_INTENT_IOBROKER_CHANNEL = exports.USER_INTENT_INPUTS_CHANNEL = exports.USER_INTENT_BATTERY_CHANNEL = exports.USER_INTENT_THERMAL_CHANNEL = exports.USER_INTENT_WALLBOX_CHANNEL = exports.USER_INTENT_CHANNEL = void 0;
+exports.USER_INTENT_BATTERY_INPUTS_CHANNEL = exports.USER_INTENT_THERMAL_INPUTS_CHANNEL = exports.USER_INTENT_WALLBOX_INPUTS_CHANNEL = exports.USER_INTENT_IOBROKER_CHANNEL = exports.USER_INTENT_INPUTS_CHANNEL = exports.USER_INTENT_BATTERY_CHANNEL = exports.USER_INTENT_THERMAL_CHANNEL = exports.USER_INTENT_WALLBOX_CHANNEL = exports.USER_INTENT_CHANNEL = void 0;
+exports.ensureIntentChannels = ensureIntentChannels;
+exports.ensureIntentStates = ensureIntentStates;
 const state_util_1 = require("../ems_light/state_util");
 const constants_1 = require("./core/constants");
 function strState(id, name, def, write = false, extendCommon) {
@@ -81,7 +83,6 @@ async function ensureIntentChannels(host) {
     await (0, state_util_1.ensureChannel)(host, exports.USER_INTENT_BATTERY_INPUTS_CHANNEL, "EMS-Light Battery ioBroker Input");
     await (0, state_util_1.ensureChannel)(host, "user_intent.thermal.control", "EMS-Light Thermal Control");
 }
-exports.ensureIntentChannels = ensureIntentChannels;
 async function ensureIntentStates(host) {
     await ensureIntentChannels(host);
     const defs = [
@@ -110,4 +111,3 @@ async function ensureIntentStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureIntentStates = ensureIntentStates;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.coolingReserveW = exports.planCooling = void 0;
+exports.planCooling = planCooling;
+exports.coolingReserveW = coolingReserveW;
 const time_1 = require("../../addons/air_conditioning/runtime/time");
 const learned_power_1 = require("../../learning/consumer_stats/learned_power");
 const consumer_allocate_1 = require("../../planner/consumer_allocate");
@@ -304,8 +305,6 @@ function planCooling(input) {
         units: forecasts,
     };
 }
-exports.planCooling = planCooling;
 function coolingReserveW(cooling) {
     return cooling.likely_active ? cooling.expected_peak_w : 0;
 }
-exports.coolingReserveW = coolingReserveW;

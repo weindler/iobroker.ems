@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DAY_TELEMETRY_STATE_IDS = exports.ensureDayTelemetryStates = void 0;
+exports.DAY_TELEMETRY_STATE_IDS = void 0;
+exports.ensureDayTelemetryStates = ensureDayTelemetryStates;
 const state_util_1 = require("../../ems_light/state_util");
 const constants_1 = require("./constants");
 function strState(id, name, def) {
@@ -28,5 +29,4 @@ async function ensureDayTelemetryStates(host) {
     ];
     await (0, state_util_1.ensureStates)(host, defs);
 }
-exports.ensureDayTelemetryStates = ensureDayTelemetryStates;
 exports.DAY_TELEMETRY_STATE_IDS = Object.values(constants_1.DAY_TELEMETRY_STATES);

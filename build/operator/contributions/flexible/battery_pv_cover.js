@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.todayPvSurplusKwh = exports.pvSurplusCoversChargeNeed = void 0;
+exports.pvSurplusCoversChargeNeed = pvSurplusCoversChargeNeed;
+exports.todayPvSurplusKwh = todayPvSurplusKwh;
 /**
  * Wenn der erwartete Tages-PV-Überschuss (PV − Hauslast) den Batterie-Ladebedarf deckt,
  * braucht das EMS keine aktiven Lade-Slots — die Batterie füllt sich über Eigenverbrauch/PV.
@@ -17,7 +18,6 @@ function pvSurplusCoversChargeNeed(input) {
         return false;
     return surplus >= need;
 }
-exports.pvSurplusCoversChargeNeed = pvSurplusCoversChargeNeed;
 function todayPvSurplusKwh(pvTodayKwh, houseLoadTodayKwh) {
     if (pvTodayKwh === null || houseLoadTodayKwh === null)
         return null;
@@ -25,4 +25,3 @@ function todayPvSurplusKwh(pvTodayKwh, houseLoadTodayKwh) {
         return null;
     return Math.max(0, Math.round((pvTodayKwh - houseLoadTodayKwh) * 1000) / 1000);
 }
-exports.todayPvSurplusKwh = todayPvSurplusKwh;

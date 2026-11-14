@@ -4,7 +4,7 @@
  * Reine Transparenz — ändert nie reales Planner-/Control-Verhalten.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncAiValidatorStates = void 0;
+exports.syncAiValidatorStates = syncAiValidatorStates;
 const persist_1 = require("./persist");
 const validate_1 = require("./validate");
 const ensure_states_1 = require("./ensure_states");
@@ -22,4 +22,3 @@ async function syncAiValidatorStates(host, now = new Date()) {
     await host.setStateAsync(ensure_states_1.AI_VALIDATOR_STATES.activeOverridesCount, { val: active.length, ack: true });
     await host.setStateAsync(ensure_states_1.AI_VALIDATOR_STATES.lastValidatedAtIso, { val: now.toISOString(), ack: true });
 }
-exports.syncAiValidatorStates = syncAiValidatorStates;

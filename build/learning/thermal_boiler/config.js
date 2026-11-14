@@ -3,7 +3,7 @@
  * Boiler-Learning A — eigene Schwellen, nie Puffer-empty/full aus thermal_runtime.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.thermalBoilerConfigFromAdapter = void 0;
+exports.thermalBoilerConfigFromAdapter = thermalBoilerConfigFromAdapter;
 const constants_1 = require("../thermal_runtime/constants");
 function numField(config, key, defaultVal, min, max) {
     const raw = config[key];
@@ -42,4 +42,3 @@ function thermalBoilerConfigFromAdapter(config) {
         maxRuntimeHours: numField(c, "learning_thermal_runtime_max_runtime_hours", constants_1.DEFAULT_MAX_RUNTIME_HOURS, 1, 168),
     };
 }
-exports.thermalBoilerConfigFromAdapter = thermalBoilerConfigFromAdapter;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emptyResolvedWallboxIntent = void 0;
+exports.emptyResolvedWallboxIntent = emptyResolvedWallboxIntent;
 const constants_1 = require("../core/constants");
 function emptyResolvedWallboxIntent(now) {
     const iso = now.toISOString();
@@ -43,4 +43,3 @@ function emptyResolvedWallboxIntent(now) {
         source_summary: [],
     };
 }
-exports.emptyResolvedWallboxIntent = emptyResolvedWallboxIntent;

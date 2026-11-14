@@ -698,9 +698,9 @@ function assessForecast(input: AssessmentBuildInput): string {
 	const tmin = input.weatherTomorrowMinC ?? input.weatherTodayMinC;
 	const tmax = input.weatherTomorrowMaxC ?? input.weatherTodayMaxC;
 	if (input.weatherTodayMinC != null && input.weatherTodayMaxC != null) {
-		bits.push(`heute ${Math.round(input.weatherTodayMinC)}–${Math.round(input.weatherTodayMaxC)} °C`);
+		bits.push(`heute ${Math.round(input.weatherTodayMinC)} bis ${Math.round(input.weatherTodayMaxC)} °C`);
 	} else if (tmin != null && tmax != null) {
-		bits.push(`${Math.round(tmin)}–${Math.round(tmax)} °C`);
+		bits.push(`${Math.round(tmin)} bis ${Math.round(tmax)} °C`);
 	}
 	if (bits.length === 0) return "Forecast noch nicht vollständig.";
 	return `${bits.join(", ")}.`;

@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readPlannerThermalTargetTemp = exports.readPlannerThermalStage = exports.readPlannerInputs = exports.PLANNER_BATTERY_MIN_SURPLUS_W = exports.PLANNER_BATTERY_TARGET_SOC_PCT = exports.PLANNER_SURPLUS_MIN_W = void 0;
+exports.PLANNER_BATTERY_MIN_SURPLUS_W = exports.PLANNER_BATTERY_TARGET_SOC_PCT = exports.PLANNER_SURPLUS_MIN_W = void 0;
+exports.readPlannerInputs = readPlannerInputs;
+exports.readPlannerThermalStage = readPlannerThermalStage;
+exports.readPlannerThermalTargetTemp = readPlannerThermalTargetTemp;
 const config_1 = require("../addons/air_conditioning/config");
 const constants_1 = require("../addons/air_conditioning/constants");
 const ensure_states_1 = require("../addons/air_conditioning/runtime/ensure_states");
@@ -176,7 +179,6 @@ async function readPlannerInputs(host) {
         adapterConfig: host.config ?? {},
     };
 }
-exports.readPlannerInputs = readPlannerInputs;
 /**
  * @deprecated (Roadmap Block 3.1) Kein Consumer mehr — `src/addons/immersion_heater/runtime/engine.ts`
  * nutzt bei nicht verwendbarem Daily Plan einen lokalen Sicherheits-Default (Pflicht-Untergrenze),
@@ -189,9 +191,7 @@ async function readPlannerThermalStage(host) {
         return 0;
     return Math.max(0, Math.round(n));
 }
-exports.readPlannerThermalStage = readPlannerThermalStage;
 /** @deprecated (Roadmap Block 3.1) Kein Consumer mehr, siehe `readPlannerThermalStage`. */
 async function readPlannerThermalTargetTemp(host) {
     return readNum(host, "planner.intent.thermal.target_temp_c");
 }
-exports.readPlannerThermalTargetTemp = readPlannerThermalTargetTemp;

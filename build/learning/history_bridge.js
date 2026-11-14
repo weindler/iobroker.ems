@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.withHistoryBridge = exports.sendToHistoryGetHistory = void 0;
+exports.sendToHistoryGetHistory = sendToHistoryGetHistory;
+exports.withHistoryBridge = withHistoryBridge;
 /** Callback-sendTo wie javascript.0 — promisified sendToAsync liefert teils leer/hängt. */
 function sendToHistoryGetHistory(adapter, stateId, options) {
     return new Promise((resolve, reject) => {
@@ -27,7 +28,6 @@ function sendToHistoryGetHistory(adapter, stateId, options) {
         }
     });
 }
-exports.sendToHistoryGetHistory = sendToHistoryGetHistory;
 /** Erweitert host um sendToAsync — ohne das Ursprungsobjekt zu mutieren. */
 function withHistoryBridge(adapter, host) {
     const out = Object.create(host);
@@ -51,4 +51,3 @@ function withHistoryBridge(adapter, host) {
     });
     return out;
 }
-exports.withHistoryBridge = withHistoryBridge;

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.gridSupplyRevisionForTest = exports.runGridSupplyTick = exports.resetGridSupplyRevisionForTest = void 0;
+exports.resetGridSupplyRevisionForTest = resetGridSupplyRevisionForTest;
+exports.runGridSupplyTick = runGridSupplyTick;
+exports.gridSupplyRevisionForTest = gridSupplyRevisionForTest;
 const state_write_1 = require("../../policy/core/state_write");
 const grid_1 = require("./grid");
 const grid_read_1 = require("./grid_read");
@@ -11,7 +13,6 @@ function resetGridSupplyRevisionForTest() {
     lastRevisionPayload = "";
     revision = 0;
 }
-exports.resetGridSupplyRevisionForTest = resetGridSupplyRevisionForTest;
 async function runGridSupplyTick(host) {
     const input = await (0, grid_read_1.collectGridSupplyBuildInput)(host, new Date());
     const forecast = (0, grid_1.buildGridSupplyForecast)(input);
@@ -37,8 +38,6 @@ async function runGridSupplyTick(host) {
     }
     return forecast;
 }
-exports.runGridSupplyTick = runGridSupplyTick;
 function gridSupplyRevisionForTest() {
     return revision;
 }
-exports.gridSupplyRevisionForTest = gridSupplyRevisionForTest;

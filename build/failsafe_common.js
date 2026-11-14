@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readForeignBool = exports.readForeignNumber = exports.setEdgeBool = exports.isEmsUnreachable = exports.failsafeTimeoutsFromConfig = void 0;
+exports.failsafeTimeoutsFromConfig = failsafeTimeoutsFromConfig;
+exports.isEmsUnreachable = isEmsUnreachable;
+exports.setEdgeBool = setEdgeBool;
+exports.readForeignNumber = readForeignNumber;
+exports.readForeignBool = readForeignBool;
 const ems_activity_1 = require("./ems_activity");
 function failsafeTimeoutsFromConfig(config, prefix) {
     const globalEms = Number(config.global_ems_unreachable_timeout_sec);
@@ -19,12 +23,10 @@ function failsafeTimeoutsFromConfig(config, prefix) {
         failsafeCheckIntervalSec: pick(check, globalCheck, 30, 10, 120),
     };
 }
-exports.failsafeTimeoutsFromConfig = failsafeTimeoutsFromConfig;
 function isEmsUnreachable(config, prefix) {
     const { emsUnreachableTimeoutSec } = failsafeTimeoutsFromConfig(config, prefix);
     return (0, ems_activity_1.msSinceEmsActivity)() >= emsUnreachableTimeoutSec * 1000;
 }
-exports.isEmsUnreachable = isEmsUnreachable;
 async function setEdgeBool(adapter, stateId, value) {
     const cur = await adapter.getStateAsync(stateId);
     if (cur?.val === value) {
@@ -32,7 +34,6 @@ async function setEdgeBool(adapter, stateId, value) {
     }
     await adapter.setStateAsync(stateId, { val: value, ack: true });
 }
-exports.setEdgeBool = setEdgeBool;
 async function readForeignNumber(adapter, stateId) {
     const id = stateId?.trim();
     if (!id)
@@ -48,7 +49,6 @@ async function readForeignNumber(adapter, stateId) {
         return null;
     }
 }
-exports.readForeignNumber = readForeignNumber;
 async function readForeignBool(adapter, stateId) {
     const id = stateId?.trim();
     if (!id)
@@ -65,4 +65,3 @@ async function readForeignBool(adapter, stateId) {
         return null;
     }
 }
-exports.readForeignBool = readForeignBool;

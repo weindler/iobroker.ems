@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.optionalStep = exports.modeStringsForPurpose = void 0;
+exports.modeStringsForPurpose = modeStringsForPurpose;
+exports.optionalStep = optionalStep;
 function modeStringsForPurpose(unit, purpose) {
     switch (purpose) {
         case "dehumidify":
@@ -29,11 +30,9 @@ function modeStringsForPurpose(unit, purpose) {
             };
     }
 }
-exports.modeStringsForPurpose = modeStringsForPurpose;
 function optionalStep(role, value) {
     if (value === "" || value === null || value === undefined) {
         return [];
     }
     return [{ kind: "set", role, value }];
 }
-exports.optionalStep = optionalStep;

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.computeImmersionLiveSurplusHold = exports.minEnabledImmersionStage = exports.computeEffectivePvSurplusW = void 0;
+exports.computeEffectivePvSurplusW = computeEffectivePvSurplusW;
+exports.minEnabledImmersionStage = minEnabledImmersionStage;
+exports.computeImmersionLiveSurplusHold = computeImmersionLiveSurplusHold;
 function computeEffectivePvSurplusW(pvPowerW, houseLoadW, immersionOnPowerW) {
     if (pvPowerW === null || houseLoadW === null)
         return null;
@@ -9,7 +11,6 @@ function computeEffectivePvSurplusW(pvPowerW, houseLoadW, immersionOnPowerW) {
     const ih = Math.max(0, immersionOnPowerW ?? 0);
     return Math.round(pvPowerW - houseLoadW + ih);
 }
-exports.computeEffectivePvSurplusW = computeEffectivePvSurplusW;
 function minEnabledImmersionStage(config) {
     const enabled = config.stages.filter((s) => s.enabled && s.nominalPowerW > 0 && s.setStateId);
     if (enabled.length === 0)
@@ -17,7 +18,6 @@ function minEnabledImmersionStage(config) {
     const min = [...enabled].sort((a, b) => a.nominalPowerW - b.nominalPowerW)[0];
     return { stageIndex: min.index, nominalPowerW: min.nominalPowerW };
 }
-exports.minEnabledImmersionStage = minEnabledImmersionStage;
 function computeImmersionLiveSurplusHold(input) {
     const surplus = computeEffectivePvSurplusW(input.pvPowerW, input.houseLoadW, input.immersionOnPowerW);
     const minStage = minEnabledImmersionStage(input.config);
@@ -60,4 +60,3 @@ function computeImmersionLiveSurplusHold(input) {
         stagePowerW: minStage.nominalPowerW,
     };
 }
-exports.computeImmersionLiveSurplusHold = computeImmersionLiveSurplusHold;

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.notEvaluableStrategyResult = exports.SHADOW_STRATEGY_IDS = void 0;
+exports.SHADOW_STRATEGY_IDS = void 0;
+exports.notEvaluableStrategyResult = notEvaluableStrategyResult;
 const constants_1 = require("./constants");
 exports.SHADOW_STRATEGY_IDS = [
     "reference_no_ems",
@@ -26,4 +27,3 @@ function notEvaluableStrategyResult(strategy, assumptionsDe, missingSlotCount = 
         netCostEur: null,
     };
 }
-exports.notEvaluableStrategyResult = notEvaluableStrategyResult;

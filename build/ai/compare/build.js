@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildCompareResult = exports.isMeaningfulPowerShift = exports.totalPowerShiftW = exports.planBBeatsPlanA = exports.contributionPrefixForCompare = exports.COMPARE_ELIGIBLE_GOVERNED_IDS = void 0;
+exports.COMPARE_ELIGIBLE_GOVERNED_IDS = void 0;
+exports.contributionPrefixForCompare = contributionPrefixForCompare;
+exports.planBBeatsPlanA = planBBeatsPlanA;
+exports.totalPowerShiftW = totalPowerShiftW;
+exports.isMeaningfulPowerShift = isMeaningfulPowerShift;
+exports.buildCompareResult = buildCompareResult;
 const registry_1 = require("../../addons/governance/registry");
 const redistribute_1 = require("./redistribute");
 /**
@@ -22,7 +27,6 @@ function contributionPrefixForCompare(governedId) {
         return "wallbox.ev_session";
     return (0, registry_1.governedAddonEntry)(governedId).runtimeAddonId;
 }
-exports.contributionPrefixForCompare = contributionPrefixForCompare;
 /** Max. leichte Kostensteigerung (ct), wenn PV klar steigt und Netz nicht zunimmt. */
 const STRATEGY_COST_SLACK_CT = 2;
 const STRATEGY_PV_GAIN_KWH = 0.2;
@@ -70,7 +74,6 @@ function planBBeatsPlanA(input) {
     }
     return false;
 }
-exports.planBBeatsPlanA = planBBeatsPlanA;
 /** Heutige Flex-IH-Leistung in Plan B messbar niedriger als in Plan A (Gewicht 0 = gemieden). */
 function immersionDeferTomorrowFulfilled(plan, slotPreferences, ihRedist) {
     if (!ihRedist)
@@ -99,11 +102,9 @@ function totalPowerShiftW(redistributions) {
     }
     return sum;
 }
-exports.totalPowerShiftW = totalPowerShiftW;
 function isMeaningfulPowerShift(shiftW) {
     return shiftW >= MEANINGFUL_SHIFT_W;
 }
-exports.isMeaningfulPowerShift = isMeaningfulPowerShift;
 /** Flexible (nicht-mandatory) Leistung/PV-Anteil eines Contribution-Präfixes in einem Slot (Plan A). */
 function slotOwnUsage(slot, contributionPrefix) {
     let ownW = 0;
@@ -367,4 +368,3 @@ function buildCompareResult(plan, allowedAddonIds, slotPreferences, options) {
         delta,
     };
 }
-exports.buildCompareResult = buildCompareResult;

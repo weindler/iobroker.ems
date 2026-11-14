@@ -182,21 +182,34 @@ async function readSiteProfile(
 	if (lat === null || lon === null) return null;
 	const nowMs = Date.now();
 	if (siteProfileCache && nowMs - siteProfileCache.atMs < 30 * 60_000) return siteProfileCache.profile;
-	let profile: SiteFactorProfile | null = null;
+	const inactive = (noteDe: string): SiteFactorProfile => ({
+		factors: new Array<number>(24).fill(1),
+		days: 0,
+		active: false,
+		noteDe,
+	});
+	let profile: SiteFactorProfile;
 	try {
 		const dir = (host as unknown as { getAbsolutePath?: (c?: string) => string }).getAbsolutePath?.("learning/power_rollup");
-		if (dir) {
+		if (!dir) {
+			profile = inactive("PV-Profil: Speicherort der Stundenwerte nicht verfügbar.");
+		} else {
 			const persist = await readPowerHourlyPersist(dir);
 			const source = persist.sources["battery.pv_ac_power_w"];
-			if (source) {
+			if (!source) {
+				profile = inactive("PV-Profil: keine gespeicherten Stundenwerte der PV-Leistung gefunden (Quelle battery.pv_ac_power_w).");
+			} else {
 				const points = Object.entries(source.hours)
 					.map(([key, rec]) => ({ hourStartMs: hourKeyToStartTs(key), avgW: rec.avgPowerW ?? NaN }))
 					.filter((p) => Number.isFinite(p.avgW));
-				profile = computeSiteFactors(points, lat, lon, timezone, nowMs);
+				profile =
+					points.length === 0
+						? inactive("PV-Profil: Quelle vorhanden, aber ohne Stundenmittelwerte.")
+						: computeSiteFactors(points, lat, lon, timezone, nowMs);
 			}
 		}
-	} catch {
-		profile = null;
+	} catch (e) {
+		profile = inactive(`PV-Profil: Lesen der Stundenwerte fehlgeschlagen (${e instanceof Error ? e.message : String(e)}).`);
 	}
 	siteProfileCache = { atMs: nowMs, profile };
 	return profile;

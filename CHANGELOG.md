@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.64] – 2026-11-14
+
+### Behoben
+- PV-Profil: Der Status-State bleibt nicht mehr leer, sondern nennt den Grund (z. B. keine Stundenwerte gefunden, erst x von 5 Tagen).
+
 ## [0.4.63] – 2026-11-14
 
 ### Neu

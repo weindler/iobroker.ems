@@ -163,22 +163,37 @@ async function readSiteProfile(host, timezone, lat, lon) {
     const nowMs = Date.now();
     if (siteProfileCache && nowMs - siteProfileCache.atMs < 30 * 60_000)
         return siteProfileCache.profile;
-    let profile = null;
+    const inactive = (noteDe) => ({
+        factors: new Array(24).fill(1),
+        days: 0,
+        active: false,
+        noteDe,
+    });
+    let profile;
     try {
         const dir = host.getAbsolutePath?.("learning/power_rollup");
-        if (dir) {
+        if (!dir) {
+            profile = inactive("PV-Profil: Speicherort der Stundenwerte nicht verfügbar.");
+        }
+        else {
             const persist = await (0, persist_1.readPowerHourlyPersist)(dir);
             const source = persist.sources["battery.pv_ac_power_w"];
-            if (source) {
+            if (!source) {
+                profile = inactive("PV-Profil: keine gespeicherten Stundenwerte der PV-Leistung gefunden (Quelle battery.pv_ac_power_w).");
+            }
+            else {
                 const points = Object.entries(source.hours)
                     .map(([key, rec]) => ({ hourStartMs: (0, hour_1.hourKeyToStartTs)(key), avgW: rec.avgPowerW ?? NaN }))
                     .filter((p) => Number.isFinite(p.avgW));
-                profile = (0, site_factor_1.computeSiteFactors)(points, lat, lon, timezone, nowMs);
+                profile =
+                    points.length === 0
+                        ? inactive("PV-Profil: Quelle vorhanden, aber ohne Stundenmittelwerte.")
+                        : (0, site_factor_1.computeSiteFactors)(points, lat, lon, timezone, nowMs);
             }
         }
     }
-    catch {
-        profile = null;
+    catch (e) {
+        profile = inactive(`PV-Profil: Lesen der Stundenwerte fehlgeschlagen (${e instanceof Error ? e.message : String(e)}).`);
     }
     siteProfileCache = { atMs: nowMs, profile };
     return profile;

@@ -53,6 +53,6 @@ function resolveRequiredSocAtPvEndPct(input) {
         requiredReserveKwh,
         reasonDe: capped
             ? `Reserve ${requiredReserveKwh.toFixed(1)} kWh (${requiredSocAtPvEndPct.toFixed(0)} %) — gelernt ${input.predictedNightConsumptionKwh.toFixed(1)} kWh + ${Math.round(margin * 100)} % Aufschlag würde ${rawReserveKwh.toFixed(1)} kWh ergeben, auf nutzbare Kapazität ${input.usableCapacityKwh.toFixed(1)} kWh begrenzt.`
-            : `Reserve ${requiredReserveKwh.toFixed(1)} kWh (${requiredSocAtPvEndPct.toFixed(0)} %) aus gelerntem Nachtverbrauch ${input.predictedNightConsumptionKwh.toFixed(1)} kWh + ${Math.round(margin * 100)} % Sicherheitsaufschlag.`,
+            : `Reserve ${requiredReserveKwh.toFixed(1).replace(".", ",")} kWh (${requiredSocAtPvEndPct.toFixed(0)} %) aus gelerntem Nachtverbrauch ${input.predictedNightConsumptionKwh.toFixed(1).replace(".", ",")} kWh + ${Math.round(margin * 100)} % Sicherheitsaufschlag.`,
     };
 }

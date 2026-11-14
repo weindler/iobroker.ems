@@ -138,6 +138,15 @@ function buildPvContribution(input) {
             todayDateKey: todayKey,
             tomorrowDateKey: tomorrowKey,
             horizonDays: input.horizonDays,
+            expectedTodayKwh: (() => {
+                const r = intradayResult;
+                if (!r || input.correctedTodayKwh === null || !Number.isFinite(input.correctedTodayKwh))
+                    return null;
+                if (!r.active || r.actualSoFarKwh === null)
+                    return input.correctedTodayKwh;
+                const rest = Math.max(0, input.correctedTodayKwh - r.expectedSoFarKwh) * r.factor;
+                return Math.round((r.actualSoFarKwh + rest) * 100) / 100;
+            })(),
             intradayFactor: intradayResult ? intradayResult.factor : null,
             intradayActive: intradayResult ? intradayResult.active : false,
             intradayExpectedSoFarKwh: intradayResult ? intradayResult.expectedSoFarKwh : null,

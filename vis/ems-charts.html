@@ -761,7 +761,7 @@ function num(v){if(v===null||v===undefined||v===""||(typeof v==="number"&&!isFin
 function txt(v,fb){if(v===null||v===undefined||v==="")return fb||"—";return String(v);}
 function fmtW(v){var n=num(v);return n===null?"—":Math.round(n)+" W";}
 function fmtPct(v){var n=num(v);return n===null?"—":Math.round(n)+" %";}
-function fmtTemp(v){var n=num(v);return n===null?"—":n.toFixed(1)+" °C";}
+function fmtTemp(v){var n=num(v);return n===null?"—":n.toFixed(1).replace(".",",")+" °C";}
 function fmtHumidity(v){var n=num(v);return n===null?"—":Math.round(n)+" %";}
 function fmtTime(iso){try{return new Date(iso).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});}catch(e){return"—";}}
 function fmtDayTime(iso){try{return new Date(iso).toLocaleString("de-DE",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}catch(e){return fmtTime(iso);}}
@@ -1676,7 +1676,7 @@ function visAutoTodaySummary(s){
 function visHumanPlannerReason(kind,raw,fallback){
 	var text=String(raw==null?"":raw).replace(/\s+/g," ").trim();
 	var fb=visFirstSentence(fallback);
-	if(!text||text==="—")return fb||"Noch keine verständliche Planbegründung verfügbar.";
+	if(!text||text==="—"||text==="none")return fb||"Noch keine verständliche Planbegründung verfügbar.";
 	if(/Keine Allocation für wallbox/i.test(text))return"EMS hat aktuell keine eigene Autoladung eingeplant.";
 	if(/Keine Allocation für battery/i.test(text))return"EMS hat aktuell keine Batterieladung eingeplant.";
 	if(/Keine Allocation für immersion_heater/i.test(text))return"EMS hat aktuell keinen Heizstab-Lauf eingeplant.";
@@ -2417,6 +2417,7 @@ function ihEnergyNeedLine(){
 }
 function wallboxAuthorityLine(){
 	if(tibberRewardsIsActive())return"Tibber Grid Rewards";
+	if(isOn(g("addons.wallbox.status.ev_foundation.tibber_now_handoff_enabled")))return"Tibber Grid Rewards (Start und Pause durch Tibber)";
 	if(isOn(g("addons.wallbox.runtime.external_vehicle_charge_active")))return"EVCC / Nutzer";
 	var auth=String(g("addons.wallbox.status.ev_foundation.ev_execution_authority")||"").toLowerCase();
 	if(auth==="external")return"EVCC / Nutzer";
@@ -2976,7 +2977,7 @@ function renderHorizon(){
 		var oi,od,olines,oa,kindLabels={battery_charge:"Batterie laden",battery_discharge:"Batterie entladen",immersion_heater:"Heizstab",wallbox:"Wallbox",climate:"Klima",other:"Flexverbrauch"};
 		for(oi=0;oi<outlook.days.length;oi++){
 			od=outlook.days[oi];olines=[];
-			olines.push((oi===0?"Noch heute: ":"")+"PV "+(od.expectedPvKwh==null?"wird noch berechnet":Number(od.expectedPvKwh).toFixed(1).replace(".",",")+" kWh")+" · Haus "+(od.expectedHouseLoadKwh==null?"wird noch gelernt":Number(od.expectedHouseLoadKwh).toFixed(1).replace(".",",")+" kWh")+(od.partialDay&&od.expectedFullDayPvKwh!=null?" · PV ganzer Tag "+fmtDec(od.expectedFullDayPvKwh,1,"kWh"):""));
+			olines.push((oi===0?"Noch heute: ":"")+"PV "+(od.expectedPvKwh==null?"wird noch berechnet":Number(od.expectedPvKwh).toFixed(1).replace(".",",")+" kWh")+" · Haus "+(od.expectedHouseLoadKwh==null?"wird noch gelernt":Number(od.expectedHouseLoadKwh).toFixed(1).replace(".",",")+" kWh")+(od.partialDay&&od.expectedFullDayPvKwh!=null?" · PV ganzer Tag "+fmtDec(oi===0?visTodayAdjusted(od.expectedFullDayPvKwh,num(g("learning.pv_bias.actual_today_kwh"))):od.expectedFullDayPvKwh,1,"kWh"):""));
 			if(oi===0&&outlook.vehicleEnergy){var ve=outlook.vehicleEnergy;olines.push(ve.externallyManaged?"Auto: wird extern geladen (z. B. Tibber), das EMS plant dafür nichts.":"Auto braucht noch "+fmtDec(ve.batteryNeedKwh,1,"kWh")+(ve.acNeedKwh==null?"":" (an der Wallbox "+fmtDec(ve.acNeedKwh,1,"kWh")+")")+" · eingeplant "+fmtDec(ve.plannedAcKwh,1,"kWh"));}
 			if(oi===0){var minimum=energyStats("today").batteryMinimum;if(minimum)olines.push("Tiefster Batteriestand heute: "+fmtPct(minimum.socPct)+" ("+fmtTime(minimum.atIso)+")");}
 			if(od.priceCtPerKwh&&od.priceCtPerKwh.min!=null&&od.priceCtPerKwh.max!=null)olines.push("Strompreis "+Number(od.priceCtPerKwh.min).toFixed(1).replace(".",",")+"–"+Number(od.priceCtPerKwh.max).toFixed(1).replace(".",",")+" ct/kWh"+(od.priceCtPerKwh.forecastSlots>0?" (zum Teil Prognose)":(od.priceCtPerKwh.complete?"":" (noch nicht für den ganzen Zeitraum bekannt)")));

@@ -436,7 +436,9 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const centralBatteryReserveRequiredSocAtPvEndPct = await readNum(host, "planner.battery_reserve.required_soc_at_pv_end_pct");
     const importTariffCtPerKwh = await readNum(host, "live.price.now_ct_per_kwh");
     const houseLoadTodayKwh = (0, house_load_1.dailyKwhFromHouseLoadDayForecast)((0, read_1.parseHouseLoadForecastJson)(houseLoadTodayRaw));
-    const batteryTodayPvSurplusKwh = (0, battery_pv_cover_1.todayPvSurplusKwh)(pvToday, houseLoadTodayKwh);
+    const pvTodayExpected = await readNum(host, "learning.pv_bias.expected_today_kwh");
+    const pvTodayEff = pvTodayExpected ?? pvToday;
+    const batteryTodayPvSurplusKwh = (0, battery_pv_cover_1.todayPvSurplusKwh)(pvTodayEff, houseLoadTodayKwh);
     // Technische Hardwaregrenze aus Admin-Config (`bat_hw_max_charge_w`) — nie Runtime-Befehl
     // und nie Netz-/Hausanschluss-Grenze als Planungs-Cap.
     const hwMaxChargeW = batteryCfg.limits.maxChargeW !== null && batteryCfg.limits.maxChargeW > 0
@@ -556,7 +558,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
             fault: immersionFault === true,
             lockout: immersionState === "fault_lockout",
             relayMapped,
-            pvTodayKwh: pvToday,
+            pvTodayKwh: pvTodayEff,
             pvTomorrowKwh: pvTomorrow,
             pvBiasStatus,
             forecastModeEnabled: immersionConfig.forecastModeEnabled,

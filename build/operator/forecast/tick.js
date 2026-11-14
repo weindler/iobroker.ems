@@ -24,6 +24,9 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
         const pvDetails = collected.contributions.find((c) => c.contributionId === "pv_forecast.supply")?.details;
         if (pvDetails && typeof pvDetails.intradayFactor === "number") {
             await (0, state_write_1.setStateIfChanged)(host, "learning.pv_bias.intraday_factor", pvDetails.intradayFactor);
+            if (typeof pvDetails.expectedTodayKwh === "number") {
+                await (0, state_write_1.setStateIfChanged)(host, "learning.pv_bias.expected_today_kwh", pvDetails.expectedTodayKwh);
+            }
             await (0, state_write_1.setStateIfChanged)(host, "learning.pv_bias.intraday_status_de", String(pvDetails.intradayReasonDe ?? ""));
         }
     }

@@ -14,7 +14,7 @@ describe("dynamic battery reserve (Phase 1d)", () => {
 		// 5 * 1.2 = 6 kWh; 6/20*100 = 30 %.
 		assert.equal(r.requiredReserveKwh, 6);
 		assert.equal(r.requiredSocAtPvEndPct, 30);
-		assert.match(r.reasonDe, /Reserve 6\.0 kWh \(30 %\)/);
+		assert.match(r.reasonDe, /Reserve 6,0 kWh \(30 %\)/);
 	});
 
 	it("respects a custom safety margin", () => {

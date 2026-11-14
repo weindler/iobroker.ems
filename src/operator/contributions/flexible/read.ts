@@ -598,7 +598,9 @@ export async function collectFlexibleContributions(
 	const importTariffCtPerKwh = await readNum(host, "live.price.now_ct_per_kwh");
 
 	const houseLoadTodayKwh = dailyKwhFromHouseLoadDayForecast(parseHouseLoadForecastJson(houseLoadTodayRaw));
-	const batteryTodayPvSurplusKwh = todayPvSurplusKwh(pvToday, houseLoadTodayKwh);
+	const pvTodayExpected = await readNum(host, "learning.pv_bias.expected_today_kwh");
+	const pvTodayEff = pvTodayExpected ?? pvToday;
+	const batteryTodayPvSurplusKwh = todayPvSurplusKwh(pvTodayEff, houseLoadTodayKwh);
 
 	// Technische Hardwaregrenze aus Admin-Config (`bat_hw_max_charge_w`) — nie Runtime-Befehl
 	// und nie Netz-/Hausanschluss-Grenze als Planungs-Cap.
@@ -725,7 +727,7 @@ export async function collectFlexibleContributions(
 			fault: immersionFault === true,
 			lockout: immersionState === "fault_lockout",
 			relayMapped,
-			pvTodayKwh: pvToday,
+			pvTodayKwh: pvTodayEff,
 			pvTomorrowKwh: pvTomorrow,
 			pvBiasStatus,
 			forecastModeEnabled: immersionConfig.forecastModeEnabled,

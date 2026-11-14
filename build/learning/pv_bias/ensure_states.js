@@ -34,6 +34,7 @@ async function ensurePvBiasStates(host) {
         numState("learning.pv_bias.model_bias_pct", "PV-Bias Modellwert 60/40", "%"),
         numState("learning.pv_bias.applied_bias_pct", "PV-Bias tatsächlich angewendet", "%"),
         numState("learning.pv_bias.corrected_today_kwh", "PV korrigiert heute", "kWh"),
+        numState("learning.pv_bias.expected_today_kwh", "PV heute erwartet (bisher + Rest, mit Tageskorrektur)", "kWh"),
         numState("learning.pv_bias.corrected_tomorrow_kwh", "PV korrigiert morgen", "kWh"),
         numState("learning.pv_bias.confidence_pct", "PV-Bias Confidence", "%"),
         numState("learning.pv_bias.raw_today_kwh", "PV Rohforecast heute", "kWh"),

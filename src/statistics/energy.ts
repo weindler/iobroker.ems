@@ -355,7 +355,7 @@ export function buildEnergeticDayTotals(day: DayTelemetryDayRecord): EnergeticDa
 		Math.abs((autonomy.gridImportBasisKwh ?? -1) - shownGrid) <= 0.002;
 	if (!autonomyConsistent) notesDe.push("Autarkie nicht vollständig berechenbar: Hausverbrauch und Netzbezug haben unterschiedliche Messabdeckung oder Bilanzgrenzen.");
 	if (!day.complete) notesDe.push("Laufender Tag: Werte sind eine Zwischenbilanz.");
-	if (!day.evaluable) notesDe.push(`Day-Telemetry noch nicht bewertbar (${round1(day.coveragePct)} % Abdeckung).`);
+	if (!day.evaluable) notesDe.push(`Der Tag ist noch nicht vollständig erfasst (${round1(day.coveragePct)} % Abdeckung).`);
 	if (batteryLoss.reason) notesDe.push(batteryLoss.reason);
 	if (
 		(immersion.energyKwh ?? 0) > 0 && immersion.pvKwh === null ||
@@ -444,7 +444,7 @@ export function reconcileEnergeticGridTruth(
 	const autonomyComparable = !captureAfterDayStart && finite(house) && finite(gridImportKwh) && gridImportKwh <= house + 0.002;
 	const notes = energy.notesDe.filter((note) => !note.startsWith("Netzwerte:"));
 	notes.push(input.captureSinceIso
-		? `Netzwerte: reale Smart-Meter-Differenz; Erfassung seit ${input.captureSinceIso}, der erste Tag kann unvollständig sein.`
+		? `Netzwerte: reale Smart-Meter-Differenz; Erfassung seit ${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(input.captureSinceIso))}, der erste Tag kann unvollständig sein.`
 		: "Netzwerte: reale Smart-Meter-Differenz 1.8.0/2.8.0.");
 	return {
 		...energy,
@@ -533,7 +533,7 @@ export function sumEnergeticDays(
 	const climate = strictPvAggregate(available, (day) => day.climateEnergyKwh, (day) => day.climatePvKwh);
 	const gridBalanceDischargeKwh = sumField(available, (day) => day.gridBalanceDischargeKwh);
 	const notesDe: string[] = [];
-	if (available.length === 0) notesDe.push("Für diesen Zeitraum liegt noch keine Day-Telemetry vor.");
+	if (available.length === 0) notesDe.push("Für diesen Zeitraum liegt noch keine Messdaten vor.");
 	else if (available.length < expectedDays) notesDe.push(`${available.length} von ${expectedDays} Tagen enthalten Energiemesswerte.`);
 	if (available.some((day) => !day.complete || !day.evaluable)) {
 		notesDe.push("Der Zeitraum enthält laufende oder noch nicht vollständig bewertbare Tage.");

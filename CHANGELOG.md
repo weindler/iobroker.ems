@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.45] – 2026-11-14
+
+### Behoben
+- Batterie-Plan rechnet den PV-Überschuss jetzt mit dem tageskorrigierten PV-Wert (neuer Datenpunkt `learning.pv_bias.expected_today_kwh` = bisher erzeugt + Rest). Vorher zeigte die Batterieseite „lädt 2,8 kWh, Ziel 100 %", während die Planung 81 % bei PV-Ende auswies.
+- Planungsseite: „PV ganzer Tag" passt jetzt zur PV-Kachel.
+- Wallbox: „Aktuell zuständig" zeigt „Tibber Grid Rewards (Start und Pause durch Tibber)", wenn die Übergabe an Tibber eingerichtet ist.
+- Texte: Dezimalkomma bei Temperaturen und Batterie-Reserve, „Erfassung seit" als lesbares Datum, „none" nicht mehr sichtbar, „Day-Telemetry" durch verständliche Worte ersetzt.
+
 ## [0.4.44] – 2026-11-14
 
 ### Behoben

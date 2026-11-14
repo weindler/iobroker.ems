@@ -193,6 +193,13 @@ export function buildPvContribution(input: PvContributionBuildInput): PlanContri
 			todayDateKey: todayKey,
 			tomorrowDateKey: tomorrowKey,
 			horizonDays: input.horizonDays,
+			expectedTodayKwh: (() => {
+				const r = intradayResult as IntradayResult | null;
+				if (!r || input.correctedTodayKwh === null || !Number.isFinite(input.correctedTodayKwh)) return null;
+				if (!r.active || r.actualSoFarKwh === null) return input.correctedTodayKwh;
+				const rest = Math.max(0, input.correctedTodayKwh - r.expectedSoFarKwh) * r.factor;
+				return Math.round((r.actualSoFarKwh + rest) * 100) / 100;
+			})(),
 			intradayFactor: intradayResult ? (intradayResult as IntradayResult).factor : null,
 			intradayActive: intradayResult ? (intradayResult as IntradayResult).active : false,
 			intradayExpectedSoFarKwh: intradayResult ? (intradayResult as IntradayResult).expectedSoFarKwh : null,

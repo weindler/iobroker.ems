@@ -15,7 +15,7 @@ const reserve_js_1 = require("./reserve.js");
         // 5 * 1.2 = 6 kWh; 6/20*100 = 30 %.
         strict_1.default.equal(r.requiredReserveKwh, 6);
         strict_1.default.equal(r.requiredSocAtPvEndPct, 30);
-        strict_1.default.match(r.reasonDe, /Reserve 6\.0 kWh \(30 %\)/);
+        strict_1.default.match(r.reasonDe, /Reserve 6,0 kWh \(30 %\)/);
     });
     (0, node_test_1.it)("respects a custom safety margin", () => {
         const r = (0, reserve_js_1.resolveRequiredSocAtPvEndPct)({

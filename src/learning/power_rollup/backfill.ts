@@ -202,6 +202,11 @@ export async function backfillDensePowerSource(
 		return false;
 	}
 
+	// EMS-eigener Datenpunkt ohne History: kein Backfill (würde nur leere History-Abfragen + Warnungen erzeugen).
+	if (source.sourceKey === "wallbox.charge_power_w") {
+		return false;
+	}
+
 	const lookbackDays = source.lookbackDays;
 
 	let persist = await readPowerHourlyPersist(baseDir);

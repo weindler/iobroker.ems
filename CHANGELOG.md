@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.39] – 2026-11-14
+
+### Behoben
+- Power-Rollup: kein History-Backfill für die EMS-eigene Wallbox-Ladeleistung mehr (Log-Warnung „History query: 0 rows … 180× leer").
+
 ## [0.4.38] – 2026-11-14
 
 ### Hinzugefügt

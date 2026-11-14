@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ensurePowerRollupBackfill = exports.backfillDensePowerSource = void 0;
+exports.backfillDensePowerSource = backfillDensePowerSource;
+exports.ensurePowerRollupBackfill = ensurePowerRollupBackfill;
 const history_1 = require("../battery_runtime/history");
 const constants_1 = require("../house_load/constants");
 const history_query_1 = require("../history_query");
@@ -135,6 +136,10 @@ async function backfillDensePowerSource(host, source) {
     if (!baseDir) {
         return false;
     }
+    // EMS-eigener Datenpunkt ohne History: kein Backfill (würde nur leere History-Abfragen + Warnungen erzeugen).
+    if (source.sourceKey === "wallbox.charge_power_w") {
+        return false;
+    }
     const lookbackDays = source.lookbackDays;
     let persist = await (0, persist_1.readPowerHourlyPersist)(baseDir);
     const existing = persist.sources[source.sourceKey];
@@ -180,7 +185,6 @@ async function backfillDensePowerSource(host, source) {
     host.log.debug?.(`Power-Rollup backfill done: ${source.sourceKey} history_rows=${result.rows} hourly_chg=${result.hourlyChg} hourly_dis=${result.hourlyDis} persisted_hours=${Object.keys(mergedHours).length}`);
     return true;
 }
-exports.backfillDensePowerSource = backfillDensePowerSource;
 async function ensurePowerRollupBackfill(host, sources) {
     for (const source of sources) {
         try {
@@ -191,4 +195,3 @@ async function ensurePowerRollupBackfill(host, sources) {
         }
     }
 }
-exports.ensurePowerRollupBackfill = ensurePowerRollupBackfill;

@@ -6,6 +6,7 @@
  * Eingangswerte bleiben null; partielle Reihen werden nicht zu Vollwerten erklärt.
  */
 
+import { getForecastOnlyPriceStarts } from "./supply/grid_read";
 import {
 	addDaysToDateKey,
 	formatLocalDateTimeDe,
@@ -52,6 +53,8 @@ export type OutlookDay72h = {
 		average: number | null;
 		knownSlots: number;
 		complete: boolean;
+		/** Davon nur Prognose (Energyforecast), noch kein veröffentlichter Tibber-Preis. */
+		forecastSlots?: number;
 	};
 	allocations: OutlookAllocationSummary[];
 	battery: {
@@ -673,6 +676,10 @@ export function buildOperatorOutlook72h(args: {
 		const pv = fullSeriesSum(daySlots.map((s) => { const v = pvByStart.get(s.startIso); return v == null ? v : v * fraction(s.startIso, s.endIso); }));
 		const load = fullSeriesSum(daySlots.map((s) => { const v = loadByStart.get(s.startIso); return v == null ? v : v * fraction(s.startIso, s.endIso); }));
 		const prices = priceSummary(daySlots.map((s) => priceByStart.get(s.startIso)), daySlots.length);
+		const forecastStarts = getForecastOnlyPriceStarts();
+		const forecastSlots = daySlots.filter((s) => forecastStarts.has(Date.parse(s.startIso)) && priceByStart.get(s.startIso) != null).length;
+		prices.forecastSlots = forecastSlots;
+		if (forecastSlots > 0) prices.complete = false;
 		const allocations = allocationSummaries(
 			allocationsInWindow.filter((allocation) => dayStartKeys.has(allocation.slot.startIso))
 				.map(a => ({ ...a, allocatedEnergyKwh: a.allocatedEnergyKwh * fraction(a.slot.startIso, a.slot.endIso) })),

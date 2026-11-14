@@ -3399,7 +3399,7 @@ function sevenDayForecastCard(){
 		var uncertainty=Math.max(5,spread===null?8:spread)*(1+(d-3)*0.12),estLo=mid===null?null:Math.max(0,mid-uncertainty),estHi=mid===null?null:mid+uncertainty;
 		var tendency=mid===null?'noch keine belastbare Tendenz':(mid<avg-2?'eher günstig':(mid>avg+2?'eher teuer':'normal'));
 		var price=published?fmtDec(lo,1,'')+'–'+fmtDec(hi,1,' ct/kWh'):(d<=2?'noch nicht vollständig':tendency+(estLo===null?'':' · etwa '+fmtDec(estLo,0,'')+'–'+fmtDec(estHi,0,' ct/kWh')));
-		var status=published?(day.priceCtPerKwh.complete?'vollständig veröffentlicht':'teilweise veröffentlicht'):'nur geschätzt';
+		var fcSlots=published?(num(day.priceCtPerKwh.forecastSlots)||0):0;var status=published?(fcSlots>0?(fcSlots>=(num(day.priceCtPerKwh.knownSlots)||0)?'Prognose (Energyforecast), noch nicht veröffentlicht':'teilweise veröffentlicht, Rest Prognose'):(day.priceCtPerKwh.complete?'vollständig veröffentlicht':'teilweise veröffentlicht')):'nur geschätzt';
 		var trustScore=Math.min(learnedConfidence===null?0:learnedConfidence,forecastConfidence===null?100:forecastConfidence),trust=trustScore>=75&&samples>=30?'hoch':(trustScore>=50&&samples>=14?'mittel':'gering · Lernphase');
 		var cls=published?'published':(tendency==='eher günstig'?'good':(tendency==='eher teuer'?'bad':'normal')),bar=published?Math.min(100,Math.max(8,(lo+hi)/2)):Math.min(100,Math.max(8,mid||35));
 		html+='<div class="ems-forecast-row"><b>'+esc(dayLabel)+'</b><span>'+esc(pvLabel)+'</span><span>'+esc(price)+'<div class="ems-trend '+cls+'"><i style="width:'+bar+'%;opacity:'+(published?'1':(trustScore>=50?'.75':'.45'))+'"></i></div></span><span>Preisstatus: '+esc(status)+(published?'':'<br>Schätzvertrauen: '+esc(trust))+'</span></div>';

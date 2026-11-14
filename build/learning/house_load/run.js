@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runHouseLoadLearning = void 0;
+exports.runHouseLoadLearning = runHouseLoadLearning;
 const config_1 = require("./config");
 const constants_1 = require("./constants");
 const history_1 = require("./history");
@@ -14,6 +14,7 @@ const constants_2 = require("../../addons/air_conditioning/constants");
 const ensure_states_2 = require("../../addons/battery/ensure_states");
 const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
 const state_util_1 = require("../../ems_light/state_util");
+const history_query_1 = require("../history_query");
 const JSON_STATE_LIMIT = 12_000;
 function truncateJson(obj) {
     const raw = JSON.stringify(obj);
@@ -112,6 +113,28 @@ async function runHouseLoadLearning(host) {
             flex.wallboxChargeW = wbCharge;
         if (batCharge != null && batCharge >= 0)
             flex.batteryChargeW = batCharge;
+        /*
+         * Historische Autoladung abziehen (Hauslast soll ohne E-Auto-Laden gelernt werden): stündliche
+         * Mittelwerte der Wallbox-Ladeleistung aus der History, sofern der Datenpunkt dort geloggt wird.
+         * Ohne History bleibt es bei Median-Profil + Dekomposition der aktuellen Stunde.
+         */
+        try {
+            const wbEnd = now.getTime();
+            const wbRows = await (0, history_query_1.fetchHistoryRowsAggregated)(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW, wbEnd - cfg.lookbackDays * 24 * constants_1.MS_PER_HOUR, wbEnd, cfg.lookbackDays * 24 + 48, history_query_1.HISTORY_CHUNK_TIMEOUT_MS, "average", constants_1.MS_PER_HOUR);
+            for (const row of wbRows) {
+                const ts = typeof row?.ts === "number" ? row.ts : null;
+                const w = (0, state_util_1.asNum)(row?.val);
+                if (ts === null || w === null || w <= 0)
+                    continue;
+                const hourStart = Math.floor(ts / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
+                if (hourStart === currentHour)
+                    continue;
+                flexMap.set(hourStart, { wallboxChargeW: w });
+            }
+        }
+        catch {
+            /* History für Wallbox nicht verfügbar — nur Median-Schutz. */
+        }
         flexMap.set(currentHour, flex);
         const decomp = (0, decompose_1.applyFlexDecompositionToSamples)(rawSamples, flexMap);
         const samples = decomp.samples.map((s, i) => ({
@@ -155,4 +178,3 @@ async function runHouseLoadLearning(host) {
         await writeResult(host, (0, math_1.errorResult)(msg, resolved.stateId, now));
     }
 }
-exports.runHouseLoadLearning = runHouseLoadLearning;

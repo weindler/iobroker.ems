@@ -82,6 +82,13 @@ async function readEffectivePolicySnapshot(host: GridSupplyReadHost): Promise<Po
  * Liest Tibber Today/Tomorrow-JSON und liefert sortierte 15-min-Preisslots ab now.
  * Energyforecast (falls aktiv) füllt nur Zeiten auf, für die kein Tibber-Preis vorliegt — Tibber hat Vorrang.
  */
+/** Startzeiten (ms) der zuletzt gelesenen Preisslots, die nur aus der Energyforecast-Prognose stammen (kein Tibber-Preis). */
+let forecastOnlyPriceStarts: Set<number> = new Set();
+
+export function getForecastOnlyPriceStarts(): ReadonlySet<number> {
+	return forecastOnlyPriceStarts;
+}
+
 export async function readDynamicTariffPrice15MinSlots(
 	host: GridSupplyReadHost,
 	now: Date,
@@ -97,9 +104,14 @@ export async function readDynamicTariffPrice15MinSlots(
 			byStart.set(slot.slotStartMs, slot);
 		}
 	}
+	const forecastOnly = new Set<number>();
 	for (const slot of getEnergyforecastPrice15MinSlots(minStartMs)) {
-		if (!byStart.has(slot.slotStartMs)) byStart.set(slot.slotStartMs, slot);
+		if (!byStart.has(slot.slotStartMs)) {
+			byStart.set(slot.slotStartMs, slot);
+			if (slot.origin === "forecast") forecastOnly.add(slot.slotStartMs);
+		}
 	}
+	forecastOnlyPriceStarts = forecastOnly;
 
 	return [...byStart.values()].sort((a, b) => a.slotStartMs - b.slotStartMs);
 }

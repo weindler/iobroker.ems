@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getForecastOnlyPriceStarts = getForecastOnlyPriceStarts;
 exports.readDynamicTariffPrice15MinSlots = readDynamicTariffPrice15MinSlots;
 exports.collectGridSupplyBuildInput = collectGridSupplyBuildInput;
 const config_1 = require("../../policy/global/config");
@@ -77,6 +78,11 @@ async function readEffectivePolicySnapshot(host) {
  * Liest Tibber Today/Tomorrow-JSON und liefert sortierte 15-min-Preisslots ab now.
  * Energyforecast (falls aktiv) füllt nur Zeiten auf, für die kein Tibber-Preis vorliegt — Tibber hat Vorrang.
  */
+/** Startzeiten (ms) der zuletzt gelesenen Preisslots, die nur aus der Energyforecast-Prognose stammen (kein Tibber-Preis). */
+let forecastOnlyPriceStarts = new Set();
+function getForecastOnlyPriceStarts() {
+    return forecastOnlyPriceStarts;
+}
 async function readDynamicTariffPrice15MinSlots(host, now) {
     const cfg = (0, config_2.priceForecastConfigFromAdapter)(host.config);
     const minStartMs = now.getTime();
@@ -89,10 +95,15 @@ async function readDynamicTariffPrice15MinSlots(host, now) {
             byStart.set(slot.slotStartMs, slot);
         }
     }
+    const forecastOnly = new Set();
     for (const slot of (0, run_1.getEnergyforecastPrice15MinSlots)(minStartMs)) {
-        if (!byStart.has(slot.slotStartMs))
+        if (!byStart.has(slot.slotStartMs)) {
             byStart.set(slot.slotStartMs, slot);
+            if (slot.origin === "forecast")
+                forecastOnly.add(slot.slotStartMs);
+        }
     }
+    forecastOnlyPriceStarts = forecastOnly;
     return [...byStart.values()].sort((a, b) => a.slotStartMs - b.slotStartMs);
 }
 async function collectGridSupplyBuildInput(host, now) {

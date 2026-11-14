@@ -7,7 +7,10 @@
  * Eingangswerte bleiben null; partielle Reihen werden nicht zu Vollwerten erklärt.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formatOperatorOutlook72hDe = exports.buildOperatorOutlook72h = exports.OPERATOR_OUTLOOK_HOURS = exports.OPERATOR_OUTLOOK_72H_DE = exports.OPERATOR_OUTLOOK_72H_JSON = void 0;
+exports.OPERATOR_OUTLOOK_HOURS = exports.OPERATOR_OUTLOOK_72H_DE = exports.OPERATOR_OUTLOOK_72H_JSON = void 0;
+exports.buildOperatorOutlook72h = buildOperatorOutlook72h;
+exports.formatOperatorOutlook72hDe = formatOperatorOutlook72hDe;
+const grid_read_1 = require("./supply/grid_read");
 const time_1 = require("./time");
 const energy_scopes_1 = require("./daily_plan/unified/energy_scopes");
 exports.OPERATOR_OUTLOOK_72H_JSON = "operator.outlook_72h.json";
@@ -495,6 +498,11 @@ function buildOperatorOutlook72h(args) {
         const pv = fullSeriesSum(daySlots.map((s) => { const v = pvByStart.get(s.startIso); return v == null ? v : v * fraction(s.startIso, s.endIso); }));
         const load = fullSeriesSum(daySlots.map((s) => { const v = loadByStart.get(s.startIso); return v == null ? v : v * fraction(s.startIso, s.endIso); }));
         const prices = priceSummary(daySlots.map((s) => priceByStart.get(s.startIso)), daySlots.length);
+        const forecastStarts = (0, grid_read_1.getForecastOnlyPriceStarts)();
+        const forecastSlots = daySlots.filter((s) => forecastStarts.has(Date.parse(s.startIso)) && priceByStart.get(s.startIso) != null).length;
+        prices.forecastSlots = forecastSlots;
+        if (forecastSlots > 0)
+            prices.complete = false;
         const allocations = allocationSummaries(allocationsInWindow.filter((allocation) => dayStartKeys.has(allocation.slot.startIso))
             .map(a => ({ ...a, allocatedEnergyKwh: a.allocatedEnergyKwh * fraction(a.slot.startIso, a.slot.endIso) })));
         const dayBatteryTrajectory = args.plan.batteryTrajectory
@@ -601,7 +609,6 @@ function buildOperatorOutlook72h(args) {
         reasonCodes: [...new Set(reasonCodes)].sort(),
     };
 }
-exports.buildOperatorOutlook72h = buildOperatorOutlook72h;
 function kwh(value) {
     return value === null ? "unbekannt" : `${value.toFixed(1).replace(".", ",")} kWh`;
 }
@@ -645,4 +652,3 @@ function formatOperatorOutlook72hDe(outlook) {
     const decisionLines = outlook.decisions.map((decision) => decision.explanationDe);
     return [header, ...lines, ...(decisionLines.length ? ["Planner-Entscheidungen:", ...decisionLines] : [])].join("\n");
 }
-exports.formatOperatorOutlook72hDe = formatOperatorOutlook72hDe;

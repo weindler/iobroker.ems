@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.36] – 2026-11-14
+
+### Behoben
+- Planungsseite: Tage, deren Preise nur aus der Energyforecast-Prognose stammen, standen als „vollständig veröffentlicht". Jetzt „Prognose (Energyforecast), noch nicht veröffentlicht" bzw. „teilweise veröffentlicht, Rest Prognose".
+
+### Geändert
+- Hauslast-Lernen: historische Wallbox-Ladeleistung (stündlicher Mittelwert aus der History, falls der Datenpunkt dort geloggt wird) wird aus den Hauslast-Samples herausgerechnet.
+
 ## [0.4.35] – 2026-11-14
 
 ### Geändert

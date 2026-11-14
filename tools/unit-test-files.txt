@@ -327,3 +327,4 @@ vis/dashboard_ops.test.mjs
 build/statistics/compute_gap.test.js
 build/learning/energyforecast/energyforecast.test.js
 build/operator/supply/grid_read_energyforecast.test.js
+build/operator/contributions/pv_intraday.test.js

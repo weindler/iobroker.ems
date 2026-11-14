@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectContributions = exports.parseHouseLoadForecastHorizonJson = exports.parseHouseLoadForecastJson = void 0;
+exports.parseHouseLoadForecastJson = parseHouseLoadForecastJson;
+exports.parseHouseLoadForecastHorizonJson = parseHouseLoadForecastHorizonJson;
+exports.collectContributions = collectContributions;
 const state_util_1 = require("../../ems_light/state_util");
 const config_1 = require("../../intent/config");
 const config_2 = require("../../learning/weather/config");
 const horizon_1 = require("../../learning/weather/horizon");
 const constants_1 = require("../../learning/pv_horizon/constants");
 const time_1 = require("../time");
+const config_3 = require("../../learning/pv_bias/config");
 const pv_1 = require("./pv");
 const pv_shape_config_1 = require("./pv_shape_config");
 const house_load_1 = require("./house_load");
@@ -103,6 +106,26 @@ async function readPvShapeHourlyPoints(host, prefix) {
     }));
     return rows.filter((r) => r !== null);
 }
+/**
+ * Ist-PV-Ertrag heute (kWh, DAY_ENERGY-Zähler aus dem PV-Bias-Setup). Nur gültig, wenn der Wert
+ * heute geschrieben wurde — der Zähler setzt morgens zurück und zeigt davor noch den Vortag.
+ */
+async function readActualPvTodayKwh(host, now, timezone) {
+    const stateId = (0, config_3.pvBiasConfigFromAdapter)(host.config).historyActualStateId;
+    if (!stateId.trim())
+        return null;
+    try {
+        const st = await host.getForeignStateAsync?.(stateId);
+        const v = (0, state_util_1.asNum)(st?.val);
+        if (v === null || v < 0 || typeof st?.ts !== "number")
+            return null;
+        const dayStartMs = Date.parse((0, time_1.isoAtTimezoneLocal)((0, time_1.localDateKeyInTimezone)(now, timezone), 0, 0, timezone));
+        return Number.isFinite(dayStartMs) && st.ts >= dayStartMs ? v : null;
+    }
+    catch {
+        return null;
+    }
+}
 async function readPvShapeInput(host, timezone) {
     const cfg = (0, pv_shape_config_1.pvShapeConfigFromAdapter)(host.config);
     if (!(0, pv_shape_config_1.pvShapeConfigReady)(cfg))
@@ -135,7 +158,6 @@ function parseHouseLoadForecastJson(raw) {
         return null;
     }
 }
-exports.parseHouseLoadForecastJson = parseHouseLoadForecastJson;
 function parseHouseLoadForecastHorizonJson(raw) {
     if (!raw)
         return null;
@@ -150,7 +172,6 @@ function parseHouseLoadForecastHorizonJson(raw) {
         return null;
     }
 }
-exports.parseHouseLoadForecastHorizonJson = parseHouseLoadForecastHorizonJson;
 function pvHorizonDays(now, timezone, horizonValues, horizonConfidence) {
     const todayKey = (0, time_1.localDateKeyInTimezone)(now, timezone);
     const days = [
@@ -199,6 +220,7 @@ async function collectContributions(host, now, gridForecast) {
     horizonDays[1].correctedKwh = correctedTomorrowKwh;
     horizonDays[1].confidencePct = pvConfidence;
     const pvShape = await readPvShapeInput(host, timezone);
+    const actualTodayKwh = await readActualPvTodayKwh(host, now, timezone);
     const pvInput = {
         now,
         correctedTodayKwh,
@@ -211,6 +233,7 @@ async function collectContributions(host, now, gridForecast) {
         source: "learning.pv_bias",
         horizonDays,
         shape: pvShape,
+        actualTodayKwh,
     };
     const weatherCfg = (0, config_2.weatherConfigFromAdapter)(host.config);
     const tempMetric = weatherCfg.metrics.temp;
@@ -307,4 +330,3 @@ async function collectContributions(host, now, gridForecast) {
     ];
     return { now, timezone, gridForecast: grid, contributions, constraintInput };
 }
-exports.collectContributions = collectContributions;

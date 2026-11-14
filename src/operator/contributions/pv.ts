@@ -4,6 +4,7 @@ import { CONTRIBUTION_IDS } from "../contribution_ids";
 import { addDaysToDateKey, isoAtTimezoneLocal, localDateKeyInTimezone } from "../time";
 import { baseContribution, clampConfidencePct, isPvForecastPresent, pvContributorRef } from "./types";
 import { buildPvShapeForDay, type PvShapeHourPoint } from "./pv_shape";
+import { applyIntradayFactor, computeIntradayFactor, type IntradayResult } from "./pv_intraday";
 
 export interface PvHorizonDayInput {
 	dayIndex: number;
@@ -34,6 +35,8 @@ export interface PvContributionBuildInput {
 	horizonDays: PvHorizonDayInput[];
 	/** Ohne diese Eingaben (z. B. kein Lat/Lon konfiguriert) bleibt `slots: []` — kein erfundener Verlauf. */
 	shape?: PvShapeInput | null;
+	/** Ist-Ertrag heute bisher (kWh, DAY_ENERGY) für die Korrektur im Tagesverlauf; null = keine Korrektur. */
+	actualTodayKwh?: number | null;
 }
 
 function fullDaySlots(dateKey: string, timezone: string): Array<{ startIso: string; endIso: string }> {
@@ -56,9 +59,19 @@ function pvShapeSlotContributions(
 	dateKey: string,
 	dailyKwh: number | null,
 	shape: PvShapeInput,
+	intraday?: { actualTodayKwh: number | null; nowMs: number; onResult: (r: IntradayResult) => void },
 ): PlanSlotContribution[] {
 	const daySlots = fullDaySlots(dateKey, shape.timezone);
-	const shaped = buildPvShapeForDay(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW);
+	let shaped = buildPvShapeForDay(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW);
+	if (intraday) {
+		const items = shaped.map((s) => ({ startIso: s.slot.startIso, endIso: s.slot.endIso, pvPowerW: s.pvPowerW }));
+		const result = computeIntradayFactor(items, intraday.actualTodayKwh, intraday.nowMs);
+		intraday.onResult(result);
+		if (result.active) {
+			const scaled = applyIntradayFactor(items, result.factor, intraday.nowMs);
+			shaped = shaped.map((s, i) => ({ ...s, pvPowerW: scaled[i].pvPowerW }));
+		}
+	}
 	return shaped.map((s) => ({
 		slot: s.slot,
 		minPowerW: s.pvPowerW,
@@ -114,6 +127,7 @@ export function buildPvContribution(input: PvContributionBuildInput): PlanContri
 
 	const slots: PlanSlotContribution[] = [];
 	let shapeActive = false;
+	let intradayResult: IntradayResult | null = null;
 	if (hasForecast && input.shape && input.shape.latDeg !== null && input.shape.lonDeg !== null) {
 		// Arbeitsplan Punkt 5: 15-Min-Form für alle Horizon-Tage mit kWh (Daily Plan 72 h),
 		// nicht nur heute/morgen — nie erfundene Tages-kWh.
@@ -131,7 +145,22 @@ export function buildPvContribution(input: PvContributionBuildInput): PlanContri
 		for (const dateKey of orderedKeys) {
 			const kwh = dayKwhByKey.get(dateKey) ?? null;
 			if (kwh === null || !Number.isFinite(kwh)) continue;
-			slots.push(...pvShapeSlotContributions(dateKey, kwh, input.shape));
+			slots.push(
+				...pvShapeSlotContributions(
+					dateKey,
+					kwh,
+					input.shape,
+					dateKey === today
+						? {
+								actualTodayKwh: input.actualTodayKwh ?? null,
+								nowMs: input.now.getTime(),
+								onResult: (r) => {
+									intradayResult = r;
+								},
+							}
+						: undefined,
+				),
+			);
 		}
 		shapeActive = slots.length > 0;
 	}
@@ -156,6 +185,11 @@ export function buildPvContribution(input: PvContributionBuildInput): PlanContri
 			todayDateKey: todayKey,
 			tomorrowDateKey: tomorrowKey,
 			horizonDays: input.horizonDays,
+			intradayFactor: intradayResult ? (intradayResult as IntradayResult).factor : null,
+			intradayActive: intradayResult ? (intradayResult as IntradayResult).active : false,
+			intradayExpectedSoFarKwh: intradayResult ? (intradayResult as IntradayResult).expectedSoFarKwh : null,
+			intradayActualSoFarKwh: intradayResult ? (intradayResult as IntradayResult).actualSoFarKwh : null,
+			intradayReasonDe: intradayResult ? (intradayResult as IntradayResult).reasonDe : null,
 			slotResolution: shapeActive ? "weather_shaped_15min" : "daily_only",
 			slotNoteDe: shapeActive
 				? "15-Minuten-PV-Form aus Sonnenstand + Bewölkung/Solar-Schätzung, normiert auf gelernte Tages-kWh."

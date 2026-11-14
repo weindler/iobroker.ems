@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildPvContribution = void 0;
+exports.buildPvContribution = buildPvContribution;
 const quality_1 = require("../quality");
 const contribution_ids_1 = require("../contribution_ids");
 const time_1 = require("../time");
 const types_1 = require("./types");
 const pv_shape_1 = require("./pv_shape");
+const pv_intraday_1 = require("./pv_intraday");
 function fullDaySlots(dateKey, timezone) {
     const dayStartIso = (0, time_1.isoAtTimezoneLocal)(dateKey, 0, 0, timezone);
     const dayEndIso = (0, time_1.isoAtTimezoneLocal)((0, time_1.addDaysToDateKey)(dateKey, 1), 0, 0, timezone);
@@ -22,9 +23,18 @@ function fullDaySlots(dateKey, timezone) {
     }
     return slots;
 }
-function pvShapeSlotContributions(dateKey, dailyKwh, shape) {
+function pvShapeSlotContributions(dateKey, dailyKwh, shape, intraday) {
     const daySlots = fullDaySlots(dateKey, shape.timezone);
-    const shaped = (0, pv_shape_1.buildPvShapeForDay)(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW);
+    let shaped = (0, pv_shape_1.buildPvShapeForDay)(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW);
+    if (intraday) {
+        const items = shaped.map((s) => ({ startIso: s.slot.startIso, endIso: s.slot.endIso, pvPowerW: s.pvPowerW }));
+        const result = (0, pv_intraday_1.computeIntradayFactor)(items, intraday.actualTodayKwh, intraday.nowMs);
+        intraday.onResult(result);
+        if (result.active) {
+            const scaled = (0, pv_intraday_1.applyIntradayFactor)(items, result.factor, intraday.nowMs);
+            shaped = shaped.map((s, i) => ({ ...s, pvPowerW: scaled[i].pvPowerW }));
+        }
+    }
     return shaped.map((s) => ({
         slot: s.slot,
         minPowerW: s.pvPowerW,
@@ -75,6 +85,7 @@ function buildPvContribution(input) {
     const tomorrowKey = input.horizonDays.find((d) => d.dayIndex === 1)?.dateKey ?? null;
     const slots = [];
     let shapeActive = false;
+    let intradayResult = null;
     if (hasForecast && input.shape && input.shape.latDeg !== null && input.shape.lonDeg !== null) {
         // Arbeitsplan Punkt 5: 15-Min-Form für alle Horizon-Tage mit kWh (Daily Plan 72 h),
         // nicht nur heute/morgen — nie erfundene Tages-kWh.
@@ -94,7 +105,15 @@ function buildPvContribution(input) {
             const kwh = dayKwhByKey.get(dateKey) ?? null;
             if (kwh === null || !Number.isFinite(kwh))
                 continue;
-            slots.push(...pvShapeSlotContributions(dateKey, kwh, input.shape));
+            slots.push(...pvShapeSlotContributions(dateKey, kwh, input.shape, dateKey === today
+                ? {
+                    actualTodayKwh: input.actualTodayKwh ?? null,
+                    nowMs: input.now.getTime(),
+                    onResult: (r) => {
+                        intradayResult = r;
+                    },
+                }
+                : undefined));
         }
         shapeActive = slots.length > 0;
     }
@@ -118,6 +137,11 @@ function buildPvContribution(input) {
             todayDateKey: todayKey,
             tomorrowDateKey: tomorrowKey,
             horizonDays: input.horizonDays,
+            intradayFactor: intradayResult ? intradayResult.factor : null,
+            intradayActive: intradayResult ? intradayResult.active : false,
+            intradayExpectedSoFarKwh: intradayResult ? intradayResult.expectedSoFarKwh : null,
+            intradayActualSoFarKwh: intradayResult ? intradayResult.actualSoFarKwh : null,
+            intradayReasonDe: intradayResult ? intradayResult.reasonDe : null,
             slotResolution: shapeActive ? "weather_shaped_15min" : "daily_only",
             slotNoteDe: shapeActive
                 ? "15-Minuten-PV-Form aus Sonnenstand + Bewölkung/Solar-Schätzung, normiert auf gelernte Tages-kWh."
@@ -126,4 +150,3 @@ function buildPvContribution(input) {
         slots,
     });
 }
-exports.buildPvContribution = buildPvContribution;

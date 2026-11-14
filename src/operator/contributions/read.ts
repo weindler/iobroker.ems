@@ -9,7 +9,8 @@ import {
 import { PV_HORIZON_EXTENDED_FIRST_DAY, PV_HORIZON_DAY_COUNT } from "../../learning/pv_horizon/constants";
 import type { DayForecastJson } from "../../learning/house_load/types";
 import type { GridSupplyForecast } from "../types";
-import { addDaysToDateKey, localDateKeyInTimezone } from "../time";
+import { addDaysToDateKey, isoAtTimezoneLocal, localDateKeyInTimezone } from "../time";
+import { pvBiasConfigFromAdapter } from "../../learning/pv_bias/config";
 import { buildPvContribution, type PvContributionBuildInput, type PvHorizonDayInput, type PvShapeInput } from "./pv";
 import type { PvShapeHourPoint } from "./pv_shape";
 import { pvShapeConfigFromAdapter, pvShapeConfigReady } from "./pv_shape_config";
@@ -122,6 +123,24 @@ async function readPvShapeHourlyPoints(
 		}),
 	);
 	return rows.filter((r): r is PvShapeHourPoint => r !== null);
+}
+
+/**
+ * Ist-PV-Ertrag heute (kWh, DAY_ENERGY-Zähler aus dem PV-Bias-Setup). Nur gültig, wenn der Wert
+ * heute geschrieben wurde — der Zähler setzt morgens zurück und zeigt davor noch den Vortag.
+ */
+async function readActualPvTodayKwh(host: ContributionsReadHost, now: Date, timezone: string): Promise<number | null> {
+	const stateId = pvBiasConfigFromAdapter(host.config).historyActualStateId;
+	if (!stateId.trim()) return null;
+	try {
+		const st = await host.getForeignStateAsync?.(stateId);
+		const v = asNum(st?.val);
+		if (v === null || v < 0 || typeof st?.ts !== "number") return null;
+		const dayStartMs = Date.parse(isoAtTimezoneLocal(localDateKeyInTimezone(now, timezone), 0, 0, timezone));
+		return Number.isFinite(dayStartMs) && st.ts >= dayStartMs ? v : null;
+	} catch {
+		return null;
+	}
 }
 
 async function readPvShapeInput(
@@ -272,6 +291,7 @@ export async function collectContributions(
 	horizonDays[1].confidencePct = pvConfidence;
 
 	const pvShape = await readPvShapeInput(host, timezone);
+	const actualTodayKwh = await readActualPvTodayKwh(host, now, timezone);
 
 	const pvInput: PvContributionBuildInput = {
 		now,
@@ -285,6 +305,7 @@ export async function collectContributions(
 		source: "learning.pv_bias",
 		horizonDays,
 		shape: pvShape,
+		actualTodayKwh,
 	};
 
 	const weatherCfg = weatherConfigFromAdapter(host.config);

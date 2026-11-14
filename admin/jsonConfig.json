@@ -11523,7 +11523,7 @@
 				"hPriceForecastLearning": {
 					"type": "header",
 					"size": 5,
-					"text": "Phase 2E — Price Forecast Learning (Forecast ↔ Realität)"
+					"text": "Tibber Preis-Prognose-Lernen (Forecast ↔ Realität)"
 				},
 				"hPriceForecastLearningHelp": {
 					"type": "staticText",

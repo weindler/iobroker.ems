@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.34] – 2026-11-14
+
+### Hinzugefügt
+- PV-Prognose-Korrektur im Tagesverlauf: Der Rest des heutigen PV-Verlaufs wird mit dem Verhältnis Ist-Ertrag/erwartet (seit Tagesbeginn, Gewicht steigt mit der erwarteten Energie, Faktor 0,25–1,25) skaliert. Details in `pv_forecast`-Beitrag (`intradayFactor` …).
+
+### Geändert
+- Admin: Überschrift „Tibber Preis-Prognose-Lernen“.
+
 ## [0.4.33] – 2026-11-14
 
 ### Added

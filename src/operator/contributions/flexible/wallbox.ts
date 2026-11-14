@@ -224,6 +224,7 @@ export function buildWallboxEvSessionContribution(input: WallboxContributionBuil
 				batteryBoost: input.batteryBoost ?? null,
 				tibberGridRewardsActive: input.tibberGridRewardsActive ?? null,
 				vehicleSocPct: input.vehicleSocPct,
+				vehicleCapacityKwh: input.vehicleCapacityKwh,
 				planSocPct: input.planSocPct,
 				planActive: input.planActive,
 				sessionEnergyKwh: input.sessionEnergyKwh,

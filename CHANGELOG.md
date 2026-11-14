@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.62] – 2026-11-14
+
+### Behoben
+- Wallbox: Die Fahrzeuggröße wurde zwar gelesen, aber nicht an den Planer weitergereicht (fehlte in den Details des Wallbox-Beitrags). „Bis Ziel · Fahrzeugbatterie“ und der Energiebedarf aus SOC × Größe zeigen jetzt Werte statt „Fahrzeuggröße im Admin eintragen“.
+
 ## [0.4.61] – 2026-11-14
 
 ### Behoben

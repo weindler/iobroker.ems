@@ -1,12 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveDensePowerSources = exports.resolveBatteryPowerInvert = exports.DENSE_POWER_SOURCES = void 0;
+exports.DENSE_POWER_SOURCES = void 0;
+exports.resolveBatteryPowerInvert = resolveBatteryPowerInvert;
+exports.resolveDensePowerSources = resolveDensePowerSources;
 const config_1 = require("../../addons/battery/config");
 const config_2 = require("../battery_runtime/config");
 const constants_1 = require("../house_load/constants");
 const config_3 = require("../house_load/config");
 const history_1 = require("../house_load/history");
 const constants_2 = require("../battery_runtime/constants");
+const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
 const mapping_resolve_1 = require("../../mapping_resolve");
 exports.DENSE_POWER_SOURCES = [
     { sourceKey: "battery.power_w", addonId: "battery", role: "power_w", rollupMode: "bidirectional_max" },
@@ -20,6 +23,12 @@ exports.DENSE_POWER_SOURCES = [
         sourceKey: "battery.pv_ac_power_w",
         addonId: "battery",
         role: "pv_ac_power_w",
+        rollupMode: "unidirectional_avg",
+    },
+    {
+        sourceKey: "wallbox.charge_power_w",
+        addonId: "wallbox",
+        role: "charge_power_w",
         rollupMode: "unidirectional_avg",
     },
 ];
@@ -51,9 +60,8 @@ function resolveBatteryPowerInvert(config) {
     }
     return false;
 }
-exports.resolveBatteryPowerInvert = resolveBatteryPowerInvert;
 function lookbackDaysForSource(config, def) {
-    if (def.sourceKey === "battery.consumption_w") {
+    if (def.sourceKey === "battery.consumption_w" || def.sourceKey === "wallbox.charge_power_w") {
         const hl = (0, config_3.houseLoadConfigFromAdapter)(config);
         return hl.lookbackDays > 0 ? hl.lookbackDays : constants_1.DEFAULT_LOOKBACK_DAYS;
     }
@@ -79,15 +87,23 @@ async function resolveDensePowerSources(host) {
         if (def.sourceKey === "battery.consumption_w" && houseLearning.powerStateId) {
             stateId = houseLearning.powerStateId;
         }
+        if (def.sourceKey === "wallbox.charge_power_w") {
+            // EMS-eigener Datenpunkt (EVCC-Ladeleistung, W) — für das Hauslast-Lernen (Autoladung abziehen).
+            if (!host.namespace)
+                continue;
+            stateId = `${host.namespace}.${ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW}`;
+        }
         if (!stateId) {
             stateId = mappedTarget(host, def.addonId, def.role);
         }
         if (!stateId) {
             continue;
         }
-        const powerUnit = def.rollupMode === "unidirectional_avg"
-            ? await resolvePowerUnit(host, stateId)
-            : "W";
+        const powerUnit = def.sourceKey === "wallbox.charge_power_w"
+            ? "W"
+            : def.rollupMode === "unidirectional_avg"
+                ? await resolvePowerUnit(host, stateId)
+                : "W";
         out.push({
             ...def,
             stateId,
@@ -98,4 +114,3 @@ async function resolveDensePowerSources(host) {
     }
     return out;
 }
-exports.resolveDensePowerSources = resolveDensePowerSources;

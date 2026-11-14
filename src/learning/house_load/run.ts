@@ -8,6 +8,7 @@ import {
 	errorResult,
 	noSourceResult,
 } from "./math";
+import { fetchRollupUnidirectionalPowerPoints } from "../power_rollup";
 import { readHouseLoadPersist, writeHouseLoadPersist } from "./persist";
 import type { HouseLoadComputeResult } from "./types";
 import {
@@ -169,6 +170,21 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 			}
 		} catch {
 			/* History für Wallbox nicht verfügbar — nur Median-Schutz. */
+		}
+		// Eigener Stunden-Rollup der Wallbox-Ladeleistung (power_rollup) hat Vorrang vor der History.
+		try {
+			const wbOwn = await fetchRollupUnidirectionalPowerPoints(
+				host as unknown as { getAbsolutePath?: (category?: string) => string },
+				`${(host as unknown as { namespace?: string }).namespace ?? "ems.0"}.${WALLBOX_EVCC_STATES.chargePowerW}`,
+				cfg.lookbackDays,
+			);
+			for (const point of wbOwn?.points ?? []) {
+				const hourStart = Math.floor(point.ts / MS_PER_HOUR) * MS_PER_HOUR;
+				if (hourStart === currentHour || point.powerW <= 0) continue;
+				flexMap.set(hourStart, { wallboxChargeW: point.powerW });
+			}
+		} catch {
+			/* Rollup noch leer */
 		}
 		flexMap.set(currentHour, flex);
 		const decomp = applyFlexDecompositionToSamples(rawSamples, flexMap);

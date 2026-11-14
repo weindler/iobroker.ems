@@ -4,6 +4,7 @@ import { DEFAULT_LOOKBACK_DAYS as HOUSE_DEFAULT_LOOKBACK } from "../house_load/c
 import { houseLoadConfigFromAdapter } from "../house_load/config";
 import { detectPowerUnit, resolveHouseLoadPowerUnit } from "../house_load/history";
 import { DEFAULT_LOOKBACK_DAYS } from "../battery_runtime/constants";
+import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
 import { resolveMappingTargetFromConfig } from "../../mapping_resolve";
 import type { DensePowerSourceDef, ResolvedDensePowerSource } from "./types";
 
@@ -21,9 +22,17 @@ export const DENSE_POWER_SOURCES: readonly DensePowerSourceDef[] = [
 		role: "pv_ac_power_w",
 		rollupMode: "unidirectional_avg",
 	},
+	{
+		sourceKey: "wallbox.charge_power_w",
+		addonId: "wallbox",
+		role: "charge_power_w",
+		rollupMode: "unidirectional_avg",
+	},
 ] as const;
 
 export type PowerRollupRegistryHost = {
+	/** Adapter-Namespace (z. B. ems.0) — für EMS-eigene Quellen wie die Wallbox-Ladeleistung. */
+	namespace?: string;
 	config: unknown;
 	getStateAsync: (id: string) => Promise<ioBroker.State | null | undefined>;
 	getObjectAsync?: (id: string) => Promise<ioBroker.Object | null | undefined>;
@@ -61,7 +70,7 @@ export function resolveBatteryPowerInvert(config: unknown): boolean {
 }
 
 function lookbackDaysForSource(config: unknown, def: DensePowerSourceDef): number {
-	if (def.sourceKey === "battery.consumption_w") {
+	if (def.sourceKey === "battery.consumption_w" || def.sourceKey === "wallbox.charge_power_w") {
 		const hl = houseLoadConfigFromAdapter(config);
 		return hl.lookbackDays > 0 ? hl.lookbackDays : HOUSE_DEFAULT_LOOKBACK;
 	}
@@ -95,6 +104,11 @@ export async function resolveDensePowerSources(
 		if (def.sourceKey === "battery.consumption_w" && houseLearning.powerStateId) {
 			stateId = houseLearning.powerStateId;
 		}
+		if (def.sourceKey === "wallbox.charge_power_w") {
+			// EMS-eigener Datenpunkt (EVCC-Ladeleistung, W) — für das Hauslast-Lernen (Autoladung abziehen).
+			if (!host.namespace) continue;
+			stateId = `${host.namespace}.${WALLBOX_EVCC_STATES.chargePowerW}`;
+		}
 		if (!stateId) {
 			stateId = mappedTarget(host, def.addonId, def.role);
 		}
@@ -102,7 +116,9 @@ export async function resolveDensePowerSources(
 			continue;
 		}
 		const powerUnit =
-			def.rollupMode === "unidirectional_avg"
+			def.sourceKey === "wallbox.charge_power_w"
+				? "W"
+				: def.rollupMode === "unidirectional_avg"
 				? await resolvePowerUnit(host, stateId)
 				: "W";
 		out.push({

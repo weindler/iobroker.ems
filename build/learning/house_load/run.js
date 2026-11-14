@@ -6,6 +6,7 @@ const constants_1 = require("./constants");
 const history_1 = require("./history");
 const mapping_1 = require("./mapping");
 const math_1 = require("./math");
+const power_rollup_1 = require("../power_rollup");
 const persist_1 = require("./persist");
 const decompose_1 = require("./decompose");
 const types_1 = require("../../addons/immersion_heater/runtime/types");
@@ -134,6 +135,19 @@ async function runHouseLoadLearning(host) {
         }
         catch {
             /* History für Wallbox nicht verfügbar — nur Median-Schutz. */
+        }
+        // Eigener Stunden-Rollup der Wallbox-Ladeleistung (power_rollup) hat Vorrang vor der History.
+        try {
+            const wbOwn = await (0, power_rollup_1.fetchRollupUnidirectionalPowerPoints)(host, `${host.namespace ?? "ems.0"}.${ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW}`, cfg.lookbackDays);
+            for (const point of wbOwn?.points ?? []) {
+                const hourStart = Math.floor(point.ts / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
+                if (hourStart === currentHour || point.powerW <= 0)
+                    continue;
+                flexMap.set(hourStart, { wallboxChargeW: point.powerW });
+            }
+        }
+        catch {
+            /* Rollup noch leer */
         }
         flexMap.set(currentHour, flex);
         const decomp = (0, decompose_1.applyFlexDecompositionToSamples)(rawSamples, flexMap);

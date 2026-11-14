@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.37] – 2026-11-14
+
+### Geändert
+- Stunden-Rollup (power_rollup) schreibt zusätzlich die EVCC-Wallbox-Ladeleistung mit; das Hauslast-Lernen rechnet daraus die Autoladung der Vergangenheit heraus (Vorrang vor History).
+
 ## [0.4.36] – 2026-11-14
 
 ### Behoben

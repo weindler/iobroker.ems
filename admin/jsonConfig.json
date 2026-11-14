@@ -2681,7 +2681,7 @@
 				"bat_grid_balance_min_price_ct_per_kwh": {
 					"type": "number",
 					"label": "Mindeststrompreis für Netzausgleich (ct/kWh)",
-					"help": "Unterhalb dieses Strompreises wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Ab dieser Preisgrenze darf der Netzausgleich (Hauslast minus PV plus SOC-Offset) auf control.discharge schreiben. Rest-PV-Prognose und Batteriekapazität sind kein Gate.",
+					"help": "Untergrenze. Die tatsächliche Schwelle richtet sich dynamisch nach den Ersatzkosten der Batterie (Planer) plus Marge, mindestens aber nach diesem Wert. Unterhalb davon wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Reserve und Rest-PV-Prognose sperren den Netzausgleich nicht.",
 					"min": 0,
 					"max": 200,
 					"default": 30,
@@ -2694,7 +2694,7 @@
 				},
 				"batGridBalancePriceHint": {
 					"type": "staticText",
-					"text": "Admin-Schalter ist die einzige Feature-Freigabe (ems_mirror.grid_balance_enabled folgt ihm). Netzausgleich bleibt in Sonnen Mode 2 (Eigenverbrauch) und schreibt nur control.discharge als temporären Override (Keepalive ≤ 8 s), Ziel Hauslast minus PV plus SOC-Offset — nicht der 20–30 W Smartmeter-Rest. Kein Mode 1, kein control.charge, kein Rest-PV-/Kapazitäts-Gate. Unterhalb des Mindestpreises keine Netzausgleich-Aktion. Hold, EVCC-Boost und geplante Netzladung beenden den Netzausgleich zuerst (discharge=0), danach erst Mode-Wechsel. Produktiver Dauerbetrieb ist frei (GRID_BALANCE_EXECUTION_ENABLED=true) — kein nächtliches One-Shot-Arming. live_test_armed bleibt nur optionale Diagnose.",
+					"text": "Admin-Schalter ist die einzige Feature-Freigabe (ems_mirror.grid_balance_enabled folgt ihm). Netzausgleich bleibt in Sonnen Mode 2 (Eigenverbrauch) und schreibt nur control.discharge als temporären Override (Keepalive ≤ 8 s), Ziel Hauslast minus PV plus SOC-Offset — nicht der 20–30 W Smartmeter-Rest. Kein Mode 1, kein control.charge, kein Rest-PV-/Kapazitäts-Gate. Unterhalb der (dynamischen) Preisschwelle keine Netzausgleich-Aktion. Hold, EVCC-Boost und geplante Netzladung beenden den Netzausgleich zuerst (discharge=0), danach erst Mode-Wechsel. Produktiver Dauerbetrieb ist frei (GRID_BALANCE_EXECUTION_ENABLED=true) — kein nächtliches One-Shot-Arming. live_test_armed bleibt nur optionale Diagnose.",
 					"xs": 12,
 					"sm": 12,
 					"md": 12,

@@ -12,6 +12,9 @@ import type { GridSupplyForecast } from "../types";
 import { addDaysToDateKey, isoAtTimezoneLocal, localDateKeyInTimezone } from "../time";
 import { recentActualFromHistory, type ActualSample, type RecentActual } from "./pv_intraday";
 import { pvBiasConfigFromAdapter } from "../../learning/pv_bias/config";
+import { computeSiteFactors, type SiteFactorProfile } from "../../learning/pv_profile/site_factor";
+import { readPowerHourlyPersist } from "../../learning/power_rollup/persist";
+import { hourKeyToStartTs } from "../../learning/power_rollup/hour";
 import { buildPvContribution, type PvContributionBuildInput, type PvHorizonDayInput, type PvShapeInput } from "./pv";
 import type { PvShapeHourPoint } from "./pv_shape";
 import { pvShapeConfigFromAdapter, pvShapeConfigReady } from "./pv_shape_config";
@@ -168,6 +171,37 @@ async function readActualPvTodayKwh(host: ContributionsReadHost, now: Date, time
 	}
 }
 
+let siteProfileCache: { atMs: number; profile: SiteFactorProfile | null } | null = null;
+
+async function readSiteProfile(
+	host: ContributionsReadHost,
+	timezone: string,
+	lat: number | null,
+	lon: number | null,
+): Promise<SiteFactorProfile | null> {
+	if (lat === null || lon === null) return null;
+	const nowMs = Date.now();
+	if (siteProfileCache && nowMs - siteProfileCache.atMs < 30 * 60_000) return siteProfileCache.profile;
+	let profile: SiteFactorProfile | null = null;
+	try {
+		const dir = (host as unknown as { getAbsolutePath?: (c?: string) => string }).getAbsolutePath?.("learning/power_rollup");
+		if (dir) {
+			const persist = await readPowerHourlyPersist(dir);
+			const source = persist.sources["battery.pv_ac_power_w"];
+			if (source) {
+				const points = Object.entries(source.hours)
+					.map(([key, rec]) => ({ hourStartMs: hourKeyToStartTs(key), avgW: rec.avgPowerW ?? NaN }))
+					.filter((p) => Number.isFinite(p.avgW));
+				profile = computeSiteFactors(points, lat, lon, timezone, nowMs);
+			}
+		}
+	} catch {
+		profile = null;
+	}
+	siteProfileCache = { atMs: nowMs, profile };
+	return profile;
+}
+
 async function readPvShapeInput(
 	host: ContributionsReadHost,
 	timezone: string,
@@ -190,6 +224,7 @@ async function readPvShapeInput(
 		lonDeg: location.lon,
 		hourlyPoints,
 		capW,
+		siteProfile: await readSiteProfile(host, timezone, location.lat, location.lon),
 	};
 }
 

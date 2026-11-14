@@ -152,6 +152,7 @@ build/operator/supply/grid.test.js
 build/operator/contributor.test.js
 build/operator/contributions/pv.test.js
 build/operator/contributions/pv_shape.test.js
+build/learning/pv_profile/site_factor.test.js
 build/operator/contributions/read.test.js
 build/operator/contributions/pv_shape_config.test.js
 build/operator/contributions/house_load.test.js

@@ -4,6 +4,7 @@ import { CONTRIBUTION_IDS } from "../contribution_ids";
 import { addDaysToDateKey, isoAtTimezoneLocal, localDateKeyInTimezone } from "../time";
 import { baseContribution, clampConfidencePct, isPvForecastPresent, pvContributorRef } from "./types";
 import { buildPvShapeForDay, type PvShapeHourPoint } from "./pv_shape";
+import { siteFactorAt, type SiteFactorProfile } from "../../learning/pv_profile/site_factor";
 import { applyIntradayFactor, computeIntradayFactor, type IntradayResult, type RecentActual } from "./pv_intraday";
 
 export interface PvHorizonDayInput {
@@ -20,6 +21,8 @@ export interface PvShapeInput {
 	lonDeg: number | null;
 	hourlyPoints: PvShapeHourPoint[];
 	capW: number | null;
+	/** Gelernter Dach-Faktor je Stunde (null/inaktiv = reine Sonnenstand-Form). */
+	siteProfile?: SiteFactorProfile | null;
 }
 
 export interface PvContributionBuildInput {
@@ -69,7 +72,9 @@ function pvShapeSlotContributions(
 	},
 ): PlanSlotContribution[] {
 	const daySlots = fullDaySlots(dateKey, shape.timezone);
-	let shaped = buildPvShapeForDay(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW);
+	let shaped = buildPvShapeForDay(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW,
+		shape.siteProfile?.active ? (ms) => siteFactorAt(shape.siteProfile ?? null, ms, shape.timezone) : undefined,
+	);
 	if (intraday) {
 		const items = shaped.map((s) => ({ startIso: s.slot.startIso, endIso: s.slot.endIso, pvPowerW: s.pvPowerW }));
 		const result = computeIntradayFactor(items, intraday.actualTodayKwh, intraday.nowMs, intraday.actualRecent);

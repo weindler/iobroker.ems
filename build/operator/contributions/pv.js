@@ -6,6 +6,7 @@ const contribution_ids_1 = require("../contribution_ids");
 const time_1 = require("../time");
 const types_1 = require("./types");
 const pv_shape_1 = require("./pv_shape");
+const site_factor_1 = require("../../learning/pv_profile/site_factor");
 const pv_intraday_1 = require("./pv_intraday");
 function fullDaySlots(dateKey, timezone) {
     const dayStartIso = (0, time_1.isoAtTimezoneLocal)(dateKey, 0, 0, timezone);
@@ -25,7 +26,7 @@ function fullDaySlots(dateKey, timezone) {
 }
 function pvShapeSlotContributions(dateKey, dailyKwh, shape, intraday) {
     const daySlots = fullDaySlots(dateKey, shape.timezone);
-    let shaped = (0, pv_shape_1.buildPvShapeForDay)(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW);
+    let shaped = (0, pv_shape_1.buildPvShapeForDay)(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW, shape.siteProfile?.active ? (ms) => (0, site_factor_1.siteFactorAt)(shape.siteProfile ?? null, ms, shape.timezone) : undefined);
     if (intraday) {
         const items = shaped.map((s) => ({ startIso: s.slot.startIso, endIso: s.slot.endIso, pvPowerW: s.pvPowerW }));
         const result = (0, pv_intraday_1.computeIntradayFactor)(items, intraday.actualTodayKwh, intraday.nowMs, intraday.actualRecent);

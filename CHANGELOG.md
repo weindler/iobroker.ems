@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.57] – 2026-11-14
+
+### Neu
+- **Gelerntes PV-Stundenprofil:** Aus den gespeicherten Stundenwerten der PV-Leistung lernt der Adapter je Ortsstunde einen Dach-Faktor (Verschattung, Ausrichtung, Wechselrichter-Grenze) und gleicht damit die Tagesform der PV-Prognose an. Der Faktor ist der Median über bis zu 45 Tage, wird zu 1 hin gedämpft und greift erst ab 5 brauchbaren Tagen; vorher bleibt die reine Sonnenstand-Form. Die Tages-kWh ändern sich dadurch nicht, nur ihre Verteilung über den Tag.
+
 ## [0.4.56] – 2026-11-14
 
 ### Geändert

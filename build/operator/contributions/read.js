@@ -13,6 +13,9 @@ const constants_1 = require("../../learning/pv_horizon/constants");
 const time_1 = require("../time");
 const pv_intraday_1 = require("./pv_intraday");
 const config_3 = require("../../learning/pv_bias/config");
+const site_factor_1 = require("../../learning/pv_profile/site_factor");
+const persist_1 = require("../../learning/power_rollup/persist");
+const hour_1 = require("../../learning/power_rollup/hour");
 const pv_1 = require("./pv");
 const pv_shape_config_1 = require("./pv_shape_config");
 const house_load_1 = require("./house_load");
@@ -153,6 +156,33 @@ async function readActualPvTodayKwh(host, now, timezone) {
         return null;
     }
 }
+let siteProfileCache = null;
+async function readSiteProfile(host, timezone, lat, lon) {
+    if (lat === null || lon === null)
+        return null;
+    const nowMs = Date.now();
+    if (siteProfileCache && nowMs - siteProfileCache.atMs < 30 * 60_000)
+        return siteProfileCache.profile;
+    let profile = null;
+    try {
+        const dir = host.getAbsolutePath?.("learning/power_rollup");
+        if (dir) {
+            const persist = await (0, persist_1.readPowerHourlyPersist)(dir);
+            const source = persist.sources["battery.pv_ac_power_w"];
+            if (source) {
+                const points = Object.entries(source.hours)
+                    .map(([key, rec]) => ({ hourStartMs: (0, hour_1.hourKeyToStartTs)(key), avgW: rec.avgPowerW ?? NaN }))
+                    .filter((p) => Number.isFinite(p.avgW));
+                profile = (0, site_factor_1.computeSiteFactors)(points, lat, lon, timezone, nowMs);
+            }
+        }
+    }
+    catch {
+        profile = null;
+    }
+    siteProfileCache = { atMs: nowMs, profile };
+    return profile;
+}
 async function readPvShapeInput(host, timezone) {
     const cfg = (0, pv_shape_config_1.pvShapeConfigFromAdapter)(host.config);
     if (!(0, pv_shape_config_1.pvShapeConfigReady)(cfg))
@@ -170,6 +200,7 @@ async function readPvShapeInput(host, timezone) {
         lonDeg: location.lon,
         hourlyPoints,
         capW,
+        siteProfile: await readSiteProfile(host, timezone, location.lat, location.lon),
     };
 }
 function parseHouseLoadForecastJson(raw) {

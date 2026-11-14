@@ -62,7 +62,9 @@ function hourBucketMs(iso) {
  * Summe(pvPowerW_i × slotDauer_i) über alle Slots ≈ dailyKwh — außer `capW` kappt Spitzen
  * (dann bewusst < dailyKwh, keine erfundene Überschreitung der Anlagenleistung).
  */
-function buildPvShapeForDay(slots, dailyKwh, latDeg, lonDeg, hourlyPoints, capW) {
+function buildPvShapeForDay(slots, dailyKwh, latDeg, lonDeg, hourlyPoints, capW, 
+/** Optional: gelernter Dach-Faktor je Zeitpunkt (Mitte des Slots, ms); fehlt = 1. */
+siteFactor) {
     if (slots.length === 0)
         return [];
     if (dailyKwh === null || !Number.isFinite(dailyKwh) || dailyKwh <= 0)
@@ -105,6 +107,12 @@ function buildPvShapeForDay(slots, dailyKwh, latDeg, lonDeg, hourlyPoints, capW)
             return raw * Math.max(MIN_CLOUD_FACTOR, 1 - cloudFrac * CLOUD_DAMPING_FACTOR);
         }
         return raw;
+    }).map((w, i) => {
+        if (!siteFactor || w <= 0)
+            return w;
+        const mid = (Date.parse(slots[i].startIso) + Date.parse(slots[i].endIso)) / 2;
+        const f = siteFactor(mid);
+        return Number.isFinite(f) && f > 0 ? w * f : w;
     });
     const slotHours = slots.map((s) => Math.max(0, Date.parse(s.endIso) - Date.parse(s.startIso)) / 3_600_000);
     const weightedHours = dampedWeights.reduce((sum, w, i) => sum + w * slotHours[i], 0);

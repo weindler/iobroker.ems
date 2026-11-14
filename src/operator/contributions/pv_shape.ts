@@ -89,6 +89,8 @@ export function buildPvShapeForDay(
 	lonDeg: number | null,
 	hourlyPoints: PvShapeHourPoint[],
 	capW: number | null,
+	/** Optional: gelernter Dach-Faktor je Zeitpunkt (Mitte des Slots, ms); fehlt = 1. */
+	siteFactor?: (midMs: number) => number,
 ): PvShapeSlotResult[] {
 	if (slots.length === 0) return [];
 	if (dailyKwh === null || !Number.isFinite(dailyKwh) || dailyKwh <= 0) return [];
@@ -128,6 +130,11 @@ export function buildPvShapeForDay(
 			return raw * Math.max(MIN_CLOUD_FACTOR, 1 - cloudFrac * CLOUD_DAMPING_FACTOR);
 		}
 		return raw;
+	}).map((w, i) => {
+		if (!siteFactor || w <= 0) return w;
+		const mid = (Date.parse(slots[i].startIso) + Date.parse(slots[i].endIso)) / 2;
+		const f = siteFactor(mid);
+		return Number.isFinite(f) && f > 0 ? w * f : w;
 	});
 
 	const slotHours = slots.map(

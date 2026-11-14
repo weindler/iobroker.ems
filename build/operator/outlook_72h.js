@@ -202,16 +202,24 @@ function buildOutlookDecisions(args) {
     const batteryAllocation = decisionAllocation(args.allocations.filter((cell) => cell.kind === "battery_charge"), args.nowMs);
     if (batteryAllocation.firstStartIso) {
         const state = stateForAllocation(batteryAllocation);
-        const target = args.input.battery.endSocTargetPct ?? args.input.battery.reserveSocPct;
-        const targetText = target == null ? "" : ` (Ziel ${round(target, 0)} %)`;
+        const todayKey = (0, time_1.localDateKeyInTimezone)(new Date(args.nowMs), args.timezone);
+        const todayAllocation = decisionAllocation(args.allocations.filter((cell) => cell.kind === "battery_charge" &&
+            (0, time_1.localDateKeyInTimezone)(new Date(Date.parse(cell.slot.startIso)), args.timezone) === todayKey), args.nowMs);
+        const kwhDe = (v) => v.toFixed(1).replace(".", ",");
+        const total = batteryAllocation.energyKwh;
+        const sum = total - todayAllocation.energyKwh > 0.05 ? ` In den nächsten 3 Tagen insgesamt ${kwhDe(total)} kWh.` : "";
+        const explanationDe = todayAllocation.firstStartIso
+            ? `Batterie lädt ${state === "active" ? "jetzt" : `ab ${localWhenDe(todayAllocation.firstStartIso, args.timezone, args.nowMs)}`} ` +
+                `${kwhDe(todayAllocation.energyKwh)} kWh ${sourceTextDe(todayAllocation.energySources)}.${sum}`
+            : `Batterie lädt ab ${localWhenDe(batteryAllocation.firstStartIso, args.timezone, args.nowMs)} ` +
+                `${kwhDe(total)} kWh ${sourceTextDe(batteryAllocation.energySources)}.`;
         decisions.push(baseDecision({
             consumerId: "battery",
             kind: "battery_charge",
             labelDe: "Batterie",
             state,
             allocation: batteryAllocation,
-            explanationDe: `Batterie lädt ${state === "active" ? "jetzt" : `ab ${localWhenDe(batteryAllocation.firstStartIso, args.timezone, args.nowMs)}`} ` +
-                `${batteryAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(batteryAllocation.energySources)}${targetText}.`,
+            explanationDe,
         }));
     }
     else {

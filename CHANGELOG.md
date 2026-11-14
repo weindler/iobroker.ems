@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.46] – 2026-11-14
+
+### Behoben
+- Batterie-Entscheidung: Der Text nannte die Summe über 72 Stunden („2,7 kWh ab heute 14:00") samt Wunschziel 100 %. Jetzt steht dort die Ladung von heute, die Drei-Tage-Summe separat; das irreführende Ziel entfällt.
+
 ## [0.4.45] – 2026-11-14
 
 ### Behoben

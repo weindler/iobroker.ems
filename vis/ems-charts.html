@@ -3506,7 +3506,7 @@ function renderBatteryPage(){
 	html+=questionCard("3 · Was plant EMS als Nächstes?",decision?decisionStateLabel(decision.state):(next?"EINGEPLANT":"KEINE AKTION"),[
 		["Plan-Ziel",target===null?"—":Math.round(target)+" %"],
 		["Nächstes Fenster",next?fmtSmartTime(next.t)+" · "+Math.round(next.w)+" W":"keines"],
-		["Geplante Energie",decision?fmtDec(decision.plannedEnergyKwh,2,"kWh"):"—"],
+		["Geplante Energie (3 Tage)",decision?fmtDec(decision.plannedEnergyKwh,2,"kWh"):"—"],
 		["Reserve-SOC bei PV-Ende",fmtPct(g("planner.battery_reserve.required_soc_at_pv_end_pct"))]
 	],decisionExplanation(decision,txt(g("operator.plan.battery_strategy_de"),"")),"#58a6ff");
 	html+='<details class="ems-detail"><summary>Weitere Batterie- und Reserveinformationen</summary>'+questionCard("4 · Warum?",fault?"Die Störung hat Vorrang":batteryWhy,[

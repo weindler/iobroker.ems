@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.33] – 2026-11-14
+
+### Added
+
+- Energyforecast (energyforecast.de) direkt im Adapter: Im Admin (Learning-Tab) „Energyforecast-Abruf aktiv“ und API-Token (verschlüsselt gespeichert, nie im Log). Der Adapter ruft die Strompreis-Prognose (Viertelstunden, `total_ct_kwh`) alle 6 Stunden selbst ab; der Tarif (Free 2 / Pro 6 / Business 12 Tage) wird aus der Antwort erkannt. Fehler/Tageslimit führen zu Wartezeit statt Dauerabrufen; ein Zwischenspeicher in `learning/energyforecast/` hält die letzten Daten.
+- Preisquelle: Tibber-Preise haben Vorrang, Energyforecast füllt nur Zeiten ohne Tibber-Preis auf (Prognose-Slots tragen `origin: "forecast"`); ohne Tibber liefert Energyforecast die Preise.
+- Festhalten und Lernen: Jeder geänderte Prognosestand wird mit Zeitpunkt gespeichert und später gegen den echten Preis (`price_origin: "market"`) verglichen — Fehler/Bias je Vorlauf (Tage), Spreizung und Trefferquote der 16 günstigsten Viertelstunden (`learning.energyforecast.compare_json`).
+
 ## [0.4.32] – 2026-11-14
 
 ### Fixed

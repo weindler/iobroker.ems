@@ -3,6 +3,8 @@ import { runPvBiasLearning, type PvBiasRunHost } from "./run";
 import { pvBiasConfigFromAdapter } from "./config";
 import { ensurePriceLearningStates, runPriceLearning } from "../price_learning";
 import { ensurePriceForecastLearningStates, runPriceForecastLearning } from "../price_forecast";
+import { ensureEnergyforecastStates } from "../energyforecast/ensure_states";
+import { runEnergyforecast, type EnergyforecastHost } from "../energyforecast/run";
 import { ensurePriceOutlookStates, runPriceOutlook, type PriceOutlookHost } from "../price_outlook";
 import { ensureHouseLoadLearningStates, runHouseLoadLearning } from "../house_load";
 import { ensureThermalRuntimeLearningStates, runThermalRuntimeLearning } from "../thermal_runtime";
@@ -51,6 +53,7 @@ export async function ensureLearningStateTree(adapter: ioBroker.Adapter): Promis
 	await ensurePvHorizonLearningStates(host);
 	await ensurePriceLearningStates(host);
 	await ensurePriceForecastLearningStates(host);
+	await ensureEnergyforecastStates(host);
 	await ensurePriceOutlookStates(host);
 	await ensureHouseLoadLearningStates(host);
 	await ensureThermalRuntimeLearningStates(host);
@@ -145,6 +148,11 @@ async function runLearningTick(
 		await ensureEnergyDailyRollupForLearning(host);
 		await runPvBiasLearning(host);
 		await runPriceLearning(host);
+		try {
+			await runEnergyforecast(host as unknown as EnergyforecastHost);
+		} catch (e) {
+			host.log.warn(`Energyforecast: ${e instanceof Error ? e.message : String(e)}`);
+		}
 		// Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
 		await ensurePowerRollupForLearning(host);
 		// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.

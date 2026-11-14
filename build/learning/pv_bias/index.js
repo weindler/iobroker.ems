@@ -1,11 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.__isLearningTickInFlightForTest = exports.__hasPvBiasLearningTimerForTest = exports.__resetLearningRuntimeForTest = exports.stopPvBiasLearning = exports.initPvBiasLearning = exports.startPvBiasLearningRuntime = exports.ensureLearningStateTree = void 0;
+exports.ensureLearningStateTree = ensureLearningStateTree;
+exports.startPvBiasLearningRuntime = startPvBiasLearningRuntime;
+exports.initPvBiasLearning = initPvBiasLearning;
+exports.stopPvBiasLearning = stopPvBiasLearning;
+exports.__resetLearningRuntimeForTest = __resetLearningRuntimeForTest;
+exports.__hasPvBiasLearningTimerForTest = __hasPvBiasLearningTimerForTest;
+exports.__isLearningTickInFlightForTest = __isLearningTickInFlightForTest;
 const ensure_states_1 = require("./ensure_states");
 const run_1 = require("./run");
 const config_1 = require("./config");
 const price_learning_1 = require("../price_learning");
 const price_forecast_1 = require("../price_forecast");
+const ensure_states_2 = require("../energyforecast/ensure_states");
+const run_2 = require("../energyforecast/run");
 const price_outlook_1 = require("../price_outlook");
 const house_load_1 = require("../house_load");
 const thermal_runtime_1 = require("../thermal_runtime");
@@ -18,9 +26,9 @@ const pv_horizon_1 = require("../pv_horizon");
 const day_telemetry_1 = require("../day_telemetry");
 const daily_evaluator_1 = require("../daily_evaluator");
 const climate_shared_power_1 = require("../climate_shared_power");
-const ensure_states_2 = require("../climate_shared_power/ensure_states");
+const ensure_states_3 = require("../climate_shared_power/ensure_states");
 const climate_thermal_1 = require("../climate_thermal");
-const ensure_states_3 = require("../climate_thermal/ensure_states");
+const ensure_states_4 = require("../climate_thermal/ensure_states");
 const shadow_engine_1 = require("../shadow_engine");
 const economics_1 = require("../../economics");
 const config_2 = require("../../intent/config");
@@ -38,6 +46,7 @@ async function ensureLearningStateTree(adapter) {
     await (0, pv_horizon_1.ensurePvHorizonLearningStates)(host);
     await (0, price_learning_1.ensurePriceLearningStates)(host);
     await (0, price_forecast_1.ensurePriceForecastLearningStates)(host);
+    await (0, ensure_states_2.ensureEnergyforecastStates)(host);
     await (0, price_outlook_1.ensurePriceOutlookStates)(host);
     await (0, house_load_1.ensureHouseLoadLearningStates)(host);
     await (0, thermal_runtime_1.ensureThermalRuntimeLearningStates)(host);
@@ -46,14 +55,13 @@ async function ensureLearningStateTree(adapter) {
     await (0, grid_balance_economics_1.ensureGridBalanceEconomicsStates)(host);
     await (0, day_telemetry_1.ensureDayTelemetryStates)(host);
     await (0, daily_evaluator_1.ensureDailyEvaluatorStates)(host);
-    await (0, ensure_states_2.ensureClimateSharedPowerRootStates)(host);
-    await (0, ensure_states_3.ensureClimateThermalRootStates)(host);
+    await (0, ensure_states_3.ensureClimateSharedPowerRootStates)(host);
+    await (0, ensure_states_4.ensureClimateThermalRootStates)(host);
     await (0, shadow_engine_1.ensureShadowEngineStates)(host);
     await (0, economics_1.ensureEconomicsStates)(host);
     await (0, persistence_mirror_1.ensureLearningPersistenceStates)(host);
     return host;
 }
-exports.ensureLearningStateTree = ensureLearningStateTree;
 /** Phase D/F — Learning-Timer (Persist-Restore erfolgt in Phase D). */
 async function startPvBiasLearningRuntime(adapter, host) {
     const cfg = (0, config_1.pvBiasConfigFromAdapter)(adapter.config);
@@ -76,7 +84,6 @@ async function startPvBiasLearningRuntime(adapter, host) {
     }, cfg.intervalSec * 1000);
     adapter.log.debug?.(`EMS-Light PV-Bias + PV-Horizon + Price + House-Load + Thermal + Battery-Runtime ready (read-only, interval ${cfg.intervalSec}s)`);
 }
-exports.startPvBiasLearningRuntime = startPvBiasLearningRuntime;
 /**
  * Der externe Preis-/PV-Ausblick darf beim Start nicht hinter dem langen History-Backfill warten.
  * Ein gemeinsam genutztes Promise verhindert dabei parallele SMARD-/Bright-Sky-Abrufe.
@@ -123,6 +130,12 @@ async function runLearningTick(host, trigger = "interval") {
         await (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host);
         await (0, run_1.runPvBiasLearning)(host);
         await (0, price_learning_1.runPriceLearning)(host);
+        try {
+            await (0, run_2.runEnergyforecast)(host);
+        }
+        catch (e) {
+            host.log.warn(`Energyforecast: ${e instanceof Error ? e.message : String(e)}`);
+        }
         // Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
         await (0, power_rollup_1.ensurePowerRollupForLearning)(host);
         // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
@@ -220,26 +233,21 @@ async function initPvBiasLearning(adapter) {
     const host = await ensureLearningStateTree(adapter);
     await startPvBiasLearningRuntime(adapter, host);
 }
-exports.initPvBiasLearning = initPvBiasLearning;
 function stopPvBiasLearning() {
     if (pvBiasTimer) {
         clearInterval(pvBiasTimer);
         pvBiasTimer = null;
     }
 }
-exports.stopPvBiasLearning = stopPvBiasLearning;
 /** Nur für Tests. */
 function __resetLearningRuntimeForTest() {
     stopPvBiasLearning();
     learningTickInFlight = false;
     priceOutlookRunInFlight = null;
 }
-exports.__resetLearningRuntimeForTest = __resetLearningRuntimeForTest;
 function __hasPvBiasLearningTimerForTest() {
     return pvBiasTimer != null;
 }
-exports.__hasPvBiasLearningTimerForTest = __hasPvBiasLearningTimerForTest;
 function __isLearningTickInFlightForTest() {
     return learningTickInFlight;
 }
-exports.__isLearningTickInFlightForTest = __isLearningTickInFlightForTest;

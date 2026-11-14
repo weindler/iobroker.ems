@@ -325,3 +325,5 @@ vis/immersion_fault_labels.test.mjs
 vis/ai_vis_semantics.test.mjs
 vis/dashboard_ops.test.mjs
 build/statistics/compute_gap.test.js
+build/learning/energyforecast/energyforecast.test.js
+build/operator/supply/grid_read_energyforecast.test.js

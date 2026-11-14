@@ -3,6 +3,8 @@ import type { FrozenHourSlot } from "./types";
 export interface Price15MinSlot {
 	slotStartMs: number;
 	priceCtPerKwh: number;
+	/** Gesetzt nur bei Prognosepreisen (Energyforecast price_origin "forecast"); Tibber/Markt = nicht gesetzt. */
+	origin?: "forecast";
 }
 
 export const MS_PER_15MIN = 15 * 60 * 1000;

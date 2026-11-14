@@ -11534,6 +11534,57 @@
 					"lg": 12,
 					"xl": 12
 				},
+				"hEnergyforecast": {
+					"type": "header",
+					"size": 2,
+					"text": "Energyforecast — Strompreis-Prognose für die Tage nach den Tibber-Preisen",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"energyforecastInfo": {
+					"type": "staticText",
+					"text": "Der Adapter ruft die Prognose alle 6 Stunden selbst ab (4 Abrufe/Tag; Free-Tarif erlaubt 50). Der Tarif (Free 2, Pro 6, Business 12 Tage) wird aus der Antwort erkannt. Zugang und Tarife bei Energyforecast; die Nutzungsbedingungen (Free/Pro: privat, ein Haushalt) gelten für dich selbst. Der Token wird verschlüsselt gespeichert.",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"energyforecast_enabled": {
+					"type": "checkbox",
+					"label": "Energyforecast-Abruf aktiv",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"energyforecast_token": {
+					"type": "password",
+					"label": "Energyforecast API-Token",
+					"help": "Wird verschlüsselt gespeichert und erscheint nie im Log.",
+					"xs": 12,
+					"sm": 6,
+					"md": 5,
+					"lg": 5,
+					"xl": 5
+				},
+				"energyforecastLink": {
+					"type": "staticLink",
+					"text": "Zu Energyforecast (Anmeldung, Token, Tarife)",
+					"href": "https://www.energyforecast.de",
+					"button": true,
+					"newLine": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 3,
+					"lg": 3,
+					"xl": 3
+				},
 				"learning_price_forecast_enabled": {
 					"type": "checkbox",
 					"label": "Price Forecast Learning aktiv",

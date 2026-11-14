@@ -1,9 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectGridSupplyBuildInput = exports.readDynamicTariffPrice15MinSlots = void 0;
+exports.readDynamicTariffPrice15MinSlots = readDynamicTariffPrice15MinSlots;
+exports.collectGridSupplyBuildInput = collectGridSupplyBuildInput;
 const config_1 = require("../../policy/global/config");
 const config_2 = require("../../learning/price_forecast/config");
 const tibber_parse_1 = require("../../learning/price_forecast/tibber_parse");
+const run_1 = require("../../learning/energyforecast/run");
 const state_util_1 = require("../../ems_light/state_util");
 async function readVal(host, stateId) {
     if (!stateId.trim())
@@ -71,12 +73,12 @@ async function readEffectivePolicySnapshot(host) {
         return null;
     }
 }
-/** Liest Tibber Today/Tomorrow-JSON und liefert sortierte 15-min-Preisslots ab now. */
+/**
+ * Liest Tibber Today/Tomorrow-JSON und liefert sortierte 15-min-Preisslots ab now.
+ * Energyforecast (falls aktiv) füllt nur Zeiten auf, für die kein Tibber-Preis vorliegt — Tibber hat Vorrang.
+ */
 async function readDynamicTariffPrice15MinSlots(host, now) {
     const cfg = (0, config_2.priceForecastConfigFromAdapter)(host.config);
-    if (!cfg.todayJsonStateId && !cfg.tomorrowJsonStateId) {
-        return [];
-    }
     const minStartMs = now.getTime();
     const byStart = new Map();
     for (const stateId of [cfg.todayJsonStateId, cfg.tomorrowJsonStateId]) {
@@ -87,9 +89,12 @@ async function readDynamicTariffPrice15MinSlots(host, now) {
             byStart.set(slot.slotStartMs, slot);
         }
     }
+    for (const slot of (0, run_1.getEnergyforecastPrice15MinSlots)(minStartMs)) {
+        if (!byStart.has(slot.slotStartMs))
+            byStart.set(slot.slotStartMs, slot);
+    }
     return [...byStart.values()].sort((a, b) => a.slotStartMs - b.slotStartMs);
 }
-exports.readDynamicTariffPrice15MinSlots = readDynamicTariffPrice15MinSlots;
 async function collectGridSupplyBuildInput(host, now) {
     const adminPolicy = (0, config_1.globalPolicyConfigFromAdapter)(host.config);
     const effectivePolicy = await readEffectivePolicySnapshot(host);
@@ -121,4 +126,3 @@ async function collectGridSupplyBuildInput(host, now) {
         priceLearningAvgPrice90dEur,
     };
 }
-exports.collectGridSupplyBuildInput = collectGridSupplyBuildInput;

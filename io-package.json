@@ -1,10 +1,10 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.32",
+		"version": "0.4.33",
 		"dataFolder": "ems.%INSTANCE%",
-		"encryptedNative": [],
-		"protectedNative": [],
+		"encryptedNative": ["energyforecast_token"],
+		"protectedNative": ["energyforecast_token"],
 		"news": {
 			"0.4.24": {
 				"en": "Adds a verified monthly statistics archive with backup/restore integration, persistent meter readings and daily SOC minima. Distinguishes schedules from measured charging, respects winter/off/external control in displays, and improves compact statistics and rolling forecasts.",

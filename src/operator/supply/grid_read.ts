@@ -5,6 +5,7 @@ import {
 	parseTibberPriceJsonTo15MinSlots,
 	type Price15MinSlot,
 } from "../../learning/price_forecast/tibber_parse";
+import { getEnergyforecastPrice15MinSlots } from "../../learning/energyforecast/run";
 import { asNum } from "../../ems_light/state_util";
 import type { StateHost } from "../../ems_light/state_util";
 import type { GridSupplyBuildInput } from "./grid";
@@ -77,16 +78,15 @@ async function readEffectivePolicySnapshot(host: GridSupplyReadHost): Promise<Po
 	}
 }
 
-/** Liest Tibber Today/Tomorrow-JSON und liefert sortierte 15-min-Preisslots ab now. */
+/**
+ * Liest Tibber Today/Tomorrow-JSON und liefert sortierte 15-min-Preisslots ab now.
+ * Energyforecast (falls aktiv) füllt nur Zeiten auf, für die kein Tibber-Preis vorliegt — Tibber hat Vorrang.
+ */
 export async function readDynamicTariffPrice15MinSlots(
 	host: GridSupplyReadHost,
 	now: Date,
 ): Promise<Price15MinSlot[]> {
 	const cfg = priceForecastConfigFromAdapter(host.config);
-	if (!cfg.todayJsonStateId && !cfg.tomorrowJsonStateId) {
-		return [];
-	}
-
 	const minStartMs = now.getTime();
 	const byStart = new Map<number, Price15MinSlot>();
 
@@ -96,6 +96,9 @@ export async function readDynamicTariffPrice15MinSlots(
 		for (const slot of parseTibberPriceJsonTo15MinSlots(raw, { minStartMs })) {
 			byStart.set(slot.slotStartMs, slot);
 		}
+	}
+	for (const slot of getEnergyforecastPrice15MinSlots(minStartMs)) {
+		if (!byStart.has(slot.slotStartMs)) byStart.set(slot.slotStartMs, slot);
 	}
 
 	return [...byStart.values()].sort((a, b) => a.slotStartMs - b.slotStartMs);

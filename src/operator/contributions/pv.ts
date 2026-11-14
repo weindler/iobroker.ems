@@ -4,7 +4,7 @@ import { CONTRIBUTION_IDS } from "../contribution_ids";
 import { addDaysToDateKey, isoAtTimezoneLocal, localDateKeyInTimezone } from "../time";
 import { baseContribution, clampConfidencePct, isPvForecastPresent, pvContributorRef } from "./types";
 import { buildPvShapeForDay, type PvShapeHourPoint } from "./pv_shape";
-import { applyIntradayFactor, computeIntradayFactor, type IntradayResult } from "./pv_intraday";
+import { applyIntradayFactor, computeIntradayFactor, type IntradayResult, type RecentActual } from "./pv_intraday";
 
 export interface PvHorizonDayInput {
 	dayIndex: number;
@@ -37,6 +37,8 @@ export interface PvContributionBuildInput {
 	shape?: PvShapeInput | null;
 	/** Ist-Ertrag heute bisher (kWh, DAY_ENERGY) für die Korrektur im Tagesverlauf; null = keine Korrektur. */
 	actualTodayKwh?: number | null;
+	/** Ertrag der letzten ~Stunde (aus gemerkten Zählerständen) als schnelleres Signal; null = unbekannt. */
+	actualRecent?: RecentActual | null;
 }
 
 function fullDaySlots(dateKey: string, timezone: string): Array<{ startIso: string; endIso: string }> {
@@ -59,13 +61,18 @@ function pvShapeSlotContributions(
 	dateKey: string,
 	dailyKwh: number | null,
 	shape: PvShapeInput,
-	intraday?: { actualTodayKwh: number | null; nowMs: number; onResult: (r: IntradayResult) => void },
+	intraday?: {
+		actualTodayKwh: number | null;
+		actualRecent: RecentActual | null;
+		nowMs: number;
+		onResult: (r: IntradayResult) => void;
+	},
 ): PlanSlotContribution[] {
 	const daySlots = fullDaySlots(dateKey, shape.timezone);
 	let shaped = buildPvShapeForDay(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW);
 	if (intraday) {
 		const items = shaped.map((s) => ({ startIso: s.slot.startIso, endIso: s.slot.endIso, pvPowerW: s.pvPowerW }));
-		const result = computeIntradayFactor(items, intraday.actualTodayKwh, intraday.nowMs);
+		const result = computeIntradayFactor(items, intraday.actualTodayKwh, intraday.nowMs, intraday.actualRecent);
 		intraday.onResult(result);
 		if (result.active) {
 			const scaled = applyIntradayFactor(items, result.factor, intraday.nowMs);
@@ -153,6 +160,7 @@ export function buildPvContribution(input: PvContributionBuildInput): PlanContri
 					dateKey === today
 						? {
 								actualTodayKwh: input.actualTodayKwh ?? null,
+								actualRecent: input.actualRecent ?? null,
 								nowMs: input.now.getTime(),
 								onResult: (r) => {
 									intradayResult = r;

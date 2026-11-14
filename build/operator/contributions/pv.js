@@ -28,7 +28,7 @@ function pvShapeSlotContributions(dateKey, dailyKwh, shape, intraday) {
     let shaped = (0, pv_shape_1.buildPvShapeForDay)(daySlots, dailyKwh, shape.latDeg, shape.lonDeg, shape.hourlyPoints, shape.capW);
     if (intraday) {
         const items = shaped.map((s) => ({ startIso: s.slot.startIso, endIso: s.slot.endIso, pvPowerW: s.pvPowerW }));
-        const result = (0, pv_intraday_1.computeIntradayFactor)(items, intraday.actualTodayKwh, intraday.nowMs);
+        const result = (0, pv_intraday_1.computeIntradayFactor)(items, intraday.actualTodayKwh, intraday.nowMs, intraday.actualRecent);
         intraday.onResult(result);
         if (result.active) {
             const scaled = (0, pv_intraday_1.applyIntradayFactor)(items, result.factor, intraday.nowMs);
@@ -108,6 +108,7 @@ function buildPvContribution(input) {
             slots.push(...pvShapeSlotContributions(dateKey, kwh, input.shape, dateKey === today
                 ? {
                     actualTodayKwh: input.actualTodayKwh ?? null,
+                    actualRecent: input.actualRecent ?? null,
                     nowMs: input.now.getTime(),
                     onResult: (r) => {
                         intradayResult = r;

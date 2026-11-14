@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.__resetActualHistoryForTest = __resetActualHistoryForTest;
 exports.readPvShapeHourlyPoints = readPvShapeHourlyPoints;
 exports.parseHouseLoadForecastJson = parseHouseLoadForecastJson;
 exports.parseHouseLoadForecastHorizonJson = parseHouseLoadForecastHorizonJson;
@@ -10,6 +11,7 @@ const config_2 = require("../../learning/weather/config");
 const horizon_1 = require("../../learning/weather/horizon");
 const constants_1 = require("../../learning/pv_horizon/constants");
 const time_1 = require("../time");
+const pv_intraday_1 = require("./pv_intraday");
 const config_3 = require("../../learning/pv_bias/config");
 const pv_1 = require("./pv");
 const pv_shape_config_1 = require("./pv_shape_config");
@@ -80,6 +82,25 @@ async function readSystemLocation(host) {
     catch {
         return { lat: null, lon: null };
     }
+}
+/** Gemerkte Zählerstände (nur im Speicher) für den Ertrag der letzten Stunde. Nach Neustart leer. */
+let actualHistory = [];
+function rememberActualAndRecent(nowMs, kwh) {
+    if (kwh === null)
+        return null;
+    const last = actualHistory[actualHistory.length - 1];
+    // Zähler zurückgesetzt (neuer Tag) → Verlauf verwerfen.
+    if (last && kwh < last.kwh)
+        actualHistory = [];
+    const prev = actualHistory[actualHistory.length - 1];
+    if (!prev || nowMs - prev.ts >= 60_000)
+        actualHistory.push({ ts: nowMs, kwh });
+    actualHistory = actualHistory.filter((s) => nowMs - s.ts <= 3 * 3_600_000);
+    return (0, pv_intraday_1.recentActualFromHistory)(actualHistory, nowMs, kwh);
+}
+/** Nur für Tests. */
+function __resetActualHistoryForTest() {
+    actualHistory = [];
 }
 const PV_SHAPE_HOURLY_PROBE_COUNT = 24;
 /**
@@ -227,6 +248,7 @@ async function collectContributions(host, now, gridForecast) {
     horizonDays[1].confidencePct = pvConfidence;
     const pvShape = await readPvShapeInput(host, timezone);
     const actualTodayKwh = await readActualPvTodayKwh(host, now, timezone);
+    const actualRecent = rememberActualAndRecent(now.getTime(), actualTodayKwh);
     const pvInput = {
         now,
         correctedTodayKwh,
@@ -240,6 +262,7 @@ async function collectContributions(host, now, gridForecast) {
         horizonDays,
         shape: pvShape,
         actualTodayKwh,
+        actualRecent,
     };
     const weatherCfg = (0, config_2.weatherConfigFromAdapter)(host.config);
     const tempMetric = weatherCfg.metrics.temp;

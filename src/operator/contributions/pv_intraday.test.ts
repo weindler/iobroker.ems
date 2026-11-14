@@ -1,6 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { applyIntradayFactor, computeIntradayFactor, expectedEnergySoFarKwh } from "./pv_intraday";
+import {
+	applyIntradayFactor,
+	computeIntradayFactor,
+	expectedEnergySoFarKwh,
+	recentActualFromHistory,
+} from "./pv_intraday";
 
 function slots(): Array<{ startIso: string; endIso: string; pvPowerW: number }> {
 	const out = [];
@@ -46,5 +51,31 @@ describe("pv intraday", () => {
 		const out = applyIntradayFactor(slots(), 0.5, now);
 		assert.equal(out[0].pvPowerW, 2000);
 		assert.equal(out[15].pvPowerW, 1000);
+	});
+
+	it("letzte Stunde senkt den Faktor schneller als die Tagessumme", () => {
+		// Tagessumme passt (4 kWh), letzte Stunde nur 1 von erwarteten 2 kWh
+		const withoutRecent = computeIntradayFactor(slots(), 4, now);
+		assert.equal(withoutRecent.active, false);
+		const r = computeIntradayFactor(slots(), 4, now, { deltaKwh: 1, windowMs: 3_600_000 });
+		assert.equal(r.active, true);
+		assert.equal(r.factor, 0.75);
+	});
+
+	it("Toleranz 8 %: kleine Abweichung bleibt ohne Korrektur", () => {
+		assert.equal(computeIntradayFactor(slots(), 3.8, now).active, false);
+		assert.equal(computeIntradayFactor(slots(), 3.5, now).active, true);
+	});
+
+	it("recentActualFromHistory nimmt den Stand ~60 min zurück, sonst null", () => {
+		const h = [
+			{ ts: now - 120 * 60_000, kwh: 0.5 },
+			{ ts: now - 62 * 60_000, kwh: 1.5 },
+			{ ts: now - 10 * 60_000, kwh: 3.5 },
+		];
+		const r = recentActualFromHistory(h, now, 4);
+		assert.equal(r?.deltaKwh, 2.5);
+		assert.equal(recentActualFromHistory([{ ts: now - 10 * 60_000, kwh: 3.5 }], now, 4), null);
+		assert.equal(recentActualFromHistory(h, now, 1), null);
 	});
 });

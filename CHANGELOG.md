@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.42] – 2026-11-14
+
+### Geändert
+- PV-Korrektur im Tagesverlauf: zusätzlich zur Tagessumme zählt der Ertrag der letzten Stunde (50 %, aus gemerkten Zählerständen; nach Neustart erst nach ~1 h verfügbar). Toleranz 8 % statt 3 %.
+
 ## [0.4.41] – 2026-11-14
 
 ### Behoben

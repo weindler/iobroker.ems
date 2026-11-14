@@ -10,6 +10,7 @@ import { PV_HORIZON_EXTENDED_FIRST_DAY, PV_HORIZON_DAY_COUNT } from "../../learn
 import type { DayForecastJson } from "../../learning/house_load/types";
 import type { GridSupplyForecast } from "../types";
 import { addDaysToDateKey, isoAtTimezoneLocal, localDateKeyInTimezone } from "../time";
+import { recentActualFromHistory, type ActualSample, type RecentActual } from "./pv_intraday";
 import { pvBiasConfigFromAdapter } from "../../learning/pv_bias/config";
 import { buildPvContribution, type PvContributionBuildInput, type PvHorizonDayInput, type PvShapeInput } from "./pv";
 import type { PvShapeHourPoint } from "./pv_shape";
@@ -93,6 +94,25 @@ async function readSystemLocation(
 	} catch {
 		return { lat: null, lon: null };
 	}
+}
+
+/** Gemerkte Zählerstände (nur im Speicher) für den Ertrag der letzten Stunde. Nach Neustart leer. */
+let actualHistory: ActualSample[] = [];
+
+function rememberActualAndRecent(nowMs: number, kwh: number | null): RecentActual | null {
+	if (kwh === null) return null;
+	const last = actualHistory[actualHistory.length - 1];
+	// Zähler zurückgesetzt (neuer Tag) → Verlauf verwerfen.
+	if (last && kwh < last.kwh) actualHistory = [];
+	const prev = actualHistory[actualHistory.length - 1];
+	if (!prev || nowMs - prev.ts >= 60_000) actualHistory.push({ ts: nowMs, kwh });
+	actualHistory = actualHistory.filter((s) => nowMs - s.ts <= 3 * 3_600_000);
+	return recentActualFromHistory(actualHistory, nowMs, kwh);
+}
+
+/** Nur für Tests. */
+export function __resetActualHistoryForTest(): void {
+	actualHistory = [];
 }
 
 const PV_SHAPE_HOURLY_PROBE_COUNT = 24;
@@ -297,6 +317,7 @@ export async function collectContributions(
 
 	const pvShape = await readPvShapeInput(host, timezone);
 	const actualTodayKwh = await readActualPvTodayKwh(host, now, timezone);
+	const actualRecent = rememberActualAndRecent(now.getTime(), actualTodayKwh);
 
 	const pvInput: PvContributionBuildInput = {
 		now,
@@ -311,6 +332,7 @@ export async function collectContributions(
 		horizonDays,
 		shape: pvShape,
 		actualTodayKwh,
+		actualRecent,
 	};
 
 	const weatherCfg = weatherConfigFromAdapter(host.config);

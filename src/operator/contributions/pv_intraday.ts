@@ -17,6 +17,32 @@ export const INTRADAY_FULL_WEIGHT_KWH = 2.5;
 export const INTRADAY_MIN_FACTOR = 0.25;
 export const INTRADAY_MAX_FACTOR = 1.25;
 
+/** Toleranz: Abweichungen darunter lösen keine Korrektur aus. */
+export const INTRADAY_DEAD_BAND = 0.08;
+/** Letzte Stunde als zweites Signal: Fenster und Mindest-Erwartung darin. */
+export const INTRADAY_RECENT_WINDOW_MS = 3_600_000;
+export const INTRADAY_RECENT_MIN_EXPECTED_KWH = 0.4;
+/** Gewicht des Verhältnisses der letzten Stunde gegenüber der Tagessumme. */
+export const INTRADAY_RECENT_WEIGHT = 0.5;
+
+export type ActualSample = { ts: number; kwh: number };
+export type RecentActual = { deltaKwh: number; windowMs: number };
+
+/**
+ * Ertrag in (ungefähr) der letzten Stunde aus gemerkten Zählerständen. Verwendet den Stand, der am
+ * nächsten bei `now − 60 min` liegt (45–75 min zurück); sonst null (z. B. nach Neustart).
+ */
+export function recentActualFromHistory(history: ActualSample[], nowMs: number, kwhNow: number): RecentActual | null {
+	let best: ActualSample | null = null;
+	for (const s of history) {
+		const age = nowMs - s.ts;
+		if (age < 45 * 60_000 || age > 75 * 60_000) continue;
+		if (!best || Math.abs(age - INTRADAY_RECENT_WINDOW_MS) < Math.abs(nowMs - best.ts - INTRADAY_RECENT_WINDOW_MS)) best = s;
+	}
+	if (!best || kwhNow < best.kwh) return null;
+	return { deltaKwh: kwhNow - best.kwh, windowMs: nowMs - best.ts };
+}
+
 export type IntradayResult = {
 	/** Multiplikator für Slots, die noch nicht vorbei sind (1 = keine Korrektur). */
 	factor: number;
@@ -54,6 +80,7 @@ export function computeIntradayFactor(
 	todaySlots: IntradaySlot[],
 	actualTodayKwh: number | null,
 	nowMs: number,
+	recent: RecentActual | null = null,
 ): IntradayResult {
 	if (actualTodayKwh === null || !Number.isFinite(actualTodayKwh) || actualTodayKwh < 0) {
 		return NO_CORRECTION("Kein gültiger Ist-Ertrag für heute.");
@@ -62,12 +89,21 @@ export function computeIntradayFactor(
 	if (expected < INTRADAY_MIN_EXPECTED_KWH) {
 		return NO_CORRECTION("Noch zu wenig erwartete PV-Energie für eine Korrektur.", expected, actualTodayKwh);
 	}
-	const ratio = actualTodayKwh / expected;
+	let ratio = actualTodayKwh / expected;
+	let recentNote = "";
+	if (recent && recent.windowMs > 0) {
+		const expectedRecent = expected - expectedEnergySoFarKwh(todaySlots, nowMs - recent.windowMs);
+		if (expectedRecent >= INTRADAY_RECENT_MIN_EXPECTED_KWH) {
+			const recentRatio = recent.deltaKwh / expectedRecent;
+			ratio = (1 - INTRADAY_RECENT_WEIGHT) * ratio + INTRADAY_RECENT_WEIGHT * recentRatio;
+			recentNote = ` Letzte Stunde ${recent.deltaKwh.toFixed(2)} kWh gegen erwartet ${expectedRecent.toFixed(2)} kWh.`;
+		}
+	}
 	const weight = Math.min(1, expected / INTRADAY_FULL_WEIGHT_KWH);
 	const raw = 1 + weight * (ratio - 1);
 	const factor = Math.max(INTRADAY_MIN_FACTOR, Math.min(INTRADAY_MAX_FACTOR, raw));
 	const rounded = Math.round(factor * 1000) / 1000;
-	const active = Math.abs(rounded - 1) >= 0.03;
+	const active = Math.abs(rounded - 1) >= INTRADAY_DEAD_BAND;
 	return {
 		factor: active ? rounded : 1,
 		expectedSoFarKwh: Math.round(expected * 1000) / 1000,
@@ -75,7 +111,7 @@ export function computeIntradayFactor(
 		weight: Math.round(weight * 1000) / 1000,
 		active,
 		reasonDe: active
-			? `Ist ${actualTodayKwh.toFixed(2)} kWh gegen erwartet ${expected.toFixed(2)} kWh → Rest des Tages × ${rounded}.`
+			? `Ist ${actualTodayKwh.toFixed(2)} kWh gegen erwartet ${expected.toFixed(2)} kWh.${recentNote} → Rest des Tages × ${rounded}.`
 			: "Ist-Ertrag liegt im Rahmen der Prognose.",
 	};
 }

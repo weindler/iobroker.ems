@@ -659,6 +659,7 @@ var stateIds=[
 	INST+".learning.pv_bias.actual_today_kwh",
 	INST+".learning.pv_bias.intraday_factor",
 	INST+".learning.pv_bias.intraday_status_de",
+	INST+".learning.pv_bias.profile_status_de",
 	INST+".learning.pv_bias.expected_today_kwh",
 	INST+".learning.pv_bias.frozen_today_kwh",
 	INST+".learning.pv_bias.bias_today_pct",
@@ -2683,6 +2684,7 @@ function visLageSnap(){
 		todayModelKwh:num(g("learning.pv_bias.corrected_today_kwh")),
 		intradayFactor:num(g("learning.pv_bias.intraday_factor")),
 		intradayStatus:txt(g("learning.pv_bias.intraday_status_de"),""),
+		profileStatus:txt(g("learning.pv_bias.profile_status_de"),""),
 		todayKwh:visTodayAdjusted(num(g("learning.pv_bias.corrected_today_kwh")),num(g("learning.pv_bias.actual_today_kwh"))),
 		tomorrowKwh:num(g("learning.pv_bias.corrected_tomorrow_kwh")),
 		rawTodayKwh:num(g("learning.pv_bias.raw_today_kwh")),
@@ -2719,7 +2721,7 @@ function renderLage(){
 	var todayDelta=snap.biasTodayPct===null?'':('<br>Abweichung heute bisher '+(snap.biasTodayPct>0?'+':'')+snap.biasTodayPct.toFixed(1).replace('.',',')+' % · nicht für die Korrektur verwendet');
 	var details='<details class="ems-q-note"'+(detailsOpen?' open':'')+'><summary>Berechnungsdetails</summary>Modell-Bias '+fmtDec(snap.modelBiasPct,1,'%')+' · 14-Tage-Trend '+fmtDec(snap.bias14dPct,1,'%')+' · Langzeitbasis '+fmtDec(snap.bias90dPct,1,'%')+'<br>Gültige Tage '+(snap.sampleDays90d===null?'—':Math.round(snap.sampleDays90d))+' · Abdeckung '+fmtDec(snap.coveragePct,0,'%')+' · Stabilität '+fmtDec(snap.stabilityPct,0,'%')+todayDelta+'</details>';
 	el.innerHTML='<div class="ems-lage-k">PV-Prognose</div><div class="ems-pv-grid">'
-		+'<div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTodayKwh,1,'kWh')+' → erwartet '+fmtDec(snap.todayKwh,1,'kWh')+(snap.actualKwh!==null?' (bisher '+fmtDec(snap.actualKwh,1,'kWh')+')':'')+'<br>'+esc(biasTxt)+(snap.intradayFactor!==null&&Math.abs(snap.intradayFactor-1)>=0.005?'<br>'+esc(snap.intradayStatus||('Rest des Tages × '+String(snap.intradayFactor).replace('.',','))):'')+'</div></div>'
+		+'<div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTodayKwh,1,'kWh')+' → erwartet '+fmtDec(snap.todayKwh,1,'kWh')+(snap.actualKwh!==null?' (bisher '+fmtDec(snap.actualKwh,1,'kWh')+')':'')+'<br>'+esc(biasTxt)+(snap.intradayFactor!==null&&Math.abs(snap.intradayFactor-1)>=0.005?'<br>'+esc(snap.intradayStatus||('Rest des Tages × '+String(snap.intradayFactor).replace('.',','))):'')+(snap.profileStatus?'<br>'+esc(snap.profileStatus):'')+'</div></div>'
 		+'<div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTomorrowKwh,1,'kWh')+' → erwartet '+fmtDec(snap.tomorrowKwh,1,'kWh')+'<br>'+esc(biasTxt)+'</div></div>'
 		+'</div>'+details+'<div class="ems-pv-foot">'+esc(line)+'</div>';
 }

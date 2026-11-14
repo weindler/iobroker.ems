@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.60] – 2026-11-14
+
+### Neu
+- VIS: Lernstand des PV-Profils als Zeile in der Heute-Kachel der PV-Prognose.
+
 ## [0.4.59] – 2026-11-14
 
 ### Neu

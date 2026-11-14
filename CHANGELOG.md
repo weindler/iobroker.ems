@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.61] – 2026-11-14
+
+### Behoben
+- Wallbox: Die Fahrzeuggröße (und max. AC-Ladeleistung) aus dem Admin-Feld „Batteriekapazität (kWh)“ im EV-Fundament wird jetzt auch für „Bis Ziel · Fahrzeugbatterie“ verwendet, wenn die Fahrzeug-Tabelle keinen Eintrag hat. Vorher kam „Fahrzeuggröße im Admin eintragen“ trotz eingetragener 77 kWh.
+
 ## [0.4.60] – 2026-11-14
 
 ### Neu

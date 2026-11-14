@@ -363,12 +363,17 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         mapEntry?.batteryCapacityNetKwh !== undefined &&
         mapEntry.batteryCapacityNetKwh > 0
         ? mapEntry.batteryCapacityNetKwh
-        : null;
+        : // Fallback: Admin-Feld „Batteriekapazität (kWh)“ (EV-Fundament), wenn die Fahrzeug-Tabelle leer ist.
+            evFoundation.batteryCapacityKWh !== null && evFoundation.batteryCapacityKWh > 0
+                ? evFoundation.batteryCapacityKWh
+                : null;
     const vehicleMaxAcChargePowerW = mapEntry?.maxAcChargePowerW !== null &&
         mapEntry?.maxAcChargePowerW !== undefined &&
         mapEntry.maxAcChargePowerW > 0
         ? mapEntry.maxAcChargePowerW
-        : null;
+        : evFoundation.maxAcChargePowerKw !== null && evFoundation.maxAcChargePowerKw > 0
+            ? Math.round(evFoundation.maxAcChargePowerKw * 1000)
+            : null;
     const energyToTargetKwh = remainingEnergyKwh;
     const minDepartureSoc = evFoundation.minimumDepartureSocPct;
     const energyToDepartureMinimumKwh = minDepartureSoc !== null &&

@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.40] – 2026-11-14
+
+### Behoben
+- Preisslots: die laufende Viertelstunde bleibt im Plan (Preis „jetzt" fehlte, weil der Slot-Start vor dem aktuellen Zeitpunkt lag).
+
 ## [0.4.39] – 2026-11-14
 
 ### Behoben

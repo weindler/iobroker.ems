@@ -81,4 +81,12 @@ describe("Preisquelle: Tibber Vorrang, Energyforecast füllt auf", () => {
 		const host = await setup(false, null);
 		assert.deepEqual(await readDynamicTariffPrice15MinSlots(host, new Date("2026-11-14T09:20:00")), []);
 	});
+
+	it("laufende Viertelstunde bleibt erhalten (Preis für jetzt)", async () => {
+		const host = await setup(true, null);
+		const slots = await readDynamicTariffPrice15MinSlots(host, new Date("2026-11-14T09:20:00"));
+		const quarterStart = new Date("2026-11-14T09:15:00").getTime();
+		assert.ok(slots.some((s) => s.slotStartMs === quarterStart), "Slot 09:15 vorhanden");
+		assert.equal(slots.some((s) => s.slotStartMs < quarterStart), false);
+	});
 });

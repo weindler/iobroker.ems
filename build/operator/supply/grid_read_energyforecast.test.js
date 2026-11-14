@@ -110,4 +110,11 @@ function rows(date, origin, total) {
         const host = await setup(false, null);
         strict_1.default.deepEqual(await (0, grid_read_1.readDynamicTariffPrice15MinSlots)(host, new Date("2026-11-14T09:20:00")), []);
     });
+    (0, node_test_1.it)("laufende Viertelstunde bleibt erhalten (Preis für jetzt)", async () => {
+        const host = await setup(true, null);
+        const slots = await (0, grid_read_1.readDynamicTariffPrice15MinSlots)(host, new Date("2026-11-14T09:20:00"));
+        const quarterStart = new Date("2026-11-14T09:15:00").getTime();
+        strict_1.default.ok(slots.some((s) => s.slotStartMs === quarterStart), "Slot 09:15 vorhanden");
+        strict_1.default.equal(slots.some((s) => s.slotStartMs < quarterStart), false);
+    });
 });

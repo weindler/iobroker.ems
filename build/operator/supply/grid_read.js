@@ -85,7 +85,8 @@ function getForecastOnlyPriceStarts() {
 }
 async function readDynamicTariffPrice15MinSlots(host, now) {
     const cfg = (0, config_2.priceForecastConfigFromAdapter)(host.config);
-    const minStartMs = now.getTime();
+    // Laufende Viertelstunde mitnehmen — sonst fehlt „jetzt" der Preis (Slot-Start liegt vor now).
+    const minStartMs = Math.floor(now.getTime() / 900_000) * 900_000;
     const byStart = new Map();
     for (const stateId of [cfg.todayJsonStateId, cfg.tomorrowJsonStateId]) {
         if (!stateId)

@@ -4,9 +4,11 @@
  * Display only — never changes Thermal/Battery/EV/Climate/Planner decisions.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.publishVisPriceTimeline = void 0;
+exports.publishVisPriceTimeline = publishVisPriceTimeline;
 const states_1 = require("../daily_plan/states");
 const grid_states_1 = require("../supply/grid_states");
+const grid_read_1 = require("../supply/grid_read");
+const run_1 = require("../../learning/energyforecast/run");
 const state_util_1 = require("../../ems_light/state_util");
 const state_write_1 = require("../../policy/core/state_write");
 const ensure_states_1 = require("../../addons/battery/ensure_states");
@@ -26,6 +28,29 @@ function parseJsonArray(raw) {
 }
 function asGridSlots(raw) {
     return parseJsonArray(raw).filter((row) => row != null && typeof row === "object");
+}
+/**
+ * Preisachse über den Plan-Horizont hinaus: Energyforecast-Slots (Prognose) ergänzen alle Zeiten ohne
+ * Slot aus dem Grid-Supply-State. Tibber/Grid-Supply hat Vorrang.
+ */
+function mergeForecastSlots(slots, now) {
+    const known = new Set();
+    for (const s of slots) {
+        const ms = typeof s.startIso === "string" ? Date.parse(s.startIso) : NaN;
+        if (Number.isFinite(ms))
+            known.add(ms);
+    }
+    const out = [...slots];
+    for (const f of (0, run_1.getEnergyforecastPrice15MinSlots)(now.getTime())) {
+        if (known.has(f.slotStartMs))
+            continue;
+        out.push({
+            startIso: new Date(f.slotStartMs).toISOString(),
+            endIso: new Date(f.slotStartMs + 15 * 60_000).toISOString(),
+            priceCtPerKwh: f.priceCtPerKwh,
+        });
+    }
+    return out;
 }
 function asAlloc(raw) {
     return parseJsonArray(raw).filter((row) => row != null && typeof row === "object");
@@ -61,7 +86,8 @@ async function publishVisPriceTimeline(host, now = new Date()) {
             currentPriceCt,
             gbMinPriceCt,
             gbPriceAllowed,
-            gridSlots: asGridSlots(gridSlotsRaw),
+            gridSlots: mergeForecastSlots(asGridSlots(gridSlotsRaw), now),
+            forecastStartsMs: (0, grid_read_1.getForecastOnlyPriceStarts)(),
             batteryAlloc: asAlloc(batteryAlloc),
             wallboxAlloc: asAlloc(wallboxAlloc),
             immersionAlloc: asAlloc(immersionAlloc),
@@ -73,4 +99,3 @@ async function publishVisPriceTimeline(host, now = new Date()) {
     }
     await (0, state_write_1.setStateIfChanged)(host, price_timeline_1.VIS_PRICE_TIMELINE_STATE_ID, JSON.stringify(board));
 }
-exports.publishVisPriceTimeline = publishVisPriceTimeline;

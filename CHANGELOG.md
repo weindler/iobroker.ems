@@ -8,6 +8,16 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.43] – 2026-11-14
+
+### Hinzugefügt
+- Preisachse (Betrieb): zeigt alle bekannten Preise inkl. Energyforecast-Tage (2/6/12 Tage je nach Tarif), Prognose gestrichelt gelb mit Legende; weit entfernte Zeiten stündlich verdichtet, Tagesbeschriftung bei langem Zeitraum.
+- PV-Kacheln: „erwartet" = bisher erzeugt + noch erwarteter Rest (inkl. Tageskorrektur), Hinweis „Rest des Tages × Faktor".
+
+### Geändert
+- Tibber Grid Rewards: Ist die Übergabe an Tibber eingerichtet oder das Signal aktiv, gilt die Autoladung als extern gesteuert; der Planner plant dafür keine Netz-/PV-Ladung (Start und Pause bestimmt Tibber).
+- Texte der Planungsseite und der Planner-Entscheidungen in einfaches Deutsch umgeschrieben (u. a. „heute 11:45" statt Datum mit Jahr, keine internen Begriffe).
+
 ## [0.4.42] – 2026-11-14
 
 ### Geändert

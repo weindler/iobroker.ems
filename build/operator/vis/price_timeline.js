@@ -4,14 +4,20 @@
  * allocations. No second optimiser, no invented prices, no planner math.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildVisPriceTimeline = exports.emptyVisPriceTimeline = exports.VIS_PRICE_TIMEZONE = exports.VIS_PRICE_MAX_AHEAD_HOURS = exports.VIS_PRICE_MIN_AHEAD_HOURS = exports.VIS_PRICE_LOOKBACK_HOURS = exports.VIS_PRICE_TIMELINE_STATE_ID = void 0;
+exports.VIS_PRICE_TIMEZONE = exports.VIS_PRICE_QUARTER_AHEAD_HOURS = exports.VIS_PRICE_MAX_AHEAD_HOURS = exports.VIS_PRICE_MIN_AHEAD_HOURS = exports.VIS_PRICE_LOOKBACK_HOURS = exports.VIS_PRICE_TIMELINE_STATE_ID = void 0;
+exports.emptyVisPriceTimeline = emptyVisPriceTimeline;
+exports.buildVisPriceTimeline = buildVisPriceTimeline;
 const contribution_ids_1 = require("../contribution_ids");
 const time_1 = require("../time");
 const addon_plan_publish_1 = require("../daily_plan/addon_plan_publish");
 exports.VIS_PRICE_TIMELINE_STATE_ID = "operator.vis.price_timeline_json";
 exports.VIS_PRICE_LOOKBACK_HOURS = 6;
+/** Mindestens so weit voraus zeigt die Preisachse (Tibber + Energyforecast, soweit vorhanden). */
 exports.VIS_PRICE_MIN_AHEAD_HOURS = 18;
-exports.VIS_PRICE_MAX_AHEAD_HOURS = 18;
+/** Obergrenze der Preisachse (Energyforecast Business: bis 12 Tage). */
+exports.VIS_PRICE_MAX_AHEAD_HOURS = 14 * 24;
+/** Ab dieser Entfernung werden Viertelstunden zu Stundenmittelwerten verdichtet (Größe des Datenpunkts). */
+exports.VIS_PRICE_QUARTER_AHEAD_HOURS = 48;
 exports.VIS_PRICE_TIMEZONE = "Europe/Berlin";
 function finitePrice(v) {
     if (v === null || v === undefined || v === "")
@@ -103,15 +109,15 @@ function emptyVisPriceTimeline(now, timezone = exports.VIS_PRICE_TIMEZONE) {
         slots: [],
     };
 }
-exports.emptyVisPriceTimeline = emptyVisPriceTimeline;
 /** Compact VIS payload from already-published prices + allocations. */
 function buildVisPriceTimeline(input) {
     const timezone = input.timezone?.trim() || exports.VIS_PRICE_TIMEZONE;
     const nowMs = input.now.getTime();
     const nowIso = input.now.toISOString();
     const lookbackMs = exports.VIS_PRICE_LOOKBACK_HOURS * 3600_000;
-    const minAheadMs = exports.VIS_PRICE_MIN_AHEAD_HOURS * 3600_000;
     const maxAheadMs = exports.VIS_PRICE_MAX_AHEAD_HOURS * 3600_000;
+    const quarterAheadMs = exports.VIS_PRICE_QUARTER_AHEAD_HOURS * 3600_000;
+    const forecastStarts = input.forecastStartsMs ?? new Set();
     const priced = [];
     for (const raw of input.gridSlots) {
         const startIso = typeof raw.startIso === "string" ? raw.startIso : "";
@@ -132,7 +138,8 @@ function buildVisPriceTimeline(input) {
     }
     priced.sort((a, b) => a.startMs - b.startMs);
     const windowStartMs = nowMs - lookbackMs;
-    const windowEndMs = nowMs + Math.min(minAheadMs, maxAheadMs);
+    const lastPricedEndMs = priced.length ? priced[priced.length - 1].endMs : nowMs;
+    const windowEndMs = Math.min(Math.max(lastPricedEndMs, nowMs + exports.VIS_PRICE_MIN_AHEAD_HOURS * 3600_000), nowMs + maxAheadMs);
     const todayKey = (0, time_1.localDateKeyInTimezone)(input.now, timezone);
     const nowHourKey = hourKeyLocal(nowMs, timezone);
     const gbMin = finitePrice(input.gbMinPriceCt);
@@ -166,8 +173,41 @@ function buildVisPriceTimeline(input) {
             currentHour: hourKeyLocal(s.startMs, timezone) === nowHourKey,
             gbPriceOk,
             actions,
+            ...(forecastStarts.has(s.startMs) ? { forecast: true } : {}),
         });
     }
+    // Weit in der Zukunft: Stundenmittel statt Viertelstunden, damit der Datenpunkt klein bleibt.
+    const compact = [];
+    const farFrom = nowMs + quarterAheadMs;
+    let bucket = [];
+    const flush = () => {
+        if (!bucket.length)
+            return;
+        const priceSlots = bucket.filter((b) => b.priceCt !== null);
+        const avg = priceSlots.length ? priceSlots.reduce((sum, b) => sum + b.priceCt, 0) / priceSlots.length : null;
+        compact.push({
+            startIso: bucket[0].startIso,
+            endIso: bucket[bucket.length - 1].endIso,
+            priceCt: avg === null ? null : Math.round(avg * 100) / 100,
+            current: false,
+            currentHour: false,
+            gbPriceOk: gbMin !== null && avg !== null && avg >= gbMin,
+            actions: [],
+            ...(bucket.every((b) => b.forecast) ? { forecast: true } : {}),
+        });
+        bucket = [];
+    };
+    for (const slot of slots) {
+        if (Date.parse(slot.startIso) < farFrom) {
+            flush();
+            compact.push(slot);
+            continue;
+        }
+        if (bucket.length && hourKeyLocal(Date.parse(bucket[0].startIso), timezone) !== hourKeyLocal(Date.parse(slot.startIso), timezone))
+            flush();
+        bucket.push(slot);
+    }
+    flush();
     return {
         generatedAt: input.generatedAt ?? nowIso,
         source: "grid_supply+allocation",
@@ -180,7 +220,6 @@ function buildVisPriceTimeline(input) {
         dayMax: pickExtreme(dayPriced, "max"),
         windowStartIso: new Date(windowStartMs).toISOString(),
         windowEndIso: new Date(windowEndMs).toISOString(),
-        slots,
+        slots: compact,
     };
 }
-exports.buildVisPriceTimeline = buildVisPriceTimeline;

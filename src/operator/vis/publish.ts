@@ -5,6 +5,8 @@
 
 import { ALLOCATION_ADDON_STATE_IDS } from "../daily_plan/states";
 import { GRID_SUPPLY_STATE_IDS } from "../supply/grid_states";
+import { getForecastOnlyPriceStarts } from "../supply/grid_read";
+import { getEnergyforecastPrice15MinSlots } from "../../learning/energyforecast/run";
 import { asNum, type StateHost } from "../../ems_light/state_util";
 import { setStateIfChanged } from "../../policy/core/state_write";
 import { BAT } from "../../addons/battery/ensure_states";
@@ -29,6 +31,28 @@ function parseJsonArray(raw: unknown): unknown[] {
 
 function asGridSlots(raw: unknown): VisPriceGridSlot[] {
 	return parseJsonArray(raw).filter((row): row is VisPriceGridSlot => row != null && typeof row === "object");
+}
+
+/**
+ * Preisachse über den Plan-Horizont hinaus: Energyforecast-Slots (Prognose) ergänzen alle Zeiten ohne
+ * Slot aus dem Grid-Supply-State. Tibber/Grid-Supply hat Vorrang.
+ */
+function mergeForecastSlots(slots: VisPriceGridSlot[], now: Date): VisPriceGridSlot[] {
+	const known = new Set<number>();
+	for (const s of slots) {
+		const ms = typeof s.startIso === "string" ? Date.parse(s.startIso) : NaN;
+		if (Number.isFinite(ms)) known.add(ms);
+	}
+	const out = [...slots];
+	for (const f of getEnergyforecastPrice15MinSlots(now.getTime())) {
+		if (known.has(f.slotStartMs)) continue;
+		out.push({
+			startIso: new Date(f.slotStartMs).toISOString(),
+			endIso: new Date(f.slotStartMs + 15 * 60_000).toISOString(),
+			priceCtPerKwh: f.priceCtPerKwh,
+		});
+	}
+	return out;
 }
 
 function asAlloc(raw: unknown): VisPriceAllocEntry[] {
@@ -78,7 +102,8 @@ export async function publishVisPriceTimeline(host: StateHost, now = new Date())
 			currentPriceCt,
 			gbMinPriceCt,
 			gbPriceAllowed,
-			gridSlots: asGridSlots(gridSlotsRaw),
+			gridSlots: mergeForecastSlots(asGridSlots(gridSlotsRaw), now),
+			forecastStartsMs: getForecastOnlyPriceStarts(),
 			batteryAlloc: asAlloc(batteryAlloc),
 			wallboxAlloc: asAlloc(wallboxAlloc),
 			immersionAlloc: asAlloc(immersionAlloc),

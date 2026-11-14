@@ -299,7 +299,7 @@ describe("operator rolling 72 h outlook", () => {
 		const outlook = buildOperatorOutlook72h({ now: NOW, timezone: "UTC", plan, plannerInput: input });
 		const decision = outlook.decisions.find((entry) => entry.kind === "immersion_heater");
 		assert.equal(decision?.state, "deferred");
-		assert.match(decision?.explanationDe ?? "", /bessere PV-Fenster/);
+		assert.match(decision?.explanationDe ?? "", /mehr PV-Angebot/);
 		assert.match(formatOperatorOutlook72hDe(outlook), /Übermorgen/);
 	});
 
@@ -392,8 +392,43 @@ describe("operator rolling 72 h outlook", () => {
 		const outlook = buildOperatorOutlook72h({ now: NOW, timezone: "UTC", plan, plannerInput: input });
 		const decision = outlook.decisions.find((entry) => entry.kind === "wallbox");
 		assert.equal(decision?.state, "unallocated");
-		assert.match(decision?.explanationDe ?? "", /externe Ladeplan/);
+		assert.match(decision?.explanationDe ?? "", /extern gesteuert/);
 		assert.doesNotMatch(decision?.explanationDe ?? "", /Ziel 0/);
+	});
+
+	it("erklärt Tibber Grid Rewards als Steuerung der Autoladung", () => {
+		const input = input80h();
+		input.wallbox = {
+			connectedNow: true,
+			presenceWindows: [],
+			presenceHardConstraint: true,
+			vehicleProfileId: null,
+			vehicleSocPct: 64,
+			socSource: "direct",
+			fallbackEnergyNeedKwh: null,
+			vehicleCapacityKwh: 60,
+			targetSocPct: 0,
+			requiredEnergyKwh: 0,
+			deadlineIso: null,
+			energyGoalHard: false,
+			minChargePowerW: 1380,
+			maxChargePowerW: 11000,
+			chargeLossFactor: 1,
+			evccExecutionMaster: true,
+			evccChargeMode: "now",
+			managementMode: "externally_managed",
+			externalAuthorityState: "tibber_grid_rewards",
+			hardRequiredEnergyKwh: 0,
+			targetEnergyKwh: null,
+			uncertainty: input.pv.uncertainty,
+			freshness: input.pv.freshness,
+		};
+		const plan = allocateUnifiedDayPlan(input);
+		const outlook = buildOperatorOutlook72h({ now: NOW, timezone: "UTC", plan, plannerInput: input });
+		const decision = outlook.decisions.find((entry) => entry.kind === "wallbox");
+		assert.equal(decision?.state, "unallocated");
+		assert.match(decision?.explanationDe ?? "", /Tibber Grid Rewards steuert/);
+		assert.match(decision?.explanationDe ?? "", /plant hier nichts/);
 	});
 
 	it("places a small EV need into the best available PV window instead of charging immediately", () => {

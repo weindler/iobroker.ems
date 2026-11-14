@@ -34,7 +34,7 @@ function alloc(contributionId, startIso, allocatedPowerW, extra = {}) {
     };
 }
 (0, node_test_1.describe)("buildVisPriceTimeline (read-only reshape)", () => {
-    (0, node_test_1.it)("keeps last 6h and about next 18h from existing grid slots", () => {
+    (0, node_test_1.it)("keeps last 6h and all known future slots from existing grid slots", () => {
         const grid = hoursAround(NOW, 10, 40, () => 24.3);
         const board = (0, price_timeline_1.buildVisPriceTimeline)({
             now: NOW,
@@ -52,7 +52,7 @@ function alloc(contributionId, startIso, allocatedPowerW, extra = {}) {
         strict_1.default.ok(NOW.getTime() - first >= (price_timeline_1.VIS_PRICE_LOOKBACK_HOURS - 0.3) * 3600_000);
         strict_1.default.ok(NOW.getTime() - first <= (price_timeline_1.VIS_PRICE_LOOKBACK_HOURS + 0.3) * 3600_000);
         strict_1.default.ok(last - NOW.getTime() >= price_timeline_1.VIS_PRICE_MIN_AHEAD_HOURS * 3600_000 - 15 * 60_000);
-        strict_1.default.ok(last - NOW.getTime() <= (price_timeline_1.VIS_PRICE_MIN_AHEAD_HOURS + 0.5) * 3600_000);
+        strict_1.default.ok(last - NOW.getTime() >= 39 * 3600_000, "alle bekannten Slots, nicht nur 18 h");
         strict_1.default.equal(board.slots.every((s) => s.priceCt === 24.3), true);
     });
     (0, node_test_1.it)("does not invent prices for missing grid slots", () => {
@@ -189,5 +189,36 @@ function alloc(contributionId, startIso, allocatedPowerW, extra = {}) {
             climateAlloc: [],
         });
         strict_1.default.deepEqual(board.slots[0].actions, []);
+    });
+    (0, node_test_1.it)("zeigt Prognose-Tage bis zum Ende der Daten, markiert sie und verdichtet weit entfernte Slots stündlich", () => {
+        const grid = hoursAround(NOW, 1, 5 * 24, () => 30);
+        const nowMs = NOW.getTime();
+        const forecastFrom = nowMs + 36 * 3600_000;
+        const forecastStarts = new Set();
+        for (const g of grid) {
+            const ms = Date.parse(g.startIso);
+            if (ms >= forecastFrom)
+                forecastStarts.add(ms);
+        }
+        const board = (0, price_timeline_1.buildVisPriceTimeline)({
+            now: NOW,
+            currentPriceCt: 30,
+            gbMinPriceCt: null,
+            gbPriceAllowed: null,
+            gridSlots: grid,
+            forecastStartsMs: forecastStarts,
+            batteryAlloc: [],
+            wallboxAlloc: [],
+            immersionAlloc: [],
+            climateAlloc: [],
+        });
+        const last = Date.parse(board.slots[board.slots.length - 1].endIso);
+        strict_1.default.ok(last - nowMs >= 5 * 24 * 3600_000 - 3600_000, "reicht bis zum Ende der Daten");
+        const farSlots = board.slots.filter((s) => Date.parse(s.startIso) >= nowMs + 49 * 3600_000);
+        strict_1.default.ok(farSlots.length > 0 && farSlots.every((s) => s.forecast === true));
+        strict_1.default.ok(farSlots.every((s) => Date.parse(s.endIso) - Date.parse(s.startIso) >= 3600_000 - 15 * 60_000), "stündlich verdichtet");
+        const nearPublished = board.slots.filter((s) => Date.parse(s.startIso) < forecastFrom);
+        strict_1.default.ok(nearPublished.every((s) => s.forecast === undefined));
+        strict_1.default.ok(board.slots.length < 300, "deutlich weniger als 480 Viertelstunden");
     });
 });

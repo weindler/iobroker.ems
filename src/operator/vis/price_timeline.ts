@@ -10,8 +10,12 @@ import { RUNNABLE_ALLOCATION_FLOOR_W } from "../daily_plan/addon_plan_publish";
 export const VIS_PRICE_TIMELINE_STATE_ID = "operator.vis.price_timeline_json";
 
 export const VIS_PRICE_LOOKBACK_HOURS = 6;
+/** Mindestens so weit voraus zeigt die Preisachse (Tibber + Energyforecast, soweit vorhanden). */
 export const VIS_PRICE_MIN_AHEAD_HOURS = 18;
-export const VIS_PRICE_MAX_AHEAD_HOURS = 18;
+/** Obergrenze der Preisachse (Energyforecast Business: bis 12 Tage). */
+export const VIS_PRICE_MAX_AHEAD_HOURS = 14 * 24;
+/** Ab dieser Entfernung werden Viertelstunden zu Stundenmittelwerten verdichtet (Größe des Datenpunkts). */
+export const VIS_PRICE_QUARTER_AHEAD_HOURS = 48;
 export const VIS_PRICE_TIMEZONE = "Europe/Berlin";
 
 export type VisPriceActionKind = "battery_grid" | "ev" | "immersion" | "climate";
@@ -24,6 +28,8 @@ export interface VisPriceTimelineSlot {
 	current: boolean;
 	/** All 15-min slots in the local current hour. */
 	currentHour: boolean;
+	/** true = nur Prognose (Energyforecast), noch kein veröffentlichter Tibber-Preis. */
+	forecast?: boolean;
 	/** Price ≥ GB min — allowance only, not an EMS action. */
 	gbPriceOk: boolean;
 	actions: VisPriceActionKind[];
@@ -71,6 +77,8 @@ export interface BuildVisPriceTimelineInput {
 	gbMinPriceCt: number | null;
 	gbPriceAllowed: boolean | null;
 	gridSlots: VisPriceGridSlot[];
+	/** Startzeiten (ms) von Preisslots, die nur aus der Prognose stammen. */
+	forecastStartsMs?: ReadonlySet<number>;
 	batteryAlloc: VisPriceAllocEntry[];
 	wallboxAlloc: VisPriceAllocEntry[];
 	immersionAlloc: VisPriceAllocEntry[];
@@ -169,8 +177,9 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 	const nowMs = input.now.getTime();
 	const nowIso = input.now.toISOString();
 	const lookbackMs = VIS_PRICE_LOOKBACK_HOURS * 3600_000;
-	const minAheadMs = VIS_PRICE_MIN_AHEAD_HOURS * 3600_000;
 	const maxAheadMs = VIS_PRICE_MAX_AHEAD_HOURS * 3600_000;
+	const quarterAheadMs = VIS_PRICE_QUARTER_AHEAD_HOURS * 3600_000;
+	const forecastStarts = input.forecastStartsMs ?? new Set<number>();
 
 	const priced: Array<{ startIso: string; endIso: string; startMs: number; endMs: number; priceCt: number | null }> = [];
 	for (const raw of input.gridSlots) {
@@ -193,7 +202,11 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 	priced.sort((a, b) => a.startMs - b.startMs);
 
 	const windowStartMs = nowMs - lookbackMs;
-	const windowEndMs = nowMs + Math.min(minAheadMs, maxAheadMs);
+	const lastPricedEndMs = priced.length ? priced[priced.length - 1].endMs : nowMs;
+	const windowEndMs = Math.min(
+		Math.max(lastPricedEndMs, nowMs + VIS_PRICE_MIN_AHEAD_HOURS * 3600_000),
+		nowMs + maxAheadMs,
+	);
 
 	const todayKey = localDateKeyInTimezone(input.now, timezone);
 	const nowHourKey = hourKeyLocal(nowMs, timezone);
@@ -226,8 +239,40 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 			currentHour: hourKeyLocal(s.startMs, timezone) === nowHourKey,
 			gbPriceOk,
 			actions,
+			...(forecastStarts.has(s.startMs) ? { forecast: true } : {}),
 		});
 	}
+
+	// Weit in der Zukunft: Stundenmittel statt Viertelstunden, damit der Datenpunkt klein bleibt.
+	const compact: VisPriceTimelineSlot[] = [];
+	const farFrom = nowMs + quarterAheadMs;
+	let bucket: VisPriceTimelineSlot[] = [];
+	const flush = (): void => {
+		if (!bucket.length) return;
+		const priceSlots = bucket.filter((b) => b.priceCt !== null);
+		const avg = priceSlots.length ? priceSlots.reduce((sum, b) => sum + (b.priceCt as number), 0) / priceSlots.length : null;
+		compact.push({
+			startIso: bucket[0].startIso,
+			endIso: bucket[bucket.length - 1].endIso,
+			priceCt: avg === null ? null : Math.round(avg * 100) / 100,
+			current: false,
+			currentHour: false,
+			gbPriceOk: gbMin !== null && avg !== null && avg >= gbMin,
+			actions: [],
+			...(bucket.every((b) => b.forecast) ? { forecast: true } : {}),
+		});
+		bucket = [];
+	};
+	for (const slot of slots) {
+		if (Date.parse(slot.startIso) < farFrom) {
+			flush();
+			compact.push(slot);
+			continue;
+		}
+		if (bucket.length && hourKeyLocal(Date.parse(bucket[0].startIso), timezone) !== hourKeyLocal(Date.parse(slot.startIso), timezone)) flush();
+		bucket.push(slot);
+	}
+	flush();
 
 	return {
 		generatedAt: input.generatedAt ?? nowIso,
@@ -241,6 +286,6 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 		dayMax: pickExtreme(dayPriced, "max"),
 		windowStartIso: new Date(windowStartMs).toISOString(),
 		windowEndIso: new Date(windowEndMs).toISOString(),
-		slots,
+		slots: compact,
 	};
 }

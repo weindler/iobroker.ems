@@ -154,7 +154,7 @@ export function resolveEvManagementMode(input: {
 	const sev = input.takeoverSeverity ?? "none";
 	if (sev === "recommended" || sev === "required") return "takeover_candidate";
 	const auth = input.externalAuthorityState ?? "";
-	if (auth === "active" || auth === "planned" || auth === "active_without_plan") {
+	if (auth === "active" || auth === "planned" || auth === "active_without_plan" || auth === "tibber_grid_rewards") {
 		if (sev === "none" || sev === "observe" || sev === "") return "externally_managed";
 	}
 	return "ems_candidate";

@@ -11,7 +11,17 @@
  * No deadline → Hard = 0 (target energy remains Soft).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildEvPlannerDiagnosis = exports.totalEvAcNeedKwh = exports.parseExternalReservations = exports.overlapHours = exports.evDispatchWallboxEntries = exports.evEmsAllocates = exports.evManagementFromWallbox = exports.resolveEvManagementMode = exports.resolveEvEnergyClasses = exports.toAcInputKwh = exports.WALLBOX_TARGET_CONSUMER_ID = exports.WALLBOX_HARD_CONSUMER_ID = exports.EV_PLANNER_ROLE = void 0;
+exports.WALLBOX_TARGET_CONSUMER_ID = exports.WALLBOX_HARD_CONSUMER_ID = exports.EV_PLANNER_ROLE = void 0;
+exports.toAcInputKwh = toAcInputKwh;
+exports.resolveEvEnergyClasses = resolveEvEnergyClasses;
+exports.resolveEvManagementMode = resolveEvManagementMode;
+exports.evManagementFromWallbox = evManagementFromWallbox;
+exports.evEmsAllocates = evEmsAllocates;
+exports.evDispatchWallboxEntries = evDispatchWallboxEntries;
+exports.overlapHours = overlapHours;
+exports.parseExternalReservations = parseExternalReservations;
+exports.totalEvAcNeedKwh = totalEvAcNeedKwh;
+exports.buildEvPlannerDiagnosis = buildEvPlannerDiagnosis;
 const energy_1 = require("../../../addons/wallbox/ev_foundation/decision/energy");
 exports.EV_PLANNER_ROLE = "electric_vehicle";
 exports.WALLBOX_HARD_CONSUMER_ID = "wallbox";
@@ -25,7 +35,6 @@ function toAcInputKwh(input) {
     const loss = input.chargeLossFactor != null && input.chargeLossFactor > 0 ? input.chargeLossFactor : 1;
     return (0, energy_1.roundKwh)(Math.max(0, input.usableKwh) * loss);
 }
-exports.toAcInputKwh = toAcInputKwh;
 function resolveEvEnergyClasses(wb) {
     const preHard = wb.hardRequiredEnergyKwh;
     const preTarget = wb.targetEnergyKwh;
@@ -108,7 +117,6 @@ function resolveEvEnergyClasses(wb) {
         insufficientData: false,
     };
 }
-exports.resolveEvEnergyClasses = resolveEvEnergyClasses;
 function resolveEvManagementMode(input) {
     if (!input.connectedNow && !input.hasAllocatablePresence)
         return "unavailable";
@@ -116,13 +124,12 @@ function resolveEvManagementMode(input) {
     if (sev === "recommended" || sev === "required")
         return "takeover_candidate";
     const auth = input.externalAuthorityState ?? "";
-    if (auth === "active" || auth === "planned" || auth === "active_without_plan") {
+    if (auth === "active" || auth === "planned" || auth === "active_without_plan" || auth === "tibber_grid_rewards") {
         if (sev === "none" || sev === "observe" || sev === "")
             return "externally_managed";
     }
     return "ems_candidate";
 }
-exports.resolveEvManagementMode = resolveEvManagementMode;
 function evManagementFromWallbox(wb) {
     if (!wb)
         return "unavailable";
@@ -139,17 +146,14 @@ function evManagementFromWallbox(wb) {
         takeoverSeverity: wb.takeoverSeverity,
     });
 }
-exports.evManagementFromWallbox = evManagementFromWallbox;
 /** EMS may allocate EV energy (still planning-only for new writes). */
 function evEmsAllocates(mode) {
     return mode === "ems_candidate" || mode === "takeover_candidate";
 }
-exports.evEmsAllocates = evEmsAllocates;
 /** Executable daily-plan wallbox slice — not for external/takeover-candidate. */
 function evDispatchWallboxEntries(mode) {
     return mode === "ems_candidate";
 }
-exports.evDispatchWallboxEntries = evDispatchWallboxEntries;
 function overlapHours(a0, a1, b0, b1) {
     const lo = Math.max(a0, b0);
     const hi = Math.min(a1, b1);
@@ -157,7 +161,6 @@ function overlapHours(a0, a1, b0, b1) {
         return 0;
     return (hi - lo) / 3_600_000;
 }
-exports.overlapHours = overlapHours;
 function reservationQuality(raw) {
     if (raw === "ok" || raw === "degraded" || raw === "unknown")
         return raw;
@@ -205,7 +208,6 @@ function parseExternalReservations(raw) {
     }
     return out;
 }
-exports.parseExternalReservations = parseExternalReservations;
 function totalEvAcNeedKwh(classes) {
     if (classes.insufficientData)
         return null;
@@ -213,7 +215,6 @@ function totalEvAcNeedKwh(classes) {
         return null;
     return (0, energy_1.roundKwh)(classes.hardRequiredEnergyKwh + classes.targetFlexEnergyKwh);
 }
-exports.totalEvAcNeedKwh = totalEvAcNeedKwh;
 function buildEvPlannerDiagnosis(input) {
     const wb = input.wallbox;
     if (!wb)
@@ -313,4 +314,3 @@ function buildEvPlannerDiagnosis(input) {
         },
     };
 }
-exports.buildEvPlannerDiagnosis = buildEvPlannerDiagnosis;

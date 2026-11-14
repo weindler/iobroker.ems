@@ -282,9 +282,18 @@ function sourceTextDe(sources: UnifiedAllocationCell["energySource"][]): string 
 	return `aus ${sources.map((source) => labels[source]).join(" und ")}`;
 }
 
-function localWhenDe(iso: string | number | null, timezone: string): string {
+function localWhenDe(iso: string | number | null, timezone: string, nowMs: number = Date.now()): string {
 	if (!iso) return "einem noch unbekannten Zeitpunkt";
-	return formatLocalDateTimeDe(iso, timezone) ?? String(iso);
+	const ms = typeof iso === "number" ? iso : Date.parse(iso);
+	if (!Number.isFinite(ms)) return String(iso);
+	const full = formatLocalDateTimeDe(ms, timezone);
+	if (!full) return String(iso);
+	const time = full.slice(-5);
+	const dayKey = localDateKeyInTimezone(new Date(ms), timezone);
+	const todayKey = localDateKeyInTimezone(new Date(nowMs), timezone);
+	if (dayKey === todayKey) return `heute ${time}`;
+	if (dayKey === addDaysToDateKey(todayKey, 1)) return `morgen ${time}`;
+	return full.replace(/\.(\d{4}), /, ". um ");
 }
 
 function baseDecision(args: {
@@ -330,7 +339,7 @@ function buildOutlookDecisions(args: {
 	if (batteryAllocation.firstStartIso) {
 		const state = stateForAllocation(batteryAllocation);
 		const target = args.input.battery.endSocTargetPct ?? args.input.battery.reserveSocPct;
-		const targetText = target == null ? "" : ` bis zum Ziel von ${round(target, 1)} %`;
+		const targetText = target == null ? "" : ` (Ziel ${round(target, 0)} %)`;
 		decisions.push(baseDecision({
 			consumerId: "battery",
 			kind: "battery_charge",
@@ -338,8 +347,8 @@ function buildOutlookDecisions(args: {
 			state,
 			allocation: batteryAllocation,
 			explanationDe:
-				`Batterieladung ${state === "active" ? "läuft" : "ist"}${targetText} mit ${batteryAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ` +
-				`${sourceTextDe(batteryAllocation.energySources)} ${state === "active" ? "eingeplant" : `ab ${localWhenDe(batteryAllocation.firstStartIso, args.timezone)} eingeplant`}.`,
+				`Batterie lädt ${state === "active" ? "jetzt" : `ab ${localWhenDe(batteryAllocation.firstStartIso, args.timezone, args.nowMs)}`} ` +
+				`${batteryAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(batteryAllocation.energySources)}${targetText}.`,
 		}));
 	} else {
 		const soc = args.input.battery.socPct;
@@ -352,8 +361,8 @@ function buildOutlookDecisions(args: {
 			state: safelyAboveReserve || args.input.battery.requiredChargeEnergyKwh === 0 ? "not_needed" : "unallocated",
 			allocation: emptyAllocation,
 			explanationDe: safelyAboveReserve
-				? `Keine aktive Batterieladung im 72-h-Plan; SOC ${soc!.toFixed(0)} % liegt nicht unter der Reserve ${reserve!.toFixed(0)} %.`
-				: "Keine aktive Batterieladung im 72-h-Plan; Ladebedarf oder Reserve sind nicht vollständig bewertbar.",
+				? `Keine Batterieladung geplant: ${soc!.toFixed(0)} % liegen über der Reserve von ${reserve!.toFixed(0)} %.`
+				: "Keine Batterieladung geplant.",
 		}));
 	}
 
@@ -394,11 +403,11 @@ function buildOutlookDecisions(args: {
 					? "deferred"
 					: stateForAllocation(thermalAllocation);
 			const reach = thermal.estimatedEmptyAtIso
-				? ` Die thermische Reichweite endet voraussichtlich ${localWhenDe(thermal.estimatedEmptyAtIso, args.timezone)}.`
+				? ` Das warme Wasser reicht voraussichtlich bis ${localWhenDe(thermal.estimatedEmptyAtIso, args.timezone, args.nowMs)}.`
 				: "";
 			const explanation = state === "deferred"
-				? `Der Heizstab wartet bis ${localWhenDe(thermalAllocation.firstStartIso, args.timezone)}: Der Unified Planner nutzt dort ${strongerPvWindow || explicitDefer ? "das bessere" : "ein späteres geeignetes"} PV-Fenster, ohne die thermische Deadline zu überschreiten.${reach}`
-				: `Der Heizstab ${thermalAllocation.active ? "läuft im aktuellen Planfenster" : `ist ab ${localWhenDe(thermalAllocation.firstStartIso, args.timezone)} eingeplant`} (${thermalAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(thermalAllocation.energySources)}).${reach}`;
+				? `Heizstab wartet bis ${localWhenDe(thermalAllocation.firstStartIso, args.timezone, args.nowMs)} auf ${strongerPvWindow || explicitDefer ? "mehr" : "ein späteres"} PV-Angebot; das Wasser wird bis dahin nicht zu kalt.${reach}`
+				: `Heizstab ${thermalAllocation.active ? "heizt jetzt" : `heizt ab ${localWhenDe(thermalAllocation.firstStartIso, args.timezone, args.nowMs)}`} (${thermalAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(thermalAllocation.energySources)}).${reach}`;
 			decisions.push(baseDecision({
 				consumerId: "immersion_heater",
 				kind: "immersion_heater",
@@ -424,10 +433,10 @@ function buildOutlookDecisions(args: {
 				state: noDuty || reachesBeyondHorizon ? "not_needed" : "unallocated",
 				allocation: emptyAllocation,
 				explanationDe: reachesBeyondHorizon
-					? `Keine Heizstab-Laufzeit im 72-h-Plan nötig; die thermische Reichweite reicht voraussichtlich bis ${localWhenDe(thermal.estimatedEmptyAtIso, args.timezone)}.`
+					? `Heizstab nicht nötig: Das warme Wasser reicht voraussichtlich bis ${localWhenDe(thermal.estimatedEmptyAtIso, args.timezone, args.nowMs)}.`
 					: noDuty
-						? "Kein belastbarer Heizstabbedarf im 72-h-Plan."
-						: "Thermischer Bedarf ist vorhanden, aber im verfügbaren autoritativen Plan ist kein sicherer Heizstab-Slot allokiert.",
+						? "Heizstab nicht nötig."
+						: "Heizstab wäre nötig, aber es gibt noch keinen sicheren Zeitraum dafür.",
 			}));
 		}
 	}
@@ -460,8 +469,8 @@ function buildOutlookDecisions(args: {
 				state,
 				allocation: wallboxAllocation,
 				explanationDe:
-					`Die Wallbox ${state === "deferred" ? "wartet auf das ausgewählte Ladefenster" : "ist eingeplant"}: ` +
-					`${wallboxAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(wallboxAllocation.energySources)} ab ${localWhenDe(wallboxAllocation.firstStartIso, args.timezone)}. Eine geplante Freigabe bestätigt keine laufende Ladung.`,
+					`${state === "deferred" ? "Auto wartet auf das gewählte Ladefenster" : "Auto lädt"} ab ${localWhenDe(wallboxAllocation.firstStartIso, args.timezone, args.nowMs)}: ` +
+					`${wallboxAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(wallboxAllocation.energySources)}.`,
 			}));
 		} else {
 			const externallyManaged = wallbox.managementMode === "externally_managed";
@@ -483,12 +492,14 @@ function buildOutlookDecisions(args: {
 						: "unallocated",
 				allocation: emptyAllocation,
 				explanationDe: disconnected
-					? `Auto nicht angesteckt.${socTargetText} Kein Ladeplan verfügbar.`
+					? `Auto nicht angesteckt.${socTargetText}`
 					: externallyManaged
-					? "Keine EMS-Wallbox-Allokation; der externe Ladeplan bleibt zuständig."
+					? wallbox.externalAuthorityState === "tibber_grid_rewards"
+						? "Tibber Grid Rewards steuert die Autoladung. Tibber bestimmt Start und Pause, das EMS plant hier nichts."
+						: "Die Autoladung wird extern gesteuert, das EMS plant hier nichts."
 					: targetReached
-						? `Keine Wallbox-Ladung nötig; Fahrzeug-SOC ${wallbox.vehicleSocPct!.toFixed(0)} % hat das Ziel ${validTargetSocPct!.toFixed(0)} % erreicht.`
-						: "Keine Wallbox-Allokation im 72-h-Plan; Bedarf, Anwesenheit oder ausführbare Slots reichen nicht belastbar aus.",
+						? `Kein Laden nötig: Das Auto hat mit ${wallbox.vehicleSocPct!.toFixed(0)} % das Ziel ${validTargetSocPct!.toFixed(0)} % erreicht.`
+						: "Kein Laden geplant.",
 			}));
 		}
 	}
@@ -505,10 +516,10 @@ function buildOutlookDecisions(args: {
 					? "Raumzustand und Wetter-Fallback"
 					: "dem verfügbaren Klimabedarfsmodell";
 			const crossing = unit.predictedCrossingAtIso
-				? ` vor der erwarteten Schwellenzeit ${localWhenDe(unit.predictedCrossingAtIso, args.timezone)}`
+				? ` vor der erwarteten Schwellenzeit ${localWhenDe(unit.predictedCrossingAtIso, args.timezone, args.nowMs)}`
 				: "";
 			const hardStop = unit.hardStopMs != null
-				? `; Hard-Off ${localWhenDe(unit.hardStopMs, args.timezone)}`
+				? `; Hard-Off ${localWhenDe(unit.hardStopMs, args.timezone, args.nowMs)}`
 				: "";
 			decisions.push(baseDecision({
 				consumerId: unit.unitId,
@@ -517,7 +528,7 @@ function buildOutlookDecisions(args: {
 				state: stateForAllocation(climateAllocation),
 				allocation: climateAllocation,
 				explanationDe:
-					`Klima ${unit.label} ${climateAllocation.active ? "läuft im aktuellen Planfenster" : `ist ab ${localWhenDe(climateAllocation.firstStartIso, args.timezone)} eingeplant`} ` +
+					`Klima ${unit.label} ${climateAllocation.active ? "läuft im aktuellen Planfenster" : `ist ab ${localWhenDe(climateAllocation.firstStartIso, args.timezone, args.nowMs)} eingeplant`} ` +
 					`(${climateAllocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(climateAllocation.energySources)}) auf Basis von ${model}${crossing}${hardStop}.`,
 			}));
 		} else {
@@ -529,8 +540,8 @@ function buildOutlookDecisions(args: {
 				state: noNeed ? "not_needed" : "unallocated",
 				allocation: emptyAllocation,
 				explanationDe: noNeed
-					? `Klima ${unit.label}: kein belastbarer Kühl-, Heiz- oder Entfeuchtungsbedarf im 72-h-Plan.`
-					: `Klima ${unit.label}: Bedarf erkannt, aber kein sicherer Slot im autoritativen 72-h-Plan.`,
+					? `Klima ${unit.label}: kein Bedarf.`
+					: `Klima ${unit.label}: Bedarf erkannt, aber noch kein sicherer Zeitraum.`,
 			}));
 		}
 	}
@@ -548,8 +559,8 @@ function buildOutlookDecisions(args: {
 			state: stateForAllocation(allocation),
 			allocation,
 			explanationDe: allocation.firstStartIso
-				? `${other.label} ist mit ${allocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(allocation.energySources)} ab ${localWhenDe(allocation.firstStartIso, args.timezone)} eingeplant.`
-				: `${other.label}: Bedarf vorhanden, aber kein ausführbarer Slot im 72-h-Plan.`,
+				? `${other.label} läuft ab ${localWhenDe(allocation.firstStartIso, args.timezone, args.nowMs)} (${allocation.energyKwh.toFixed(1).replace(".", ",")} kWh ${sourceTextDe(allocation.energySources)}).`
+				: `${other.label}: Bedarf vorhanden, aber noch kein sicherer Zeitraum.`,
 		}));
 	}
 
@@ -770,7 +781,7 @@ export function buildOperatorOutlook72h(args: {
 	const wb = args.plannerInput.wallbox;
 	const batteryNeedKwh = wb && wb.vehicleSocPct != null && wb.targetSocPct != null && wb.targetSocPct > 0 && wb.vehicleCapacityKwh != null && wb.vehicleCapacityKwh > 0
 		? Math.max(0, wb.targetSocPct - wb.vehicleSocPct) * wb.vehicleCapacityKwh / 100 : null;
-	const externallyManaged = wb?.managementMode === "externally_managed" || /^(active|active_without_plan|planned)$/.test(wb?.externalAuthorityState ?? "");
+	const externallyManaged = wb?.managementMode === "externally_managed" || /^(active|active_without_plan|planned|tibber_grid_rewards)$/.test(wb?.externalAuthorityState ?? "");
 	const acNeedKwh = batteryNeedKwh == null || !wb?.chargingEfficiency || wb.chargingEfficiency <= 0 || wb.chargingEfficiency > 1 ? null : batteryNeedKwh / wb.chargingEfficiency;
 
 	return {

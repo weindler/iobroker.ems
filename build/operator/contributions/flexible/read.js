@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.collectFlexibleContributions = void 0;
+exports.collectFlexibleContributions = collectFlexibleContributions;
 const state_util_1 = require("../../../ems_light/state_util");
 const config_1 = require("../../../addons/battery/config");
 const limits_1 = require("../../../addons/battery/core/limits");
@@ -323,7 +323,7 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     const evccCfg = (0, evcc_config_1.wallboxEvccTelemetryConfigFromAdapter)(config);
     const evccConfigured = evccCfg.enabledStateId.trim().length > 0;
     const evFoundation = (0, config_2.evFoundationConfigFromAdapter)(config);
-    const [externalAuthorityState, takeoverSeverity, externalSmartPlanJson, externalMinSocPct, evccChargePowerW, evccLoadpointMode, evccBatteryBoost, tibberRewardsRuntime,] = await Promise.all([
+    const [externalAuthorityStateRaw, takeoverSeverity, externalSmartPlanJson, externalMinSocPct, evccChargePowerW, evccLoadpointMode, evccBatteryBoost, tibberRewardsRuntime, tibberHandoffEnabled,] = await Promise.all([
         readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalAuthorityState),
         readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.takeoverSeverity),
         readStr(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.externalSmartPlanJson),
@@ -332,7 +332,21 @@ async function collectFlexibleContributions(host, now, gridForecast) {
         readStr(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.loadpointMode),
         readBool(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.batteryBoost),
         readBool(host, states_1.WALLBOX_RUNTIME_STATES.tibberGridRewardsActive),
+        readBool(host, ensure_states_2.WALLBOX_EV_FOUNDATION_STATES.tibberNowHandoffEnabled),
     ]);
+    /*
+     * Tibber Grid Rewards: Start und Pause bestimmt Tibber, nicht das EMS — der Planner kann das nicht
+     * vorhersehen. Ist die Übergabe an Tibber eingerichtet (oder das Signal aktiv), gilt die Ladung als
+     * extern gesteuert; das EMS plant dann keine eigene Netz-/PV-Ladung für das Auto.
+     */
+    const tibberExternal = tibberHandoffEnabled === true || tibberRewardsRuntime === true;
+    const externalAuthorityState = externalAuthorityStateRaw === "active" ||
+        externalAuthorityStateRaw === "planned" ||
+        externalAuthorityStateRaw === "active_without_plan"
+        ? externalAuthorityStateRaw
+        : tibberExternal
+            ? "tibber_grid_rewards"
+            : externalAuthorityStateRaw;
     const remainingEnergyKwh = chargeRemainingKwh !== null && Number.isFinite(chargeRemainingKwh)
         ? Math.max(0, chargeRemainingKwh)
         : null;
@@ -577,4 +591,3 @@ async function collectFlexibleContributions(host, now, gridForecast) {
     });
     return { contributions };
 }
-exports.collectFlexibleContributions = collectFlexibleContributions;

@@ -8,10 +8,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
-## [0.4.55] – 2026-11-14
+## [0.4.56] – 2026-11-14
 
 ### Geändert
-- **Netzausgleich dynamisch:** Die Preisschwelle richtet sich nach den Ersatzkosten der Batterie (plus Marge) statt nach festen 25 ct; der Admin-Wert bleibt Untergrenze. Der Netzausgleich wird nicht mehr durch die Nacht-Reserve gesperrt (er gleicht nur den kleinen Rest von ca. 35 W aus); es gelten nur Preis und das Hardware-Minimum. Der Haken im Admin zum Abschalten bleibt unverändert; die Hilfetexte zum Mindeststrompreis sind angepasst.
+- **Netzausgleich dynamisch:** Die Preisschwelle richtet sich nach den Ersatzkosten der Batterie (plus Marge) statt nach festen 25 ct; der Admin-Wert bleibt Untergrenze. Der Netzausgleich wird nicht mehr durch die Nacht-Reserve gesperrt (er gleicht nur den kleinen Rest von ca. 35 W aus); es gelten nur Preis und das Hardware-Minimum. Der Haken im Admin zum Abschalten bleibt unverändert. Neuer Admin-Schalter „Preisschwelle dynamisch“ (Standard an): aus = nur der feste Mindeststrompreis gilt.
 
 ## [0.4.53] – 2026-11-14
 

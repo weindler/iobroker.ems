@@ -648,7 +648,7 @@ export async function runDailyPlanTick(
 		maxSocPct: hardwareLimitsFromConfig(host.config).maxSocPct,
 	});
 	const economicsInput =
-		ecoUsable && replaceCost.usable
+		batCfgModes.gridBalance.dynamicPrice && ecoUsable && replaceCost.usable
 			? {
 					usable: true,
 					alpha: ecoAlpha,
@@ -670,7 +670,7 @@ export async function runDailyPlanTick(
 		priceNowCt,
 		// Dynamisch: Ersatzkosten der Batterie + Marge; der Admin-Wert bleibt Untergrenze.
 		minPriceCtPerKwh:
-			replaceCost.usable && replaceCost.valueCtPerKwh != null && Number.isFinite(replaceCost.valueCtPerKwh)
+			batCfgModes.gridBalance.dynamicPrice && replaceCost.usable && replaceCost.valueCtPerKwh != null && Number.isFinite(replaceCost.valueCtPerKwh)
 				? Math.max(
 						batCfgModes.gridBalance.minPriceCtPerKwh,
 						replaceCost.valueCtPerKwh + batCfgModes.gridBalance.economicsMarginCtPerKwh,
@@ -679,7 +679,7 @@ export async function runDailyPlanTick(
 		socPct,
 		requiredSocAtPvEndPct: centralReserve.requiredSocAtPvEndPct,
 		configuredMaxDischargeW: batCfgModes.gridBalance.maxTargetW,
-		opportunityCostCtPerKwh: batteryOpportunity.usable ? batteryOpportunity.opportunityCostCtPerKwh : null,
+		opportunityCostCtPerKwh: batCfgModes.gridBalance.dynamicPrice && batteryOpportunity.usable ? batteryOpportunity.opportunityCostCtPerKwh : null,
 		economics: economicsInput,
 	};
 	const baselineBatteryDischargeAuthorization = resolveBatteryDischargeAuthorization(

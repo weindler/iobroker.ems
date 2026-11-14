@@ -45,7 +45,7 @@
 	"Netzausgleich aktiviert": "Netzausgleich aktiviert",
 	"Netzausgleich aktiv": "Netzausgleich aktiv",
 	"Mindeststrompreis für Netzausgleich (ct/kWh)": "Mindeststrompreis für Netzausgleich (ct/kWh)",
-	"Untergrenze. Die tatsächliche Schwelle richtet sich dynamisch nach den Ersatzkosten der Batterie (Planer) plus Marge, mindestens aber nach diesem Wert. Unterhalb davon wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Reserve und Rest-PV-Prognose sperren den Netzausgleich nicht.": "Untergrenze. Die tatsächliche Schwelle richtet sich dynamisch nach den Ersatzkosten der Batterie (Planer) plus Marge, mindestens aber nach diesem Wert. Unterhalb davon wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Reserve und Rest-PV-Prognose sperren den Netzausgleich nicht.",
+	"Bei dynamischer Schwelle: Untergrenze, die Schwelle richtet sich nach den Ersatzkosten der Batterie plus Marge. Sonst: fester Preis. Unterhalb davon wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Reserve und Rest-PV-Prognose sperren den Netzausgleich nicht.": "Bei dynamischer Schwelle: Untergrenze, die Schwelle richtet sich nach den Ersatzkosten der Batterie plus Marge. Sonst: fester Preis. Unterhalb davon wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Reserve und Rest-PV-Prognose sperren den Netzausgleich nicht.",
 	"SOC-Schwelle (%)": "SOC-Schwelle (%)",
 	"Maximale Sollleistung (W)": "Maximale Sollleistung (W)",
 	"Aktualisierungsintervall (s)": "Aktualisierungsintervall (s)",
@@ -164,5 +164,7 @@
 	"EVCC Modus / status.mode (Read)": "EVCC Modus / status.mode (Read)",
 	"EVCC Phasen (Write)": "EVCC Phasen (Write)",
 	"Externe Quelle Heartbeat / Updated-At (optional)": "Externe Quelle Heartbeat / Updated-At (optional)",
-	"Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)": "Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)"
+	"Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)": "Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)",
+	"Preisschwelle dynamisch (Ersatzkosten der Batterie)": "Preisschwelle dynamisch (Ersatzkosten der Batterie)",
+	"An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis.": "An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis."
 }

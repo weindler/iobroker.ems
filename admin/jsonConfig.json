@@ -2678,10 +2678,22 @@
 					"xl": 4,
 					"hidden": "data.battery_profile !== 'sonnen_em'"
 				},
+				"bat_grid_balance_dynamic_price": {
+					"type": "checkbox",
+					"label": "Preisschwelle dynamisch (Ersatzkosten der Batterie)",
+					"help": "An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis.",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"hidden": "data.battery_profile !== 'sonnen_em'"
+				},
 				"bat_grid_balance_min_price_ct_per_kwh": {
 					"type": "number",
 					"label": "Mindeststrompreis für Netzausgleich (ct/kWh)",
-					"help": "Untergrenze. Die tatsächliche Schwelle richtet sich dynamisch nach den Ersatzkosten der Batterie (Planer) plus Marge, mindestens aber nach diesem Wert. Unterhalb davon wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Reserve und Rest-PV-Prognose sperren den Netzausgleich nicht.",
+					"help": "Bei dynamischer Schwelle: Untergrenze, die Schwelle richtet sich nach den Ersatzkosten der Batterie plus Marge. Sonst: fester Preis. Unterhalb davon wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Reserve und Rest-PV-Prognose sperren den Netzausgleich nicht.",
 					"min": 0,
 					"max": 200,
 					"default": 30,

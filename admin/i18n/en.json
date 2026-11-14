@@ -44,7 +44,7 @@
 	"Netzausgleich aktiviert": "Grid balance enabled",
 	"Netzausgleich aktiv": "Grid balance active",
 	"Mindeststrompreis für Netzausgleich (ct/kWh)": "Minimum electricity price for grid balance (ct/kWh)",
-	"Untergrenze. Die tatsächliche Schwelle richtet sich dynamisch nach den Ersatzkosten der Batterie (Planer) plus Marge, mindestens aber nach diesem Wert. Unterhalb davon wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Reserve und Rest-PV-Prognose sperren den Netzausgleich nicht.": "Lower bound. The effective threshold is dynamic: battery replacement cost (planner) plus margin, but never below this value. Below it the battery is not used for short-term grid balance. Reserve and remaining PV forecast do not block grid balance.",
+	"Bei dynamischer Schwelle: Untergrenze, die Schwelle richtet sich nach den Ersatzkosten der Batterie plus Marge. Sonst: fester Preis. Unterhalb davon wird die Batterie nicht für den kurzfristigen Netzausgleich verwendet. Reserve und Rest-PV-Prognose sperren den Netzausgleich nicht.": "With dynamic threshold: lower bound; the threshold follows the battery replacement cost plus margin. Otherwise: fixed price. Below it the battery is not used for short-term grid balance. Reserve and remaining PV forecast do not block grid balance.",
 	"SOC-Schwelle (%)": "SOC threshold (%)",
 	"Maximale Sollleistung (W)": "Maximum setpoint power (W)",
 	"Aktualisierungsintervall (s)": "Update interval (s)",
@@ -271,5 +271,7 @@
 	"E-Auto Verbrauch Fallback kWh/100 km": "EV consumption fallback kWh/100 km",
 	"Wallbox / Session (optional — sonst bestehende EVCC-Mappings)": "Wallbox / session (optional — else existing EVCC mappings)",
 	"Session Energie kWh (Override)": "Session energy kWh (override)",
-	"Session Preis €/kWh (Override, z. B. evcc)": "Session price €/kWh (override, e.g. evcc)"
+	"Session Preis €/kWh (Override, z. B. evcc)": "Session price €/kWh (override, e.g. evcc)",
+	"Preisschwelle dynamisch (Ersatzkosten der Batterie)": "Dynamic price threshold (battery replacement cost)",
+	"An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis.": "On: the threshold is the battery replacement cost plus margin, at least the minimum price. Off: only the fixed minimum price applies."
 }

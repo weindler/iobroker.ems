@@ -93,6 +93,10 @@ export interface BatteryConfig {
 	sequence: SonnenSequenceConfig;
 	feedbackTolerance: SonnenFeedbackTolerance;
 	gridBalance: GridBalanceConfig;
+	/** Schreibweg für Laden/Halten: evcc, sobald ein evcc-Modus-State eingetragen ist; sonst Sonnen direkt. */
+	controlPath: "sonnen" | "evcc";
+	/** Ziel-State zum Setzen des evcc-Batteriemodus (hass.0…select.evcc_battery_mode.select_option); leer = Sonnen direkt. */
+	evccModeSetStateId: string;
 }
 
 function migrateGridBalanceMinPriceCt(c: Record<string, unknown>): number {
@@ -139,6 +143,8 @@ export function batteryConfigFromAdapter(config: unknown): BatteryConfig {
 			absoluteW: intIn(c, "bat_charge_tolerance_w", 500, 0, 10_000),
 			relativePct: intIn(c, "bat_charge_tolerance_pct", 15, 0, 100),
 		},
+		controlPath: str(c, "bat_evcc_mode_set_state").trim() ? "evcc" : "sonnen",
+		evccModeSetStateId: str(c, "bat_evcc_mode_set_state").trim(),
 		gridBalance: {
 			enabled: bool(c, "bat_feature_grid_balance_enabled", false),
 			offsetHighSocW: intIn(c, "bat_offset_high_soc_w", 25, 0, 500),

@@ -166,5 +166,7 @@
 	"Externe Quelle Heartbeat / Updated-At (optional)": "Externe Quelle Heartbeat / Updated-At (optional)",
 	"Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)": "Externer Smart-Charging-Mindest-SOC (optional, nicht Abfahrt)",
 	"Preisschwelle dynamisch (Ersatzkosten der Batterie)": "Preisschwelle dynamisch (Ersatzkosten der Batterie)",
-	"An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis.": "An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis."
+	"An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis.": "An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis.",
+	"Batteriemodus setzen (hass.0…select.evcc_battery_mode.select_option)": "Batteriemodus setzen (hass.0…select.evcc_battery_mode.select_option)",
+	"Optional. Ausgefüllt: EMS hält und lädt die Hausbatterie über den evcc-Batteriemodus (hold/charge) statt direkt an der Sonnen. Leer: wie bisher direkt an der Sonnen. Trockenlauf oder Live bestimmt allein der Modus des Batterie-Addons.": "Optional. Ausgefüllt: EMS hält und lädt die Hausbatterie über den evcc-Batteriemodus (hold/charge) statt direkt an der Sonnen. Leer: wie bisher direkt an der Sonnen. Trockenlauf oder Live bestimmt allein der Modus des Batterie-Addons."
 }

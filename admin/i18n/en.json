@@ -273,5 +273,7 @@
 	"Session Energie kWh (Override)": "Session energy kWh (override)",
 	"Session Preis €/kWh (Override, z. B. evcc)": "Session price €/kWh (override, e.g. evcc)",
 	"Preisschwelle dynamisch (Ersatzkosten der Batterie)": "Dynamic price threshold (battery replacement cost)",
-	"An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis.": "On: the threshold is the battery replacement cost plus margin, at least the minimum price. Off: only the fixed minimum price applies."
+	"An: Die Schwelle ergibt sich aus den Ersatzkosten der Batterie plus Marge, mindestens aber aus dem Mindeststrompreis. Aus: Es gilt nur der feste Mindeststrompreis.": "On: the threshold is the battery replacement cost plus margin, at least the minimum price. Off: only the fixed minimum price applies.",
+	"Batteriemodus setzen (hass.0…select.evcc_battery_mode.select_option)": "Set battery mode (hass.0…select.evcc_battery_mode.select_option)",
+	"Optional. Ausgefüllt: EMS hält und lädt die Hausbatterie über den evcc-Batteriemodus (hold/charge) statt direkt an der Sonnen. Leer: wie bisher direkt an der Sonnen. Trockenlauf oder Live bestimmt allein der Modus des Batterie-Addons.": "Optional. Filled: EMS holds and charges the house battery via the evcc battery mode (hold/charge) instead of directly at the Sonnen. Empty: directly at the Sonnen as before. Dry run or live is set solely by the battery add-on mode."
 }

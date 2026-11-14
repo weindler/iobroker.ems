@@ -8,6 +8,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.63] – 2026-11-14
+
+### Neu
+- **Hausbatterie über evcc steuern (optional):** Neues Admin-Feld „Batteriemodus setzen“ (`hass.0…select.evcc_battery_mode.select_option`) im Bereich „EVCC — Hausbatterie“. Ist es ausgefüllt, setzt EMS statt der Sonnen-Ladesequenz den evcc-Batteriemodus: `charge` bei geplantem Netzladen, `hold` beim Halten, sonst nichts (Normalbetrieb). Der Modus wird alle ca. 25 s erneuert (evcc setzt ihn nach 60 s selbst zurück) und beim Ende einmal auf `normal` gestellt. Steuert evcc/Tibber die Batterie gerade selbst oder liegt eine Störung vor, schreibt EMS nichts. Die Sonnen-Schreibbefehle der Ladesequenz werden in diesem Modus nur simuliert; der Netzausgleich bleibt direkt an der Sonnen.
+- Kein neuer Schalter: Trockenlauf oder Live bestimmt allein der Modus des Batterie-Addons. Leeres Feld = bisheriges Verhalten.
+- Neue States `addons.battery.evcc_out.*` (gewünschter und zuletzt geschriebener Modus, „würde schreiben“, Begründung).
+
 ## [0.4.62] – 2026-11-14
 
 ### Behoben

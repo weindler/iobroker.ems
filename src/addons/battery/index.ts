@@ -55,6 +55,13 @@ import {
 	type SonnenFsmContext,
 	type SonnenRuntime,
 } from "./runtime/fsm";
+import {
+	decideEvccBatteryMode,
+	EVCC_OUTPUT_INITIAL,
+	planEvccOutputStep,
+	writeEvccBatteryMode,
+	type EvccOutputState,
+} from "./evcc_output";
 import { executeBatteryWrite, type BatteryWriteHost, type FinalWriteGate } from "./runtime/execute";
 import { emptyOwnership, isForeignManualControl } from "./runtime/ownership";
 import { evaluateStopCondition } from "./runtime/safety";
@@ -126,6 +133,7 @@ let controlTimer: NodeJS.Timeout | null = null;
 let runtime: SonnenRuntime = initialSonnenRuntime(Date.now());
 let gridBalancePausedByFsm = false;
 let ownershipLive = false;
+let evccOutState: EvccOutputState = EVCC_OUTPUT_INITIAL;
 let prevLiveWriteAllowed = false;
 let ticking = false;
 let lastGridBalanceWriteW: number | null = null;
@@ -837,7 +845,7 @@ async function controlTickInner(host: Host): Promise<void> {
 		sequence: config.sequence,
 		tolerance: config.feedbackTolerance,
 		gridBalanceActive: controller === "grid_balance",
-		simulateFeedback: !effectiveLive,
+		simulateFeedback: !effectiveLive || config.controlPath === "evcc",
 		stopDisposition,
 		forceZeroSetpointWrite: stopDisposition === "release_zero" ? forceZeroSetpointWrite : undefined,
 	};
@@ -885,7 +893,8 @@ async function controlTickInner(host: Host): Promise<void> {
 			requestId,
 			reason: `fsm:${runtime.state}`,
 			expectedFeedback: w.expectedFeedback,
-			dryrun: !effectiveLive,
+			// Schreibweg evcc: Sonnen-Writes der Ladesequenz nur simulieren; EMS schreibt den evcc-Batteriemodus.
+			dryrun: !effectiveLive || config.controlPath === "evcc",
 			numericTolerance: w.kind === "operating_mode" ? 0 : config.feedbackTolerance.absoluteW,
 			gate: { ...gate, targetMappingConfigured: stateId.length > 0 },
 		});
@@ -919,6 +928,44 @@ async function controlTickInner(host: Host): Promise<void> {
 				);
 			}
 		}
+	}
+	// Schreibweg evcc: Batteriemodus (hold/charge/normal) über evcc setzen, nie parallel zur Sonnen-Sequenz.
+	await setStateIfChanged(host, BAT.evccOut.path, config.controlPath);
+	if (config.controlPath === "evcc") {
+		const recentOwnHold =
+			evccOutState.lastWrittenMode === "hold" && nowMs - evccOutState.lastWriteMs < 90_000;
+		const externalAuthority =
+			(evAuthority ?? "").toLowerCase() === "external" ||
+			tibberRewardsRuntime === true ||
+			evConflict.conflict ||
+			(evccBatteryModeHold && !recentOwnHold);
+		const decision =
+			runtime.faultCode !== null || runtime.lockout
+				? { mode: null, reasonDe: "Störung/Sperre — EMS schreibt nichts an das evcc-System" }
+				: decideEvccBatteryMode({ intent: deviceIntent, externalAuthority });
+		const evccStep = planEvccOutputStep(decision.mode, evccOutState, nowMs);
+		const evccLive = liveWriteAllowed && !executionOff && governanceEnabled;
+		let evccReason = decision.reasonDe;
+		if (evccStep.write !== null) {
+			const wr = await writeEvccBatteryMode(host as unknown as BatteryWriteHost, {
+				stateId: config.evccModeSetStateId,
+				mode: evccStep.write,
+				live: evccLive,
+				reason: decision.reasonDe,
+			});
+			if (wr.rejectCode) {
+				evccReason = `${decision.reasonDe} (Write abgelehnt: ${wr.rejectCode})`;
+			} else if (wr.written || wr.simulated) {
+				evccOutState = evccStep.next;
+				await setStateIfChanged(host, BAT.evccOut.lastWrittenMode, evccStep.write);
+				await setStateIfChanged(host, BAT.evccOut.lastWriteAt, new Date(nowMs).toISOString());
+			}
+			await setStateIfChanged(host, BAT.evccOut.wouldWrite, !evccLive);
+		} else {
+			await setStateIfChanged(host, BAT.evccOut.wouldWrite, false);
+		}
+		await setStateIfChanged(host, BAT.evccOut.desiredMode, decision.mode ?? "normal");
+		await setStateIfChanged(host, BAT.evccOut.reasonDe, evccReason);
 	}
 	if (
 		fsmStateBefore === "set_charge_power" &&

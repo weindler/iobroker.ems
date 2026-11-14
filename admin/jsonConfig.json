@@ -1749,6 +1749,17 @@
 					"md": 6,
 					"lg": 6,
 					"xl": 6
+				},
+				"bat_evcc_mode_set_state": {
+					"type": "objectId",
+					"label": "Batteriemodus setzen (hass.0…select.evcc_battery_mode.select_option)",
+					"help": "Optional. Ausgefüllt: EMS hält und lädt die Hausbatterie über den evcc-Batteriemodus (hold/charge) statt direkt an der Sonnen. Leer: wie bisher direkt an der Sonnen. Trockenlauf oder Live bestimmt allein der Modus des Batterie-Addons.",
+					"types": ["state"],
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
 				}
 			}
 		},

@@ -271,6 +271,7 @@ build/ems_light/off_legacy_lazy.test.js
 build/planner/run.test.js
 build/planner/mode_policy.test.js
 build/addons/battery/grid_balance.test.js
+build/addons/battery/evcc_output.test.js
 build/addons/battery/grid_balance_contract.test.js
 build/addons/battery/grid_balance_power.test.js
 build/addons/battery/grid_balance_policy.test.js

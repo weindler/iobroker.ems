@@ -36,6 +36,7 @@ const ensure_states_2 = require("../wallbox/ev_foundation/ensure_states");
 const mapping_1 = require("./mapping");
 const registry_1 = require("./profiles/registry");
 const fsm_1 = require("./runtime/fsm");
+const evcc_output_1 = require("./evcc_output");
 const execute_1 = require("./runtime/execute");
 const ownership_1 = require("./runtime/ownership");
 const safety_1 = require("./runtime/safety");
@@ -70,6 +71,7 @@ let controlTimer = null;
 let runtime = (0, fsm_1.initialSonnenRuntime)(Date.now());
 let gridBalancePausedByFsm = false;
 let ownershipLive = false;
+let evccOutState = evcc_output_1.EVCC_OUTPUT_INITIAL;
 let prevLiveWriteAllowed = false;
 let ticking = false;
 let lastGridBalanceWriteW = null;
@@ -688,7 +690,7 @@ async function controlTickInner(host) {
         sequence: config.sequence,
         tolerance: config.feedbackTolerance,
         gridBalanceActive: controller === "grid_balance",
-        simulateFeedback: !effectiveLive,
+        simulateFeedback: !effectiveLive || config.controlPath === "evcc",
         stopDisposition,
         forceZeroSetpointWrite: stopDisposition === "release_zero" ? forceZeroSetpointWrite : undefined,
     };
@@ -735,7 +737,8 @@ async function controlTickInner(host) {
             requestId,
             reason: `fsm:${runtime.state}`,
             expectedFeedback: w.expectedFeedback,
-            dryrun: !effectiveLive,
+            // Schreibweg evcc: Sonnen-Writes der Ladesequenz nur simulieren; EMS schreibt den evcc-Batteriemodus.
+            dryrun: !effectiveLive || config.controlPath === "evcc",
             numericTolerance: w.kind === "operating_mode" ? 0 : config.feedbackTolerance.absoluteW,
             gate: { ...gate, targetMappingConfigured: stateId.length > 0 },
         });
@@ -755,6 +758,43 @@ async function controlTickInner(host) {
                 (0, setpoint_session_1.setBatterySetpointSession)((0, setpoint_session_1.applyZeroRelease)((0, setpoint_session_1.getBatterySetpointSession)(), new Date(nowMs).toISOString(), stopReason ?? "regular_end"));
             }
         }
+    }
+    // Schreibweg evcc: Batteriemodus (hold/charge/normal) über evcc setzen, nie parallel zur Sonnen-Sequenz.
+    await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.evccOut.path, config.controlPath);
+    if (config.controlPath === "evcc") {
+        const recentOwnHold = evccOutState.lastWrittenMode === "hold" && nowMs - evccOutState.lastWriteMs < 90_000;
+        const externalAuthority = (evAuthority ?? "").toLowerCase() === "external" ||
+            tibberRewardsRuntime === true ||
+            evConflict.conflict ||
+            (evccBatteryModeHold && !recentOwnHold);
+        const decision = runtime.faultCode !== null || runtime.lockout
+            ? { mode: null, reasonDe: "Störung/Sperre — EMS schreibt nichts an das evcc-System" }
+            : (0, evcc_output_1.decideEvccBatteryMode)({ intent: deviceIntent, externalAuthority });
+        const evccStep = (0, evcc_output_1.planEvccOutputStep)(decision.mode, evccOutState, nowMs);
+        const evccLive = liveWriteAllowed && !executionOff && governanceEnabled;
+        let evccReason = decision.reasonDe;
+        if (evccStep.write !== null) {
+            const wr = await (0, evcc_output_1.writeEvccBatteryMode)(host, {
+                stateId: config.evccModeSetStateId,
+                mode: evccStep.write,
+                live: evccLive,
+                reason: decision.reasonDe,
+            });
+            if (wr.rejectCode) {
+                evccReason = `${decision.reasonDe} (Write abgelehnt: ${wr.rejectCode})`;
+            }
+            else if (wr.written || wr.simulated) {
+                evccOutState = evccStep.next;
+                await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.evccOut.lastWrittenMode, evccStep.write);
+                await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.evccOut.lastWriteAt, new Date(nowMs).toISOString());
+            }
+            await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.evccOut.wouldWrite, !evccLive);
+        }
+        else {
+            await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.evccOut.wouldWrite, false);
+        }
+        await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.evccOut.desiredMode, decision.mode ?? "normal");
+        await (0, state_write_1.setStateIfChanged)(host, ensure_states_1.BAT.evccOut.reasonDe, evccReason);
     }
     if (fsmStateBefore === "set_charge_power" &&
         runtime.state === "active" &&

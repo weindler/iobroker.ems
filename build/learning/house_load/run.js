@@ -15,7 +15,6 @@ const constants_2 = require("../../addons/air_conditioning/constants");
 const ensure_states_2 = require("../../addons/battery/ensure_states");
 const ensure_evcc_states_1 = require("../../addons/wallbox/ensure_evcc_states");
 const state_util_1 = require("../../ems_light/state_util");
-const history_query_1 = require("../history_query");
 const JSON_STATE_LIMIT = 12_000;
 function truncateJson(obj) {
     const raw = JSON.stringify(obj);
@@ -114,28 +113,6 @@ async function runHouseLoadLearning(host) {
             flex.wallboxChargeW = wbCharge;
         if (batCharge != null && batCharge >= 0)
             flex.batteryChargeW = batCharge;
-        /*
-         * Historische Autoladung abziehen (Hauslast soll ohne E-Auto-Laden gelernt werden): stündliche
-         * Mittelwerte der Wallbox-Ladeleistung aus der History, sofern der Datenpunkt dort geloggt wird.
-         * Ohne History bleibt es bei Median-Profil + Dekomposition der aktuellen Stunde.
-         */
-        try {
-            const wbEnd = now.getTime();
-            const wbRows = await (0, history_query_1.fetchHistoryRowsAggregated)(host, ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW, wbEnd - cfg.lookbackDays * 24 * constants_1.MS_PER_HOUR, wbEnd, cfg.lookbackDays * 24 + 48, history_query_1.HISTORY_CHUNK_TIMEOUT_MS, "average", constants_1.MS_PER_HOUR);
-            for (const row of wbRows) {
-                const ts = typeof row?.ts === "number" ? row.ts : null;
-                const w = (0, state_util_1.asNum)(row?.val);
-                if (ts === null || w === null || w <= 0)
-                    continue;
-                const hourStart = Math.floor(ts / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
-                if (hourStart === currentHour)
-                    continue;
-                flexMap.set(hourStart, { wallboxChargeW: w });
-            }
-        }
-        catch {
-            /* History für Wallbox nicht verfügbar — nur Median-Schutz. */
-        }
         // Eigener Stunden-Rollup der Wallbox-Ladeleistung (power_rollup) hat Vorrang vor der History.
         try {
             const wbOwn = await (0, power_rollup_1.fetchRollupUnidirectionalPowerPoints)(host, `${host.namespace ?? "ems.0"}.${ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW}`, cfg.lookbackDays);

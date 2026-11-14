@@ -430,7 +430,7 @@ function assertCoreCategories(adapter) {
          * bleiben drei für die Batterie-Preisbrücke benötigte Laufzeit-States erhalten;
          * State-Explosionen bleiben sichtbar.
          */
-        strict_1.default.ok(states <= 767, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+        strict_1.default.ok(states <= 769, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
         strict_1.default.ok(states >= 250, `unexpectedly small surface states=${states}`);
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes("addons.measured_consumers")), "empty measured_consumers config must not create consumer/aggregate states");
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes(".mapping.")), "mapping shadows remain");

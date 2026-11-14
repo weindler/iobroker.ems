@@ -22,7 +22,7 @@ import { BAT } from "../../addons/battery/ensure_states";
 import { WALLBOX_EVCC_STATES } from "../../addons/wallbox/ensure_evcc_states";
 import { asNum } from "../../ems_light/state_util";
 
-import { fetchHistoryRowsAggregated, HISTORY_CHUNK_TIMEOUT_MS, type HistoryQueryHost } from "../history_query";
+import type { HistoryQueryHost } from "../history_query";
 
 export type HouseLoadRunHost = HistoryQueryHost & {
 	config: unknown;
@@ -143,34 +143,6 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 		};
 		if (wbCharge != null && wbCharge >= 0) flex.wallboxChargeW = wbCharge;
 		if (batCharge != null && batCharge >= 0) flex.batteryChargeW = batCharge;
-		/*
-		 * Historische Autoladung abziehen (Hauslast soll ohne E-Auto-Laden gelernt werden): stündliche
-		 * Mittelwerte der Wallbox-Ladeleistung aus der History, sofern der Datenpunkt dort geloggt wird.
-		 * Ohne History bleibt es bei Median-Profil + Dekomposition der aktuellen Stunde.
-		 */
-		try {
-			const wbEnd = now.getTime();
-			const wbRows = await fetchHistoryRowsAggregated(
-				host,
-				WALLBOX_EVCC_STATES.chargePowerW,
-				wbEnd - cfg.lookbackDays * 24 * MS_PER_HOUR,
-				wbEnd,
-				cfg.lookbackDays * 24 + 48,
-				HISTORY_CHUNK_TIMEOUT_MS,
-				"average",
-				MS_PER_HOUR,
-			);
-			for (const row of wbRows) {
-				const ts = typeof row?.ts === "number" ? row.ts : null;
-				const w = asNum(row?.val);
-				if (ts === null || w === null || w <= 0) continue;
-				const hourStart = Math.floor(ts / MS_PER_HOUR) * MS_PER_HOUR;
-				if (hourStart === currentHour) continue;
-				flexMap.set(hourStart, { wallboxChargeW: w });
-			}
-		} catch {
-			/* History für Wallbox nicht verfügbar — nur Median-Schutz. */
-		}
 		// Eigener Stunden-Rollup der Wallbox-Ladeleistung (power_rollup) hat Vorrang vor der History.
 		try {
 			const wbOwn = await fetchRollupUnidirectionalPowerPoints(

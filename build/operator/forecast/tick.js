@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runForecastPlanTick = exports.forecastPlanRevisionForTest = exports.resetForecastPlanRevisionForTest = void 0;
+exports.resetForecastPlanRevisionForTest = resetForecastPlanRevisionForTest;
+exports.forecastPlanRevisionForTest = forecastPlanRevisionForTest;
+exports.runForecastPlanTick = runForecastPlanTick;
 const state_write_1 = require("../../policy/core/state_write");
 const read_1 = require("../contributions/read");
 const build_1 = require("./build");
@@ -11,15 +13,23 @@ function resetForecastPlanRevisionForTest() {
     lastRevisionPayload = "";
     revision = 0;
 }
-exports.resetForecastPlanRevisionForTest = resetForecastPlanRevisionForTest;
 function forecastPlanRevisionForTest() {
     return revision;
 }
-exports.forecastPlanRevisionForTest = forecastPlanRevisionForTest;
 async function runForecastPlanTick(host, gridForecast, flexibleContributions = []) {
     const now = new Date();
     const collected = await (0, read_1.collectContributions)(host, now, gridForecast);
     const contributions = [...collected.contributions, ...flexibleContributions];
+    try {
+        const pvDetails = collected.contributions.find((c) => c.contributionId === "pv_forecast.supply")?.details;
+        if (pvDetails && typeof pvDetails.intradayFactor === "number") {
+            await (0, state_write_1.setStateIfChanged)(host, "learning.pv_bias.intraday_factor", pvDetails.intradayFactor);
+            await (0, state_write_1.setStateIfChanged)(host, "learning.pv_bias.intraday_status_de", String(pvDetails.intradayReasonDe ?? ""));
+        }
+    }
+    catch {
+        /* Anzeige-States — nie den Plan blockieren */
+    }
     const plan = (0, build_1.buildForecastPlan)({
         now,
         timezone: collected.timezone,
@@ -50,4 +60,3 @@ async function runForecastPlanTick(host, gridForecast, flexibleContributions = [
     }
     return plan;
 }
-exports.runForecastPlanTick = runForecastPlanTick;

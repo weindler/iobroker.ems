@@ -56,6 +56,8 @@ export async function ensurePvBiasStates(host: StateHost): Promise<void> {
 		numState("learning.pv_bias.alt_tomorrow_kwh", "PV Zweitquelle morgen (live)", "kWh"),
 		strState("learning.pv_bias.guard_status", "Zweitquellen-Guard (none oder Hinweis)", "none"),
 		strState("learning.pv_bias.compare_json", "Quellenvergleich Haupt/Zweit/Ist (JSON)"),
+		numState("learning.pv_bias.intraday_factor", "PV-Korrektur im Tagesverlauf (Faktor für Rest des Tages)"),
+		strState("learning.pv_bias.intraday_status_de", "PV-Korrektur im Tagesverlauf (Begründung)", ""),
 	];
 
 	await ensureStates(host, defs);

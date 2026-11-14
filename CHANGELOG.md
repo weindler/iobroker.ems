@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.38] – 2026-11-14
+
+### Hinzugefügt
+- States `learning.pv_bias.intraday_factor` und `intraday_status_de`: zeigen die PV-Korrektur im Tagesverlauf (die Planner-JSON-States mit den Details werden vom Surface-Cleanup bewusst entfernt).
+
+### Behoben
+- Hauslast-Lernen: History-Abfrage der Wallbox-Ladeleistung entfernt (0 Zeilen, 180 leere Abfragen, Warnung im Log); es zählt nur noch der eigene Stunden-Rollup.
+
 ## [0.4.37] – 2026-11-14
 
 ### Geändert

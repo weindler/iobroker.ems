@@ -26,6 +26,15 @@ export async function runForecastPlanTick(
 	const now = new Date();
 	const collected = await collectContributions(host, now, gridForecast);
 	const contributions = [...collected.contributions, ...flexibleContributions];
+	try {
+		const pvDetails = collected.contributions.find((c) => c.contributionId === "pv_forecast.supply")?.details;
+		if (pvDetails && typeof pvDetails.intradayFactor === "number") {
+			await setStateIfChanged(host, "learning.pv_bias.intraday_factor", pvDetails.intradayFactor);
+			await setStateIfChanged(host, "learning.pv_bias.intraday_status_de", String(pvDetails.intradayReasonDe ?? ""));
+		}
+	} catch {
+		/* Anzeige-States — nie den Plan blockieren */
+	}
 	const plan = buildForecastPlan({
 		now,
 		timezone: collected.timezone,

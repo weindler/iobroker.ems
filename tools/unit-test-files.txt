@@ -326,6 +326,7 @@ vis/ai_vis_semantics.test.mjs
 vis/dashboard_ops.test.mjs
 build/statistics/compute_gap.test.js
 build/learning/energyforecast/energyforecast.test.js
+build/learning/energyforecast/bias_model.test.js
 build/operator/supply/grid_read_energyforecast.test.js
 build/operator/contributions/pv_intraday.test.js
 build/learning/power_rollup/registry_wallbox.test.js

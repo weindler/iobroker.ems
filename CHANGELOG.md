@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.49] – 2026-11-14
+
+### Hinzugefügt
+- Energyforecast-Prognosepreise werden um den gelernten Fehler korrigiert: je Stunde und Tagestyp (Werktag, Samstag, Sonntag), getrennt nach Vorlauf (1, 2, ≥3 Tage). Erst ab 4 verglichenen Tagen aktiv; bei wenig Daten zum Tagestyp zählt das Gesamtmittel stärker; Abzug höchstens 12 ct. Der Verlauf wird 150 Tage aufbewahrt (`learning/energyforecast/bias_history_v1.json`). Die Grafik zeigt weiter die unkorrigierte frühere Prognose.
+- `compare_json` enthält den Korrekturstatus; die Planungsseite nennt, ob die Korrektur aktiv ist oder wann sie startet.
+
 ## [0.4.48] – 2026-11-14
 
 ### Hinzugefügt

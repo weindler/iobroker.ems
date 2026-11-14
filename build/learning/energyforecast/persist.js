@@ -33,13 +33,15 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.localDay = exports.ACTUAL_RETENTION_MS = exports.SNAPSHOT_RETENTION_MS = exports.EF_SNAPSHOT_FILE = exports.EF_CACHE_FILE = void 0;
+exports.localDay = exports.ACTUAL_RETENTION_MS = exports.SNAPSHOT_RETENTION_MS = exports.EF_BIAS_FILE = exports.EF_SNAPSHOT_FILE = exports.EF_CACHE_FILE = void 0;
 exports.emptyCache = emptyCache;
 exports.emptySnapshotFile = emptySnapshotFile;
 exports.readCache = readCache;
 exports.writeCache = writeCache;
 exports.readSnapshots = readSnapshots;
 exports.writeSnapshots = writeSnapshots;
+exports.readBiasHistory = readBiasHistory;
+exports.writeBiasHistory = writeBiasHistory;
 exports.addFetchToSnapshots = addFetchToSnapshots;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
@@ -48,6 +50,7 @@ const parse_1 = require("./parse");
 Object.defineProperty(exports, "localDay", { enumerable: true, get: function () { return parse_1.localDay; } });
 exports.EF_CACHE_FILE = "cache_v1.json";
 exports.EF_SNAPSHOT_FILE = "snapshots_v1.json";
+exports.EF_BIAS_FILE = "bias_history_v1.json";
 exports.SNAPSHOT_RETENTION_MS = 16 * 86_400_000;
 exports.ACTUAL_RETENTION_MS = 30 * 86_400_000;
 function emptyCache() {
@@ -89,6 +92,14 @@ async function readSnapshots(dir) {
 async function writeSnapshots(dir, file) {
     await fs.mkdir(dir, { recursive: true });
     await (0, atomic_write_1.atomicWriteFile)(path.join(dir, exports.EF_SNAPSHOT_FILE), `${JSON.stringify(file)}\n`);
+}
+async function readBiasHistory(dir) {
+    const f = await readJson(path.join(dir, exports.EF_BIAS_FILE));
+    return f && f.version === 1 && Array.isArray(f.entries) ? f.entries : [];
+}
+async function writeBiasHistory(dir, entries) {
+    await fs.mkdir(dir, { recursive: true });
+    await (0, atomic_write_1.atomicWriteFile)(path.join(dir, exports.EF_BIAS_FILE), `${JSON.stringify({ version: 1, entries })}\n`);
 }
 function sameSlots(a, b) {
     if (a.length !== b.length)

@@ -2,10 +2,12 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { atomicWriteFile } from "../../persistence/atomic_write";
 import type { EfSnapshot } from "./compare";
+import type { DayHourBias } from "./bias_model";
 import { localDay, type EfParsed, type EfSlot } from "./parse";
 
 export const EF_CACHE_FILE = "cache_v1.json";
 export const EF_SNAPSHOT_FILE = "snapshots_v1.json";
+export const EF_BIAS_FILE = "bias_history_v1.json";
 export const SNAPSHOT_RETENTION_MS = 16 * 86_400_000;
 export const ACTUAL_RETENTION_MS = 30 * 86_400_000;
 
@@ -73,6 +75,16 @@ export async function readSnapshots(dir: string): Promise<EfSnapshotFile> {
 export async function writeSnapshots(dir: string, file: EfSnapshotFile): Promise<void> {
 	await fs.mkdir(dir, { recursive: true });
 	await atomicWriteFile(path.join(dir, EF_SNAPSHOT_FILE), `${JSON.stringify(file)}\n`);
+}
+
+export async function readBiasHistory(dir: string): Promise<DayHourBias[]> {
+	const f = await readJson<{ version: 1; entries: DayHourBias[] }>(path.join(dir, EF_BIAS_FILE));
+	return f && f.version === 1 && Array.isArray(f.entries) ? f.entries : [];
+}
+
+export async function writeBiasHistory(dir: string, entries: DayHourBias[]): Promise<void> {
+	await fs.mkdir(dir, { recursive: true });
+	await atomicWriteFile(path.join(dir, EF_BIAS_FILE), `${JSON.stringify({ version: 1, entries })}\n`);
 }
 
 function sameSlots(a: Array<[number, number]>, b: Array<[number, number]>): boolean {

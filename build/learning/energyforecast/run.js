@@ -11,6 +11,7 @@ exports.resetEnergyforecastRunState = resetEnergyforecastRunState;
 const client_1 = require("./client");
 const compare_1 = require("./compare");
 const persist_1 = require("./persist");
+const bias_model_1 = require("./bias_model");
 const parse_1 = require("./parse");
 /** Erfolgreicher Abruf: alle 6 h (die Quelle aktualisiert zweimal täglich, Free-Tarif: 50 Abrufe/Tag). */
 exports.EF_FETCH_INTERVAL_MS = 6 * 3_600_000 - 10 * 60_000;
@@ -39,6 +40,10 @@ async function setState(host, id, val) {
 let comparedOnce = false;
 let memorySlots = [];
 let memoryFrozen = new Map();
+let memoryBias = [];
+function localHourBerlin(ms) {
+    return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", hour12: false }).format(new Date(ms))) % 24;
+}
 /** Je Viertelstunde die zuletzt festgehaltene Prognose (ct/kWh) — für den Vergleich mit dem echten Preis. */
 function frozenForecastFromSnapshots(snapshots) {
     const out = new Map();
@@ -60,7 +65,16 @@ function getEnergyforecastPrice15MinSlots(fromMs) {
     for (const s of memorySlots) {
         if (s.startMs < fromMs)
             continue;
-        const slot = { slotStartMs: s.startMs, priceCtPerKwh: Math.round(s.totalCt * 1000) / 1000 };
+        let price = s.totalCt;
+        if (s.origin === "forecast") {
+            // Gelernte Verzerrung abziehen (erst ab genug verglichenen Tagen, je Stunde und Tagestyp).
+            const date = (0, parse_1.localDay)(s.startMs);
+            const lead = Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${(0, parse_1.localDay)(fromMs)}T12:00:00Z`)) / 86_400_000);
+            const bias = (0, bias_model_1.estimateBiasCt)(memoryBias, localHourBerlin(s.startMs), (0, bias_model_1.dayTypeOf)(date), lead);
+            if (bias !== null)
+                price -= bias;
+        }
+        const slot = { slotStartMs: s.startMs, priceCtPerKwh: Math.round(price * 1000) / 1000 };
         if (s.origin === "forecast")
             slot.origin = "forecast";
         out.push(slot);
@@ -140,8 +154,19 @@ async function runEnergyforecast(host, nowMs = Date.now(), fetchFn) {
         comparedOnce = true;
         const file = await (0, persist_1.readSnapshots)(dir);
         memoryFrozen = frozenForecastFromSnapshots(file.snapshots);
+        memoryBias = (0, bias_model_1.mergeBiasHistory)(await (0, persist_1.readBiasHistory)(dir), (0, bias_model_1.dayHourBiases)(file.snapshots, file.actual), nowMs);
+        await (0, persist_1.writeBiasHistory)(dir, memoryBias);
         const result = (0, compare_1.compareSnapshots)(file.snapshots, file.actual);
-        await setState(host, "compare_json", JSON.stringify({ updatedIso: new Date(nowMs).toISOString(), snapshots: file.snapshots.length, ...result }));
+        await setState(host, "compare_json", JSON.stringify({
+            updatedIso: new Date(nowMs).toISOString(),
+            snapshots: file.snapshots.length,
+            ...result,
+            correction: {
+                active: (0, bias_model_1.biasDaysAvailable)(memoryBias, 1) >= bias_model_1.BIAS_MIN_DAYS,
+                days: (0, bias_model_1.biasDaysAvailable)(memoryBias, 1),
+                minDays: bias_model_1.BIAS_MIN_DAYS,
+            },
+        }));
     }
 }
 /** Nur für Tests. */
@@ -149,4 +174,5 @@ function resetEnergyforecastRunState() {
     comparedOnce = false;
     memorySlots = [];
     memoryFrozen = new Map();
+    memoryBias = [];
 }

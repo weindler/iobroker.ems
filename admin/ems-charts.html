@@ -3550,7 +3550,7 @@ function renderBatteryPage(){
 	],txt(g("addons.battery.runtime.reason_de"),""),"#58a6ff");
 	html+=questionCard("2 · Gelernter Nachtbedarf",night===null?"Nachtbedarf noch unbekannt":fmtDec(night,1,"kWh erwartet"),[
 		["Reserve-Energie",fmtDec(reserve,1,"kWh")],
-		["Reserve-SOC bei PV-Ende",fmtPct(g("learning.battery_runtime.required_soc_at_pv_end_pct"))],
+		["Nacht-Reserve (gelernt)",fmtPct(g("learning.battery_runtime.required_soc_at_pv_end_pct"))],
 		["Sicherheitsboden",fmtPct(g("addons.battery.limits.hardware_min_soc_pct"))],
 		["Ausgewertete Tage",txt(g("learning.battery_runtime.sample_days"),"—")],
 		["Gültige Nächte",txt(g("learning.battery_runtime.night_bridge_valid_nights"),"—")],
@@ -3564,7 +3564,8 @@ function renderBatteryPage(){
 		["Plan-Ziel",target===null?"—":Math.round(target)+" %"],
 		["Nächstes Fenster",next?fmtSmartTime(next.t)+" · "+Math.round(next.w)+" W":"keines"],
 		["Geplante Energie (3 Tage)",decision?fmtDec(decision.plannedEnergyKwh,2,"kWh"):"—"],
-		["Reserve-SOC bei PV-Ende",fmtPct(g("planner.battery_reserve.required_soc_at_pv_end_pct"))]
+		["Ziel bei PV-Ende (Plan)",fmtPct(g("planner.battery_reserve.required_soc_at_pv_end_pct"))],
+		["Erwartet bei PV-Ende",(function(){var o=operatorOutlook(),b=o&&o.days&&o.days[0]&&o.days[0].battery;return b&&b.pvCoverageKnown&&b.socAtPvEndPct!=null?fmtPct(b.socAtPvEndPct):"—";})()]
 	],decisionExplanation(decision,txt(g("operator.plan.battery_strategy_de"),"")),"#58a6ff");
 	html+='<details class="ems-detail"><summary>Weitere Batterie- und Reserveinformationen</summary>'+questionCard("4 · Warum?",fault?"Die Störung hat Vorrang":batteryWhy,[
 		["Planentscheidung",batteryWhy],

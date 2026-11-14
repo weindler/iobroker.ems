@@ -330,7 +330,7 @@ function buildEnergeticDayTotals(day) {
     if (!day.complete)
         notesDe.push("Laufender Tag: Werte sind eine Zwischenbilanz.");
     if (!day.evaluable)
-        notesDe.push(`Der Tag ist noch nicht vollständig erfasst (${round1(day.coveragePct)} % Abdeckung).`);
+        notesDe.push(`Der Tag ist noch nicht vollständig erfasst (${round1(day.coveragePct).toFixed(1).replace(".", ",")} % Abdeckung).`);
     if (batteryLoss.reason)
         notesDe.push(batteryLoss.reason);
     if ((immersion.energyKwh ?? 0) > 0 && immersion.pvKwh === null ||

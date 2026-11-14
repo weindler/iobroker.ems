@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.52] – 2026-11-14
+
+### Geändert
+- Batterieseite: „Ziel bei PV-Ende (Plan)" und „Erwartet bei PV-Ende" stehen nebeneinander statt der missverständlichen „Reserve-SOC bei PV-Ende 100 %"; der gelernte Wert heißt „Nacht-Reserve (gelernt)". Das Ziel 100 % entsteht bewusst aus mehreren PV-schwachen Tagen.
+- Statistik: Abdeckung mit Dezimalkomma.
+
 ## [0.4.51] – 2026-11-14
 
 ### Geändert

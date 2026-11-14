@@ -3485,7 +3485,7 @@ function sevenDayForecastCard(){
 		var efc=parseObj(g("learning.energyforecast.compare_json"));
 		var efl=efc&&efc.perLead&&efc.perLead.filter(function(x){return x.leadDays===1;})[0];
 		if(efl&&efl.days>0)efNote=' Energyforecast lag bei einem Tag Vorlauf im Schnitt '+Number(efl.maeCt).toFixed(1).replace(".",",")+' ct daneben ('+(efl.biasCt>=0?'zu hoch':'zu niedrig')+' um '+Math.abs(efl.biasCt).toFixed(1).replace(".",",")+' ct); die günstigsten 4 Stunden stimmten zu '+efl.cheapHitPct+' % (Auswertung über '+efl.days+(efl.days===1?' Tag':' Tage')+').';
-		else if(efc&&efc.snapshots>0)efNote=' Energyforecast-Genauigkeit: noch kein vollständiger Tag verglichen, das erste Ergebnis folgt, sobald Tibber den nächsten Tag veröffentlicht hat.';
+		else if(efc&&efc.snapshots>0)efNote=' Energyforecast-Genauigkeit: noch kein vollständiger Tag verglichen, das erste Ergebnis folgt, sobald zu einem festgehaltenen Abruf die echten Preise des Zieltags vorliegen.';
 		var efk=efc&&efc.correction;
 		if(efk)efNote+=efk.active?' Die Prognosepreise werden um den gelernten Fehler (je Stunde und Tagestyp Werktag, Samstag, Sonntag) korrigiert.':' Eine Korrektur der Prognosepreise startet nach '+efk.minDays+' verglichenen Tagen (bisher '+efk.days+').';
 	}catch(eEf){}

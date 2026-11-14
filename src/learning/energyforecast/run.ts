@@ -62,6 +62,22 @@ let comparedOnce = false;
 let memorySlots: EfSlot[] = [];
 let memoryFrozen: ReadonlyMap<number, number> = new Map();
 let memoryBias: DayHourBias[] = [];
+let tibberActual = new Map<number, number>();
+let tibberDirty = false;
+
+/** Echte (Tibber-)Preise der Planung melden: damit der Vergleich nicht auf den nächsten Energyforecast-Abruf wartet. */
+export function recordTibberPrices(prices: Iterable<[number, number]>, nowMs = Date.now()): void {
+	for (const [start, ct] of prices) {
+		if (!Number.isFinite(start) || !Number.isFinite(ct)) continue;
+		if (tibberActual.get(start) !== ct) {
+			tibberActual.set(start, ct);
+			tibberDirty = true;
+		}
+	}
+	for (const start of [...tibberActual.keys()]) {
+		if (nowMs - start > 36 * 3_600_000) tibberActual.delete(start);
+	}
+}
 
 function localHourBerlin(ms: number): number {
 	return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", hour12: false }).format(new Date(ms))) % 24;
@@ -173,9 +189,18 @@ export async function runEnergyforecast(
 		if (cur) await setState(host, "price_now", Math.round(cur.totalCt * 100) / 100);
 	}
 
-	if (fetched || !comparedOnce) {
+	if (fetched || !comparedOnce || tibberDirty) {
 		comparedOnce = true;
+		tibberDirty = false;
 		const file = await readSnapshots(dir);
+		let actualChanged = false;
+		for (const [start, ct] of tibberActual) {
+			if (file.actual[String(start)] !== ct) {
+				file.actual[String(start)] = ct;
+				actualChanged = true;
+			}
+		}
+		if (actualChanged) await writeSnapshots(dir, file);
 		memoryFrozen = frozenForecastFromSnapshots(file.snapshots);
 		memoryBias = mergeBiasHistory(await readBiasHistory(dir), dayHourBiases(file.snapshots, file.actual), nowMs);
 		await writeBiasHistory(dir, memoryBias);
@@ -203,4 +228,6 @@ export function resetEnergyforecastRunState(): void {
 	memorySlots = [];
 	memoryFrozen = new Map();
 	memoryBias = [];
+	tibberActual = new Map();
+	tibberDirty = false;
 }

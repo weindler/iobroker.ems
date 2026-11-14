@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EF_RETRY_429_MS = exports.EF_RETRY_MS = exports.EF_FETCH_INTERVAL_MS = void 0;
 exports.energyforecastConfigFromAdapter = energyforecastConfigFromAdapter;
 exports.fetchDue = fetchDue;
+exports.recordTibberPrices = recordTibberPrices;
 exports.frozenForecastFromSnapshots = frozenForecastFromSnapshots;
 exports.getEnergyforecastFrozenForecast = getEnergyforecastFrozenForecast;
 exports.getEnergyforecastPrice15MinSlots = getEnergyforecastPrice15MinSlots;
@@ -41,6 +42,23 @@ let comparedOnce = false;
 let memorySlots = [];
 let memoryFrozen = new Map();
 let memoryBias = [];
+let tibberActual = new Map();
+let tibberDirty = false;
+/** Echte (Tibber-)Preise der Planung melden: damit der Vergleich nicht auf den nächsten Energyforecast-Abruf wartet. */
+function recordTibberPrices(prices, nowMs = Date.now()) {
+    for (const [start, ct] of prices) {
+        if (!Number.isFinite(start) || !Number.isFinite(ct))
+            continue;
+        if (tibberActual.get(start) !== ct) {
+            tibberActual.set(start, ct);
+            tibberDirty = true;
+        }
+    }
+    for (const start of [...tibberActual.keys()]) {
+        if (nowMs - start > 36 * 3_600_000)
+            tibberActual.delete(start);
+    }
+}
 function localHourBerlin(ms) {
     return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", hour12: false }).format(new Date(ms))) % 24;
 }
@@ -150,9 +168,19 @@ async function runEnergyforecast(host, nowMs = Date.now(), fetchFn) {
         if (cur)
             await setState(host, "price_now", Math.round(cur.totalCt * 100) / 100);
     }
-    if (fetched || !comparedOnce) {
+    if (fetched || !comparedOnce || tibberDirty) {
         comparedOnce = true;
+        tibberDirty = false;
         const file = await (0, persist_1.readSnapshots)(dir);
+        let actualChanged = false;
+        for (const [start, ct] of tibberActual) {
+            if (file.actual[String(start)] !== ct) {
+                file.actual[String(start)] = ct;
+                actualChanged = true;
+            }
+        }
+        if (actualChanged)
+            await (0, persist_1.writeSnapshots)(dir, file);
         memoryFrozen = frozenForecastFromSnapshots(file.snapshots);
         memoryBias = (0, bias_model_1.mergeBiasHistory)(await (0, persist_1.readBiasHistory)(dir), (0, bias_model_1.dayHourBiases)(file.snapshots, file.actual), nowMs);
         await (0, persist_1.writeBiasHistory)(dir, memoryBias);
@@ -175,4 +203,6 @@ function resetEnergyforecastRunState() {
     memorySlots = [];
     memoryFrozen = new Map();
     memoryBias = [];
+    tibberActual = new Map();
+    tibberDirty = false;
 }

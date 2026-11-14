@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.50] – 2026-11-14
+
+### Geändert
+- Die Energyforecast-Auswertung nimmt die echten Tibber-Preise direkt aus der Planung, statt auf den nächsten Energyforecast-Abruf zu warten. Dadurch liegt das erste Vergleichspaar (Prognose von heute Vormittag gegen echte Sonntagspreise) sofort vor.
+
 ## [0.4.49] – 2026-11-14
 
 ### Hinzugefügt

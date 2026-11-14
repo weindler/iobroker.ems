@@ -96,6 +96,7 @@ async function readDynamicTariffPrice15MinSlots(host, now) {
             byStart.set(slot.slotStartMs, slot);
         }
     }
+    (0, run_1.recordTibberPrices)([...byStart.values()].map((s) => [s.slotStartMs, s.priceCtPerKwh]), now.getTime());
     const forecastOnly = new Set();
     for (const slot of (0, run_1.getEnergyforecastPrice15MinSlots)(minStartMs)) {
         if (!byStart.has(slot.slotStartMs)) {

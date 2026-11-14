@@ -5,7 +5,7 @@ import {
 	parseTibberPriceJsonTo15MinSlots,
 	type Price15MinSlot,
 } from "../../learning/price_forecast/tibber_parse";
-import { getEnergyforecastPrice15MinSlots } from "../../learning/energyforecast/run";
+import { getEnergyforecastPrice15MinSlots, recordTibberPrices } from "../../learning/energyforecast/run";
 import { asNum } from "../../ems_light/state_util";
 import type { StateHost } from "../../ems_light/state_util";
 import type { GridSupplyBuildInput } from "./grid";
@@ -105,6 +105,7 @@ export async function readDynamicTariffPrice15MinSlots(
 			byStart.set(slot.slotStartMs, slot);
 		}
 	}
+	recordTibberPrices([...byStart.values()].map((s): [number, number] => [s.slotStartMs, s.priceCtPerKwh]), now.getTime());
 	const forecastOnly = new Set<number>();
 	for (const slot of getEnergyforecastPrice15MinSlots(minStartMs)) {
 		if (!byStart.has(slot.slotStartMs)) {

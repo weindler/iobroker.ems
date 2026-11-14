@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.51] – 2026-11-14
+
+### Geändert
+- Auto / Wallbox: Fehlt die Fahrzeuggröße im Admin, steht „Fahrzeuggröße im Admin eintragen"; „An der Wallbox benötigt" nutzt dann den evcc-Wert (inkl. Ladeverluste). „Verbleibend" heißt jetzt „Noch zu laden (laut evcc)".
+
 ## [0.4.50] – 2026-11-14
 
 ### Geändert

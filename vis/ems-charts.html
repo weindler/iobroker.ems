@@ -3730,13 +3730,13 @@ function renderWallboxPage(){
 	var html=addonModeStrip("wallbox","Wallboxsteuerung")+tibberRewardsBannerHtml();
 	html+=questionCard("1 · Was ist der aktuelle Zustand?",autoToday.hero,[
 		["Fahrzeug-SOC",fmtPct(g("addons.wallbox.status.evcc.vehicle_soc_pct"))],
-		["Bis Ziel · Fahrzeugbatterie",fmtDec(vehicleEnergy.batteryNeedKwh,1,"kWh")],
-		["An der Wallbox benötigt",vehicleEnergy.acNeedKwh==null?"Ohne belastbaren Ladewirkungsgrad unbekannt":fmtDec(vehicleEnergy.acNeedKwh,1,"kWh inkl. Ladeverlusten")],
+		["Bis Ziel · Fahrzeugbatterie",vehicleEnergy.batteryNeedKwh==null?"Fahrzeuggröße im Admin eintragen":fmtDec(vehicleEnergy.batteryNeedKwh,1,"kWh")],
+		["An der Wallbox benötigt",vehicleEnergy.acNeedKwh==null?(num(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"))!==null?fmtDec(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"),1,"kWh laut evcc, inkl. Ladeverlusten"):"noch nicht bekannt"):fmtDec(vehicleEnergy.acNeedKwh,1,"kWh inkl. Ladeverlusten")],
 		["Ziel-SOC",visEvTargetLabel(g("addons.wallbox.status.evcc.effective_limit_soc_pct"),externallyManaged)],
 		["Leistung",fmtW(g("addons.wallbox.status.evcc.charge_power_w"))],
 		["EVCC-Modus",wallboxModeLabel(g("addons.wallbox.status.evcc.loadpoint_mode"))||"—"],
 		["Aktuell zuständig",wallboxAuthorityLine()],
-		["Verbleibend",fmtDec(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"),1,"kWh")]
+		["Noch zu laden (laut evcc)",fmtDec(g("addons.wallbox.status.evcc.charge_remaining_energy_kwh"),1,"kWh")]
 	],autoToday.summary,"#d2a8ff");
 	html+=energyFlowCard("Auto / Wallbox",g("addons.wallbox.status.evcc.charge_power_w"));
 	html+=evScenarioCard();

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.readPvShapeHourlyPoints = readPvShapeHourlyPoints;
 exports.parseHouseLoadForecastJson = parseHouseLoadForecastJson;
 exports.parseHouseLoadForecastHorizonJson = parseHouseLoadForecastHorizonJson;
 exports.collectContributions = collectContributions;
@@ -84,6 +85,11 @@ const PV_SHAPE_HOURLY_PROBE_COUNT = 24;
 /**
  * Liest ein BrightSky-artiges rollierendes Stunden-Array (`prefix.NN.timestamp/.cloud_cover/.solar_estimate`).
  * Andere Wetteradapter mit abweichender Struktur liefern hier einfach keine Treffer (fail-closed, kein Fallback).
+ *
+ * Zeitbezug: Bright Sky/DWD-Stundenwerte (Einstrahlung, Sonnenscheindauer) beschreiben die Stunde
+ * **vor** dem Zeitstempel. Der Zeitstempel T gehört also zum Intervall [T−1 h, T) — `hourStartIso`
+ * ist hier der Intervallbeginn. Ohne diese Verschiebung läge der Tagesverlauf eine Stunde zu spät
+ * (Spitze am Nachmittag, PV-Ertrag noch nach Sonnenuntergang).
  */
 async function readPvShapeHourlyPoints(host, prefix) {
     if (!prefix.trim())
@@ -101,7 +107,7 @@ async function readPvShapeHourlyPoints(host, prefix) {
         const ms = Date.parse(timestampRaw);
         if (!Number.isFinite(ms))
             return null;
-        const point = { hourStartIso: new Date(ms).toISOString(), cloudPct, solarEstimateKwh };
+        const point = { hourStartIso: new Date(ms - 3_600_000).toISOString(), cloudPct, solarEstimateKwh };
         return point;
     }));
     return rows.filter((r) => r !== null);

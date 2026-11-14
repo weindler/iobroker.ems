@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.41] – 2026-11-14
+
+### Behoben
+- PV-Tagesverlauf (15-Min-Form): Bright-Sky-Stundenwerte (Einstrahlung/Solar-Schätzung) gelten für die Stunde **vor** dem Zeitstempel. Der Verlauf lag bisher eine Stunde zu spät (Spitze ~14 Uhr statt ~13 Uhr, PV-Ertrag noch nach Sonnenuntergang geplant). Verifiziert gegen Ist-Ertrag und Sonnenscheindauer.
+
 ## [0.4.40] – 2026-11-14
 
 ### Behoben

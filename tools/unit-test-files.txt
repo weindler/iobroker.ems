@@ -329,3 +329,4 @@ build/learning/energyforecast/energyforecast.test.js
 build/operator/supply/grid_read_energyforecast.test.js
 build/operator/contributions/pv_intraday.test.js
 build/learning/power_rollup/registry_wallbox.test.js
+build/operator/contributions/pv_shape_hourly_read.test.js

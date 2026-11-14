@@ -484,7 +484,7 @@ describe("bootstrap cold start recovery", () => {
 		 * Historisch 350–550. Stand Aug 2026 (leere Config): ~604 States.
 		 * Phasen 4–7 plus GB-Economics (α/β, C_replace, Shadow-Dreiteilung)
 		 * addieren schlanke Transparenz-States; JSON-Dumps bleiben in Dateien.
-		 * Obergrenze 770: zusätzlich 32 feste Statistik-Spiegelwerte; keine datumsbezogenen States.
+		 * Obergrenze 775: zusätzlich 32 feste Statistik-Spiegelwerte; keine datumsbezogenen States.
 		 * +6 für Energyforecast (learning.energyforecast: Status, Hinweis, Tarif, Tage, Preis jetzt, Vergleichs-JSON).
 		 * +2 für PV-Korrektur im Tagesverlauf (Faktor, Begründung).
 		 * +4 für PV-Zweitquelle (alt heute/morgen, Guard-Status, Vergleichs-JSON) in learning.pv_bias.
@@ -493,7 +493,7 @@ describe("bootstrap cold start recovery", () => {
 		 * State-Explosionen bleiben sichtbar.
 		 */
 		assert.ok(
-			states <= 770,
+			states <= 775,
 			`empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`,
 		);
 		assert.ok(states >= 250, `unexpectedly small surface states=${states}`);

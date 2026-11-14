@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.59] – 2026-11-14
+
+### Neu
+- State `learning.pv_bias.profile_status_de`: zeigt den Lernstand des PV-Stundenprofils (z. B. „erst 3 von 5 brauchbaren Tagen gelernt“).
+
 ## [0.4.58] – 2026-11-14
 
 ### Geändert

@@ -70,24 +70,17 @@ function resolveBatteryDischargeAuthorization(input) {
             reasonDe: "Strompreis unbekannt — Netzausgleich pausiert",
         };
     }
-    if (input.requiredSocAtPvEndPct === null) {
-        return blocked("Nacht-Reserve noch nicht ausreichend gelernt (predictedNightConsumptionKwh unbekannt) — Batterieentladung konservativ gesperrt.", {
-            priceAllowed: true,
-            socAllowed: false,
-            economicsReady,
-        });
-    }
+    /*
+     * Netzausgleich gleicht nur den kleinen Rest aus (Größenordnung 35 W) — dafür keine
+     * Reserve-Sperre. Nur ein unbekannter SOC sperrt; das Hardware-Minimum prüft die Runtime.
+     */
     const socKnown = input.socPct !== null && Number.isFinite(input.socPct);
     if (!socKnown) {
-        return blocked("SOC unbekannt — Batterieentladung wirtschaftlich gesperrt.", {
+        return blocked("SOC unbekannt — Netzausgleich pausiert.", {
             priceAllowed: true,
             socAllowed: false,
             economicsReady,
         });
-    }
-    const socAllowed = input.socPct > input.requiredSocAtPvEndPct;
-    if (!socAllowed) {
-        return blocked(`SOC ${input.socPct.toFixed(0)} % ≤ dynamische Reserve ${input.requiredSocAtPvEndPct} % — Batterieentladung wirtschaftlich gesperrt.`, { priceAllowed: true, socAllowed: false, economicsReady });
     }
     if (economicsReady) {
         const e = input.economics;
@@ -116,7 +109,7 @@ function resolveBatteryDischargeAuthorization(input) {
             economicsAllowed: true,
             economicsUsable: true,
             netBenefitCtPerKwh: net,
-            reasonDe: `Economics: Netto ${net.toFixed(1)} ct/kWh > Marge ${margin.toFixed(1)}; SOC ${input.socPct.toFixed(0)} % > dynamische Reserve ${input.requiredSocAtPvEndPct} %.`,
+            reasonDe: `Economics: Netto ${net.toFixed(1)} ct/kWh > Marge ${margin.toFixed(1)}; SOC ${input.socPct.toFixed(0)} %.`,
         };
     }
     /*
@@ -151,7 +144,7 @@ function resolveBatteryDischargeAuthorization(input) {
         economicsAllowed: true,
         economicsUsable: false,
         netBenefitCtPerKwh: null,
-        reasonDe: `${priceCheck.reasonDe}; SOC ${input.socPct.toFixed(0)} % > dynamische Reserve ${input.requiredSocAtPvEndPct} %.`,
+        reasonDe: `${priceCheck.reasonDe}; SOC ${input.socPct.toFixed(0)} %.`,
     };
 }
 function isEconomicsReady(input) {

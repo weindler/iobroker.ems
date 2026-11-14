@@ -592,7 +592,10 @@ async function runDailyPlanTick(host, forecastPlan) {
     const batteryReserveLearning = (0, battery_reserve_learning_1.calibrateBatteryOpportunityMargin)(blockALearning.batteryReserveAccuracyPct);
     const batteryDischargeAuthorizationInputBase = {
         priceNowCt,
-        minPriceCtPerKwh: batCfgModes.gridBalance.minPriceCtPerKwh,
+        // Dynamisch: Ersatzkosten der Batterie + Marge; der Admin-Wert bleibt Untergrenze.
+        minPriceCtPerKwh: replaceCost.usable && replaceCost.valueCtPerKwh != null && Number.isFinite(replaceCost.valueCtPerKwh)
+            ? Math.max(batCfgModes.gridBalance.minPriceCtPerKwh, replaceCost.valueCtPerKwh + batCfgModes.gridBalance.economicsMarginCtPerKwh)
+            : batCfgModes.gridBalance.minPriceCtPerKwh,
         socPct,
         requiredSocAtPvEndPct: centralReserve.requiredSocAtPvEndPct,
         configuredMaxDischargeW: batCfgModes.gridBalance.maxTargetW,

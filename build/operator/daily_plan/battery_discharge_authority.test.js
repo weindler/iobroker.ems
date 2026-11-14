@@ -21,7 +21,7 @@ const battery_opportunity_cost_js_1 = require("./battery_opportunity_cost.js");
         strict_1.default.equal(r.maxDischargeW, 5000);
         strict_1.default.equal(r.priceAllowed, true);
         strict_1.default.equal(r.socAllowed, true);
-        strict_1.default.match(r.reasonDe, /SOC 60 % > dynamische Reserve 30 %/);
+        strict_1.default.match(r.reasonDe, /SOC 60 %/);
     });
     (0, node_test_1.it)("preserves battery at 15 ct and allows whole-house support at 40 ct above dynamic reserve", () => {
         const cheap = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, priceNowCt: 15 });
@@ -44,13 +44,10 @@ const battery_opportunity_cost_js_1 = require("./battery_opportunity_cost.js");
         strict_1.default.equal(r.maxDischargeW, 0);
         strict_1.default.equal(r.priceAllowed, false);
     });
-    (0, node_test_1.it)("blocks at/below the dynamic reserve even when price allows", () => {
-        const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, socPct: 30 });
-        strict_1.default.equal(r.allowed, false);
-        strict_1.default.equal(r.maxDischargeW, 0);
-        strict_1.default.equal(r.priceAllowed, true);
-        strict_1.default.equal(r.socAllowed, false);
-        strict_1.default.match(r.reasonDe, /dynamische Reserve 30 %/);
+    (0, node_test_1.it)("Netzausgleich wird nicht durch die Reserve gesperrt (nur Preis zählt)", () => {
+        const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, socPct: 30, requiredSocAtPvEndPct: 100 });
+        strict_1.default.equal(r.allowed, true);
+        strict_1.default.equal(r.socAllowed, true);
     });
     (0, node_test_1.it)("blocks with unknown SOC", () => {
         const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, socPct: null });
@@ -60,21 +57,9 @@ const battery_opportunity_cost_js_1 = require("./battery_opportunity_cost.js");
         strict_1.default.equal(r.socAllowed, false);
         strict_1.default.match(r.reasonDe, /SOC unbekannt/);
     });
-    (0, node_test_1.it)("Phase 1d: blocks conservatively (no hidden fixed fallback) when the dynamic reserve is not yet learnable", () => {
+    (0, node_test_1.it)("unbekannte Reserve sperrt den Netzausgleich nicht", () => {
         const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, requiredSocAtPvEndPct: null });
-        strict_1.default.equal(r.allowed, false);
-        strict_1.default.equal(r.maxDischargeW, 0);
-        strict_1.default.equal(r.priceAllowed, true);
-        strict_1.default.equal(r.socAllowed, false);
-        strict_1.default.match(r.reasonDe, /Nacht-Reserve noch nicht ausreichend gelernt/);
-    });
-    (0, node_test_1.it)("Phase 1d: unknown reserve is diagnosed distinctly from an unknown/insufficient SOC", () => {
-        const rReserveUnknown = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({
-            ...base,
-            requiredSocAtPvEndPct: null,
-        });
-        const rSocTooLow = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, socPct: 30 });
-        strict_1.default.notEqual(rReserveUnknown.reasonDe, rSocTooLow.reasonDe);
+        strict_1.default.equal(r.allowed, true);
     });
     (0, node_test_1.it)("never returns a negative or non-integer budget", () => {
         const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, configuredMaxDischargeW: -10 });
@@ -105,8 +90,8 @@ const battery_opportunity_cost_js_1 = require("./battery_opportunity_cost.js");
             strict_1.default.equal(r.allowed, false);
             strict_1.default.equal(r.priceAllowed, false);
         });
-        (0, node_test_1.it)("Opportunity-Cost kann Reserve-Sperre nicht aushebeln", () => {
-            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, socPct: 30, opportunityCostCtPerKwh: 0 });
+        (0, node_test_1.it)("unbekannter SOC bleibt gesperrt, auch bei Opportunity-Cost 0", () => {
+            const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({ ...base, socPct: null, opportunityCostCtPerKwh: 0 });
             strict_1.default.equal(r.allowed, false);
             strict_1.default.equal(r.socAllowed, false);
         });
@@ -180,15 +165,14 @@ const battery_opportunity_cost_js_1 = require("./battery_opportunity_cost.js");
             strict_1.default.equal(r.economicsUsable, true);
             strict_1.default.equal(r.economicsAllowed, false);
         });
-        (0, node_test_1.it)("Economics öffnet Reserve-Sperre nicht", () => {
+        (0, node_test_1.it)("Economics: Reserve sperrt den Netzausgleich nicht mehr (nur Netto zählt)", () => {
             const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({
                 ...base,
                 socPct: 20,
                 priceNowCt: 50,
                 economics: eco,
             });
-            strict_1.default.equal(r.allowed, false);
-            strict_1.default.equal(r.socAllowed, false);
+            strict_1.default.equal(r.allowed, true);
         });
         (0, node_test_1.it)("Economics nicht mehr belastbar → automatisch 30-ct-Fallback", () => {
             const r = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({
@@ -212,8 +196,8 @@ const battery_opportunity_cost_js_1 = require("./battery_opportunity_cost.js");
                 configuredMaxDischargeW: 3000,
                 opportunityCostCtPerKwh: 5,
             });
-            strict_1.default.equal(rReserve.allowed, false);
-            strict_1.default.equal(rReserve.socAllowed, false);
+            // Seit 0.4.54 sperrt die Reserve den Netzausgleich nicht mehr (nur Preis + Hardware-Minimum).
+            strict_1.default.equal(rReserve.allowed, true);
             // Preis unter Mindestpreis — bleibt vorrangig vor jedem Opportunity-Abschlag.
             const rPrice = (0, battery_discharge_authority_js_1.resolveBatteryDischargeAuthorization)({
                 priceNowCt: 20,

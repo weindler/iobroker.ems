@@ -18,7 +18,7 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 		assert.equal(r.maxDischargeW, 5000);
 		assert.equal(r.priceAllowed, true);
 		assert.equal(r.socAllowed, true);
-		assert.match(r.reasonDe, /SOC 60 % > dynamische Reserve 30 %/);
+		assert.match(r.reasonDe, /SOC 60 %/);
 	});
 
 	it("preserves battery at 15 ct and allows whole-house support at 40 ct above dynamic reserve", () => {
@@ -45,13 +45,10 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 		assert.equal(r.priceAllowed, false);
 	});
 
-	it("blocks at/below the dynamic reserve even when price allows", () => {
-		const r = resolveBatteryDischargeAuthorization({ ...base, socPct: 30 });
-		assert.equal(r.allowed, false);
-		assert.equal(r.maxDischargeW, 0);
-		assert.equal(r.priceAllowed, true);
-		assert.equal(r.socAllowed, false);
-		assert.match(r.reasonDe, /dynamische Reserve 30 %/);
+	it("Netzausgleich wird nicht durch die Reserve gesperrt (nur Preis zählt)", () => {
+		const r = resolveBatteryDischargeAuthorization({ ...base, socPct: 30, requiredSocAtPvEndPct: 100 });
+		assert.equal(r.allowed, true);
+		assert.equal(r.socAllowed, true);
 	});
 
 	it("blocks with unknown SOC", () => {
@@ -63,22 +60,9 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 		assert.match(r.reasonDe, /SOC unbekannt/);
 	});
 
-	it("Phase 1d: blocks conservatively (no hidden fixed fallback) when the dynamic reserve is not yet learnable", () => {
+	it("unbekannte Reserve sperrt den Netzausgleich nicht", () => {
 		const r = resolveBatteryDischargeAuthorization({ ...base, requiredSocAtPvEndPct: null });
-		assert.equal(r.allowed, false);
-		assert.equal(r.maxDischargeW, 0);
-		assert.equal(r.priceAllowed, true);
-		assert.equal(r.socAllowed, false);
-		assert.match(r.reasonDe, /Nacht-Reserve noch nicht ausreichend gelernt/);
-	});
-
-	it("Phase 1d: unknown reserve is diagnosed distinctly from an unknown/insufficient SOC", () => {
-		const rReserveUnknown = resolveBatteryDischargeAuthorization({
-			...base,
-			requiredSocAtPvEndPct: null,
-		});
-		const rSocTooLow = resolveBatteryDischargeAuthorization({ ...base, socPct: 30 });
-		assert.notEqual(rReserveUnknown.reasonDe, rSocTooLow.reasonDe);
+		assert.equal(r.allowed, true);
 	});
 
 	it("never returns a negative or non-integer budget", () => {
@@ -115,8 +99,8 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 			assert.equal(r.priceAllowed, false);
 		});
 
-		it("Opportunity-Cost kann Reserve-Sperre nicht aushebeln", () => {
-			const r = resolveBatteryDischargeAuthorization({ ...base, socPct: 30, opportunityCostCtPerKwh: 0 });
+		it("unbekannter SOC bleibt gesperrt, auch bei Opportunity-Cost 0", () => {
+			const r = resolveBatteryDischargeAuthorization({ ...base, socPct: null, opportunityCostCtPerKwh: 0 });
 			assert.equal(r.allowed, false);
 			assert.equal(r.socAllowed, false);
 		});
@@ -198,15 +182,14 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 			assert.equal(r.economicsAllowed, false);
 		});
 
-		it("Economics öffnet Reserve-Sperre nicht", () => {
+		it("Economics: Reserve sperrt den Netzausgleich nicht mehr (nur Netto zählt)", () => {
 			const r = resolveBatteryDischargeAuthorization({
 				...base,
 				socPct: 20,
 				priceNowCt: 50,
 				economics: eco,
 			});
-			assert.equal(r.allowed, false);
-			assert.equal(r.socAllowed, false);
+			assert.equal(r.allowed, true);
 		});
 
 		it("Economics nicht mehr belastbar → automatisch 30-ct-Fallback", () => {
@@ -232,8 +215,8 @@ describe("battery discharge authority (Phase 1b/1d)", () => {
 				configuredMaxDischargeW: 3000,
 				opportunityCostCtPerKwh: 5,
 			});
-			assert.equal(rReserve.allowed, false);
-			assert.equal(rReserve.socAllowed, false);
+			// Seit 0.4.54 sperrt die Reserve den Netzausgleich nicht mehr (nur Preis + Hardware-Minimum).
+			assert.equal(rReserve.allowed, true);
 
 			// Preis unter Mindestpreis — bleibt vorrangig vor jedem Opportunity-Abschlag.
 			const rPrice = resolveBatteryDischargeAuthorization({

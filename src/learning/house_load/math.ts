@@ -77,7 +77,9 @@ function finalizeCell(acc: ProfileAccumulator | undefined): ProfileCell | null {
 	if (filtered.length < MIN_PROFILE_SAMPLES) {
 		return null;
 	}
-	const avgW = roundW(filtered.reduce((a, b) => a + b, 0) / filtered.length);
+	// Median statt Mittelwert: einzelne Tage mit Wallbox-/Heizstab-/Batterieladung in der Historie
+	// (nur die aktuelle Stunde wird dekomponiert) dürfen das Profil nicht dominieren.
+	const avgW = median(filtered) ?? 0;
 	return {
 		avgW,
 		samples: filtered.length,
@@ -120,7 +122,7 @@ function avgFromAccumulators(cells: ProfileAccumulator[]): number | null {
 	if (values.length < MIN_PROFILE_SAMPLES) {
 		return null;
 	}
-	return roundW(values.reduce((a, b) => a + b, 0) / values.length);
+	return median(values);
 }
 
 function collectCells(

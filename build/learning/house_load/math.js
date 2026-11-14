@@ -1,6 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorResult = exports.disabledResult = exports.noSourceResult = exports.computeHouseLoadLearning = exports.countForecastFallbacks = exports.buildDayForecast = exports.lookupSegmentProfile = exports.accumulatorsToProfileJson = exports.buildProfileAccumulators = exports.confidencePctFromSamples = exports.cellConfidence = void 0;
+exports.cellConfidence = cellConfidence;
+exports.confidencePctFromSamples = confidencePctFromSamples;
+exports.buildProfileAccumulators = buildProfileAccumulators;
+exports.accumulatorsToProfileJson = accumulatorsToProfileJson;
+exports.lookupSegmentProfile = lookupSegmentProfile;
+exports.buildDayForecast = buildDayForecast;
+exports.countForecastFallbacks = countForecastFallbacks;
+exports.computeHouseLoadLearning = computeHouseLoadLearning;
+exports.noSourceResult = noSourceResult;
+exports.disabledResult = disabledResult;
+exports.errorResult = errorResult;
 const constants_1 = require("./constants");
 const history_1 = require("./history");
 const time_1 = require("./time");
@@ -12,13 +22,11 @@ function cellConfidence(samples) {
         return 0;
     return Math.round(Math.min(1, samples / constants_1.CONFIDENCE_TARGET_SAMPLES) * 1000) / 1000;
 }
-exports.cellConfidence = cellConfidence;
 function confidencePctFromSamples(samples, sampleDays) {
     const hourScore = Math.min(40, (samples / (constants_1.CONFIDENCE_TARGET_SAMPLES * 24)) * 40);
     const dayScore = Math.min(60, (sampleDays / 30) * 60);
     return Math.round(Math.min(100, hourScore + dayScore));
 }
-exports.confidencePctFromSamples = confidencePctFromSamples;
 function emptyProfile() {
     const root = {};
     for (const season of constants_1.SEASONS) {
@@ -41,7 +49,6 @@ function buildProfileAccumulators(samples) {
     }
     return acc;
 }
-exports.buildProfileAccumulators = buildProfileAccumulators;
 function finalizeCell(acc) {
     if (!acc || acc.count < constants_1.MIN_PROFILE_SAMPLES) {
         return null;
@@ -50,7 +57,9 @@ function finalizeCell(acc) {
     if (filtered.length < constants_1.MIN_PROFILE_SAMPLES) {
         return null;
     }
-    const avgW = roundW(filtered.reduce((a, b) => a + b, 0) / filtered.length);
+    // Median statt Mittelwert: einzelne Tage mit Wallbox-/Heizstab-/Batterieladung in der Historie
+    // (nur die aktuelle Stunde wird dekomponiert) dürfen das Profil nicht dominieren.
+    const avgW = median(filtered) ?? 0;
     return {
         avgW,
         samples: filtered.length,
@@ -83,7 +92,6 @@ function accumulatorsToProfileJson(acc) {
     }
     return profile;
 }
-exports.accumulatorsToProfileJson = accumulatorsToProfileJson;
 function avgFromAccumulators(cells) {
     const values = [];
     for (const c of cells) {
@@ -92,7 +100,7 @@ function avgFromAccumulators(cells) {
     if (values.length < constants_1.MIN_PROFILE_SAMPLES) {
         return null;
     }
-    return roundW(values.reduce((a, b) => a + b, 0) / values.length);
+    return median(values);
 }
 function collectCells(acc, predicate, segment) {
     const out = [];
@@ -173,7 +181,6 @@ function lookupSegmentProfile(acc, season, weekday, dayType, segment) {
     }
     return { avgW: null, confidence: 0, source: "none", fallbackLevel: "none" };
 }
-exports.lookupSegmentProfile = lookupSegmentProfile;
 function buildDayForecast(acc, dayOffset) {
     const ctx = (0, time_1.contextForDayOffset)(dayOffset);
     const segments = {};
@@ -194,7 +201,6 @@ function buildDayForecast(acc, dayOffset) {
         segments,
     };
 }
-exports.buildDayForecast = buildDayForecast;
 function countForecastFallbacks(forecast) {
     let n = 0;
     for (const segment of constants_1.SEGMENTS) {
@@ -208,7 +214,6 @@ function countForecastFallbacks(forecast) {
     }
     return n;
 }
-exports.countForecastFallbacks = countForecastFallbacks;
 function computeHouseLoadLearning(params) {
     const nowCtx = (0, time_1.calendarContext)(params.now);
     const acc = buildProfileAccumulators(params.samples);
@@ -264,7 +269,6 @@ function computeHouseLoadLearning(params) {
         error: "",
     };
 }
-exports.computeHouseLoadLearning = computeHouseLoadLearning;
 function noSourceResult(sourceStateId, now) {
     const nowCtx = (0, time_1.calendarContext)(now);
     const emptyForecast = buildDayForecast(emptyProfile(), 0);
@@ -299,7 +303,6 @@ function noSourceResult(sourceStateId, now) {
         error: "Keine Hauslast-Quelle — Admin-State oder addons.battery.mapping.consumption_w konfigurieren.",
     };
 }
-exports.noSourceResult = noSourceResult;
 function disabledResult() {
     const now = new Date();
     const r = noSourceResult("", now);
@@ -309,7 +312,6 @@ function disabledResult() {
         error: "House Load Learning in Admin deaktiviert.",
     };
 }
-exports.disabledResult = disabledResult;
 function errorResult(message, sourceStateId, now) {
     const r = noSourceResult(sourceStateId, now);
     return {
@@ -321,4 +323,3 @@ function errorResult(message, sourceStateId, now) {
         healthJson: { ...r.healthJson, status: "degraded", source_state_id: sourceStateId },
     };
 }
-exports.errorResult = errorResult;

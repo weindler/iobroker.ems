@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.35] – 2026-11-14
+
+### Geändert
+- Hauslast-Lernen: Profilwerte (Jahreszeit/Wochentag/Segment) nutzen den Median statt des Mittelwerts. Einzelne Tage mit Wallbox-/Heizstab-/Batterieladung in der Historie überhöhten z. B. den Samstag-Mittag (3258 W) und damit den geplanten Hausverbrauch.
+
 ## [0.4.34] – 2026-11-14
 
 ### Hinzugefügt

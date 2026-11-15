@@ -3,8 +3,12 @@
 		"name": "ems",
 		"version": "0.4.90",
 		"dataFolder": "ems.%INSTANCE%",
-		"encryptedNative": ["energyforecast_token"],
-		"protectedNative": ["energyforecast_token"],
+		"encryptedNative": [
+			"energyforecast_token"
+		],
+		"protectedNative": [
+			"energyforecast_token"
+		],
 		"news": {
 			"0.4.24": {
 				"en": "Adds a verified monthly statistics archive with backup/restore integration, persistent meter readings and daily SOC minima. Distinguishes schedules from measured charging, respects winter/off/external control in displays, and improves compact statistics and rolling forecasts.",
@@ -1699,7 +1703,8 @@
 				"de": "Erstversion: ems.0 States, Befehlseingang, nur Dryrun"
 			}
 		},
-		"title": {
+		"title": "EMS-Light",
+		"titleLang": {
 			"en": "EMS-Light",
 			"de": "EMS-Light"
 		},
@@ -1731,6 +1736,23 @@
 		],
 		"adminUI": {
 			"config": "json"
+		},
+		"keywords": [
+			"energy management",
+			"ems",
+			"pv",
+			"photovoltaic",
+			"battery",
+			"dynamic tariff",
+			"tibber",
+			"evcc",
+			"wallbox",
+			"heat pump",
+			"smart home"
+		],
+		"licenseInformation": {
+			"type": "free",
+			"license": "MIT"
 		}
 	},
 	"native": {},

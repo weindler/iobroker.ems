@@ -1,92 +1,87 @@
-# EMS-Light (`iobroker.ems`)
+![Logo](admin/ems.png)
 
-Eigenständiger ioBroker-Adapter für sicheres Energiemanagement — ohne Abhängigkeit von einem externen EMS-Server.
+# ioBroker.ems — EMS-Light
 
-**Aktuelle Version:** v0.2.26
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
----
+Energy management for ioBroker that plans PV surplus, dynamic prices and flexible loads together — and does it safely: **every device starts in dry-run**, nothing is written to hardware until you explicitly switch it to live.
 
-## Was ist EMS-Light?
+> **Status: beta.** Developed and run on one real installation (Sonnen battery, evcc wallbox, Tibber, heat rod, air conditioners). Expect rough edges on other setups. The admin UI is currently **German-first** (English translation in progress). [Deutsche Beschreibung → README.de.md](README.de.md)
 
-EMS-Light liest Messwerte, lernt aus historischen Daten, wendet Betreiber-Policies an und steuert Add-ons (Wallbox, Heizstab, Batterie, Klima) über Dryrun/Live-Gates.
+## What it does
 
-EMS-Light muss jederzeit ohne KI vollständig und sicher arbeiten. Der KI Daily Analyst und Planvergleich sind beratend; die produktive Allokation bleibt beim deterministischen Unified Planner.
+EMS-Light builds **one common daily plan** (rolling 72 h) from the PV forecast, electricity prices, learned house load and all enabled consumers, and then allocates energy to the devices:
 
-Planung läuft über den **General Operator** (Forecast → Unified Daily Plan → gemeinsame Allocation). Shadow Engine und KI-Compare bewerten Gegenwelten, besitzen aber keine Geräte- oder LIVE-Plan-Autorität.
+- **PV forecast with learning** – main forecast corrected by a learned bias and an intraday correction; [Bright Sky](https://brightsky.dev) hourly/daily data as second source and cross-check.
+- **Dynamic prices** – hourly/quarter-hour prices from your tariff integration (e.g. Tibber), optionally extended by [Energyforecast](https://www.energyforecast.de) (API token, longer look-ahead). Optional weekly comparison tariff for the statistics.
+- **Battery** – reserve for the night is learned from your real consumption, not a fixed percentage. Sonnen profile (`sonnen_em`) and a generic read-only profile. Charging from the grid is done through evcc. Optional "grid balance" (discharge only when the price makes it worthwhile) with a dynamic threshold based on the battery's replacement cost and a learned efficiency.
+- **Wallbox / EV** – via the [evcc adapter](https://github.com/evcc-io/evcc) (evcc stays the only wallbox controller).
+- **Heat rod and air conditioning** – runtime, comfort limits, shared outdoor unit power is counted once, manual operation is respected (device ownership).
+- **Measured consumers** – up to 20 measured-only loads for statistics (never switched).
+- **Statistics** – day/month/period balance, self-sufficiency, self-consumption, cost and EMS added value.
+- **Operations page** (`/adapter/ems/ems-charts.html?inst=ems.0`, also in the admin) – situation, 72 h decisions, PV forecast vs. Bright Sky vs. measured, price forecast vs. actual, battery, heat, climate, EV.
+- **Backup / restore** of configuration and learned data from the admin (download, list, delete old backups).
+- **Optional AI daily analyst** – advisory text only; it never changes the plan or switches devices.
 
----
+### Safety model
 
-## Aktueller Funktionsumfang
+| Level | Meaning |
+|---|---|
+| Global **dry-run** | plans and simulates, writes nothing to any device |
+| Global **live** + add-on **live** | a device is only written if both are live, safety checks pass and the capability is allowed |
+| Fail-safe | if the adapter loop stops, the battery is returned to a safe state (0 W, self-consumption) |
+| Fresh install / restore | always starts in dry-run |
 
-| Bereich | Status |
-|---------|--------|
-| Global Modes (`off`/`eco`/`balanced`/`comfort`/`forced`) | implementiert |
-| Policy Engine | implementiert |
-| Learning (PV-Bias, Horizon, Wetter, Preis, Hauslast, …) | implementiert |
-| Unified Plan + rollierender 72-h-Ausblick + Allocation | implementiert |
-| Energie- und Wirtschaftsstatistik | Tages-/Monats-/Zeitraumbilanz, Autarkie, Eigenverbrauch, Geräte-PV-Anteile sowie Schnell/`now` getrennt nach Sonnen-Batterie, Netz und PV/lokal |
-| Wallbox via EVCC (Telemetrie + Write/Feedback-Pfad) | implementiert; bei konfigurierten Tibber Grid Rewards einmalige Plug-in-Übergabe auf Schnell/`now` nach Wartezeit |
-| Heizstab / Klima | Runtime + Daily Plan; Klima-Hard-Off bis in den Unified Planner (restlaufzeit-/komfortabhängig) |
-| Batterie (`generic_readonly`, `sonnen_em`) | Laden über Daily Plan; Entladung über zentrale Discharge Authority im Unified Planner geplant — Live-Freigabe für Entladung in der Beta eingeschränkt |
-| Batterie-Reserve | dynamisch aus gelerntem Nachtverbrauch + `requiredSocAtPvEndPct` — kein fester 50 %-Policywert mehr |
-| AC Shared Outdoor Unit Power | gemeinsame Außengeräte-Leistung wird nur einmal gezählt (keine Doppelzählung bei mehreren Innengeräten) |
-| Device Ownership / Manual Override (Klima, Heizstab) | manuelle Bedienung erzeugt zeitlich begrenzte Freigabe für Nutzer-/Fremdsteuerung; EMS schreibt währenddessen nicht zurück (Safety/Fault übersteuert immer) |
-| Measured Consumers (bis zu 20 Verbraucher) | rein messend/Statistik — EMS schaltet diese Geräte **nie** und rechnet sie **nie** zum Hausverbrauch hinzu |
-| Backup / Support / Restore / Diagnosemodus | implementiert |
-| Add-on-Governance (aktiv + KI-Freigabe) | implementiert |
-| KI Daily Analyst + Plan-A/Plan-B-Compare | implementiert, advisory only |
-| VIS | sieben Bereiche: Betrieb, Statistik, Batterie, Heizstab/Wärme, Klima, Auto/Wallbox, Grid Balance |
-| Geräte-/Herstellerkatalog | nur tatsächlich implementierte Templates, mit generischem Fallback |
-| Lokale App-Grundlage | read-only Core-Vertrag und Snapshot; kein zweiter Steuerpfad |
-| Weitere Batterie-Profile | *geplant* |
+## Requirements
 
----
+- ioBroker with **js-controller ≥ 5.0.19**, **admin ≥ 6.0.0**, **Node.js ≥ 20**
+- A PV, grid and house-load source as ioBroker states (mapped in the admin — any adapter works)
+- Optional, depending on your hardware: [evcc](https://github.com/evcc-io/evcc) adapter, a Sonnen adapter, a Tibber adapter, [Bright Sky](https://github.com/ioBroker/ioBroker.brightsky) adapter, Home Assistant adapter (Tibber Grid Rewards)
+- Runs in compact mode. Plan for roughly 400–600 MB RSS on large installations.
 
 ## Installation
 
-Auf einem ioBroker-Host (Beispiel Branch-Commit):
+Until the adapter is in the repository, install from GitHub:
 
 ```bash
-iobroker url weindler/iobroker.ems#<commit-hash>
+iobroker url https://github.com/weindler/iobroker.ems
 ```
 
-Oder lokal:
+Then add an instance, open the settings and work through the tabs: **Global** (data sources, devices, price source, strategy) → device tabs (keep them in dry-run) → **Statistics** / **Learning**. Check the operations page for a day or two before switching anything to live.
 
-```bash
-git clone git@github.com:weindler/iobroker.ems.git
-cd iobroker.ems
-npm ci
-npm run build
-iobroker dev install .
-```
+## Data and privacy
 
----
+The adapter runs locally. Outgoing connections happen **only** for the features you enable: Bright Sky (weather/solar), Energyforecast (token, stored encrypted), SMARD/Verivox (optional price statistics/comparison tariff), OpenAI (optional AI analyst, key required). Learned data is stored in the adapter's own data folder `ems.<instance>`; no data is sent to the author.
 
-## Entwicklung
+## Documentation
 
-```bash
-npm run check
-npm test
-npm run build
-```
+Developer and design documents are in [docs/](docs/README.md) (German).
 
-Details: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+## Changelog
 
----
+The full history (German) is in [CHANGELOG.md](CHANGELOG.md).
 
-## Dokumentation
+### **WORK IN PROGRESS**
+- PV forecast chart on the operations page: EMS forecast, Bright Sky and measured values; week view with daily totals
+- Price chart: look-back of 48 h with stored real prices and the earlier Energyforecast forecast
 
-Einstieg: **[docs/README.md](docs/README.md)**.
+### 0.4.90 (2026-11-15)
+- Lower memory churn in the planning run (time-zone conversion, forecast source bounds, forecast revisions)
 
-| Dokument | Inhalt |
-|----------|--------|
-| [docs/README.md](docs/README.md) | Index und Roadmap-Priorität |
-| [docs/EMS_LIGHT_ONE_PLAN.md](docs/EMS_LIGHT_ONE_PLAN.md) | Verbindlicher One-Plan-Vertrag |
-| [docs/EMS_LIGHT_WEEKEND_IMPLEMENTATION.md](docs/EMS_LIGHT_WEEKEND_IMPLEMENTATION.md) | Nachtreserve, Datenhaltung, 72 h, Shadow v4 und Teststatus |
-| [CHANGELOG.md](CHANGELOG.md) | Änderungen |
+### 0.4.89 (2026-11-15)
+- Price look-back and PV week view
 
----
+### 0.4.87 (2026-11-15)
+- Battery efficiency is now learned from a multi-day balance instead of single-day sessions
 
-## Lizenz
+## License
 
-MIT — siehe [LICENSE](LICENSE).
+MIT License
+
+Copyright (c) 2026 weindler
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

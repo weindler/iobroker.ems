@@ -69,7 +69,7 @@ export function resolveRequiredSocAtPvEndPct(
 		requiredSocAtPvEndPct,
 		requiredReserveKwh,
 		reasonDe: capped
-			? `Reserve ${requiredReserveKwh.toFixed(1)} kWh (${requiredSocAtPvEndPct.toFixed(0)} %) — gelernt ${input.predictedNightConsumptionKwh.toFixed(1)} kWh + ${Math.round(margin * 100)} % Aufschlag würde ${rawReserveKwh.toFixed(1)} kWh ergeben, auf nutzbare Kapazität ${input.usableCapacityKwh.toFixed(1)} kWh begrenzt.`
-			: `Reserve ${requiredReserveKwh.toFixed(1).replace(".", ",")} kWh (${requiredSocAtPvEndPct.toFixed(0)} %) aus gelerntem Nachtverbrauch ${input.predictedNightConsumptionKwh.toFixed(1).replace(".", ",")} kWh + ${Math.round(margin * 100)} % Sicherheitsaufschlag.`,
+			? `Reserve ${requiredReserveKwh.toFixed(1).replace(".", ",")} kWh (${requiredSocAtPvEndPct.toFixed(0)} %): Das Haus braucht nachts etwa ${input.predictedNightConsumptionKwh.toFixed(1).replace(".", ",")} kWh, mit ${Math.round(margin * 100)} % Puffer wären das ${rawReserveKwh.toFixed(1).replace(".", ",")} kWh. Mehr als die nutzbare Batteriegröße (${input.usableCapacityKwh.toFixed(1).replace(".", ",")} kWh) geht nicht. Das ist ein Planungsziel für das Ende der PV-Zeit, keine Entladegrenze.`
+			: `Reserve ${requiredReserveKwh.toFixed(1).replace(".", ",")} kWh (${requiredSocAtPvEndPct.toFixed(0)} %): Das Haus braucht nachts etwa ${input.predictedNightConsumptionKwh.toFixed(1).replace(".", ",")} kWh, dazu ${Math.round(margin * 100)} % Puffer. Das ist ein Planungsziel für das Ende der PV-Zeit, keine Entladegrenze.`,
 	};
 }

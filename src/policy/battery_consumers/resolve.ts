@@ -66,7 +66,7 @@ export function resolveBatteryConsumerAccess(input: ResolveBatteryConsumerAccess
 		allowed: true,
 		reasonDe: rule.onlyWhenCritical
 			? "Batterie für kritischen Verbraucherbedarf freigegeben."
-			: "Automatik aktiv — finale Entladung nach Preis, dynamischer Reserve und Hardwarelimit.",
+			: "Automatik aktiv — die Batterie darf versorgen, wenn Strompreis und Gerätegrenzen es zulassen.",
 	};
 }
 

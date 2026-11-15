@@ -143,7 +143,7 @@ function buildLowPvThenRecoverySlots(opts) {
         strict_1.default.equal(r.predictedConsumptionUntilNextPvKwh, 5);
         strict_1.default.ok(r.requiredSocAtPvEndPct !== null && r.requiredSocAtPvEndPct > 0);
         strict_1.default.equal(r.nextReliablePvIso, null);
-        strict_1.default.match(r.reasonDe, /gelernter Nachtverbrauch/);
+        strict_1.default.match(r.reasonDe, /gelernten Nachtverbrauch/);
     });
     (0, node_test_1.it)("real historical consumption acts as a floor when the forecast is more optimistic", () => {
         const slots = buildLowPvThenRecoverySlots({
@@ -164,7 +164,7 @@ function buildLowPvThenRecoverySlots(opts) {
             contributionTargetSocPct: null,
         });
         strict_1.default.equal(r.predictedConsumptionUntilNextPvKwh, 8);
-        strict_1.default.match(r.reasonDe, /max\(Forecast/);
+        strict_1.default.match(r.reasonDe, /der höhere Wert gilt/);
     });
     (0, node_test_1.it)("never returns a hidden fixed fallback when both forecast and learning are missing", () => {
         const r = (0, battery_reserve_target_js_1.resolveCentralBatteryReserveTarget)({
@@ -181,7 +181,7 @@ function buildLowPvThenRecoverySlots(opts) {
         strict_1.default.equal(r.requiredReserveKwh, null);
         strict_1.default.equal(r.energyToTargetKwh, null);
         strict_1.default.equal(r.estimatedBatteryEmptyAtIso, null);
-        strict_1.default.match(r.reasonDe, /Weder Forecast noch gelernter Verbrauch/);
+        strict_1.default.match(r.reasonDe, /Noch keine Verbrauchsprognose/);
     });
     (0, node_test_1.it)("the existing battery.charge contribution target is combined in (never lowers the result)", () => {
         const slots = buildLowPvThenRecoverySlots({

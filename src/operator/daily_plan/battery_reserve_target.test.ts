@@ -162,7 +162,7 @@ describe("central battery reserve target", () => {
 		assert.equal(r.predictedConsumptionUntilNextPvKwh, 5);
 		assert.ok(r.requiredSocAtPvEndPct !== null && r.requiredSocAtPvEndPct > 0);
 		assert.equal(r.nextReliablePvIso, null);
-		assert.match(r.reasonDe, /gelernter Nachtverbrauch/);
+		assert.match(r.reasonDe, /gelernten Nachtverbrauch/);
 	});
 
 	it("real historical consumption acts as a floor when the forecast is more optimistic", () => {
@@ -184,7 +184,7 @@ describe("central battery reserve target", () => {
 			contributionTargetSocPct: null,
 		});
 		assert.equal(r.predictedConsumptionUntilNextPvKwh, 8);
-		assert.match(r.reasonDe, /max\(Forecast/);
+		assert.match(r.reasonDe, /der höhere Wert gilt/);
 	});
 
 	it("never returns a hidden fixed fallback when both forecast and learning are missing", () => {
@@ -202,7 +202,7 @@ describe("central battery reserve target", () => {
 		assert.equal(r.requiredReserveKwh, null);
 		assert.equal(r.energyToTargetKwh, null);
 		assert.equal(r.estimatedBatteryEmptyAtIso, null);
-		assert.match(r.reasonDe, /Weder Forecast noch gelernter Verbrauch/);
+		assert.match(r.reasonDe, /Noch keine Verbrauchsprognose/);
 	});
 
 	it("the existing battery.charge contribution target is combined in (never lowers the result)", () => {

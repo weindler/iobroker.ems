@@ -34,7 +34,7 @@ const reserve_js_1 = require("./reserve.js");
         });
         strict_1.default.equal(r.requiredSocAtPvEndPct, 100);
         strict_1.default.equal(r.requiredReserveKwh, 10);
-        strict_1.default.match(r.reasonDe, /Kapazität/);
+        strict_1.default.match(r.reasonDe, /Batteriegröße/);
     });
     (0, node_test_1.it)("returns null (no hidden fixed fallback) when night consumption is unknown", () => {
         const r = (0, reserve_js_1.resolveRequiredSocAtPvEndPct)({

@@ -358,7 +358,7 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, /label:"AKTIV"/);
 		assert.match(visHtml, /label:"BEREIT"/);
 		assert.match(visHtml, /label:"BLOCKIERT"/);
-		assert.match(visHtml, /GB preislich /);
+		assert.match(visHtml, /Netzausgleich preislich /);
 		assert.match(visHtml, /Netzausgleich ab /);
 		assert.match(visHtml, /price_below_minimum:"Preis unter Schwelle"/);
 		assert.match(visHtml, /planner_budget_zero:"Kein Entladebudget"/);
@@ -393,9 +393,9 @@ describe("VIS operations dashboard", () => {
 		assert.match(visHtml, />mittel</);
 		assert.match(visHtml, />teuer</);
 		assert.match(visHtml, />sehr teuer</);
-		assert.match(visHtml, /GB-Schwelle/);
+		assert.match(visHtml, /Preisschwelle Netzausgleich/);
 		assert.equal(visHtml.includes('s.gbPriceOk?"#3fb95099"'), false);
-		assert.equal(visHtml.includes("GB preislich ok"), false);
+		assert.equal(visHtml.includes("Netzausgleich preislich ok"), false);
 		assert.equal(visHtml.includes(">normal</"), false);
 		assert.match(visHtml, /function visPriceBand/);
 		assert.match(visHtml, /grid-template-columns:minmax\(310px,410px\) minmax\(200px,1fr\) minmax\(220px,28%\)/);
@@ -452,7 +452,7 @@ it("Boiler-Learning compact is cycle-only; Restzeit bevorzugt thermal_runtime mi
 		assert.match(visHtml, /visAgendaBuckets/);
 		assert.match(visHtml, /visBatteryPlanLine/);
 		assert.match(visHtml, /visCheapPhaseLabel/);
-		assert.match(visHtml, /PREIS FREI/);
+		assert.match(visHtml, /Preis passt/);
 	});
 });
 
@@ -548,7 +548,7 @@ describe("VIS battery / grid / GB presentation", () => {
 
 		const blocked = ops.visGbStatus(snap({ gbEnabled: true, gbReason: "addon_dryrun" }));
 		assert.equal(blocked.label, "BLOCKIERT");
-		assert.equal(blocked.reason, "Batterie Dryrun");
+		assert.equal(blocked.reason, "Batterie im Testbetrieb");
 
 		const price = ops.visGbStatus(
 			snap({ gbEnabled: true, gbReason: "price_below_minimum", gbPrice: 24.3, gbMin: 30 }),
@@ -660,8 +660,8 @@ describe("VIS battery / grid / GB presentation", () => {
 
 		assert.match(visHtml, /visPriceAxisRange\(prices,gbMin\)/);
 		assert.match(visHtml, /price_min_ct_kwh/);
-		assert.match(visHtml, /GB preislich erlaubt/);
-		assert.match(visHtml, /GB gesperrt/);
+		assert.match(visHtml, /Netzausgleich preislich erlaubt/);
+		assert.match(visHtml, /Netzausgleich nicht erlaubt/);
 		const axisFn = visHtml.slice(visHtml.indexOf("function visPriceAxisRange"), visHtml.indexOf("function visClimateNote"));
 		assert.equal(/gbMin\s*===\s*30|axisMin\s*=\s*30/.test(axisFn), false);
 	});
@@ -856,11 +856,11 @@ describe("VIS battery / grid / GB presentation", () => {
 		assert.equal(ops.visCheapPhaseLabel(slots.map((s) => ({ ...s, priceCt: 24 })), Date.parse("2026-08-17T21:00:00.000Z")), null);
 		assert.equal(
 			ops.visPriceHeadSummary(31.6, "00:00–05:00", 30, true),
-			"Jetzt 31,6 ct | nächste günstige Phase 00:00–05:00 | GB ab 30,0 ct → PREIS FREI",
+			"Jetzt 31,6 ct | nächste günstige Phase 00:00–05:00 | Netzausgleich ab 30,0 ct → Preis passt",
 		);
 		assert.equal(
 			ops.visPriceHeadSummary(24.3, null, 30, false),
-			"Jetzt 24,3 ct | GB ab 30,0 ct → PREIS GESPERRT",
+			"Jetzt 24,3 ct | Netzausgleich ab 30,0 ct → Preis zu niedrig",
 		);
 	});
 

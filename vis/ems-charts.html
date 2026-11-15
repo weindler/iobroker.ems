@@ -1018,7 +1018,7 @@ function resolveExecPhase(currentPlanned,hasFuture,liveOk,hwActive){
 }
 function execBadge(phase){
 	if(phase==="running")return{cls:"on",label:"Läuft"};
-	if(phase==="dryrun")return{cls:"dryrun",label:"Dryrun"};
+	if(phase==="dryrun")return{cls:"dryrun",label:"Testbetrieb"};
 	if(phase==="planned")return{cls:"plan",label:"Geplant"};
 	return{cls:"idle",label:"Pausiert"};
 }
@@ -1150,7 +1150,7 @@ function resolveClimateUnitDisplay(unitIndex){
 			phase:phase,badge:{exec:execBadgeObj,op:{cls:outside?"plan":badge.cls,label:opLabel}},demand:demand,
 			operationLine:opLabel,
 			nowLine:execNowLine(phase,alloc,running?"eingeschaltet":"aus"),
-			note:shortNote(reasonDe||(phase==="dryrun"?"Dryrun — keine realen Klima-Writes.":"Klima im Dryrun."),110),
+			note:shortNote(reasonDe||(phase==="dryrun"?"Testbetrieb — es wird nichts geschaltet.":"Klima im Testbetrieb."),110),
 			planLine:plan,heuteLine:heute,nextLine:nextLine
 		};
 	}
@@ -1618,13 +1618,13 @@ function visTibberRewardsView(s){
 		return{show:true,cls:"waiting",title:"TIBBER-ÜBERGABE LÄUFT",detail:"EMS setzt EVCC auf Schnell/now; anschließend kann Tibber übernehmen.",side:side};
 	}
 	if(status==="already_now"||status==="already_prepared"){
-		return{show:true,cls:"waiting",title:"GRID REWARDS BEREIT",detail:"EVCC ist vorbereitet. Tibber startet oder pausiert erst bei einem echten Grid-Rewards-Signal.",side:side};
+		return{show:true,cls:"waiting",title:"TIBBER-AUTOLADUNG BEREIT",detail:"Das Auto wird über evcc geladen. Tibber startet oder pausiert die Ladung selbst; das EMS greift nicht ein.",side:side};
 	}
 	if(!configured)return{show:true,cls:"neutral",title:"KEINE LADUNG AKTIV",detail:"Weder EMS noch Grid Rewards gibt aktuell einen Ladebefehl.",side:""};
 	if(status==="already_connected_at_start"){
 		return{show:true,cls:"ready",title:"GRID REWARDS EINGERICHTET",detail:"Fahrzeug war beim Adapterstart schon verbunden · für eine neue Übergabe einmal ab- und wieder anstecken.",side:side};
 	}
-	return{show:true,cls:"waiting",title:"GRID REWARDS BEREIT",detail:"Fahrzeug ist angesteckt. EMS wartet auf das echte Grid-Rewards-Signal; ohne Signal wird keine Tibber-Ladung behauptet.",side:side};
+	return{show:true,cls:"waiting",title:"TIBBER-AUTOLADUNG BEREIT",detail:"Fahrzeug ist angesteckt. EMS wartet auf das echte Grid-Rewards-Signal; ohne Signal wird keine Tibber-Ladung behauptet.",side:side};
 }
 function visFiniteNumber(v){
 	if(v===null||v===undefined||v==="")return null;
@@ -1722,8 +1722,8 @@ function visGbBlockReasonDe(code){
 		ev_now_grid_charge:"EV lädt vom Netz",
 		ev_conflict:"EV-Konflikt",
 		fault_lockout:"Störung",
-		global_dryrun:"Global Dryrun",
-		addon_dryrun:"Batterie Dryrun",
+		global_dryrun:"Alles im Testbetrieb",
+		addon_dryrun:"Batterie im Testbetrieb",
 		source_stale:"Quelle veraltet",
 		source_offline:"Quelle offline",
 		governance:"Governance",
@@ -2069,7 +2069,7 @@ function visPriceHeadSummary(nowCt,cheapLabel,gbMin,gbAllowed){
 	if(cheapLabel)bits.push("nächste günstige Phase "+cheapLabel);
 	if(gbMin!=null&&isFinite(gbMin)){
 		var frei=gbAllowed===true||(gbAllowed!==false&&nowCt!=null&&nowCt>=gbMin);
-		bits.push("GB ab "+Number(gbMin).toFixed(1).replace(".",",")+" ct → "+(frei?"PREIS FREI":"PREIS GESPERRT"));
+		bits.push("Netzausgleich ab "+Number(gbMin).toFixed(1).replace(".",",")+" ct → "+(frei?"Preis passt":"Preis zu niedrig"));
 	}
 	return bits.join(" | ");
 }
@@ -2198,7 +2198,7 @@ function visBatteryDayLines(s){
 	var strat=visFirstSentence(s.strategyDe);
 	if(strat)lines.push(strat);
 	if(s.minSocPct!=null&&isFinite(s.minSocPct)&&!/Reserve|Nachtreserve/i.test(strat)){
-		lines.push("Mindestladung "+Math.round(s.minSocPct)+" % (darunter entlädt die Batterie nicht)");
+		lines.push("Nachtreserve "+Math.round(s.minSocPct)+" %: Ziel für das Ende der PV-Zeit, keine Entladegrenze");
 	}
 	if(s.gridWindowLabel)lines.push("Netzladung "+s.gridWindowLabel);
 	else if(s.hasPvChargeWindow)lines.push("Lädt mit PV-Überschuss");
@@ -2213,7 +2213,7 @@ function visBatteryDayLines(s){
 	}
 	if(s.todayChargedKwh!=null&&isFinite(s.todayChargedKwh))lines.push("Heute geladen "+visNumberDe(s.todayChargedKwh,2)+" kWh");
 	if(s.expectedEndSocPct!=null&&isFinite(s.expectedEndSocPct))lines.push("Zum Tagesende voraussichtlich "+Math.round(s.expectedEndSocPct)+" %");
-	if(s.availableToMinKwh!=null&&isFinite(s.availableToMinKwh)&&s.availableToMinKwh>=0)lines.push("Bis zur Mindestladung nutzbar: "+visNumberDe(s.availableToMinKwh,1)+" kWh");
+	if(s.availableToMinKwh!=null&&isFinite(s.availableToMinKwh)&&s.availableToMinKwh>=0)lines.push("Über der Nachtreserve verfügbar: "+visNumberDe(s.availableToMinKwh,1)+" kWh");
 	return lines;
 }
 function visCarDayLines(s){
@@ -2479,7 +2479,7 @@ function renderPriceBoard(){
 	var gateLine="";
 	if(nowPrice!==null&&gbMin!==null){
 		var allowed=gbAllowed===true||(gbAllowed!==false&&nowPrice>=gbMin);
-		gateLine=nowPrice.toFixed(1).replace(".",",")+" ct → GB preislich "+(allowed?"erlaubt":"gesperrt");
+		gateLine=nowPrice.toFixed(1).replace(".",",")+" ct → Netzausgleich preislich "+(allowed?"erlaubt":"nicht erlaubt");
 	}
 	var min=meta.dayMin,max=meta.dayMax;
 	var minLine=min&&num(min.priceCt)!==null?("Min "+Number(min.priceCt).toFixed(1).replace(".",",")+" ct · "+fmtSmartTime(min.startIso)):"Min —";
@@ -2609,8 +2609,8 @@ function renderPriceBoard(){
 		var ty=yOf(gbMin);
 		thr='<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+ty.toFixed(1)+'" y2="'+ty.toFixed(1)+'" stroke="#f85149" stroke-dasharray="3 3" stroke-width="1.2"/>'
 			+'<text x="'+(W-padR)+'" y="'+(ty-3).toFixed(1)+'" text-anchor="end" fill="#f85149" font-size="8">'+esc(Number(gbMin).toFixed(1).replace(".",","))+' ct</text>'
-			+'<text x="'+(padL+4)+'" y="'+(ty-4).toFixed(1)+'" fill="#8b949e" font-size="7">GB preislich erlaubt</text>'
-			+'<text x="'+(padL+4)+'" y="'+(ty+11).toFixed(1)+'" fill="#8b949e" font-size="7">GB gesperrt</text>';
+			+'<text x="'+(padL+4)+'" y="'+(ty-4).toFixed(1)+'" fill="#8b949e" font-size="7">Netzausgleich preislich erlaubt</text>'
+			+'<text x="'+(padL+4)+'" y="'+(ty+11).toFixed(1)+'" fill="#8b949e" font-size="7">Netzausgleich nicht erlaubt</text>';
 	}
 	var span=pMax-pMin,step=[1,2,5,10,20,50].filter(function(c){return span/c<=6;})[0]||50;
 	var yLab="",tv;
@@ -2657,7 +2657,7 @@ function renderPriceBoard(){
 		+'<span><i class="ems-sw" style="background:#e3b341"></i>mittel</span>'
 		+'<span><i class="ems-sw" style="background:#f0883e"></i>teuer</span>'
 		+'<span><i class="ems-sw" style="background:#f85149"></i>sehr teuer</span>'
-		+'<span><i class="ems-sw" style="background:transparent;border-top:2px dashed #f85149;height:0;width:10px;border-radius:0"></i>GB-Schwelle</span>'
+		+'<span><i class="ems-sw" style="background:transparent;border-top:2px dashed #f85149;height:0;width:10px;border-radius:0"></i>Preisschwelle Netzausgleich</span>'
 		+'<span><i class="ems-sw" style="background:#58a6ff"></i>Batterie Netz</span>'
 		+'<span><i class="ems-sw" style="background:#d2a8ff"></i>Wallbox</span>'
 		+'<span><i class="ems-sw" style="background:#ffa657"></i>Heizstab</span>'
@@ -2717,12 +2717,12 @@ function renderLage(){
 	if(!line){el.style.display="none";el.innerHTML="";return;}
 	el.style.display="";
 	var bias=snap.appliedBiasPct;
-	var biasTxt=bias===null?'Korrektur noch in Lernphase':('Lern-Korrektur '+(bias>0?'+':'')+bias.toFixed(1).replace('.',',')+' % · Confidence '+(snap.confidencePct===null?'—':Math.round(snap.confidencePct)+' %'));
+	var biasTxt=bias===null?'Korrektur noch in Lernphase':('Anpassung an Ihre Anlage '+(bias>0?'+':'')+bias.toFixed(1).replace('.',',')+' % · Sicherheit '+(snap.confidencePct===null?'—':Math.round(snap.confidencePct)+' %'));
 	var todayDelta=snap.biasTodayPct===null?'':('<br>Abweichung heute bisher '+(snap.biasTodayPct>0?'+':'')+snap.biasTodayPct.toFixed(1).replace('.',',')+' % · nicht für die Korrektur verwendet');
 	var details='<details class="ems-q-note"'+(detailsOpen?' open':'')+'><summary>Berechnungsdetails</summary>Modell-Bias '+fmtDec(snap.modelBiasPct,1,'%')+' · 14-Tage-Trend '+fmtDec(snap.bias14dPct,1,'%')+' · Langzeitbasis '+fmtDec(snap.bias90dPct,1,'%')+'<br>Gültige Tage '+(snap.sampleDays90d===null?'—':Math.round(snap.sampleDays90d))+' · Abdeckung '+fmtDec(snap.coveragePct,0,'%')+' · Stabilität '+fmtDec(snap.stabilityPct,0,'%')+todayDelta+'</details>';
 	el.innerHTML='<div class="ems-lage-k">PV-Prognose</div><div class="ems-pv-grid">'
-		+'<div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTodayKwh,1,'kWh')+' → erwartet '+fmtDec(snap.todayKwh,1,'kWh')+(snap.actualKwh!==null?' (bisher '+fmtDec(snap.actualKwh,1,'kWh')+')':'')+'<br>'+esc(biasTxt)+(snap.intradayFactor!==null&&Math.abs(snap.intradayFactor-1)>=0.005?'<br>'+esc(snap.intradayStatus||('Rest des Tages × '+String(snap.intradayFactor).replace('.',','))):'')+(snap.profileStatus?'<br>'+esc(snap.profileStatus):'')+'</div></div>'
-		+'<div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">Rohwert '+fmtDec(snap.rawTomorrowKwh,1,'kWh')+' → erwartet '+fmtDec(snap.tomorrowKwh,1,'kWh')+'<br>'+esc(biasTxt)+'</div></div>'
+		+'<div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">Wetterdienst-Rohwert (ganzer Tag) '+fmtDec(snap.rawTodayKwh,1,'kWh')+' → erwartet '+fmtDec(snap.todayKwh,1,'kWh')+(snap.actualKwh!==null?' (bisher '+fmtDec(snap.actualKwh,1,'kWh')+')':'')+'<br>'+esc(biasTxt)+(snap.intradayFactor!==null&&Math.abs(snap.intradayFactor-1)>=0.005?'<br>'+esc(snap.intradayStatus||('Rest des Tages × '+String(snap.intradayFactor).replace('.',','))):'')+(snap.profileStatus?'<br>'+esc(snap.profileStatus):'')+'</div></div>'
+		+'<div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">Wetterdienst-Rohwert '+fmtDec(snap.rawTomorrowKwh,1,'kWh')+' → erwartet '+fmtDec(snap.tomorrowKwh,1,'kWh')+'<br>'+esc(biasTxt)+'</div></div>'
 		+'</div>'+details+'<div class="ems-pv-foot">'+esc(line)+'</div>';
 }
 
@@ -3379,8 +3379,8 @@ function addonModeStrip(addonId,label){
 	var globalMode=String(g("global.execution_mode")||"dryrun").toLowerCase();
 	var mode=String(g("addons."+addonId+".mode")||"dryrun").toLowerCase();
 	var cls=mode==="off"?"off":(mode==="dryrun"?"dryrun":(globalMode==="live"?"live":"blocked"));
-	var title=mode==="off"?"AUS":(mode==="dryrun"?"DRY-RUN":(globalMode==="live"?"LIVE":"LIVE VORBEREITET · GLOBAL DRY-RUN"));
-	var note=mode==="off"?"EMS beobachtet, plant und steuert dieses Add-on nicht.":(mode==="dryrun"?"EMS plant und zeigt mögliche Aktionen, sendet aber keine Gerätebefehle.":(globalMode==="live"?"EMS darf nach allen Sicherheitsprüfungen reale Gerätebefehle senden.":"Die globale Schreibsperre verhindert reale Gerätebefehle."));
+	var title=mode==="off"?"AUS":(mode==="dryrun"?"TESTBETRIEB":(globalMode==="live"?"LIVE":"BEREIT · GLOBAL IM TESTBETRIEB"));
+	var note=mode==="off"?"EMS beobachtet, plant und steuert dieses Add-on nicht.":(mode==="dryrun"?"Testbetrieb: Das EMS rechnet und zeigt, was es tun würde, schaltet aber nichts.":(globalMode==="live"?"EMS darf nach allen Sicherheitsprüfungen reale Gerätebefehle senden.":"Die globale Schreibsperre verhindert reale Gerätebefehle."));
 	return '<div class="ems-mode-strip '+cls+'"><span>'+esc(label)+':</span><b>'+esc(title)+'</b><span>'+esc(note)+'</span></div>';
 }
 function remainingRuntimeLabel(endMs){
@@ -3552,8 +3552,8 @@ function renderBatteryPage(){
 	],txt(g("addons.battery.runtime.reason_de"),""),"#58a6ff");
 	html+=questionCard("2 · Gelernter Nachtbedarf",night===null?"Nachtbedarf noch unbekannt":fmtDec(night,1,"kWh erwartet"),[
 		["Reserve-Energie",fmtDec(reserve,1,"kWh")],
-		["Nacht-Reserve (gelernt)",fmtPct(g("learning.battery_runtime.required_soc_at_pv_end_pct"))],
-		["Sicherheitsboden",fmtPct(g("addons.battery.limits.hardware_min_soc_pct"))],
+		["Nachtreserve als Ziel (gelernt)",fmtPct(g("learning.battery_runtime.required_soc_at_pv_end_pct"))],
+		["Tiefster Wert, den das Gerät zulässt",fmtPct(g("addons.battery.limits.hardware_min_soc_pct"))],
 		["Ausgewertete Tage",txt(g("learning.battery_runtime.sample_days"),"—")],
 		["Gültige Nächte",txt(g("learning.battery_runtime.night_bridge_valid_nights"),"—")],
 		["Ø Ladeleistung",fmtW(g("learning.battery_runtime.avg_charge_power_w"))],
@@ -3563,19 +3563,17 @@ function renderBatteryPage(){
 		["Zeitraum PV-Anteil",fmtDec(energyPeriod.batteryPvSharePct,1,"%")]
 	],txt(g("learning.battery_runtime.night_reserve_reason_de"),"")+" "+(next?"Eine Batterieladung ist eingeplant.":"Nach aktuellem PV-Ausblick ist keine Netzladung eingeplant."),"#58a6ff");
 	html+=questionCard("3 · Was plant EMS als Nächstes?",decision?decisionStateLabel(decision.state):(next?"EINGEPLANT":"KEINE AKTION"),[
-		["Plan-Ziel",target===null?"—":Math.round(target)+" %"],
-		["Nächstes Fenster",next?fmtSmartTime(next.t)+" · "+Math.round(next.w)+" W":"keines"],
+		["Nächstes Ladefenster",next?fmtSmartTime(next.t)+" · "+Math.round(next.w)+" W":"keines"],
 		["Geplante Energie (3 Tage)",decision?fmtDec(decision.plannedEnergyKwh,2,"kWh"):"—"],
-		["Ziel bei PV-Ende (Plan)",fmtPct(g("planner.battery_reserve.required_soc_at_pv_end_pct"))],
-		["Erwartet bei PV-Ende",(function(){var o=operatorOutlook(),b=o&&o.days&&o.days[0]&&o.days[0].battery;return b&&b.pvCoverageKnown&&b.socAtPvEndPct!=null?fmtPct(b.socAtPvEndPct):"—";})()]
+		["Erwarteter Ladestand am Ende der PV-Zeit",(function(){var o=operatorOutlook(),b=o&&o.days&&o.days[0]&&o.days[0].battery;return b&&b.pvCoverageKnown&&b.socAtPvEndPct!=null?fmtPct(b.socAtPvEndPct):"—";})()]
 	],decisionExplanation(decision,txt(g("operator.plan.battery_strategy_de"),"")),"#58a6ff");
 	html+='<details class="ems-detail"><summary>Weitere Batterie- und Reserveinformationen</summary>'+questionCard("4 · Warum?",fault?"Die Störung hat Vorrang":batteryWhy,[
 		["Planentscheidung",batteryWhy],
-		["Nachtreserve",visHumanPlannerReason("battery",g("planner.battery_reserve.reason_de"),"Die gelernte Nachtreserve wird geschützt.")],
-		["Entladeentscheidung",visHumanPlannerReason("battery",g("planner.battery_discharge.reason_de"),"Eine Entladung erfolgt nur bei ausreichender Reserve und Freigabe.")],
+		["Nachtreserve",visHumanPlannerReason("battery",g("planner.battery_reserve.reason_de"),"EMS plant so, dass abends genug für die Nacht in der Batterie ist.")],
+		["Entladeentscheidung",visHumanPlannerReason("battery",g("planner.battery_discharge.reason_de"),"Die Batterie versorgt das Haus, solange der Strompreis hoch genug ist und nichts anderes Vorrang hat.")],
 		["Pflege-Vollladung",isOn(g("learning.battery_runtime.topoff_due"))?"fällig":"nicht fällig"],
 		["Netzausgleich",gbStatus().label+(gbStatus().reason?" · "+gbStatus().reason:"")]
-	],"SOC-Grenzen, Nachtreserve, Geräteschutz und eine laufende Autoladung haben immer Vorrang vor der Preisoptimierung.","#58a6ff")+'</details>';
+	],"Geräteschutz und eine laufende Autoladung haben immer Vorrang vor der Preisoptimierung. Die Nachtreserve ist ein Planungsziel, keine feste Entladegrenze.","#58a6ff")+'</details>';
 	var gb=gbStatus(),gbActive=isOn(g("addons.battery.grid_balance.active"));
 	var eta=num(g("learning.grid_balance_economics.eta_pv_path"));
 	html+=questionCard("Netzausgleich",gbActive?"AKTIV · "+fmtW(g("addons.battery.grid_balance.effective_discharge_w")):"DERZEIT "+gb.label,[
@@ -4123,11 +4121,11 @@ function smartMeterCard(energy,scopeLabel,comparison){
 	if(comparison){
 		var rows=[],html='<div class="ems-card"><div class="ems-card-h"><b>Smart Meter · '+esc(scopeLabel)+'</b></div>';
 		["import","export"].forEach(function(key){var v=comparison[key]||{},last=comparison.last&&comparison.last[key],first=comparison.first&&comparison.first[key],color=key==="import"?"#f85149":"#3fb950";
-			html+='<div style="color:'+color+';margin:8px 0"><b>'+esc(key==="import"?"Netzbezug":"Einspeisung")+' '+esc(fmtKwhStats(v.current))+'</b><br>'+esc('Vorzeitraum '+fmtKwhStats(v.previous)+' · Änderung '+(v.deltaKwh==null?'nicht berechenbar':(v.deltaKwh>0?'+':'')+fmtKwhStats(v.deltaKwh)+(v.deltaPct==null?'':' ('+(v.deltaPct>0?'+':'')+v.deltaPct.toFixed(1).replace('.',',')+' %)')))+'</div>';
+			html+='<div style="color:'+color+';margin:8px 0"><b>'+esc(key==="import"?"Netzbezug":"Einspeisung")+' '+esc(fmtKwhStats(v.current))+'</b><br>'+esc('Vergleichszeitraum '+fmtKwhStats(v.previous)+' · Änderung '+(v.deltaKwh==null?'nicht berechenbar':(v.deltaKwh>0?'+':'')+fmtKwhStats(v.deltaKwh)+(v.deltaPct==null?'':' ('+(v.deltaPct>0?'+':'')+v.deltaPct.toFixed(1).replace('.',',')+' %)')))+'</div>';
 			if(first)rows.push([key==="import"?"Bezug · erster Zählerstand":"Einspeisung · erster Zählerstand",fmtKwhStats(first.firstKwh)+" · "+fmtDateTimeOrDash(first.firstAtIso)]);
 			if(last)rows.push([key==="import"?"Bezug · zuletzt gespeichert":"Einspeisung · zuletzt gespeichert",fmtKwhStats(last.lastKwh)+" · "+fmtDateTimeOrDash(last.atIso)+(last.resetDetected?" · Zählerreset erkannt":"")]);
 		});
-		html+='<div class="ems-rows">'+rows.map(function(r){return '<div class="l">'+esc(r[0])+'</div><div class="r">'+esc(r[1])+'</div>';}).join('')+'</div><div class="ems-note">'+esc(comparison.noteDe+' Vorzeitraum: '+comparison.previousFrom+' bis '+comparison.previousTo)+ '</div></div>';return html;
+		html+='<div class="ems-rows">'+rows.map(function(r){return '<div class="l">'+esc(r[0])+'</div><div class="r">'+esc(r[1])+'</div>';}).join('')+'</div><div class="ems-note">'+esc(comparison.noteDe+' Vergleichszeitraum: '+comparison.previousFrom+' bis '+comparison.previousTo)+ '</div></div>';return html;
 	}
 	var live=num(g("statistics.meter.live_power_w")),flow=live===null?"Jetzt: Netzleistung unbekannt":(live>10?"Jetzt: Bezug "+Math.round(live)+" W":(live<-10?"Jetzt: Einspeisung "+Math.round(Math.abs(live))+" W":"nahezu ausgeglichen"));
 	var color=live===null?"#8b949e":(live>10?"#f0883e":(live<-10?"#3fb950":"#8b949e"));

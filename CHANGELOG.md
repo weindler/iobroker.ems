@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.66] – 2026-11-15
+
+### Geändert
+- Verständlichere Texte in der Visualisierung: „Netzausgleich" statt „GB", „Testbetrieb" statt „Dry-Run", „Sicherheit" statt „Confidence", „Vergleichszeitraum" statt „Vorzeitraum".
+- Die irreführende Aussage „Mindestladung 43 % (darunter entlädt die Batterie nicht)" entfällt: Die 43 % sind das Planungsziel für das Ende der PV-Zeit, keine Entladegrenze.
+- Widersprüchliche Anzeigen „Plan-Ziel" / „Ziel bei PV-Ende (Plan)" entfernt; angezeigt wird nur der erwartete Ladestand am Ende der PV-Zeit.
+- Meldung bei fehlenden Eingangsdaten der Batterieplanung nennt jetzt genau, was fehlt.
+
 ## [0.4.65] – 2026-11-14
 
 ### Behoben

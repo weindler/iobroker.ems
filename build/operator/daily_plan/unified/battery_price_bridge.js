@@ -14,8 +14,24 @@ function planBatteryPriceBridge(input) {
     if (cap == null || cap <= 0 || input.socPct == null || input.minSocPct == null || input.maxSocPct == null ||
         etaC == null || etaC <= 0 || etaC > 1 || etaD == null || etaD <= 0 || etaD > 1 ||
         input.wearCtPerKwh == null || input.wearCtPerKwh < 0 || input.nightKwh == null ||
-        input.pvConfidencePct == null)
-        return unavailable("SOC, Nachtverbrauch, Wirkungsgrad oder Batteriekosten fehlen.");
+        input.pvConfidencePct == null) {
+        const missing = [];
+        if (cap == null || cap <= 0)
+            missing.push("Batteriegröße");
+        if (input.socPct == null)
+            missing.push("Ladestand");
+        if (input.minSocPct == null || input.maxSocPct == null)
+            missing.push("Ladegrenzen");
+        if (etaC == null || etaC <= 0 || etaC > 1 || etaD == null || etaD <= 0 || etaD > 1)
+            missing.push("Wirkungsgrad (wird noch gelernt)");
+        if (input.wearCtPerKwh == null || input.wearCtPerKwh < 0)
+            missing.push("Verschleißkosten");
+        if (input.nightKwh == null)
+            missing.push("gelernter Nachtverbrauch");
+        if (input.pvConfidencePct == null)
+            missing.push("Sicherheit der PV-Prognose");
+        return unavailable(`Noch nicht berechenbar, es fehlt: ${missing.join(", ")}.`);
+    }
     const slots = input.slots.filter(s => Date.parse(s.endIso) > input.nowMs);
     if (slots.length < 4 || slots.some(s => s.pvKwh == null || s.houseKwh == null ||
         !Number.isFinite(s.pvKwh) || !Number.isFinite(s.houseKwh)))

@@ -190,8 +190,8 @@ function findNextReliablePvAfterCurrentWindow(slots, fromIdx, pvConfidence01, _n
                 startIso: s.startIso,
                 startMs: s.startMs,
                 reasonDe: hasBound
-                    ? `Nächstes Surplus-Fenster ab ${s.startIso} (nach Pflichtbindung conf-geprüft).`
-                    : `Nächstes Surplus-Fenster ab ${s.startIso} (conf-geprüft).`,
+                    ? `Nächstes PV-Überschuss-Fenster erkannt (nach Pflichtverbrauch geprüft).`
+                    : `Nächstes PV-Überschuss-Fenster erkannt.`,
             };
         }
     }

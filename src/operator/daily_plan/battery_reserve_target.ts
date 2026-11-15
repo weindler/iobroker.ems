@@ -102,16 +102,16 @@ export function resolveCentralBatteryReserveTarget(
 	if (forecastKnown && learningKnown) {
 		predictedConsumptionUntilNextPvKwh = round3(Math.max(forecastNetDemandKwh!, learningKwh!));
 		parts.push(
-			`Verbrauch bis nächstem PV-Fenster max(Forecast ${forecastNetDemandKwh!.toFixed(1)} kWh, gelernt ${learningKwh!.toFixed(1)} kWh)`,
+			`Bis zur nächsten PV-Erzeugung rechnet EMS mit ${Math.max(forecastNetDemandKwh!, learningKwh!).toFixed(1).replace(".", ",")} kWh Hausverbrauch (Prognose ${forecastNetDemandKwh!.toFixed(1).replace(".", ",")} kWh, gelernt ${learningKwh!.toFixed(1).replace(".", ",")} kWh; der höhere Wert gilt)`,
 		);
 	} else if (forecastKnown) {
 		predictedConsumptionUntilNextPvKwh = forecastNetDemandKwh;
-		parts.push(`Verbrauch bis nächstem PV-Fenster aus Forecast: ${forecastNetDemandKwh!.toFixed(1)} kWh`);
+		parts.push(`Bis zur nächsten PV-Erzeugung rechnet EMS mit ${forecastNetDemandKwh!.toFixed(1).replace(".", ",")} kWh Hausverbrauch (Prognose)`);
 	} else if (learningKnown) {
 		predictedConsumptionUntilNextPvKwh = learningKwh;
-		parts.push(`Kein Forecast — gelernter Nachtverbrauch als Basis: ${learningKwh!.toFixed(1)} kWh`);
+		parts.push(`Keine Verbrauchsprognose — EMS rechnet mit dem gelernten Nachtverbrauch von ${learningKwh!.toFixed(1).replace(".", ",")} kWh`);
 	} else {
-		parts.push("Weder Forecast noch gelernter Verbrauch verfügbar.");
+		parts.push("Noch keine Verbrauchsprognose und kein gelernter Nachtverbrauch vorhanden.");
 	}
 
 	const reserve = resolveRequiredSocAtPvEndPct({
@@ -130,7 +130,7 @@ export function resolveCentralBatteryReserveTarget(
 		if (requiredSocAtPvEndPct === null || input.contributionTargetSocPct > requiredSocAtPvEndPct) {
 			requiredSocAtPvEndPct = round1(input.contributionTargetSocPct);
 			parts.push(
-				`Bestehendes Lade-/Reserveziel (battery.charge, ${input.contributionTargetSocPct.toFixed(0)} %) ist maßgeblich.`,
+				`Das Ladeziel aus der Batterieplanung (${input.contributionTargetSocPct.toFixed(0)} %) ist höher und gilt deshalb`,
 			);
 		}
 	}

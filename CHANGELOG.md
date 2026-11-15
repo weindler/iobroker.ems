@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.80] – 2026-11-15
+
+### Geändert
+- Betriebsseite lässt sich jetzt scrollen; der Preisverlauf wird nicht mehr zusammengedrückt, sobald oben mehr Inhalt steht.
+- PV-Prognose-Block kompakter (niedrigere Grafik, kleinere Überschriften).
+
 ## [0.4.79] – 2026-11-15
 
 ### Behoben

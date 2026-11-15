@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.96] – 2026-11-15
+
+### Geändert
+- VIS Statistik: Die Karten stehen in Spalten (ab ca. 330 px Breite je Spalte) und füllen die Lücken darunter, statt in einem starren Zwei-Spalten-Raster mit Leerraum. Auf breiten Bildschirmen entstehen so bei Bedarf mehr Spalten.
+
 ## [0.4.95] – 2026-11-15
 
 ### Geändert

@@ -109,8 +109,6 @@ export function buildDailyMessage(s: NotifySnapshot): NotifyMessage {
 		const lim = s.carLimitPct !== null ? `, Ziel ${Math.round(s.carLimitPct)} %` : "";
 		lines.push(`Auto: angesteckt, ${soc}${lim}.`);
 	}
-	const plan = (s.batteryPlanDe || "").trim();
-	if (plan) lines.push(plan.length > 160 ? `${plan.slice(0, 157)}…` : plan);
 	return { kind: "daily", title: "EMS · Tagesausblick", message: lines.join("\n"), priority: 0 };
 }
 

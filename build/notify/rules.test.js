@@ -89,3 +89,10 @@ const at = (hhmmUtc) => Date.parse(`2026-11-15T${hhmmUtc}:00Z`);
         strict_1.default.match(m.message, /noch keine Prognose/);
     });
 });
+(0, node_test_1.describe)("Tagesausblick Inhalt", () => {
+    (0, node_test_1.it)("enthält keine technischen Planungstexte", () => {
+        const m = (0, rules_1.buildDailyMessage)({ ...snap, batteryPlanDe: "Unified plant Batterie-Ladung. Noch nicht berechenbar, es fehlt: Wirkungsgrad" });
+        strict_1.default.equal(/Unified|berechenbar|Wirkungsgrad/.test(m.message), false);
+        strict_1.default.match(m.message, /Batterie: 39 %/);
+    });
+});

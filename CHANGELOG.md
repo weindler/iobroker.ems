@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.74] – 2026-11-15
+
+### Geändert
+- Tagesausblick per Push enthält keinen Batterieplan-Absatz mehr (technischer, abgeschnittener Text). Er nennt Sonne heute/morgen, Batteriestand, Strompreis und Auto.
+
 ## [0.4.73] – 2026-11-15
 
 ### Behoben

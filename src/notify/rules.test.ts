@@ -94,3 +94,11 @@ describe("notify rules", () => {
 		assert.match(m.message, /noch keine Prognose/);
 	});
 });
+
+describe("Tagesausblick Inhalt", () => {
+	it("enthält keine technischen Planungstexte", () => {
+		const m = buildDailyMessage({ ...snap, batteryPlanDe: "Unified plant Batterie-Ladung. Noch nicht berechenbar, es fehlt: Wirkungsgrad" });
+		assert.equal(/Unified|berechenbar|Wirkungsgrad/.test(m.message), false);
+		assert.match(m.message, /Batterie: 39 %/);
+	});
+});

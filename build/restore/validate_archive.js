@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.REQUIRED_BACKUP_PATHS = void 0;
 exports.assertRestoreManifest = assertRestoreManifest;
 exports.validateRestoreArchiveBuffer = validateRestoreArchiveBuffer;
+const adapter_identity_1 = require("../adapter_identity");
 const checksum_1 = require("../backup/checksum");
 const types_1 = require("../backup/types");
 const schema_1 = require("../backup/schema");
@@ -33,7 +34,7 @@ function assertRestoreManifest(manifest) {
     if (manifest.restore?.supported === false) {
         throw new Error("support packages not restorable");
     }
-    if (manifest.adapter.name !== "ems") {
+    if (!(0, adapter_identity_1.isKnownAdapterName)(manifest.adapter.name)) {
         throw new Error("invalid adapter name");
     }
     if (!manifest.safety.restore_must_start_dryrun || manifest.safety.automatic_live_resume_allowed) {

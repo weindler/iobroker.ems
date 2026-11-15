@@ -173,7 +173,7 @@ export function isAllowlistedCleanupRelativeId(relativeId: string): boolean {
 	if (!relativeId || relativeId.includes("..") || relativeId.startsWith(".") || relativeId.includes("/")) {
 		return false;
 	}
-	if (relativeId.startsWith("ems.") || relativeId.includes(":")) {
+	if (relativeId.startsWith("ems.") || relativeId.startsWith("ems-light.") || relativeId.includes(":")) {
 		return false;
 	}
 	if (isLeanPlannerPurgeRoot(relativeId)) {

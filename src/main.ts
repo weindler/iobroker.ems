@@ -1,3 +1,4 @@
+import { ADAPTER_NAME } from "./adapter_identity";
 import * as utils from "@iobroker/adapter-core";
 import {
 	handleBatteryAdapterStateChange,
@@ -62,7 +63,7 @@ class Ems extends utils.Adapter {
 	public constructor(options: Partial<utils.AdapterOptions> = {}) {
 		super({
 			...options,
-			name: "ems",
+			name: ADAPTER_NAME,
 		});
 		this.on("ready", () => void this.onReady());
 		this.on("stateChange", (id, state) => void this.onStateChange(id, state ?? null));

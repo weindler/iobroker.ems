@@ -88,7 +88,7 @@ function httpGetText(url: string, timeoutMs = 15000): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const req = https.get(
 			url,
-			{ headers: { "User-Agent": "iobroker.ems (Preisvergleich, 1x pro Woche)", Accept: "text/html" }, timeout: timeoutMs },
+			{ headers: { "User-Agent": "iobroker.ems-light (Preisvergleich, 1x pro Woche)", Accept: "text/html" }, timeout: timeoutMs },
 			(res) => {
 				if (res.statusCode !== 200) {
 					res.resume();

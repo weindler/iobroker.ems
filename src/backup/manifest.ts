@@ -1,3 +1,4 @@
+import { ADAPTER_NAME } from "../adapter_identity";
 import { randomUUID } from "node:crypto";
 import {
 	EXPORT_FORMAT,
@@ -37,7 +38,7 @@ export function buildExportManifest(input: {
 		export_id: input.exportId ?? randomUUID(),
 		created_at: input.createdAt ?? new Date().toISOString(),
 		adapter: {
-			name: "ems",
+			name: ADAPTER_NAME,
 			version: input.adapterVersion,
 			instance: input.instance,
 		},

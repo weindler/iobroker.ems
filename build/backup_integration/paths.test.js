@@ -48,17 +48,17 @@ const paths_js_1 = require("./paths.js");
         const d1 = (0, paths_js_1.durableDataDirFromRoot)(root, 1);
         const r0 = (0, paths_js_1.runtimeDataDirFromRoot)(root, 0);
         const r1 = (0, paths_js_1.runtimeDataDirFromRoot)(root, 1);
-        strict_1.default.equal(d0, path.join(root, "ems.0"));
-        strict_1.default.equal(d1, path.join(root, "ems.1"));
-        strict_1.default.equal(r0, path.join(root, "ems-runtime.0"));
-        strict_1.default.equal(r1, path.join(root, "ems-runtime.1"));
+        strict_1.default.equal(d0, path.join(root, "ems-light.0"));
+        strict_1.default.equal(d1, path.join(root, "ems-light.1"));
+        strict_1.default.equal(r0, path.join(root, "ems-light-runtime.0"));
+        strict_1.default.equal(r1, path.join(root, "ems-light-runtime.1"));
         strict_1.default.notEqual(d0, d1);
         strict_1.default.notEqual(r0, r1);
     });
     (0, node_test_1.it)("maps learning to durable and intent to runtime", () => {
         const root = path.join(os.tmpdir(), "ems-path-layout");
-        const durable = path.join(root, "ems.0");
-        const layout = (0, paths_js_1.resolveEmsPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => durable });
+        const durable = path.join(root, "ems-light.0");
+        const layout = (0, paths_js_1.resolveEmsPaths)({ namespace: "ems-light.0", getAbsoluteInstanceDataDir: () => durable });
         strict_1.default.equal((0, paths_js_1.categoryDataPath)(layout, "learning/house_load"), path.join(durable, "learning/house_load"));
         strict_1.default.equal((0, paths_js_1.categoryDataPath)(layout, "policy"), path.join(durable, "policy"));
         strict_1.default.equal((0, paths_js_1.categoryDataPath)(layout, "intent"), path.join(layout.runtimeDataDir, "runtime", "intent"));
@@ -66,27 +66,27 @@ const paths_js_1 = require("./paths.js");
     });
     (0, node_test_1.it)("uses colocated runtime for arbitrary test durable roots", () => {
         const tmp = path.join(os.tmpdir(), "ems-isolated-test-xyz");
-        const layout = (0, paths_js_1.resolveEmsPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => tmp });
-        strict_1.default.equal(layout.runtimeDataDir, path.join(tmp, "ems-runtime.0"));
+        const layout = (0, paths_js_1.resolveEmsPaths)({ namespace: "ems-light.0", getAbsoluteInstanceDataDir: () => tmp });
+        strict_1.default.equal(layout.runtimeDataDir, path.join(tmp, "ems-light-runtime.0"));
     });
     (0, node_test_1.it)("blocks path traversal in categories", () => {
-        const layout = (0, paths_js_1.resolveEmsPaths)({ namespace: "ems.0", getAbsoluteInstanceDataDir: () => "/tmp/ems.0" });
+        const layout = (0, paths_js_1.resolveEmsPaths)({ namespace: "ems-light.0", getAbsoluteInstanceDataDir: () => "/tmp/ems-light.0" });
         strict_1.default.throws(() => (0, paths_js_1.categoryDataPath)(layout, "../secret"));
     });
     (0, node_test_1.it)("assertPathWithinRoot accepts children only", () => {
-        const root = "/tmp/ems.0/learning";
-        strict_1.default.doesNotThrow(() => (0, paths_js_1.assertPathWithinRoot)("/tmp/ems.0/learning/file.json", root));
-        strict_1.default.throws(() => (0, paths_js_1.assertPathWithinRoot)("/tmp/ems.0/policy/file.json", root));
+        const root = "/tmp/ems-light.0/learning";
+        strict_1.default.doesNotThrow(() => (0, paths_js_1.assertPathWithinRoot)("/tmp/ems-light.0/learning/file.json", root));
+        strict_1.default.throws(() => (0, paths_js_1.assertPathWithinRoot)("/tmp/ems-light.0/policy/file.json", root));
     });
     (0, node_test_1.it)("uses durableDataDir injection without getAbsoluteInstanceDataDir", () => {
         const root = path.join(os.tmpdir(), "ems-durable-inject");
-        const durable = path.join(root, "ems.0");
-        const layout = (0, paths_js_1.resolveEmsPaths)({ namespace: "ems.0", durableDataDir: durable });
+        const durable = path.join(root, "ems-light.0");
+        const layout = (0, paths_js_1.resolveEmsPaths)({ namespace: "ems-light.0", durableDataDir: durable });
         strict_1.default.equal(layout.durableDataDir, path.resolve(durable));
-        strict_1.default.equal(layout.runtimeDataDir, path.resolve(path.join(root, "ems-runtime.0")));
+        strict_1.default.equal(layout.runtimeDataDir, path.resolve(path.join(root, "ems-light-runtime.0")));
     });
     (0, node_test_1.it)("parseInstanceFromNamespace", () => {
-        strict_1.default.equal((0, paths_js_1.parseInstanceFromNamespace)("ems.0"), 0);
-        strict_1.default.equal((0, paths_js_1.parseInstanceFromNamespace)("ems.1"), 1);
+        strict_1.default.equal((0, paths_js_1.parseInstanceFromNamespace)("ems-light.0"), 0);
+        strict_1.default.equal((0, paths_js_1.parseInstanceFromNamespace)("ems-light.1"), 1);
     });
 });

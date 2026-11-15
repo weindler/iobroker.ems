@@ -1,3 +1,4 @@
+import { ADAPTER_NAME, isKnownAdapterName, isKnownNamespace } from "../adapter_identity";
 import { randomUUID } from "node:crypto";
 import { stableJsonStringify } from "../backup/schema";
 import { atomicWriteJson } from "../persistence/atomic_write";
@@ -14,7 +15,7 @@ export interface ManifestTransactionFence {
 export interface EmsInstanceManifest {
 	format: typeof MANIFEST_FORMAT;
 	formatVersion: typeof MANIFEST_FORMAT_VERSION;
-	adapter: "ems";
+	adapter: typeof ADAPTER_NAME;
 	instance: number;
 	namespace: string;
 	adapterVersion: string;
@@ -44,7 +45,7 @@ export function createInitialManifest(input: {
 	return {
 		format: MANIFEST_FORMAT,
 		formatVersion: MANIFEST_FORMAT_VERSION,
-		adapter: "ems",
+		adapter: ADAPTER_NAME,
 		instance: input.instance,
 		namespace: input.namespace,
 		adapterVersion: input.adapterVersion,
@@ -72,9 +73,9 @@ export function validateManifest(raw: unknown): EmsInstanceManifest {
 	const m = raw as Partial<EmsInstanceManifest>;
 	if (m.format !== MANIFEST_FORMAT) throw new Error("manifest_invalid_format");
 	if (m.formatVersion !== MANIFEST_FORMAT_VERSION) throw new Error("manifest_unsupported_format_version");
-	if (m.adapter !== "ems") throw new Error("manifest_invalid_adapter");
+	if (!isKnownAdapterName(m.adapter)) throw new Error("manifest_invalid_adapter");
 	if (typeof m.instance !== "number" || m.instance < 0) throw new Error("manifest_invalid_instance");
-	if (typeof m.namespace !== "string" || !m.namespace.startsWith("ems.")) throw new Error("manifest_invalid_namespace");
+	if (typeof m.namespace !== "string" || !isKnownNamespace(m.namespace)) throw new Error("manifest_invalid_namespace");
 	if (typeof m.adapterVersion !== "string") throw new Error("manifest_invalid");
 	if (m.persistenceSchemaVersion !== PERSISTENCE_SCHEMA_VERSION) {
 		throw new Error("manifest_unsupported_persistence_schema");

@@ -2,14 +2,14 @@
 /**
  * Generates vis/ems-dashboard-view.json — import in VIS via "View importieren".
  * Ziel-Auflösung: 1276 × 637 px (volle VIS-Fläche, kein Abschneiden).
- * Charts: iframe → /adapter/ems/ems-charts.html (mit Adapter mitgeliefert, kein vis/www).
+ * Charts: iframe → /adapter/ems-light/ems-charts.html (mit Adapter mitgeliefert, kein vis/www).
  */
 import { copyFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PREFIX = "ems.0";
+const PREFIX = "ems-light.0";
 
 const VIEW_W = 1276;
 const VIEW_H = 637;
@@ -265,7 +265,7 @@ function buildCard(card) {
 }
 
 function planBoardIframeHtml() {
-	const src = `/adapter/ems/ems-charts.html?inst=${encodeURIComponent(PREFIX)}`;
+	const src = `/adapter/ems-light/ems-charts.html?inst=${encodeURIComponent(PREFIX)}`;
 	return `<iframe src="${src}" title="EMS Energie-Übersicht" style="width:100%;height:100%;border:0;background:#161b22;display:block;"></iframe>`;
 }
 

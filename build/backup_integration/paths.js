@@ -43,6 +43,7 @@ exports.resolveNamespace = resolveNamespace;
 exports.resolveEmsPaths = resolveEmsPaths;
 exports.categoryDataPath = categoryDataPath;
 exports.assertPathWithinRoot = assertPathWithinRoot;
+const adapter_identity_1 = require("../adapter_identity");
 const path = __importStar(require("node:path"));
 const TRAVERSAL_RE = /\.\.|[/\\]|\0/;
 function parseInstanceFromNamespace(namespace) {
@@ -56,15 +57,15 @@ function assertSafeRelativeSegment(segment) {
     }
 }
 function durableDataDirFromRoot(ioBrokerDataRoot, instance) {
-    return path.join(ioBrokerDataRoot, `ems.${instance}`);
+    return path.join(ioBrokerDataRoot, (0, adapter_identity_1.durableDirName)(instance));
 }
 function runtimeDataDirFromRoot(ioBrokerDataRoot, instance) {
-    return path.join(ioBrokerDataRoot, `ems-runtime.${instance}`);
+    return path.join(ioBrokerDataRoot, (0, adapter_identity_1.runtimeDirName)(instance));
 }
 function resolveIoBrokerDataRoot(durableDataDir, namespace) {
     const normalized = path.resolve(durableDataDir);
     const instance = parseInstanceFromNamespace(namespace);
-    const suffix = `ems.${instance}`;
+    const suffix = (0, adapter_identity_1.durableDirName)(instance);
     if (normalized.endsWith(suffix) || normalized.endsWith(`${path.sep}${suffix}`)) {
         return path.dirname(normalized);
     }
@@ -88,9 +89,9 @@ function resolveDurableDataDir(input) {
 function resolveNamespace(input) {
     if (typeof input === "string") {
         const base = path.basename(input);
-        if (/^ems\.\d+$/.test(base))
+        if (/^ems-light\.\d+$/.test(base))
             return base;
-        return "ems.0";
+        return `${adapter_identity_1.ADAPTER_NAME}.0`;
     }
     return input.namespace;
 }

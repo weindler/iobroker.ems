@@ -1,3 +1,4 @@
+import { ADAPTER_NAME } from "./adapter_identity";
 import { AUDIT, COMMAND, GLOBAL } from "./tree_paths";
 
 /** State IDs under this adapter instance (ems.0 = default instance id 0). */
@@ -8,5 +9,5 @@ export const STATE = {
 } as const;
 
 export function instanceState(instanceId: string, relativeId: string): string {
-	return `ems.${instanceId}.${relativeId}`;
+	return `${ADAPTER_NAME}.${instanceId}.${relativeId}`;
 }

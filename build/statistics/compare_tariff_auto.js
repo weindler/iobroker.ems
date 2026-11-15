@@ -115,7 +115,7 @@ function parseCompareTariffAuto(raw) {
 }
 function httpGetText(url, timeoutMs = 15000) {
     return new Promise((resolve, reject) => {
-        const req = https.get(url, { headers: { "User-Agent": "iobroker.ems (Preisvergleich, 1x pro Woche)", Accept: "text/html" }, timeout: timeoutMs }, (res) => {
+        const req = https.get(url, { headers: { "User-Agent": "iobroker.ems-light (Preisvergleich, 1x pro Woche)", Accept: "text/html" }, timeout: timeoutMs }, (res) => {
             if (res.statusCode !== 200) {
                 res.resume();
                 reject(new Error(`HTTP ${res.statusCode}`));

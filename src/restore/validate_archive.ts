@@ -1,3 +1,4 @@
+import { isKnownAdapterName } from "../adapter_identity";
 import { sha256Buffer } from "../backup/checksum";
 import { EXPORT_FORMAT, EXPORT_SCHEMA_VERSION, type ExportManifest } from "../backup/types";
 import { validateManifest } from "../backup/schema";
@@ -38,7 +39,7 @@ export function assertRestoreManifest(manifest: ExportManifest): void {
 	if (manifest.restore?.supported === false) {
 		throw new Error("support packages not restorable");
 	}
-	if (manifest.adapter.name !== "ems") {
+	if (!isKnownAdapterName(manifest.adapter.name)) {
 		throw new Error("invalid adapter name");
 	}
 	if (!manifest.safety.restore_must_start_dryrun || manifest.safety.automatic_live_resume_allowed) {

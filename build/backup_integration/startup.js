@@ -39,6 +39,7 @@ exports.runLegacyRestoreRecoveryBeforeMigration = runLegacyRestoreRecoveryBefore
 exports.runBackupIntegrationStartup = runBackupIntegrationStartup;
 exports.readManifestFromDisk = readManifestFromDisk;
 exports.updateBootGuardAfterBootstrap = updateBootGuardAfterBootstrap;
+const adapter_identity_1 = require("../adapter_identity");
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const journal_1 = require("../restore/journal");
@@ -227,8 +228,8 @@ async function runBackupIntegrationStartup(host) {
     };
     lastContext = ctx;
     await (0, ensure_states_1.publishBackupIntegrationDiagnostics)(host, {
-        dataFolder: "ems.%INSTANCE%",
-        runtimeFolder: "ems-runtime.%INSTANCE%",
+        dataFolder: `${adapter_identity_1.ADAPTER_NAME}.%INSTANCE%`,
+        runtimeFolder: `${adapter_identity_1.ADAPTER_NAME}-runtime.%INSTANCE%`,
         formatVersion: manifest?.formatVersion ?? 0,
         persistenceSchemaVersion: manifest?.persistenceSchemaVersion ?? 0,
         persistenceValid: ctx.manifestValid,

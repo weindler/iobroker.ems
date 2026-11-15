@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildManifestFileEntries = buildManifestFileEntries;
 exports.buildExportManifest = buildExportManifest;
 exports.exportFileName = exportFileName;
+const adapter_identity_1 = require("../adapter_identity");
 const node_crypto_1 = require("node:crypto");
 const types_1 = require("./types");
 const checksum_1 = require("./checksum");
@@ -24,7 +25,7 @@ function buildExportManifest(input) {
         export_id: input.exportId ?? (0, node_crypto_1.randomUUID)(),
         created_at: input.createdAt ?? new Date().toISOString(),
         adapter: {
-            name: "ems",
+            name: adapter_identity_1.ADAPTER_NAME,
             version: input.adapterVersion,
             instance: input.instance,
         },

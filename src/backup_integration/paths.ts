@@ -1,3 +1,4 @@
+import { ADAPTER_NAME, durableDirName, runtimeDirName } from "../adapter_identity";
 import * as path from "node:path";
 
 export type PathResolverInput =
@@ -43,17 +44,17 @@ export function assertSafeRelativeSegment(segment: string): void {
 }
 
 export function durableDataDirFromRoot(ioBrokerDataRoot: string, instance: number): string {
-	return path.join(ioBrokerDataRoot, `ems.${instance}`);
+	return path.join(ioBrokerDataRoot, durableDirName(instance));
 }
 
 export function runtimeDataDirFromRoot(ioBrokerDataRoot: string, instance: number): string {
-	return path.join(ioBrokerDataRoot, `ems-runtime.${instance}`);
+	return path.join(ioBrokerDataRoot, runtimeDirName(instance));
 }
 
 export function resolveIoBrokerDataRoot(durableDataDir: string, namespace: string): string {
 	const normalized = path.resolve(durableDataDir);
 	const instance = parseInstanceFromNamespace(namespace);
-	const suffix = `ems.${instance}`;
+	const suffix = durableDirName(instance);
 	if (normalized.endsWith(suffix) || normalized.endsWith(`${path.sep}${suffix}`)) {
 		return path.dirname(normalized);
 	}
@@ -79,8 +80,8 @@ export function resolveDurableDataDir(input: PathResolverInput): string {
 export function resolveNamespace(input: PathResolverInput): string {
 	if (typeof input === "string") {
 		const base = path.basename(input);
-		if (/^ems\.\d+$/.test(base)) return base;
-		return "ems.0";
+		if (/^ems-light\.\d+$/.test(base)) return base;
+		return `${ADAPTER_NAME}.0`;
 	}
 	return input.namespace;
 }

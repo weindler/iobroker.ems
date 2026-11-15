@@ -50,9 +50,9 @@ function stripNamespace(id: string, namespace: string | null): string {
 }
 
 function detectNamespace(ids: string[]): string | null {
-	const ems = ids.find((id) => /^ems\.\d+\./.test(id));
+	const ems = ids.find((id) => /^ems(-light)?\.\d+\./.test(id));
 	if (!ems) return null;
-	const m = /^(ems\.\d+)\./.exec(ems);
+	const m = /^(ems(?:-light)?\.\d+)\./.exec(ems);
 	return m ? m[1] : null;
 }
 

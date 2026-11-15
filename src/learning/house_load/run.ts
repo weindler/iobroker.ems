@@ -147,7 +147,7 @@ export async function runHouseLoadLearning(host: HouseLoadRunHost): Promise<void
 		try {
 			const wbOwn = await fetchRollupUnidirectionalPowerPoints(
 				host as unknown as { getAbsolutePath?: (category?: string) => string },
-				`${(host as unknown as { namespace?: string }).namespace ?? "ems.0"}.${WALLBOX_EVCC_STATES.chargePowerW}`,
+				`${(host as unknown as { namespace?: string }).namespace ?? "ems-light.0"}.${WALLBOX_EVCC_STATES.chargePowerW}`,
 				cfg.lookbackDays,
 			);
 			for (const point of wbOwn?.points ?? []) {

@@ -15,10 +15,10 @@ function stripNamespace(id, namespace) {
     return id.startsWith(prefix) ? id.slice(prefix.length) : id;
 }
 function detectNamespace(ids) {
-    const ems = ids.find((id) => /^ems\.\d+\./.test(id));
+    const ems = ids.find((id) => /^ems(-light)?\.\d+\./.test(id));
     if (!ems)
         return null;
-    const m = /^(ems\.\d+)\./.exec(ems);
+    const m = /^(ems(?:-light)?\.\d+)\./.exec(ems);
     return m ? m[1] : null;
 }
 function familyMatches(relativeId, family) {

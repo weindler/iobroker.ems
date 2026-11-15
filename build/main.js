@@ -33,6 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+const adapter_identity_1 = require("./adapter_identity");
 const utils = __importStar(require("@iobroker/adapter-core"));
 const battery_1 = require("./addons/battery");
 const air_conditioning_1 = require("./addons/air_conditioning");
@@ -72,7 +73,7 @@ class Ems extends utils.Adapter {
     constructor(options = {}) {
         super({
             ...options,
-            name: "ems",
+            name: adapter_identity_1.ADAPTER_NAME,
         });
         this.on("ready", () => void this.onReady());
         this.on("stateChange", (id, state) => void this.onStateChange(id, state ?? null));

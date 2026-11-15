@@ -115,7 +115,7 @@ async function runHouseLoadLearning(host) {
             flex.batteryChargeW = batCharge;
         // Eigener Stunden-Rollup der Wallbox-Ladeleistung (power_rollup) hat Vorrang vor der History.
         try {
-            const wbOwn = await (0, power_rollup_1.fetchRollupUnidirectionalPowerPoints)(host, `${host.namespace ?? "ems.0"}.${ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW}`, cfg.lookbackDays);
+            const wbOwn = await (0, power_rollup_1.fetchRollupUnidirectionalPowerPoints)(host, `${host.namespace ?? "ems-light.0"}.${ensure_evcc_states_1.WALLBOX_EVCC_STATES.chargePowerW}`, cfg.lookbackDays);
             for (const point of wbOwn?.points ?? []) {
                 const hourStart = Math.floor(point.ts / constants_1.MS_PER_HOUR) * constants_1.MS_PER_HOUR;
                 if (hourStart === currentHour || point.powerW <= 0)

@@ -9,6 +9,7 @@ exports.validateManifest = validateManifest;
 exports.manifestMatchesInstance = manifestMatchesInstance;
 exports.beginRestoreTransactionFence = beginRestoreTransactionFence;
 exports.finalizeRestoreTransactionFence = finalizeRestoreTransactionFence;
+const adapter_identity_1 = require("../adapter_identity");
 const node_crypto_1 = require("node:crypto");
 const schema_1 = require("../backup/schema");
 const atomic_write_1 = require("../persistence/atomic_write");
@@ -26,7 +27,7 @@ function createInitialManifest(input) {
     return {
         format: exports.MANIFEST_FORMAT,
         formatVersion: exports.MANIFEST_FORMAT_VERSION,
-        adapter: "ems",
+        adapter: adapter_identity_1.ADAPTER_NAME,
         instance: input.instance,
         namespace: input.namespace,
         adapterVersion: input.adapterVersion,
@@ -54,11 +55,11 @@ function validateManifest(raw) {
         throw new Error("manifest_invalid_format");
     if (m.formatVersion !== exports.MANIFEST_FORMAT_VERSION)
         throw new Error("manifest_unsupported_format_version");
-    if (m.adapter !== "ems")
+    if (!(0, adapter_identity_1.isKnownAdapterName)(m.adapter))
         throw new Error("manifest_invalid_adapter");
     if (typeof m.instance !== "number" || m.instance < 0)
         throw new Error("manifest_invalid_instance");
-    if (typeof m.namespace !== "string" || !m.namespace.startsWith("ems."))
+    if (typeof m.namespace !== "string" || !(0, adapter_identity_1.isKnownNamespace)(m.namespace))
         throw new Error("manifest_invalid_namespace");
     if (typeof m.adapterVersion !== "string")
         throw new Error("manifest_invalid");

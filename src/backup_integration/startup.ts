@@ -1,3 +1,4 @@
+import { ADAPTER_NAME } from "../adapter_identity";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { scanRestoreTransactionsAtStartup } from "../restore/journal";
@@ -225,8 +226,8 @@ export async function runBackupIntegrationStartup(host: RestoreHost): Promise<Ba
 	lastContext = ctx;
 
 	await publishBackupIntegrationDiagnostics(host, {
-		dataFolder: "ems.%INSTANCE%",
-		runtimeFolder: "ems-runtime.%INSTANCE%",
+		dataFolder: `${ADAPTER_NAME}.%INSTANCE%`,
+		runtimeFolder: `${ADAPTER_NAME}-runtime.%INSTANCE%`,
 		formatVersion: manifest?.formatVersion ?? 0,
 		persistenceSchemaVersion: manifest?.persistenceSchemaVersion ?? 0,
 		persistenceValid: ctx.manifestValid,

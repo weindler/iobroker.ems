@@ -8,6 +8,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+### Behoben
+- PV-Wochenansicht: Heute/Morgen zeigen die Tagesgesamtwerte (nicht mehr Teilsummen seit Start); Brightsky heute = Rest des Tages + bisher Erzeugtes.
+
 ## [0.4.90] – 2026-11-15
 
 ### Behoben

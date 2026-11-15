@@ -2787,7 +2787,7 @@ function pvChartSvg(pvh,mode){
 	return'<svg class="ems-pv-svg" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="none" role="img" aria-label="PV-Prognose und Messung">'
 		+grid+nowBg+dayLines+run("f","#e3b34122")+run("b",null)+run("m","#3fb95033")+nowLine+labels+tips+"</svg>";
 }
-function pvWeekSvg(pvh){
+function pvWeekSvg(pvh,snap){
 	var series=(pvh&&pvh.series)||[],outlook=(pvh&&pvh.outlook)||[];
 	var now=pvh.nowMs||Date.now(),d0=pvDayStart(now),DAY=86400000,days=[],i,d,t,sf,sb,sm,o,cnt;
 	function keyOf(ms){var x=new Date(ms);return x.getFullYear()+"-"+("0"+(x.getMonth()+1)).slice(-2)+"-"+("0"+x.getDate()).slice(-2);}
@@ -2804,6 +2804,13 @@ function pvWeekSvg(pvh){
 		sm=pvDaySum(series,d,"m");
 		sb=cnt>=8?pvDaySum(series,d,"b"):null;
 		if(sb===null){o=oMap[keyOf(d)];sb=(o===undefined)?null:o;}
+		/* Heute/Morgen: Tagesgesamtwerte statt der seit Start gespeicherten Teilsummen. */
+		if(snap&&d===d0){
+			if(snap.todayKwh!==null&&snap.todayKwh!==undefined)sf=snap.todayKwh;
+			/* Brightsky-Tagesschätzung für heute zählt nur den Rest des Tages → bisher Erzeugtes dazurechnen. */
+			if(cnt<20&&oMap[keyOf(d)]!==undefined)sb=oMap[keyOf(d)]+(sm||0);
+		}
+		if(snap&&d===d0+DAY&&snap.tomorrowKwh!==null&&snap.tomorrowKwh!==undefined)sf=snap.tomorrowKwh;
 		if(sf!==null||sb!==null||sm!==null)days.push({t:d,f:sf,b:sb,m:sm});
 	}
 	if(!days.length)return'<div class="ems-pv-detail" style="color:#8b949e;margin:6px 0">Noch keine Tageswerte.</div>';
@@ -2848,7 +2855,7 @@ function renderLage(){
 	var todayTxt='Erwartet: <strong>'+fmtDec(snap.todayKwh,1,'kWh')+'</strong>'+(snap.actualKwh!==null?' · bisher erzeugt '+fmtDec(snap.actualKwh,1,'kWh'):'')+(bsT!==null?' · Brightsky '+fmtDec(bsT,1,'kWh'):'')+(snap.intradayFactor!==null&&Math.abs(snap.intradayFactor-1)>=0.005?'<br>'+esc(snap.intradayStatus||('Rest des Tages × '+String(snap.intradayFactor).replace('.',','))):'')+(snap.profileStatus?'<br>'+esc(snap.profileStatus):'');
 	var tomorrowTxt='Erwartet: <strong>'+fmtDec(snap.tomorrowKwh,1,'kWh')+'</strong>'+(bsM!==null?' · Brightsky '+fmtDec(bsM,1,'kWh'):'');
 	el.innerHTML='<div class="ems-pv-head"><div class="ems-lage-k">PV-Prognose</div><div class="ems-price-controls" style="margin:0"><button type="button" class="ems-price-toggle '+(pvChartMode==="focus"?"on":"")+'" data-ems-action="pv-focus">Heute &amp; morgen</button><button type="button" class="ems-price-toggle '+(pvChartMode==="all"?"on":"")+'" data-ems-action="pv-all">Mit Rückblick</button><button type="button" class="ems-price-toggle '+(pvChartMode==="week"?"on":"")+'" data-ems-action="pv-week">Woche</button></div></div>'
-		+(pvChartMode==="week"?pvWeekSvg(pvh):pvChartSvg(pvh,pvChartMode))
+		+(pvChartMode==="week"?pvWeekSvg(pvh,snap):pvChartSvg(pvh,pvChartMode))
 		+'<div class="ems-price-legend"><span><i class="ems-sw" style="background:#e3b341"></i>EMS-Prognose (angepasst an Ihre Anlage)</span><span><i class="ems-sw" style="background:transparent;border-top:2px dashed #bc8cff;height:0;width:10px;border-radius:0"></i>Brightsky (Wetterdienst)</span><span><i class="ems-sw" style="background:#3fb950"></i>gemessen</span><span><i class="ems-sw" style="background:#58a6ff44;border:1px solid #58a6ff"></i>jetzt</span></div>'
 		+'<div class="ems-pv-grid"><div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">'+todayTxt+'</div></div><div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">'+tomorrowTxt+'</div></div></div>'
 		+details+'<div class="ems-pv-foot">'+esc(line)+'</div>';

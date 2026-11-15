@@ -8,6 +8,7 @@ exports.__resetLearningRuntimeForTest = __resetLearningRuntimeForTest;
 exports.__hasPvBiasLearningTimerForTest = __hasPvBiasLearningTimerForTest;
 exports.__isLearningTickInFlightForTest = __isLearningTickInFlightForTest;
 const ensure_states_1 = require("./ensure_states");
+const memory_diag_1 = require("../../app/memory_diag");
 const run_1 = require("./run");
 const config_1 = require("./config");
 const price_learning_1 = require("../price_learning");
@@ -111,6 +112,10 @@ async function runLearningTick(host, trigger = "interval") {
     if (learningTickInFlight)
         return;
     learningTickInFlight = true;
+    const mark = (name) => {
+        if (trigger === "startup")
+            (0, memory_diag_1.markMemoryPhase)(`lernlauf: ${name}`);
+    };
     try {
         const seasonalPause = (0, season_control_1.isWinterOperationActive)();
         const heaterPaused = seasonalPause || (await host.getStateAsync("addons.immersion_heater.mode"))?.val === "off";
@@ -127,9 +132,13 @@ async function runLearningTick(host, trigger = "interval") {
                 host.log.error(`Boiler-Learning tick: ${e instanceof Error ? e.message : String(e)}`);
             }
         }
+        mark("boiler");
         await (0, energy_daily_rollup_1.ensureEnergyDailyRollupForLearning)(host);
+        mark("tages-rollup");
         await (0, run_1.runPvBiasLearning)(host);
+        mark("pv-bias");
         await (0, price_learning_1.runPriceLearning)(host);
+        mark("preis-lernen");
         try {
             await (0, run_2.runEnergyforecast)(host);
         }
@@ -137,12 +146,17 @@ async function runLearningTick(host, trigger = "interval") {
             host.log.warn(`Energyforecast: ${e instanceof Error ? e.message : String(e)}`);
         }
         // Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
+        mark("energyforecast");
         await (0, power_rollup_1.ensurePowerRollupForLearning)(host);
+        mark("leistungs-rollup");
         // House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
         await (0, house_load_1.runHouseLoadLearning)(host);
+        mark("hauslast");
         if (!heaterPaused)
             await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
+        mark("thermik");
         await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
+        mark("batterie-laufzeit");
         try {
             const timezone = (0, config_2.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
             await (0, grid_balance_economics_1.runGridBalanceEconomicsLearning)(host, { timezone });
@@ -150,14 +164,18 @@ async function runLearningTick(host, trigger = "interval") {
         catch (e) {
             host.log.error(`grid_balance_economics: ${e instanceof Error ? e.message : String(e)}`);
         }
+        mark("netzausgleich-wirtschaft");
         await (0, price_forecast_1.runPriceForecastLearning)(host);
+        mark("preis-prognose");
         try {
             await runPriceOutlookImmediately(host);
         }
         catch (e) {
             host.log.error(`price_outlook: ${e instanceof Error ? e.message : String(e)}`);
         }
+        mark("preis-ausblick");
         await (0, pv_horizon_1.runPvHorizon)(host);
+        mark("pv-horizont");
         await (0, persistence_mirror_1.mirrorLearningPersistenceToStates)(host);
         /*
          * BLOCK A — Daily Evaluator (rein additiv/diagnostisch). Liest nur day_telemetry,

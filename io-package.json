@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "ems",
-		"version": "0.4.69",
+		"version": "0.4.70",
 		"dataFolder": "ems.%INSTANCE%",
 		"encryptedNative": ["energyforecast_token"],
 		"protectedNative": ["energyforecast_token"],

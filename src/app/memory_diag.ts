@@ -9,7 +9,7 @@ export const MEMORY_DIAG_INTERVAL_MS = 5 * 60_000;
 export type MemoryPhase = { step: string; heapUsedMb: number; rssMb: number; atSec: number };
 
 const phases: MemoryPhase[] = [];
-const MAX_PHASES = 60;
+const MAX_PHASES = 90;
 
 /** Merkt sich den Speicherstand nach einem Startschritt (nur Messung). */
 export function markMemoryPhase(step: string, usage: Usage = process.memoryUsage(), uptimeSec: number = process.uptime()): void {

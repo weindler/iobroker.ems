@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.70] – 2026-11-15
+
+### Hinzugefügt
+- Speichermessung je Modul des Start-Lernlaufs. Messung in 0.4.69: Der Speicherbedarf springt während der ersten ~8 s nach dem Start von 54 auf 238 MB Heap; der gleichzeitig startende Lernlauf (History-Abfragen bis 90 Tage) ist der Hauptverdächtige.
+
 ## [0.4.69] – 2026-11-15
 
 ### Hinzugefügt

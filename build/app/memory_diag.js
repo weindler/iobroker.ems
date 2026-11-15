@@ -11,7 +11,7 @@ exports.buildMemoryDiagnostics = buildMemoryDiagnostics;
 exports.APP_MEMORY_STATE = "app.memory_json";
 exports.MEMORY_DIAG_INTERVAL_MS = 5 * 60_000;
 const phases = [];
-const MAX_PHASES = 60;
+const MAX_PHASES = 90;
 /** Merkt sich den Speicherstand nach einem Startschritt (nur Messung). */
 function markMemoryPhase(step, usage = process.memoryUsage(), uptimeSec = process.uptime()) {
     if (phases.length >= MAX_PHASES)

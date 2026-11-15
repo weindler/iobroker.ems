@@ -1,4 +1,5 @@
 import { ensurePvBiasStates } from "./ensure_states";
+import { markMemoryPhase } from "../../app/memory_diag";
 import { runPvBiasLearning, type PvBiasRunHost } from "./run";
 import { pvBiasConfigFromAdapter } from "./config";
 import { ensurePriceLearningStates, runPriceLearning } from "../price_learning";
@@ -130,6 +131,9 @@ async function runLearningTick(
 ): Promise<void> {
 	if (learningTickInFlight) return;
 	learningTickInFlight = true;
+	const mark = (name: string): void => {
+		if (trigger === "startup") markMemoryPhase(`lernlauf: ${name}`);
+	};
 	try {
 		const seasonalPause = isWinterOperationActive();
 		const heaterPaused = seasonalPause || (await host.getStateAsync("addons.immersion_heater.mode"))?.val === "off";
@@ -145,33 +149,46 @@ async function runLearningTick(
 				host.log.error(`Boiler-Learning tick: ${e instanceof Error ? e.message : String(e)}`);
 			}
 		}
+		mark("boiler");
 		await ensureEnergyDailyRollupForLearning(host);
+		mark("tages-rollup");
 		await runPvBiasLearning(host);
+		mark("pv-bias");
 		await runPriceLearning(host);
+		mark("preis-lernen");
 		try {
 			await runEnergyforecast(host as unknown as EnergyforecastHost);
 		} catch (e) {
 			host.log.warn(`Energyforecast: ${e instanceof Error ? e.message : String(e)}`);
 		}
 		// Rollup-Backfill vor House-Load/Battery — sonst fällt der erste Lauf auf history.0 zurück.
+		mark("energyforecast");
 		await ensurePowerRollupForLearning(host);
+		mark("leistungs-rollup");
 		// House/Thermal/Battery vor Price Forecast — Forecast-Matching lädt viele History-Tage.
 		await runHouseLoadLearning(host);
+		mark("hauslast");
 		if (!heaterPaused) await runThermalRuntimeLearning(host);
+		mark("thermik");
 		await runBatteryRuntimeLearning(host);
+		mark("batterie-laufzeit");
 		try {
 			const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
 			await runGridBalanceEconomicsLearning(host, { timezone });
 		} catch (e) {
 			host.log.error(`grid_balance_economics: ${e instanceof Error ? e.message : String(e)}`);
 		}
+		mark("netzausgleich-wirtschaft");
 		await runPriceForecastLearning(host);
+		mark("preis-prognose");
 		try {
 			await runPriceOutlookImmediately(host as unknown as PriceOutlookHost);
 		} catch (e) {
 			host.log.error(`price_outlook: ${e instanceof Error ? e.message : String(e)}`);
 		}
+		mark("preis-ausblick");
 		await runPvHorizon(host);
+		mark("pv-horizont");
 		await mirrorLearningPersistenceToStates(host as unknown as PersistenceMirrorHost);
 		/*
 		 * BLOCK A — Daily Evaluator (rein additiv/diagnostisch). Liest nur day_telemetry,

@@ -3,6 +3,7 @@ import { ensureStates, type StateDef, type StateHost } from "./state_util";
 import { buildDeviceTemplateCatalog } from "../profiles/catalog";
 import { APP_CORE_CONTRACT, APP_CORE_CONTRACT_STATE, APP_CORE_SNAPSHOT_STATE } from "../app/core_snapshot";
 import { APP_MEMORY_STATE } from "../app/memory_diag";
+import { APP_ALLOC_PROFILE_STATE } from "../app/alloc_profile";
 
 const OPERATOR_BRIEFING_DEFAULT =
 	"EMS-Light Phase 1 aktiv. Planner noch nicht initialisiert.";
@@ -77,6 +78,7 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		),
 		jsonState(APP_CORE_SNAPSHOT_STATE, "Lokaler App-Core-Snapshot (JSON)", "{}"),
 		jsonState(APP_MEMORY_STATE, "Speicherverbrauch des Adapters (JSON)", "{}"),
+		jsonState(APP_ALLOC_PROFILE_STATE, "Speicher-Verursacher nach Start (JSON, zeitlich begrenzt)", "{}"),
 		jsonState("notify.state_json", "Push-Nachrichten: gemerkter Zustand (JSON)", "{}"),
 		strState("notify.last_message_de", "Push-Nachrichten: zuletzt gesendet"),
 

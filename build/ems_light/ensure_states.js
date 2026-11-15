@@ -6,6 +6,7 @@ const state_util_1 = require("./state_util");
 const catalog_1 = require("../profiles/catalog");
 const core_snapshot_1 = require("../app/core_snapshot");
 const memory_diag_1 = require("../app/memory_diag");
+const alloc_profile_1 = require("../app/alloc_profile");
 const OPERATOR_BRIEFING_DEFAULT = "EMS-Light Phase 1 aktiv. Planner noch nicht initialisiert.";
 function strState(id, name, def, opts) {
     return {
@@ -57,6 +58,7 @@ async function ensureEmsLightStates(host, adapterVersion) {
         jsonState(core_snapshot_1.APP_CORE_CONTRACT_STATE, "Lokaler App-Core-Vertrag (JSON)", JSON.stringify(core_snapshot_1.APP_CORE_CONTRACT), true),
         jsonState(core_snapshot_1.APP_CORE_SNAPSHOT_STATE, "Lokaler App-Core-Snapshot (JSON)", "{}"),
         jsonState(memory_diag_1.APP_MEMORY_STATE, "Speicherverbrauch des Adapters (JSON)", "{}"),
+        jsonState(alloc_profile_1.APP_ALLOC_PROFILE_STATE, "Speicher-Verursacher nach Start (JSON, zeitlich begrenzt)", "{}"),
         jsonState("notify.state_json", "Push-Nachrichten: gemerkter Zustand (JSON)", "{}"),
         strState("notify.last_message_de", "Push-Nachrichten: zuletzt gesendet"),
         numState("live.battery.soc_pct", "Live Batterie SOC", "%"),

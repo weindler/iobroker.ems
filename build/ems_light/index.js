@@ -22,6 +22,7 @@ const ensure_states_1 = require("./ensure_states");
 const runtime_subscriptions_1 = require("./runtime_subscriptions");
 const tick_2 = require("./tick");
 const notify_1 = require("../notify");
+const alloc_profile_1 = require("../app/alloc_profile");
 const memory_diag_1 = require("../app/memory_diag");
 const DEFAULT_TICK_SEC = 60;
 let memoryDiagLastMs = 0;
@@ -222,6 +223,7 @@ async function startEmsLightPhase1Runtime(adapter) {
         });
         (0, memory_diag_1.markMemoryPhase)("ems-light: tages-telemetrie");
     }
+    (0, alloc_profile_1.startAllocProfile)();
     const sec = tickIntervalSec(adapter.config);
     stopEmsLightTick();
     const dailyHostForTick = energyDailyRollupHost;
@@ -241,6 +243,9 @@ async function startEmsLightPhase1Runtime(adapter) {
             const diag = (0, memory_diag_1.buildMemoryDiagnostics)(process.memoryUsage(), nowMs, process.uptime(), memoryRssPeakMb);
             memoryRssPeakMb = diag.rssPeakMb;
             void host.setStateAsync(memory_diag_1.APP_MEMORY_STATE, { val: JSON.stringify(diag), ack: true }).catch(() => undefined);
+            void (0, alloc_profile_1.snapshotAllocProfile)(nowMs)
+                .then((snap) => (snap ? host.setStateAsync(alloc_profile_1.APP_ALLOC_PROFILE_STATE, { val: JSON.stringify(snap), ack: true }) : undefined))
+                .catch(() => undefined);
         }
         if (dailyHostForTick) {
             void (0, energy_daily_rollup_1.tickEnergyDailyRollup)(dailyHostForTick).catch((e) => {
@@ -277,6 +282,7 @@ function stopEmsLightTick() {
     }
 }
 async function stopEmsLightPhase1() {
+    (0, alloc_profile_1.stopAllocProfile)();
     if (policyAdapter) {
         const adapter = policyAdapter;
         policyAdapter = null;

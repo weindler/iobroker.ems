@@ -38,6 +38,7 @@ import { runEmsLightPhase1Tick } from "./tick";
 import type { LiveCacheHost } from "./live_cache";
 
 import { tickNotify, type NotifyHost } from "../notify";
+import { startAllocProfile, snapshotAllocProfile, stopAllocProfile, APP_ALLOC_PROFILE_STATE } from "../app/alloc_profile";
 import { recordMemorySample, markMemoryPhase, APP_MEMORY_STATE, MEMORY_DIAG_INTERVAL_MS, buildMemoryDiagnostics } from "../app/memory_diag";
 const DEFAULT_TICK_SEC = 60;
 let memoryDiagLastMs = 0;
@@ -256,6 +257,7 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		markMemoryPhase("ems-light: tages-telemetrie");
 	}
 
+	startAllocProfile();
 	const sec = tickIntervalSec(adapter.config);
 	stopEmsLightTick();
 	const dailyHostForTick = energyDailyRollupHost;
@@ -275,6 +277,9 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 			const diag = buildMemoryDiagnostics(process.memoryUsage(), nowMs, process.uptime(), memoryRssPeakMb);
 			memoryRssPeakMb = diag.rssPeakMb;
 			void host.setStateAsync(APP_MEMORY_STATE, { val: JSON.stringify(diag), ack: true }).catch(() => undefined);
+			void snapshotAllocProfile(nowMs)
+				.then((snap) => (snap ? host.setStateAsync(APP_ALLOC_PROFILE_STATE, { val: JSON.stringify(snap), ack: true }) : undefined))
+				.catch(() => undefined);
 		}
 		if (dailyHostForTick) {
 			void tickEnergyDailyRollup(dailyHostForTick).catch((e) => {
@@ -315,6 +320,7 @@ function stopEmsLightTick(): void {
 }
 
 export async function stopEmsLightPhase1(): Promise<void> {
+	stopAllocProfile();
 	if (policyAdapter) {
 		const adapter = policyAdapter;
 		policyAdapter = null;

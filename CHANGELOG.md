@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.86] – 2026-11-15
+
+### Hinzugefügt
+- Diagnose: In den ersten ca. 25 Minuten nach dem Adapterstart misst der Adapter, welche Funktionen am meisten Arbeitsspeicher anfordern (Datenpunkt `app.alloc_profile_json`, alle 5 Minuten aktualisiert). Danach stoppt die Messung von selbst. Dient dazu, den wiederkehrenden Speicher-Müll (Heap-Sägezahn) gezielt zu verringern.
+
 ## [0.4.85] – 2026-11-15
 
 ### Geändert

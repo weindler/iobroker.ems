@@ -420,6 +420,7 @@ build/backup/admin_manage.test.js
 build/app/core_snapshot.test.js
 build/backup/admin_manage.test.js
 build/app/memory_diag.test.js
+build/app/alloc_profile.test.js
 build/backup/admin_manage.test.js
 build/notify/rules.test.js
 build/backup/admin_manage.test.js

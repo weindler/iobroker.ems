@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.82] – 2026-11-15
+
+### Geändert
+- Statistik: Der Vergleichstarif (Preis und Grundpreis) wird jetzt mit Verlauf gespeichert. Ändert sich der Preis (von Hand oder automatisch), gilt er ab dem Änderungstag; vergangene Tage und Monate behalten den Preis, der damals galt. Liegt ein Zeitraum über einer Änderung, wird tagesgewichtet gerechnet.
+
 ## [0.4.81] – 2026-11-15
 
 ### Hinzugefügt

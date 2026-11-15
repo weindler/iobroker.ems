@@ -6,6 +6,12 @@ import {
 	parseCompareTariffAuto,
 	shouldRefetch,
 } from "./compare_tariff_auto";
+import {
+	parseCompareTariffHistory,
+	recordCompareTariff,
+	tariffForRange,
+	type CompareTariffEntry,
+} from "./compare_tariff_history";
 import { openStatisticsArchive, commitStatisticsArchive } from "./archive";
 import { observeDay, meterComparison } from "./observations";
 import { STATISTICS_ENERGY_FIELDS, statisticsEnergyState } from "./ensure_states";
@@ -486,9 +492,28 @@ async function applyCompareTariffAuto(host: StatisticsHost, cfg: StatisticsAdmin
 	}
 }
 
+async function updateCompareTariffHistory(
+	host: StatisticsHost,
+	cfg: StatisticsAdminConfig,
+	todayKey: string,
+): Promise<CompareTariffEntry[]> {
+	const id = STATISTICS_STATES.compareTariffHistoryJson;
+	const history = parseCompareTariffHistory((await host.getStateAsync(id))?.val);
+	if (cfg.compareTariffCtPerKwh === null && !history.length) return history;
+	const r = recordCompareTariff(history, todayKey, cfg.compareTariffCtPerKwh, cfg.compareTariffMonthlyBaseEur ?? 0);
+	if (r.changed) await setIfChanged(host, id, JSON.stringify(r.history));
+	return r.history;
+}
+
 async function tickStatisticsSerialized(host: StatisticsHost, now: Date): Promise<void> {
 	const cfg = statisticsConfigFromAdapter(host.config);
 	await applyCompareTariffAuto(host, cfg, now);
+	const tariffHistory = await updateCompareTariffHistory(host, cfg, localDateKey(now));
+	const tariffFor = (fromKey: string, toKey: string) =>
+		tariffForRange(tariffHistory, fromKey, toKey, {
+			ctPerKwh: cfg.compareTariffCtPerKwh,
+			monthlyBaseEur: cfg.compareTariffMonthlyBaseEur ?? 0,
+		});
 	const dateKey = localDateKey(now);
 	const persist = await loadPersist(host);
 	rolloverRuntimeIfNeeded(persist, dateKey);
@@ -876,8 +901,8 @@ async function tickStatisticsSerialized(host: StatisticsHost, now: Date): Promis
 			gridRewardsSource: monthRewards.source,
 			gridExportKwh: homeMonthPersist.gridExportKwh,
 			feedInCtPerKwh: cfg.feedInCtPerKwh,
-			compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
-			compareTariffMonthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+			compareTariffCtPerKwh: tariffFor(`${dateKey.slice(0, 7)}-01`, dateKey).ctPerKwh,
+			compareTariffMonthlyBaseEur: tariffFor(`${dateKey.slice(0, 7)}-01`, dateKey).monthlyBaseEur,
 			tibberMonthlyBaseEur: cfg.tibberMonthlyBaseEur,
 			tibberMonthlyGridFeeEur: cfg.tibberMonthlyGridFeeEur,
 			addTibberFeesToDynamic: tibberMonth.addTibberFeesToDynamic,
@@ -983,8 +1008,8 @@ async function tickStatisticsSerialized(host: StatisticsHost, now: Date): Promis
 		if (periodId === "this_month" && periodRange.fromKey === `${dateKey.slice(0, 7)}-01`) {
 			const fixedClipped = fixedTariffCostForRange({
 				gridImportKwh: homeMonth.gridImportKwh,
-				compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
-				monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+				compareTariffCtPerKwh: tariffFor(periodRange.fromKey, periodRange.toKey).ctPerKwh,
+				monthlyBaseEur: tariffFor(periodRange.fromKey, periodRange.toKey).monthlyBaseEur,
 				fromKey: periodRange.fromKey,
 				toKey: periodRange.toKey,
 			});
@@ -1021,16 +1046,16 @@ async function tickStatisticsSerialized(host: StatisticsHost, now: Date): Promis
 				const fixed = pairedPeriod ? tibberRange.segments.reduce<number | null>((sum, segment) => {
 					const value = fixedTariffCostForRange({
 						gridImportKwh: segment.gridImportKwh,
-						compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
-						monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+						compareTariffCtPerKwh: tariffFor(segment.fromKey, segment.toKey).ctPerKwh,
+						monthlyBaseEur: tariffFor(segment.fromKey, segment.toKey).monthlyBaseEur,
 						fromKey: segment.fromKey,
 						toKey: segment.toKey,
 					});
 					return sum === null || value === null ? null : Math.round((sum + value) * 100) / 100;
 				}, 0) : fixedTariffCostForRange({
 					gridImportKwh: importKwh,
-					compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
-					monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+					compareTariffCtPerKwh: tariffFor(periodRange.fromKey, periodRange.toKey).ctPerKwh,
+					monthlyBaseEur: tariffFor(periodRange.fromKey, periodRange.toKey).monthlyBaseEur,
 					fromKey: periodRange.fromKey,
 					toKey: periodRange.toKey,
 				});
@@ -1051,8 +1076,8 @@ async function tickStatisticsSerialized(host: StatisticsHost, now: Date): Promis
 				const fixed =
 					fixedTariffCostForRange({
 						gridImportKwh: homeAgg.gridImportKwh,
-						compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
-						monthlyBaseEur: cfg.compareTariffMonthlyBaseEur,
+						compareTariffCtPerKwh: tariffFor(periodRange.fromKey, periodRange.toKey).ctPerKwh,
+						monthlyBaseEur: tariffFor(periodRange.fromKey, periodRange.toKey).monthlyBaseEur,
 						fromKey: periodRange.fromKey,
 						toKey: periodRange.toKey,
 					}) ?? homeAgg.fixedTariffCostEur;
@@ -1175,8 +1200,8 @@ async function tickStatisticsSerialized(host: StatisticsHost, now: Date): Promis
 				currentMonth: hasPairedTibberMonth ? reconciledTibberMonth : { gridImportKwh: null, dynamicCostEur: null } });
 			const priceSegment = monthPrices.segments[0];
 			const fixedCost = priceSegment ? fixedTariffCostForRange({ gridImportKwh: priceSegment.gridImportKwh,
-				compareTariffCtPerKwh: cfg.compareTariffCtPerKwh,
-				monthlyBaseEur: cfg.compareTariffMonthlyBaseEur, fromKey, toKey }) : null;
+				compareTariffCtPerKwh: tariffFor(fromKey, toKey).ctPerKwh,
+				monthlyBaseEur: tariffFor(fromKey, toKey).monthlyBaseEur, fromKey, toKey }) : null;
 			const monthEnergy = sumEnergeticDays(monthKeys.map((key) => persist.days[key]?.energy),
 				{ period: `month_${month}`, periodLabelDe: month, fromKey, toKey });
 			const legacyMonthKwh = legacyDailyChargesForKeys(persist.days, monthKeys)

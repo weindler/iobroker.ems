@@ -104,6 +104,18 @@ class Ems extends utils.Adapter {
             });
             return;
         }
+        if (obj.command === "notifyTest") {
+            void (async () => {
+                const { sendNotifyTest } = await import("./notify/index.js");
+                const res = await sendNotifyTest(this);
+                if (obj.callback)
+                    this.sendTo(obj.from, obj.command, res.ok ? { result: res.text } : { error: res.text }, obj.callback);
+            })().catch((e) => {
+                if (obj.callback)
+                    this.sendTo(obj.from, obj.command, { error: e instanceof Error ? e.message : String(e) }, obj.callback);
+            });
+            return;
+        }
         if (obj.command === "getStorageReport") {
             void (async () => {
                 const { resolveEmsPaths } = await import("./backup_integration/paths.js");

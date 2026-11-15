@@ -77,6 +77,8 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 		),
 		jsonState(APP_CORE_SNAPSHOT_STATE, "Lokaler App-Core-Snapshot (JSON)", "{}"),
 		jsonState(APP_MEMORY_STATE, "Speicherverbrauch des Adapters (JSON)", "{}"),
+		jsonState("notify.state_json", "Push-Nachrichten: gemerkter Zustand (JSON)", "{}"),
+		strState("notify.last_message_de", "Push-Nachrichten: zuletzt gesendet"),
 
 		numState("live.battery.soc_pct", "Live Batterie SOC", "%"),
 		numState("live.battery.capacity_kwh", "Live Batteriekapazität", "kWh"),

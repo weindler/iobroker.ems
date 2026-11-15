@@ -8,6 +8,13 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.72] – 2026-11-15
+
+### Hinzugefügt
+- Push-Nachrichten (z. B. Pushover): neuer Admin-Tab „Benachrichtigungen" mit Hauptschalter, Instanz, Testknopf und Ruhezeiten (Uhrzeiten einstellbar).
+- Einzeln schaltbare Nachrichten: Tagesausblick am Morgen (Uhrzeit einstellbar), Batterie fast leer (Grenze einstellbar), Autoladung beginnt/endet, Störungen (höchstens alle 6 Stunden je Ursache, auch in Ruhezeiten).
+- Neue States `notify.state_json` und `notify.last_message_de` (zuletzt gesendete Nachricht).
+
 ## [0.4.71] – 2026-11-15
 
 ### Geändert

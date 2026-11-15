@@ -21,6 +21,7 @@ const tick_1 = require("../operator/daily_plan/tick");
 const ensure_states_1 = require("./ensure_states");
 const runtime_subscriptions_1 = require("./runtime_subscriptions");
 const tick_2 = require("./tick");
+const notify_1 = require("../notify");
 const memory_diag_1 = require("../app/memory_diag");
 const DEFAULT_TICK_SEC = 60;
 let memoryDiagLastMs = 0;
@@ -229,6 +230,9 @@ async function startEmsLightPhase1Runtime(adapter) {
     tickTimer = setInterval(() => {
         void (0, tick_2.runEmsLightPhase1Tick)(host).catch((e) => {
             adapter.log.error(`EMS-Light tick: ${e}`);
+        });
+        void (0, notify_1.tickNotify)(adapter).catch((e) => {
+            adapter.log.warn(`Push-Nachrichten: ${e instanceof Error ? e.message : String(e)}`);
         });
         const nowMs = Date.now();
         if (nowMs - memoryDiagLastMs >= memory_diag_1.MEMORY_DIAG_INTERVAL_MS) {

@@ -37,6 +37,7 @@ import { EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS } from "./runtime_subscriptions";
 import { runEmsLightPhase1Tick } from "./tick";
 import type { LiveCacheHost } from "./live_cache";
 
+import { tickNotify, type NotifyHost } from "../notify";
 import { markMemoryPhase, APP_MEMORY_STATE, MEMORY_DIAG_INTERVAL_MS, buildMemoryDiagnostics } from "../app/memory_diag";
 const DEFAULT_TICK_SEC = 60;
 let memoryDiagLastMs = 0;
@@ -263,6 +264,9 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	tickTimer = setInterval(() => {
 		void runEmsLightPhase1Tick(host).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
+		});
+		void tickNotify(adapter as unknown as NotifyHost).catch((e) => {
+			adapter.log.warn(`Push-Nachrichten: ${e instanceof Error ? e.message : String(e)}`);
 		});
 		const nowMs = Date.now();
 		if (nowMs - memoryDiagLastMs >= MEMORY_DIAG_INTERVAL_MS) {

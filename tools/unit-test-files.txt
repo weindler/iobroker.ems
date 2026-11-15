@@ -208,6 +208,7 @@ build/ems_light/economics_feed_in.test.js
 build/ems_light/live_cache.test.js
 build/app/core_snapshot.test.js
 build/app/memory_diag.test.js
+build/notify/rules.test.js
 build/profiles/catalog.test.js
 build/operator/daily_plan/unified/passive_battery_energy.test.js
 build/operator/daily_plan/invalidate_addon_off.test.js

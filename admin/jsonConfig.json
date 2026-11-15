@@ -12162,6 +12162,178 @@
 				}
 			}
 		},
+		"notifyTab": {
+			"type": "panel",
+			"label": "Benachrichtigungen",
+			"items": {
+				"introNotify": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Das EMS kann Ihnen kurze Nachrichten aufs Handy schicken, zum Beispiel über Pushover. Dafür muss der Pushover-Adapter in ioBroker installiert und eingerichtet sein. Die Nachrichten werden nur gesendet, wenn Sie sie hier einschalten."
+				},
+				"notify_enabled": {
+					"type": "checkbox",
+					"label": "Nachrichten senden",
+					"default": false,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"notify_instance": {
+					"type": "text",
+					"label": "Pushover-Instanz",
+					"default": "pushover.0",
+					"help": "Name der Adapter-Instanz, über die gesendet wird (z. B. pushover.0).",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"notifyTestBtn": {
+					"type": "sendTo",
+					"command": "notifyTest",
+					"jsonData": "{}",
+					"label": "Testnachricht senden",
+					"showProcess": true,
+					"timeout": 20000,
+					"variant": "outlined",
+					"icon": "send",
+					"result": {
+						"ok": "Testnachricht gesendet",
+						"error": "Senden fehlgeschlagen – Instanz prüfen"
+					},
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"help": "Verwendet die zuletzt gespeicherte Einstellung. Erst speichern, dann testen."
+				},
+				"hNotifyEvents": {
+					"type": "header",
+					"text": "Welche Nachrichten?",
+					"size": 3,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"notify_daily_enabled": {
+					"type": "checkbox",
+					"label": "Tagesausblick am Morgen",
+					"default": true,
+					"help": "Eine Nachricht pro Tag: erwartete Sonne heute und morgen, Batterie, Strompreis, Auto. Diese Uhrzeit gilt auch in den Ruhezeiten.",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"notify_daily_time": {
+					"type": "text",
+					"label": "Uhrzeit Tagesausblick (HH:MM)",
+					"default": "07:30",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"notify_battery_low_enabled": {
+					"type": "checkbox",
+					"label": "Batterie fast leer",
+					"default": true,
+					"help": "Eine Nachricht, wenn der Ladestand unter die Grenze fällt. Erst nach einer Erholung um 10 Prozentpunkte kommt wieder eine.",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"notify_battery_low_pct": {
+					"type": "number",
+					"label": "Grenze Batterie (%)",
+					"min": 5,
+					"max": 60,
+					"default": 20,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"notify_car_enabled": {
+					"type": "checkbox",
+					"label": "Autoladung beginnt / endet",
+					"default": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"notify_alerts_enabled": {
+					"type": "checkbox",
+					"label": "Störungen",
+					"default": true,
+					"help": "Auch in den Ruhezeiten. Dieselbe Störung wird höchstens alle 6 Stunden gemeldet.",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"hNotifyQuiet": {
+					"type": "header",
+					"text": "Ruhezeiten",
+					"size": 3,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"notify_quiet_enabled": {
+					"type": "checkbox",
+					"label": "Ruhezeiten verwenden",
+					"default": true,
+					"help": "In dieser Zeit kommen nur Störungen und der Tagesausblick.",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"notify_quiet_from": {
+					"type": "text",
+					"label": "Ruhe von (HH:MM)",
+					"default": "22:00",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"notify_quiet_to": {
+					"type": "text",
+					"label": "Ruhe bis (HH:MM)",
+					"default": "07:00",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				}
+			}
+		},
 		"exportTab": {
 			"type": "panel",
 			"label": "Backup",

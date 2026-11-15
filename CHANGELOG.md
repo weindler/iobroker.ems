@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.68] – 2026-11-15
+
+### Hinzugefügt
+- `app.memory_json` enthält jetzt `startupPhases`: Heap- und Gesamtspeicher nach jedem Startschritt. Damit lässt sich der Startschritt finden, der den Speicherbedarf nach oben treibt (gemessen: ~570 MB schon 77 s nach dem Start).
+
 ## [0.4.67] – 2026-11-15
 
 ### Hinzugefügt

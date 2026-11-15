@@ -58,6 +58,7 @@ const tree_paths_1 = require("./tree_paths");
 const inbox_1 = require("./inbox");
 const mapping_config_1 = require("./mapping_config");
 const ems_light_1 = require("./ems_light");
+const memory_diag_1 = require("./app/memory_diag");
 const energy_daily_rollup_1 = require("./learning/energy_daily_rollup");
 const power_rollup_1 = require("./learning/power_rollup");
 const policy_1 = require("./policy");
@@ -618,6 +619,7 @@ class Ems extends utils.Adapter {
             if (timer) {
                 clearTimeout(timer);
             }
+            (0, memory_diag_1.markMemoryPhase)(label);
             if (!timedOut) {
                 this.log.debug(`init step '${label}' ok (${Date.now() - started}ms)`);
             }

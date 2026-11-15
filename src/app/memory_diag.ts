@@ -6,6 +6,21 @@
 export const APP_MEMORY_STATE = "app.memory_json";
 export const MEMORY_DIAG_INTERVAL_MS = 5 * 60_000;
 
+export type MemoryPhase = { step: string; heapUsedMb: number; rssMb: number; atSec: number };
+
+const phases: MemoryPhase[] = [];
+const MAX_PHASES = 60;
+
+/** Merkt sich den Speicherstand nach einem Startschritt (nur Messung). */
+export function markMemoryPhase(step: string, usage: Usage = process.memoryUsage(), uptimeSec: number = process.uptime()): void {
+	if (phases.length >= MAX_PHASES) return;
+	phases.push({ step, heapUsedMb: mb(usage.heapUsed), rssMb: mb(usage.rss), atSec: Math.round(uptimeSec) });
+}
+
+export function getMemoryPhases(): MemoryPhase[] {
+	return phases.slice();
+}
+
 export type MemoryDiagnostics = {
 	updatedAt: string;
 	uptimeMin: number;
@@ -18,6 +33,7 @@ export type MemoryDiagnostics = {
 	outsideHeapMb: number;
 	rssPeakMb: number;
 	hintDe: string;
+	startupPhases: MemoryPhase[];
 };
 
 type Usage = { rss: number; heapUsed: number; heapTotal: number; external: number; arrayBuffers: number };
@@ -44,5 +60,6 @@ export function buildMemoryDiagnostics(usage: Usage, nowMs: number, uptimeSec: n
 		outsideHeapMb: outside,
 		rssPeakMb: Math.max(previousPeakMb, rssMb),
 		hintDe,
+		startupPhases: getMemoryPhases(),
 	};
 }

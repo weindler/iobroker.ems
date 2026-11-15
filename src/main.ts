@@ -45,6 +45,7 @@ import { GLOBAL, addonMode } from "./tree_paths";
 import { parseInboxValue } from "./inbox";
 import { goeWallboxTemplateFlat } from "./mapping_config";
 import { stopEmsLightPhase1 } from "./ems_light";
+import { markMemoryPhase } from "./app/memory_diag";
 import { handleEnergyDailyRollupStateChange } from "./learning/energy_daily_rollup";
 import { handlePowerRollupStateChange } from "./learning/power_rollup";
 import { handleGlobalModesStateChange } from "./policy";
@@ -693,6 +694,7 @@ class Ems extends utils.Adapter {
 			if (timer) {
 				clearTimeout(timer);
 			}
+			markMemoryPhase(label);
 			if (!timedOut) {
 				this.log.debug(`init step '${label}' ok (${Date.now() - started}ms)`);
 			}

@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.84] – 2026-11-15
+
+### Behoben
+- Admin → Backup: Die Backup-Verwaltung aktiviert nicht mehr den Speichern-Button (und löst damit keinen Adapter-Neustart mehr aus). Statt einer Auswahlliste gibt es jetzt Buttons: neuestes Backup herunterladen, vorhandene Backups anzeigen, ältestes löschen, alle außer den 3 neuesten löschen.
+
 ## [0.4.83] – 2026-11-15
 
 ### Hinzugefügt

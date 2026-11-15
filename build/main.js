@@ -206,17 +206,28 @@ class Ems extends utils.Adapter {
             });
             return;
         }
-        if (obj.command === "downloadBackup" || obj.command === "deleteBackup" || obj.command === "deleteOldBackups") {
+        if (obj.command === "downloadBackup" || obj.command === "deleteBackup" || obj.command === "deleteOldBackups" || obj.command === "listBackups") {
             void (async () => {
                 try {
                     const admin = await import("./backup/admin_files.js");
                     const msg = obj.message;
-                    const file = String(msg?.file ?? "").trim();
+                    let file = String(msg?.file ?? "").trim();
+                    const names = await admin.listBackupFileNames(this);
+                    if (!file && obj.command === "downloadBackup")
+                        file = names[0] ?? "";
+                    if (file === "__oldest__")
+                        file = names.length > 1 ? (names[names.length - 1] ?? "") : "";
                     let payload;
-                    if (obj.command === "downloadBackup") {
+                    if (obj.command === "listBackups") {
+                        payload = {
+                            result: "ok",
+                            hint: names.length ? `${names.length} Backup(s), neuestes zuerst:\n${names.join("\n")}` : "Keine Backups vorhanden",
+                        };
+                    }
+                    else if (obj.command === "downloadBackup") {
                         const dl = file ? await admin.readBackupFileBase64(this, file) : null;
                         if (!dl || !dl.ok) {
-                            payload = { result: "error", error: dl && !dl.ok ? dl.error : "Bitte zuerst ein Backup in der Liste wählen" };
+                            payload = { result: "error", error: dl && !dl.ok ? dl.error : "Kein Backup vorhanden" };
                         }
                         else {
                             payload = {
@@ -235,7 +246,7 @@ class Ems extends utils.Adapter {
                     }
                     else if (obj.command === "deleteBackup") {
                         if (!file) {
-                            payload = { result: "error", error: "Bitte zuerst ein Backup in der Liste wählen" };
+                            payload = { result: "error", error: "Es gibt nur ein Backup — das neueste bleibt immer erhalten" };
                         }
                         else {
                             const r = await admin.deleteBackupFile(this, file);

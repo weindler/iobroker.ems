@@ -37,7 +37,10 @@ import { EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS } from "./runtime_subscriptions";
 import { runEmsLightPhase1Tick } from "./tick";
 import type { LiveCacheHost } from "./live_cache";
 
+import { APP_MEMORY_STATE, MEMORY_DIAG_INTERVAL_MS, buildMemoryDiagnostics } from "../app/memory_diag";
 const DEFAULT_TICK_SEC = 60;
+let memoryDiagLastMs = 0;
+let memoryRssPeakMb = 0;
 const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer: NodeJS.Timeout | null = null;
 let policyAdapter: ioBroker.Adapter | null = null;
@@ -250,6 +253,13 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		void runEmsLightPhase1Tick(host).catch((e) => {
 			adapter.log.error(`EMS-Light tick: ${e}`);
 		});
+		const nowMs = Date.now();
+		if (nowMs - memoryDiagLastMs >= MEMORY_DIAG_INTERVAL_MS) {
+			memoryDiagLastMs = nowMs;
+			const diag = buildMemoryDiagnostics(process.memoryUsage(), nowMs, process.uptime(), memoryRssPeakMb);
+			memoryRssPeakMb = diag.rssPeakMb;
+			void host.setStateAsync(APP_MEMORY_STATE, { val: JSON.stringify(diag), ack: true }).catch(() => undefined);
+		}
 		if (dailyHostForTick) {
 			void tickEnergyDailyRollup(dailyHostForTick).catch((e) => {
 				adapter.log.error(`Energy-Daily-Rollup tick: ${e}`);

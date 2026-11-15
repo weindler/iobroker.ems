@@ -5,6 +5,7 @@ const channels_1 = require("./channels");
 const state_util_1 = require("./state_util");
 const catalog_1 = require("../profiles/catalog");
 const core_snapshot_1 = require("../app/core_snapshot");
+const memory_diag_1 = require("../app/memory_diag");
 const OPERATOR_BRIEFING_DEFAULT = "EMS-Light Phase 1 aktiv. Planner noch nicht initialisiert.";
 function strState(id, name, def, opts) {
     return {
@@ -55,6 +56,7 @@ async function ensureEmsLightStates(host, adapterVersion) {
         jsonState("profiles.catalog_json", "Verfügbare Geräte-/Hersteller-Templates (JSON)", JSON.stringify((0, catalog_1.buildDeviceTemplateCatalog)()), true),
         jsonState(core_snapshot_1.APP_CORE_CONTRACT_STATE, "Lokaler App-Core-Vertrag (JSON)", JSON.stringify(core_snapshot_1.APP_CORE_CONTRACT), true),
         jsonState(core_snapshot_1.APP_CORE_SNAPSHOT_STATE, "Lokaler App-Core-Snapshot (JSON)", "{}"),
+        jsonState(memory_diag_1.APP_MEMORY_STATE, "Speicherverbrauch des Adapters (JSON)", "{}"),
         numState("live.battery.soc_pct", "Live Batterie SOC", "%"),
         numState("live.battery.capacity_kwh", "Live Batteriekapazität", "kWh"),
         numState("live.battery.pv_ac_power_w", "Live PV AC Leistung", "W"),

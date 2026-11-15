@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.67] – 2026-11-15
+
+### Hinzugefügt
+- Neuer State `app.memory_json` (alle 5 Minuten): Gesamtspeicher, JavaScript-Heap, Puffer, Spitzenwert und ein Klartext-Hinweis. Damit lässt sich klären, warum der Adapter deutlich mehr Arbeitsspeicher belegt als sein Heap erklärt.
+
 ## [0.4.66] – 2026-11-15
 
 ### Geändert

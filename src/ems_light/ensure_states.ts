@@ -2,6 +2,7 @@ import { ensureEmsLightChannels } from "./channels";
 import { ensureStates, type StateDef, type StateHost } from "./state_util";
 import { buildDeviceTemplateCatalog } from "../profiles/catalog";
 import { APP_CORE_CONTRACT, APP_CORE_CONTRACT_STATE, APP_CORE_SNAPSHOT_STATE } from "../app/core_snapshot";
+import { APP_MEMORY_STATE } from "../app/memory_diag";
 
 const OPERATOR_BRIEFING_DEFAULT =
 	"EMS-Light Phase 1 aktiv. Planner noch nicht initialisiert.";
@@ -75,6 +76,7 @@ export async function ensureEmsLightStates(host: StateHost, adapterVersion: stri
 			true,
 		),
 		jsonState(APP_CORE_SNAPSHOT_STATE, "Lokaler App-Core-Snapshot (JSON)", "{}"),
+		jsonState(APP_MEMORY_STATE, "Speicherverbrauch des Adapters (JSON)", "{}"),
 
 		numState("live.battery.soc_pct", "Live Batterie SOC", "%"),
 		numState("live.battery.capacity_kwh", "Live Batteriekapazität", "kWh"),

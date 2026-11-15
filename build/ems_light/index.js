@@ -21,7 +21,10 @@ const tick_1 = require("../operator/daily_plan/tick");
 const ensure_states_1 = require("./ensure_states");
 const runtime_subscriptions_1 = require("./runtime_subscriptions");
 const tick_2 = require("./tick");
+const memory_diag_1 = require("../app/memory_diag");
 const DEFAULT_TICK_SEC = 60;
+let memoryDiagLastMs = 0;
+let memoryRssPeakMb = 0;
 const POLICY_STARTUP_TIMEOUT_MS = 8000;
 let tickTimer = null;
 let policyAdapter = null;
@@ -216,6 +219,13 @@ async function startEmsLightPhase1Runtime(adapter) {
         void (0, tick_2.runEmsLightPhase1Tick)(host).catch((e) => {
             adapter.log.error(`EMS-Light tick: ${e}`);
         });
+        const nowMs = Date.now();
+        if (nowMs - memoryDiagLastMs >= memory_diag_1.MEMORY_DIAG_INTERVAL_MS) {
+            memoryDiagLastMs = nowMs;
+            const diag = (0, memory_diag_1.buildMemoryDiagnostics)(process.memoryUsage(), nowMs, process.uptime(), memoryRssPeakMb);
+            memoryRssPeakMb = diag.rssPeakMb;
+            void host.setStateAsync(memory_diag_1.APP_MEMORY_STATE, { val: JSON.stringify(diag), ack: true }).catch(() => undefined);
+        }
         if (dailyHostForTick) {
             void (0, energy_daily_rollup_1.tickEnergyDailyRollup)(dailyHostForTick).catch((e) => {
                 adapter.log.error(`Energy-Daily-Rollup tick: ${e}`);

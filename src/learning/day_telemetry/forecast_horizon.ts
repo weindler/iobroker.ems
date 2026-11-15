@@ -210,6 +210,9 @@ export function rehydrateForecastRevisions(day: DayTelemetryDayRecord): void {
 	if (!Array.isArray(day.forecastRevisions) || day.forecastRevisions.length === 0) return;
 	if (!Array.isArray(day.forecastSnapshots) || day.forecastSnapshots.length === 0) return;
 	const byId = new Map(day.forecastRevisions.map((r) => [r.id, r]));
+	/* Basis-Zeitreihen je Revision einmal aufbauen (viele Snapshots teilen sich dieselbe Revision). */
+	const priceMaps = new Map<string, Map<number, number>>();
+	const pvMaps = new Map<string, Map<number, number>>();
 	for (const snap of day.forecastSnapshots) {
 		const revId = snap.forecastRevisionId;
 		if (!revId) continue;
@@ -218,7 +221,7 @@ export function rehydrateForecastRevisions(day: DayTelemetryDayRecord): void {
 
 		if (snap.forecastPriceTimelineStartMs != null && snap.forecastPriceSlotCount != null) {
 			snap.priceSlots = applyDeltaByTimestamp(
-				toTsValueMap(rev.priceSlots),
+				priceMaps.get(revId) ?? priceMaps.set(revId, toTsValueMap(rev.priceSlots)).get(revId)!,
 				snap.forecastPriceTimelineStartMs,
 				snap.forecastPriceSlotCount,
 				snap.forecastPriceDelta,
@@ -229,7 +232,7 @@ export function rehydrateForecastRevisions(day: DayTelemetryDayRecord): void {
 
 		if (snap.forecastPvTimelineStartMs != null && snap.forecastPvSlotCount != null) {
 			snap.pvSlotKwh = applyDeltaByTimestamp(
-				toTsValueMap(rev.pvSlotKwh),
+				pvMaps.get(revId) ?? pvMaps.set(revId, toTsValueMap(rev.pvSlotKwh)).get(revId)!,
 				snap.forecastPvTimelineStartMs,
 				snap.forecastPvSlotCount,
 				snap.forecastPvDelta,

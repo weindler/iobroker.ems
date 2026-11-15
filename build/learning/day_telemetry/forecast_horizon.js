@@ -198,6 +198,9 @@ function rehydrateForecastRevisions(day) {
     if (!Array.isArray(day.forecastSnapshots) || day.forecastSnapshots.length === 0)
         return;
     const byId = new Map(day.forecastRevisions.map((r) => [r.id, r]));
+    /* Basis-Zeitreihen je Revision einmal aufbauen (viele Snapshots teilen sich dieselbe Revision). */
+    const priceMaps = new Map();
+    const pvMaps = new Map();
     for (const snap of day.forecastSnapshots) {
         const revId = snap.forecastRevisionId;
         if (!revId)
@@ -206,13 +209,13 @@ function rehydrateForecastRevisions(day) {
         if (!rev)
             continue;
         if (snap.forecastPriceTimelineStartMs != null && snap.forecastPriceSlotCount != null) {
-            snap.priceSlots = applyDeltaByTimestamp(toTsValueMap(rev.priceSlots), snap.forecastPriceTimelineStartMs, snap.forecastPriceSlotCount, snap.forecastPriceDelta);
+            snap.priceSlots = applyDeltaByTimestamp(priceMaps.get(revId) ?? priceMaps.set(revId, toTsValueMap(rev.priceSlots)).get(revId), snap.forecastPriceTimelineStartMs, snap.forecastPriceSlotCount, snap.forecastPriceDelta);
         }
         else {
             snap.priceSlots = applyDeltaByIndex(rev.priceSlots, snap.forecastPriceDelta);
         }
         if (snap.forecastPvTimelineStartMs != null && snap.forecastPvSlotCount != null) {
-            snap.pvSlotKwh = applyDeltaByTimestamp(toTsValueMap(rev.pvSlotKwh), snap.forecastPvTimelineStartMs, snap.forecastPvSlotCount, snap.forecastPvDelta);
+            snap.pvSlotKwh = applyDeltaByTimestamp(pvMaps.get(revId) ?? pvMaps.set(revId, toTsValueMap(rev.pvSlotKwh)).get(revId), snap.forecastPvTimelineStartMs, snap.forecastPvSlotCount, snap.forecastPvDelta);
         }
         else {
             snap.pvSlotKwh = applyDeltaByIndex(rev.pvSlotKwh, snap.forecastPvDelta);

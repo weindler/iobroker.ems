@@ -101,6 +101,23 @@ export function buildCanonicalQuarterSlots(sourceSlots: ForecastPlanSlot[]): Slo
 	return slots;
 }
 
+type BoundedSource = { start: number; end: number; source: ForecastPlanSlot };
+const boundedSourceCache = new WeakMap<ForecastPlanSlot[], BoundedSource[]>();
+
+/** Zeitgrenzen der Quellslots einmal je Liste berechnen (statt je Viertelstunde neu zu parsen). */
+function boundedSources(sourceSlots: ForecastPlanSlot[]): BoundedSource[] {
+	let cached = boundedSourceCache.get(sourceSlots);
+	if (!cached) {
+		cached = [];
+		for (const source of sourceSlots) {
+			const b = validBounds(source.slot);
+			if (b) cached.push({ start: b.start, end: b.end, source });
+		}
+		boundedSourceCache.set(sourceSlots, cached);
+	}
+	return cached;
+}
+
 /** Pro Viertelstunde gewinnt der zeitlich genaueste bekannte Quellwert. */
 function sourceValueForQuarter<T>(
 	sourceSlots: ForecastPlanSlot[],
@@ -111,12 +128,11 @@ function sourceValueForQuarter<T>(
 	if (!quarterBounds) return null;
 	let selected: T | null = null;
 	let selectedDuration = Number.POSITIVE_INFINITY;
-	for (const source of sourceSlots) {
-		const sourceBounds = validBounds(source.slot);
-		if (!sourceBounds || sourceBounds.start > quarterBounds.start || sourceBounds.end < quarterBounds.end) continue;
-		const value = read(source);
+	for (const sb of boundedSources(sourceSlots)) {
+		if (sb.start > quarterBounds.start || sb.end < quarterBounds.end) continue;
+		const value = read(sb.source);
 		if (value === null || value === undefined) continue;
-		const duration = sourceBounds.end - sourceBounds.start;
+		const duration = sb.end - sb.start;
 		if (duration < selectedDuration) {
 			selected = value;
 			selectedDuration = duration;
@@ -130,13 +146,13 @@ function gridImportAllowedForQuarter(sourceSlots: ForecastPlanSlot[], quarter: S
 	if (!quarterBounds) return true;
 	let selected: boolean | null = null;
 	let selectedDuration = Number.POSITIVE_INFINITY;
-	for (const source of sourceSlots) {
-		const sourceBounds = validBounds(source.slot);
-		if (!sourceBounds || sourceBounds.start > quarterBounds.start || sourceBounds.end < quarterBounds.end) continue;
+	for (const sb of boundedSources(sourceSlots)) {
+		if (sb.start > quarterBounds.start || sb.end < quarterBounds.end) continue;
+		const source = sb.source;
 		const carriesGridPolicy = source.gridPriceCtPerKwh !== null ||
 			source.gridMaxImportPowerW !== null || source.gridImportAllowed === false;
 		if (!carriesGridPolicy) continue;
-		const duration = sourceBounds.end - sourceBounds.start;
+		const duration = sb.end - sb.start;
 		if (duration < selectedDuration) {
 			selected = source.gridImportAllowed;
 			selectedDuration = duration;

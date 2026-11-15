@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.90] – 2026-11-15
+
+### Behoben
+- Speicher: Die größten Verursacher kurzlebiger Objekte im Planlauf sind entschärft (laut Allokationsprofil ca. 11 GB pro 11 Minuten): Ortszeit→UTC-Umrechnung (`isoAtTimezoneLocal`) rechnet direkt statt per Minutensuche (Ergebnis für Berlin geprüft identisch, auch an Zeitumstellungstagen), Zeitgrenzen der Prognosequellen werden je Planlauf einmal berechnet, Prognose-Revisionen der Tagestelemetrie bauen ihre Basis-Zeitreihe nur einmal je Revision.
+
 ## [0.4.89] – 2026-11-15
 
 ### Geändert

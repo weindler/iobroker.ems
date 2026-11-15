@@ -97,22 +97,44 @@ export function formatLocalDateTimeDe(isoOrMs: string | number, timezone: string
 	);
 }
 
+/** Versatz (ms) der Zeitzone gegenüber UTC zum Zeitpunkt `ms`, auf volle Minuten. */
+function zoneOffsetMs(ms: number, timezone: string): number {
+	const p = zonedParts(ms, timezone);
+	return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, 0) - Math.floor(ms / 60_000) * 60_000;
+}
+
+const isoLocalMemo = new Map<string, string>();
+const ISO_LOCAL_MEMO_MAX = 4000;
+
+/**
+ * Ortszeit (Datum, Stunde, Minute) → ISO/UTC. Früheste passende Zeit; gibt es die Ortszeit nicht
+ * (Zeitumstellung), wird die Zeit als UTC gelesen. Direkte Berechnung über die Zeitzonen-Versätze
+ * des Tages statt Minutensuche (die Suche erzeugte pro Aufruf tausende Objekte).
+ */
 export function isoAtTimezoneLocal(
 	dateKey: string,
 	hour: number,
 	minute: number,
 	timezone: string,
 ): string {
+	const memoKey = `${timezone}|${dateKey}|${hour}|${minute}`;
+	const hit = isoLocalMemo.get(memoKey);
+	if (hit !== undefined) return hit;
 	const [y, mo, da] = dateKey.split("-").map((x) => parseInt(x, 10));
-	let lo = Date.UTC(y, mo - 1, da, 0, 0, 0) - 36 * MS_PER_15MIN;
-	let hi = Date.UTC(y, mo - 1, da, 23, 59, 59) + 36 * MS_PER_15MIN;
-	for (let ms = lo; ms <= hi; ms += 60_000) {
+	const wall = Date.UTC(y, mo - 1, da, hour, minute, 0);
+	const offsets = new Set<number>([zoneOffsetMs(wall - 24 * 3_600_000, timezone), zoneOffsetMs(wall + 24 * 3_600_000, timezone)]);
+	let best: number | null = null;
+	for (const off of offsets) {
+		const ms = wall - off;
 		const p = zonedParts(ms, timezone);
 		if (p.year === y && p.month === mo && p.day === da && p.hour === hour && p.minute === minute) {
-			return isoFromMs(ms);
+			if (best === null || ms < best) best = ms;
 		}
 	}
-	return isoFromMs(Date.UTC(y, mo - 1, da, hour, minute, 0));
+	const out = isoFromMs(best ?? wall);
+	if (isoLocalMemo.size >= ISO_LOCAL_MEMO_MAX) isoLocalMemo.clear();
+	isoLocalMemo.set(memoKey, out);
+	return out;
 }
 
 export function addDaysToDateKey(dateKey: string, days: number): string {
@@ -127,6 +149,7 @@ export function zonedFormatterCacheSizeForTest(): number {
 
 export function resetZonedFormatterCacheForTest(): void {
 	zonedFormatters.clear();
+	isoLocalMemo.clear();
 }
 
 export function zonedFormatterCacheHasForTest(timezone: string): boolean {

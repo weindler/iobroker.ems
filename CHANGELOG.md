@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.93] – 2026-11-15
+
+### Behoben
+- Batterie: Die Aufräumroutine beim Start löschte `addons.battery.limits` samt der Hardware-Grenzen wieder. Diese vier Datenpunkte und der Kanal sind jetzt von der Bereinigung ausgenommen, die Warnungen „has no existing object“ entfallen.
+
 ## [0.4.92] – 2026-11-15
 
 ### Behoben

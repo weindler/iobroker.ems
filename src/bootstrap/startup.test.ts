@@ -490,10 +490,11 @@ describe("bootstrap cold start recovery", () => {
 		 * +4 für PV-Zweitquelle (alt heute/morgen, Guard-Status, Vergleichs-JSON) in learning.pv_bias.
 		 * Zusätzlich zu den EV-/Tibber- und PV-Horizon-States
 		 * bleiben drei für die Batterie-Preisbrücke benötigte Laufzeit-States erhalten;
+		 * +4 für die Batterie-Hardwaregrenzen (addons.battery.limits.hardware_*), Obergrenze 792.
 		 * State-Explosionen bleiben sichtbar.
 		 */
 		assert.ok(
-			states <= 785,
+			states <= 792,
 			`empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`,
 		);
 		assert.ok(states >= 250, `unexpectedly small surface states=${states}`);

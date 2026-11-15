@@ -439,9 +439,10 @@ function assertCoreCategories(adapter) {
          * +4 für PV-Zweitquelle (alt heute/morgen, Guard-Status, Vergleichs-JSON) in learning.pv_bias.
          * Zusätzlich zu den EV-/Tibber- und PV-Horizon-States
          * bleiben drei für die Batterie-Preisbrücke benötigte Laufzeit-States erhalten;
+         * +4 für die Batterie-Hardwaregrenzen (addons.battery.limits.hardware_*), Obergrenze 792.
          * State-Explosionen bleiben sichtbar.
          */
-        strict_1.default.ok(states <= 785, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
+        strict_1.default.ok(states <= 792, `empty-config states=${states} channels=${channels} areas=${JSON.stringify(byArea)}`);
         strict_1.default.ok(states >= 250, `unexpectedly small surface states=${states}`);
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes("addons.measured_consumers")), "empty measured_consumers config must not create consumer/aggregate states");
         strict_1.default.ok(![...adapter.objects.keys()].some((id) => id.includes(".mapping.")), "mapping shadows remain");

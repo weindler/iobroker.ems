@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildZipArchive = buildZipArchive;
 exports.readZipEntryNames = readZipEntryNames;
 exports.readZipEntryData = readZipEntryData;
+const node_zlib_1 = require("node:zlib");
 const manifest_validate_1 = require("./manifest_validate");
 /** CRC32 für ZIP (IEEE). */
 function crc32(buf) {
@@ -28,10 +29,10 @@ function dosTime(date) {
     };
 }
 /**
- * Erzeugt ein ZIP-Archiv (Store, ohne Kompression) — kompatibel mit .emsbackup/.emssupport.
+ * Erzeugt ein ZIP-Archiv (Store; optional Deflate pro Datei) — kompatibel mit .emsbackup/.emssupport.
  * Kein ZIP64 — Größenlimits in limits.ts erzwingen kompatible Archive.
  */
-function buildZipArchive(entries) {
+function buildZipArchive(entries, opts = {}) {
     (0, manifest_validate_1.assertUniqueArchivePaths)(entries);
     const now = new Date();
     const { time, date } = dosTime(now);
@@ -43,30 +44,39 @@ function buildZipArchive(entries) {
         const nameBuf = Buffer.from(name, "utf8");
         const data = typeof entry.content === "string" ? Buffer.from(entry.content, "utf8") : entry.content;
         const crc = crc32(data);
+        let stored = data;
+        let method = 0;
+        if (opts.compress && data.length > 256) {
+            const packed = (0, node_zlib_1.deflateRawSync)(data, { level: 6 });
+            if (packed.length < data.length) {
+                stored = packed;
+                method = 8;
+            }
+        }
         const local = Buffer.alloc(30 + nameBuf.length);
         local.writeUInt32LE(0x04034b50, 0);
         local.writeUInt16LE(20, 4);
         local.writeUInt16LE(0, 6);
-        local.writeUInt16LE(0, 8);
+        local.writeUInt16LE(method, 8);
         local.writeUInt16LE(time, 10);
         local.writeUInt16LE(date, 12);
         local.writeUInt32LE(crc, 14);
-        local.writeUInt32LE(data.length, 18);
+        local.writeUInt32LE(stored.length, 18);
         local.writeUInt32LE(data.length, 22);
         local.writeUInt16LE(nameBuf.length, 26);
         local.writeUInt16LE(0, 28);
         nameBuf.copy(local, 30);
-        localParts.push(local, data);
+        localParts.push(local, stored);
         const central = Buffer.alloc(46 + nameBuf.length);
         central.writeUInt32LE(0x02014b50, 0);
         central.writeUInt16LE(20, 4);
         central.writeUInt16LE(20, 6);
         central.writeUInt16LE(0, 8);
-        central.writeUInt16LE(0, 10);
+        central.writeUInt16LE(method, 10);
         central.writeUInt16LE(time, 12);
         central.writeUInt16LE(date, 14);
         central.writeUInt32LE(crc, 16);
-        central.writeUInt32LE(data.length, 20);
+        central.writeUInt32LE(stored.length, 20);
         central.writeUInt32LE(data.length, 24);
         central.writeUInt16LE(nameBuf.length, 28);
         central.writeUInt16LE(0, 30);
@@ -77,7 +87,7 @@ function buildZipArchive(entries) {
         central.writeUInt32LE(offset, 42);
         nameBuf.copy(central, 46);
         centralParts.push(central);
-        offset += local.length + data.length;
+        offset += local.length + stored.length;
     }
     const centralDir = Buffer.concat(centralParts);
     const localData = Buffer.concat(localParts);
@@ -125,7 +135,11 @@ function readZipEntryData(archive, entryName) {
         const compSize = archive.readUInt32LE(pos + 18);
         const dataStart = pos + 30 + nameLen + extraLen;
         if (name === target) {
-            return archive.subarray(dataStart, dataStart + compSize);
+            const raw = archive.subarray(dataStart, dataStart + compSize);
+            if (archive.readUInt16LE(pos + 8) === 8) {
+                return (0, node_zlib_1.inflateRawSync)(raw, { maxOutputLength: archive.readUInt32LE(pos + 22) });
+            }
+            return raw;
         }
         pos = dataStart + compSize;
     }

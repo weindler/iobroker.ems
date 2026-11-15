@@ -192,7 +192,7 @@ async function runExport(host, kind, collectSupportExtras) {
             ...baseEntries,
             { path: "manifest.json", content: (0, schema_1.stableJsonStringify)(manifest) },
         ];
-        const archive = (0, archive_1.buildZipArchive)(allEntries);
+        const archive = (0, archive_1.buildZipArchive)(allEntries, { compress: kind === "backup" });
         const maxArchive = kind === "backup" ? limits_1.EXPORT_LIMITS.MAX_BACKUP_ARCHIVE_BYTES : limits_1.EXPORT_LIMITS.MAX_SUPPORT_ARCHIVE_BYTES;
         (0, limits_1.assertWithinLimit)(archive.length, maxArchive, "finished archive size");
         const fileName = (0, manifest_1.exportFileName)(kind, version, createdAt);

@@ -4,12 +4,14 @@ exports.readStoreZipArchive = readStoreZipArchive;
 exports.zipEntriesToMap = zipEntriesToMap;
 exports.zipCrc32 = crc32;
 const manifest_validate_1 = require("../backup/manifest_validate");
+const node_zlib_1 = require("node:zlib");
 const limits_1 = require("../backup/limits");
 const limits_2 = require("../backup/limits");
 const SIG_LOCAL = 0x04034b50;
 const SIG_CENTRAL = 0x02014b50;
 const SIG_EOC = 0x06054b50;
 const METHOD_STORE = 0;
+const METHOD_DEFLATE = 8;
 function crc32(buf) {
     let crc = 0xffffffff;
     for (let i = 0; i < buf.length; i++) {
@@ -48,6 +50,7 @@ function readStoreZipArchive(archive) {
         throw new Error("central directory out of bounds");
     }
     const entries = [];
+    let totalUncompressed = 0;
     const seen = new Set();
     let pos = centralOffset;
     for (let i = 0; i < totalEntries; i++) {
@@ -62,12 +65,19 @@ function readStoreZipArchive(archive) {
         const compSize = archive.readUInt32LE(pos + 20);
         const uncompSize = archive.readUInt32LE(pos + 24);
         const localOffset = archive.readUInt32LE(pos + 42);
-        if (method !== METHOD_STORE) {
+        if (method !== METHOD_STORE && method !== METHOD_DEFLATE) {
             throw new Error("unsupported compression method");
         }
-        if (compSize !== uncompSize || compSize > 0xffffffff || uncompSize > 0xffffffff) {
+        if (method === METHOD_STORE && compSize !== uncompSize) {
             throw new Error("zip64 size fields not supported");
         }
+        if (compSize > 0xffffffff || uncompSize > 0xffffffff) {
+            throw new Error("zip64 size fields not supported");
+        }
+        /* Zip-Bomben-Schutz: deklarierte und tatsächliche Größe begrenzen. */
+        (0, limits_2.assertWithinLimit)(uncompSize, limits_1.EXPORT_LIMITS.MAX_SINGLE_FILE_BYTES, "zip entry size");
+        totalUncompressed += uncompSize;
+        (0, limits_2.assertWithinLimit)(totalUncompressed, limits_1.EXPORT_LIMITS.MAX_UNCOMPRESSED_ARCHIVE_BYTES, "zip total uncompressed size");
         const name = archive.subarray(pos + 46, pos + 46 + nameLen).toString("utf8");
         (0, manifest_validate_1.assertSafeArchivePath)(name);
         if (name.endsWith("/")) {
@@ -87,7 +97,18 @@ function readStoreZipArchive(archive) {
         if (dataStart + compSize > archive.length) {
             throw new Error("entry data out of bounds");
         }
-        const data = archive.subarray(dataStart, dataStart + compSize);
+        let data = archive.subarray(dataStart, dataStart + compSize);
+        if (method === METHOD_DEFLATE) {
+            try {
+                data = (0, node_zlib_1.inflateRawSync)(data, { maxOutputLength: uncompSize });
+            }
+            catch {
+                throw new Error(`inflate failed for ${name}`);
+            }
+            if (data.length !== uncompSize) {
+                throw new Error(`size mismatch for ${name}`);
+            }
+        }
         if (crc32(data) !== crc) {
             throw new Error(`crc mismatch for ${name}`);
         }

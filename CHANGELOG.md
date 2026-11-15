@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.85] – 2026-11-15
+
+### Geändert
+- Backups (`.emsbackup`) werden jetzt komprimiert: ein typisches Backup schrumpft von rund 4,2 MB auf etwa 0,3 MB. Das Einlesen akzeptiert weiterhin die älteren unkomprimierten Backups. Beim Entpacken gelten feste Größenlimits (Schutz vor Zip-Bomben); Support-Pakete bleiben unverändert.
+
 ## [0.4.84] – 2026-11-15
 
 ### Behoben

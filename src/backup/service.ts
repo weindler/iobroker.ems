@@ -210,7 +210,7 @@ export async function runExport(
 			...baseEntries,
 			{ path: "manifest.json", content: stableJsonStringify(manifest) },
 		];
-		const archive = buildZipArchive(allEntries);
+		const archive = buildZipArchive(allEntries, { compress: kind === "backup" });
 		const maxArchive =
 			kind === "backup" ? EXPORT_LIMITS.MAX_BACKUP_ARCHIVE_BYTES : EXPORT_LIMITS.MAX_SUPPORT_ARCHIVE_BYTES;
 		assertWithinLimit(archive.length, maxArchive, "finished archive size");

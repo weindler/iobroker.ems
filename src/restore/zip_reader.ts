@@ -1,4 +1,5 @@
 import { assertSafeArchivePath } from "../backup/manifest_validate";
+import { inflateRawSync } from "node:zlib";
 import { EXPORT_LIMITS } from "../backup/limits";
 import { assertWithinLimit } from "../backup/limits";
 
@@ -6,6 +7,7 @@ const SIG_LOCAL = 0x04034b50;
 const SIG_CENTRAL = 0x02014b50;
 const SIG_EOC = 0x06054b50;
 const METHOD_STORE = 0;
+const METHOD_DEFLATE = 8;
 
 export interface ZipEntryData {
 	path: string;
@@ -54,6 +56,7 @@ export function readStoreZipArchive(archive: Buffer): ZipEntryData[] {
 	}
 
 	const entries: ZipEntryData[] = [];
+	let totalUncompressed = 0;
 	const seen = new Set<string>();
 	let pos = centralOffset;
 	for (let i = 0; i < totalEntries; i++) {
@@ -68,12 +71,19 @@ export function readStoreZipArchive(archive: Buffer): ZipEntryData[] {
 		const compSize = archive.readUInt32LE(pos + 20);
 		const uncompSize = archive.readUInt32LE(pos + 24);
 		const localOffset = archive.readUInt32LE(pos + 42);
-		if (method !== METHOD_STORE) {
+		if (method !== METHOD_STORE && method !== METHOD_DEFLATE) {
 			throw new Error("unsupported compression method");
 		}
-		if (compSize !== uncompSize || compSize > 0xffffffff || uncompSize > 0xffffffff) {
+		if (method === METHOD_STORE && compSize !== uncompSize) {
 			throw new Error("zip64 size fields not supported");
 		}
+		if (compSize > 0xffffffff || uncompSize > 0xffffffff) {
+			throw new Error("zip64 size fields not supported");
+		}
+		/* Zip-Bomben-Schutz: deklarierte und tatsächliche Größe begrenzen. */
+		assertWithinLimit(uncompSize, EXPORT_LIMITS.MAX_SINGLE_FILE_BYTES, "zip entry size");
+		totalUncompressed += uncompSize;
+		assertWithinLimit(totalUncompressed, EXPORT_LIMITS.MAX_UNCOMPRESSED_ARCHIVE_BYTES, "zip total uncompressed size");
 		const name = archive.subarray(pos + 46, pos + 46 + nameLen).toString("utf8");
 		assertSafeArchivePath(name);
 		if (name.endsWith("/")) {
@@ -94,7 +104,17 @@ export function readStoreZipArchive(archive: Buffer): ZipEntryData[] {
 		if (dataStart + compSize > archive.length) {
 			throw new Error("entry data out of bounds");
 		}
-		const data = archive.subarray(dataStart, dataStart + compSize);
+		let data = archive.subarray(dataStart, dataStart + compSize);
+		if (method === METHOD_DEFLATE) {
+			try {
+				data = inflateRawSync(data, { maxOutputLength: uncompSize });
+			} catch {
+				throw new Error(`inflate failed for ${name}`);
+			}
+			if (data.length !== uncompSize) {
+				throw new Error(`size mismatch for ${name}`);
+			}
+		}
 		if (crc32(data) !== crc) {
 			throw new Error(`crc mismatch for ${name}`);
 		}

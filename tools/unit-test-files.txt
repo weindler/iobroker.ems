@@ -225,6 +225,7 @@ build/backup/admin_manage.test.js
 build/backup_integration/fence_validation.test.js
 build/backup/admin_manage.test.js
 build/restore/restore.test.js
+build/restore/zip_compress.test.js
 build/backup/admin_manage.test.js
 build/restore/injection.test.js
 build/backup/admin_manage.test.js

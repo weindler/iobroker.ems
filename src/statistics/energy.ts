@@ -259,6 +259,9 @@ function attributeDevicePv(
 	};
 }
 
+/** Höchstanteil unklar zugeordneter Ladeenergie, bis zu dem der PV-Anteil noch angegeben wird. */
+const BATTERY_PV_UNCLEAR_MAX_SHARE = 0.25;
+
 function batteryPvAttribution(day: DayTelemetryDayRecord): PvAttribution {
 	const charge = day.buckets.batteryChargedKwh;
 	const source = day.buckets.batteryChargeSource;
@@ -267,8 +270,9 @@ function batteryPvAttribution(day: DayTelemetryDayRecord): PvAttribution {
 	}
 	let total = 0;
 	let pv = 0;
+	let grid = 0;
+	let unclear = 0;
 	let known = 0;
-	let ambiguous = false;
 	for (let index = 0; index < day.slotCount; index++) {
 		const kwh = charge[index];
 		if (!finite(kwh)) continue;
@@ -277,11 +281,19 @@ function batteryPvAttribution(day: DayTelemetryDayRecord): PvAttribution {
 		known += 1;
 		if (amount === 0) continue;
 		if (source[index] === "pv") pv += amount;
-		else if (source[index] !== "grid") ambiguous = true;
+		else if (source[index] === "grid") grid += amount;
+		else unclear += amount;
 	}
 	if (known === 0) return { energyKwh: null, pvKwh: null, pvSharePct: null };
 	const energyKwh = round3(total);
-	const pvKwh = ambiguous ? null : round3(pv);
+	/*
+	 * Einzelne Zeitfenster mit gemischter/unklarer Quelle (z. B. Wolkendurchgang, Hausverbrauch springt)
+	 * machten bisher den ganzen Zeitraum unbekannt. Bis zu BATTERY_PV_UNCLEAR_MAX_SHARE der Ladeenergie
+	 * werden nach dem Verhältnis der eindeutigen Fenster verteilt; darüber bleibt der Anteil unbekannt.
+	 */
+	if (unclear > total * BATTERY_PV_UNCLEAR_MAX_SHARE) return { energyKwh, pvKwh: null, pvSharePct: null };
+	const clear = pv + grid;
+	const pvKwh = round3(clear > 0 ? pv + unclear * (pv / clear) : pv);
 	return { energyKwh, pvKwh, pvSharePct: total > 0 ? percentage(pvKwh, energyKwh) : null };
 }
 

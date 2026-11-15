@@ -1055,6 +1055,16 @@ async function persist(host, s, x) {
     await set(ensure_states_1.BAT.status.reason, s.readiness.reason);
     await set(ensure_states_1.BAT.status.fault, runtime.faultCode !== null);
     await set(ensure_states_1.BAT.status.lockout, runtime.lockout);
+    /* Hardwaregrenzen aus der Konfiguration sichtbar machen (VIS: „Tiefster Wert, den das Gerät zulässt“). */
+    const lim = s.limits;
+    if (lim.minSocPct !== null)
+        await set(ensure_states_1.BAT.limits.hardwareMinSocPct, lim.minSocPct);
+    if (lim.maxSocPct !== null)
+        await set(ensure_states_1.BAT.limits.hardwareMaxSocPct, lim.maxSocPct);
+    if (lim.maxChargeW !== null)
+        await set(ensure_states_1.BAT.limits.hardwareMaxChargeW, lim.maxChargeW);
+    if (lim.maxDischargeW !== null)
+        await set(ensure_states_1.BAT.limits.hardwareMaxDischargeW, lim.maxDischargeW);
     await set(ensure_states_1.BAT.runtime.action, runtime.action ?? "");
     await set(ensure_states_1.BAT.runtime.state, runtime.state);
     await set(ensure_states_1.BAT.runtime.ownershipActive, runtime.ownership.active);

@@ -38,6 +38,22 @@ describe("energetische Statistik", () => {
 		assert.equal(result.gridTruthSource, "smart_meter");
 		assert.match(result.notesDe.join(" "), /erste Tag kann unvollständig/);
 	});
+	it("gibt den PV-Anteil der Batterieladung trotz weniger unklarer Fenster an", () => {
+		const day = fixture();
+		day.buckets.batteryChargedKwh = [1, 1, 1, 0.1];
+		day.buckets.batteryChargeSource = ["pv", "grid", "pv", "mixed"];
+		const r = buildEnergeticDayTotals(day);
+		assert.equal(r.batteryPvChargedKwh, 2.067, "unklare 0,1 kWh nach dem Verhältnis der eindeutigen Fenster (2:1)");
+		assert.ok(r.batteryPvSharePct !== null && Math.abs(r.batteryPvSharePct - 66.7) < 0.2);
+	});
+	it("lässt den PV-Anteil offen, wenn zu viel Ladeenergie unklar ist", () => {
+		const day = fixture();
+		day.buckets.batteryChargedKwh = [1, 1, 1, 1];
+		day.buckets.batteryChargeSource = ["pv", "mixed", "unknown", "pv"];
+		const r = buildEnergeticDayTotals(day);
+		assert.equal(r.batteryPvChargedKwh, null);
+		assert.equal(r.batteryPvSharePct, null);
+	});
 	it("berechnet Eigenverbrauch, Autarkie und gemessene Geräte-PV-Anteile", () => {
 		const result = buildEnergeticDayTotals(fixture());
 		assert.equal(result.pvGenerationKwh, 3);

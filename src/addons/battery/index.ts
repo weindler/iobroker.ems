@@ -1294,6 +1294,13 @@ async function persist(host: Host, s: BatterySnapshot, x: PersistExtra): Promise
 	await set(BAT.status.fault, runtime.faultCode !== null);
 	await set(BAT.status.lockout, runtime.lockout);
 
+	/* Hardwaregrenzen aus der Konfiguration sichtbar machen (VIS: „Tiefster Wert, den das Gerät zulässt“). */
+	const lim = s.limits;
+	if (lim.minSocPct !== null) await set(BAT.limits.hardwareMinSocPct, lim.minSocPct);
+	if (lim.maxSocPct !== null) await set(BAT.limits.hardwareMaxSocPct, lim.maxSocPct);
+	if (lim.maxChargeW !== null) await set(BAT.limits.hardwareMaxChargeW, lim.maxChargeW);
+	if (lim.maxDischargeW !== null) await set(BAT.limits.hardwareMaxDischargeW, lim.maxDischargeW);
+
 	await set(BAT.runtime.action, runtime.action ?? "");
 	await set(BAT.runtime.state, runtime.state);
 	await set(BAT.runtime.ownershipActive, runtime.ownership.active);

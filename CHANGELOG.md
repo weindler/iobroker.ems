@@ -8,7 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.91] – 2026-11-15
+
 ### Behoben
+- Batterie-Seite: „Nachtreserve als Ziel (gelernt)“ blieb leer, weil der Datenpunkt nicht in der Anzeige-Liste stand.
+- Batterie-Seite: „Tiefster Wert, den das Gerät zulässt“ blieb leer, weil die Hardware-Grenzen (Min-/Max-SOC, Max-Lade-/Entladeleistung) nie als Datenpunkte veröffentlicht wurden (`addons.battery.limits.*`).
+- Statistik: „Zeitraum PV-Anteil“ der Batterie blieb leer, sobald nur ein Zeitfenster eine gemischte/unklare Ladequelle hatte. Bis zu 25 % unklare Ladeenergie werden jetzt nach dem Verhältnis der eindeutigen Fenster verteilt, darüber bleibt der Anteil unbekannt.
 - PV-Wochenansicht: Heute/Morgen zeigen die Tagesgesamtwerte (nicht mehr Teilsummen seit Start); Brightsky heute = Rest des Tages + bisher Erzeugtes.
 
 ## [0.4.90] – 2026-11-15

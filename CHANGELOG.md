@@ -8,6 +8,9 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+### Behoben
+- Admin → Backup: ungültige Schaltflächenfarbe (`error`) in der Backup-Verwaltung ersetzt; der Admin hatte die Konfiguration beanstandet. „Vorhandene Backups anzeigen“ gibt die Dateiliste direkt als Meldung aus.
+
 ## [0.4.86] – 2026-11-15
 
 ### Hinzugefügt

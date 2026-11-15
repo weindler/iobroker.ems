@@ -12446,7 +12446,6 @@
 					"variant": "outlined",
 					"color": "primary",
 					"result": {
-						"ok": "Siehe Hinweis",
 						"error": "Fehlgeschlagen"
 					},
 					"xs": 12,
@@ -12463,7 +12462,7 @@
 					"showProcess": true,
 					"timeout": 60000,
 					"variant": "outlined",
-					"color": "error",
+					"color": "secondary",
 					"icon": "delete",
 					"confirm": {
 						"condition": "true",
@@ -12491,7 +12490,7 @@
 					"showProcess": true,
 					"timeout": 60000,
 					"variant": "outlined",
-					"color": "error",
+					"color": "secondary",
 					"icon": "delete",
 					"confirm": {
 						"condition": "true",

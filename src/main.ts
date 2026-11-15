@@ -207,10 +207,11 @@ class Ems extends utils.Adapter {
 					if (file === "__oldest__") file = names.length > 1 ? (names[names.length - 1] ?? "") : "";
 					let payload: Record<string, unknown>;
 					if (obj.command === "listBackups") {
-						payload = {
-							result: "ok",
-							hint: names.length ? `${names.length} Backup(s), neuestes zuerst:\n${names.join("\n")}` : "Keine Backups vorhanden",
-						};
+						const listText = names.length
+							? `${names.length} Backup(s), neuestes zuerst:\n${names.join("\n")}`
+							: "Keine Backups vorhanden";
+						/* Admin zeigt bei Unbekanntem result den Text selbst an. */
+						payload = { result: listText, hint: listText };
 					} else if (obj.command === "downloadBackup") {
 						const dl = file ? await admin.readBackupFileBase64(this, file) : null;
 						if (!dl || !dl.ok) {

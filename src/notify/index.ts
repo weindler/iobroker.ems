@@ -15,7 +15,8 @@ export type NotifyHost = {
 	log: { warn: (m: string) => void; debug?: (m: string) => void };
 	getStateAsync: (id: string) => Promise<{ val?: unknown } | null | undefined>;
 	setStateAsync: (id: string, state: { val: ioBroker.StateValue; ack: boolean }) => Promise<unknown>;
-	sendToAsync?: (instance: string, message: unknown) => Promise<unknown>;
+	/** Fire-and-forget: Pushover & Co. antworten nicht zuverlässig, ein Warten auf Antwort würde hängen. */
+	sendTo?: (instance: string, message: unknown) => void;
 };
 
 function bool(v: unknown, def: boolean): boolean {
@@ -108,8 +109,8 @@ async function loadMemory(host: NotifyHost): Promise<NotifyMemory> {
 }
 
 export async function sendPush(host: NotifyHost, instance: string, m: Pick<NotifyMessage, "title" | "message" | "priority">): Promise<void> {
-	if (!host.sendToAsync) throw new Error("sendTo nicht verfügbar");
-	await host.sendToAsync(instance, { message: m.message, title: m.title, priority: m.priority });
+	if (!host.sendTo) throw new Error("sendTo nicht verfügbar");
+	host.sendTo(instance, { message: m.message, title: m.title, priority: m.priority });
 }
 
 let lastSendErrorLogMs = 0;
@@ -144,7 +145,7 @@ export async function sendNotifyTest(host: NotifyHost): Promise<{ ok: boolean; t
 			message: "Die Verbindung zu den Push-Nachrichten funktioniert.",
 			priority: 0,
 		});
-		return { ok: true, text: `Testnachricht an ${cfg.instance} gesendet.` };
+		return { ok: true, text: `Testnachricht an ${cfg.instance} übergeben. Kommt nichts an, den Pushover-Adapter prüfen.` };
 	} catch (e) {
 		return { ok: false, text: `Senden an ${cfg.instance} fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}` };
 	}

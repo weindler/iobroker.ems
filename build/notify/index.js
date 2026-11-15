@@ -100,9 +100,9 @@ async function loadMemory(host) {
     }
 }
 async function sendPush(host, instance, m) {
-    if (!host.sendToAsync)
+    if (!host.sendTo)
         throw new Error("sendTo nicht verfügbar");
-    await host.sendToAsync(instance, { message: m.message, title: m.title, priority: m.priority });
+    host.sendTo(instance, { message: m.message, title: m.title, priority: m.priority });
 }
 let lastSendErrorLogMs = 0;
 /** Wird vom EMS-Tick (alle 60 s) aufgerufen. Sendet höchstens die fälligen Meldungen. */
@@ -136,7 +136,7 @@ async function sendNotifyTest(host) {
             message: "Die Verbindung zu den Push-Nachrichten funktioniert.",
             priority: 0,
         });
-        return { ok: true, text: `Testnachricht an ${cfg.instance} gesendet.` };
+        return { ok: true, text: `Testnachricht an ${cfg.instance} übergeben. Kommt nichts an, den Pushover-Adapter prüfen.` };
     }
     catch (e) {
         return { ok: false, text: `Senden an ${cfg.instance} fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}` };

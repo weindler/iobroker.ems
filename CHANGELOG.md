@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.73] – 2026-11-15
+
+### Behoben
+- Push-Testnachricht lief nach 20 Sekunden in eine Zeitüberschreitung: Der Pushover-Adapter antwortet nicht auf Sendeaufträge, das EMS wartete darauf. Nachrichten werden jetzt ohne Warten auf eine Antwort übergeben.
+
 ## [0.4.72] – 2026-11-15
 
 ### Hinzugefügt

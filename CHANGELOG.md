@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.79] – 2026-11-15
+
+### Behoben
+- Betriebsseite: Die PV-Grafik (Stundenwerte heute/morgen) blieb leer, weil der Datenpunkt nicht in die Ladeliste der Seite aufgenommen war.
+
 ## [0.4.78] – 2026-11-15
 
 ### Geändert

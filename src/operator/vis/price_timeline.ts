@@ -9,7 +9,10 @@ import { RUNNABLE_ALLOCATION_FLOOR_W } from "../daily_plan/addon_plan_publish";
 
 export const VIS_PRICE_TIMELINE_STATE_ID = "operator.vis.price_timeline_json";
 
+/** So weit zurück bleiben Viertelstunden einzeln; Älteres wird zu Stundenmitteln verdichtet. */
 export const VIS_PRICE_LOOKBACK_HOURS = 6;
+/** So weit zurück reicht der Rückblick der Preisachse (gespeicherte echte Preise + frühere Prognose). */
+export const VIS_PRICE_HISTORY_HOURS = 48;
 /** Mindestens so weit voraus zeigt die Preisachse (Tibber + Energyforecast, soweit vorhanden). */
 export const VIS_PRICE_MIN_AHEAD_HOURS = 18;
 /** Obergrenze der Preisachse (Energyforecast Business: bis 12 Tage). */
@@ -180,7 +183,7 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 	const timezone = input.timezone?.trim() || VIS_PRICE_TIMEZONE;
 	const nowMs = input.now.getTime();
 	const nowIso = input.now.toISOString();
-	const lookbackMs = VIS_PRICE_LOOKBACK_HOURS * 3600_000;
+	const pastCompactBeforeMs = nowMs - VIS_PRICE_LOOKBACK_HOURS * 3600_000;
 	const maxAheadMs = VIS_PRICE_MAX_AHEAD_HOURS * 3600_000;
 	const quarterAheadMs = VIS_PRICE_QUARTER_AHEAD_HOURS * 3600_000;
 	const forecastStarts = input.forecastStartsMs ?? new Set<number>();
@@ -206,7 +209,7 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 	}
 	priced.sort((a, b) => a.startMs - b.startMs);
 
-	const windowStartMs = nowMs - lookbackMs;
+	const windowStartMs = nowMs - VIS_PRICE_HISTORY_HOURS * 3600_000;
 	const lastPricedEndMs = priced.length ? priced[priced.length - 1].endMs : nowMs;
 	const windowEndMs = Math.min(
 		Math.max(lastPricedEndMs, nowMs + VIS_PRICE_MIN_AHEAD_HOURS * 3600_000),
@@ -258,6 +261,8 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 	const flush = (): void => {
 		if (!bucket.length) return;
 		const priceSlots = bucket.filter((b) => b.priceCt !== null);
+		const fcSlots = bucket.filter((b) => typeof b.forecastCt === "number");
+		const fcAvg = fcSlots.length ? Math.round((fcSlots.reduce((sum, b) => sum + (b.forecastCt as number), 0) / fcSlots.length) * 100) / 100 : null;
 		const avg = priceSlots.length ? priceSlots.reduce((sum, b) => sum + (b.priceCt as number), 0) / priceSlots.length : null;
 		compact.push({
 			startIso: bucket[0].startIso,
@@ -268,11 +273,13 @@ export function buildVisPriceTimeline(input: BuildVisPriceTimelineInput): VisPri
 			gbPriceOk: gbMin !== null && avg !== null && avg >= gbMin,
 			actions: [],
 			...(bucket.every((b) => b.forecast) ? { forecast: true } : {}),
+			...(fcAvg === null ? {} : { forecastCt: fcAvg }),
 		});
 		bucket = [];
 	};
 	for (const slot of slots) {
-		if (Date.parse(slot.startIso) < farFrom) {
+		const slotStart = Date.parse(slot.startIso);
+		if (slotStart >= pastCompactBeforeMs && slotStart < farFrom) {
 			flush();
 			compact.push(slot);
 			continue;

@@ -73,6 +73,7 @@ function buildVisPvHourly(input) {
         nowMs,
         days,
         series: buildSeries(nowMs, input),
+        outlook: input.outlook ?? [],
     };
 }
 const HOUR_MS = 3_600_000;
@@ -125,5 +126,5 @@ function buildSeries(nowMs, input) {
     return out;
 }
 function emptyVisPvHourly(now, timezone = "Europe/Berlin") {
-    return { generatedAt: now.toISOString(), timezone, nowHour: localParts(now.getTime(), timezone).hour, nowMs: now.getTime(), days: [], series: [] };
+    return { generatedAt: now.toISOString(), timezone, nowHour: localParts(now.getTime(), timezone).hour, nowMs: now.getTime(), days: [], series: [], outlook: [] };
 }

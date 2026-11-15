@@ -30,6 +30,9 @@ export type VisPvDay = {
 /** Eine Stunde im Zeitverlauf: f = EMS-Prognose, b = Brightsky, m = gemessen (kWh in der Stunde). */
 export type VisPvPoint = { t: number; f: number | null; b: number | null; m: number | null };
 
+/** Tagesschätzung des Wetterdienstes (Brightsky) für weiter entfernte Tage; kWh pro Tag. */
+export type VisPvOutlookDay = { dateKey: string; b: number };
+
 export type VisPvHourly = {
 	generatedAt: string;
 	timezone: string;
@@ -38,6 +41,8 @@ export type VisPvHourly = {
 	days: VisPvDay[];
 	/** Stundenreihe von −3 Tagen bis +3 Tage; nur Stunden mit mindestens einem Wert. */
 	series: VisPvPoint[];
+	/** Brightsky-Tagessummen ab heute, so weit der Wetterdienst liefert. */
+	outlook: VisPvOutlookDay[];
 };
 
 function localParts(ms: number, timeZone: string): { dateKey: string; hour: number } {
@@ -63,6 +68,7 @@ export function buildVisPvHourly(input: {
 	/** Gespeicherter/aktueller Verlauf (Stundenbeginn ms -> kWh); optional. */
 	forecastByHour?: Record<string, number>;
 	brightskyByHour?: Record<string, number>;
+	outlook?: VisPvOutlookDay[];
 }): VisPvHourly {
 	const nowMs = input.now.getTime();
 	const today = localParts(nowMs, input.timezone);
@@ -110,6 +116,7 @@ export function buildVisPvHourly(input: {
 		nowMs,
 		days,
 		series: buildSeries(nowMs, input),
+		outlook: input.outlook ?? [],
 	};
 }
 
@@ -160,5 +167,5 @@ function buildSeries(
 }
 
 export function emptyVisPvHourly(now: Date, timezone = "Europe/Berlin"): VisPvHourly {
-	return { generatedAt: now.toISOString(), timezone, nowHour: localParts(now.getTime(), timezone).hour, nowMs: now.getTime(), days: [], series: [] };
+	return { generatedAt: now.toISOString(), timezone, nowHour: localParts(now.getTime(), timezone).hour, nowMs: now.getTime(), days: [], series: [], outlook: [] };
 }

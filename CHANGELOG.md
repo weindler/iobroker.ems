@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.89] – 2026-11-15
+
+### Geändert
+- Preisgrafik: Rückblick bis 48 Stunden mit den echten Preisen (werden jetzt gespeichert) und – bei Energyforecast – der früher festgehaltenen Prognose zum Vergleich; Ansicht „Gesamter Zeitraum“ zeigt Rückblick und Vorausschau, so weit Tibber/Energyforecast liefern (bei Energyforecast-Abo mit mehr Tagen automatisch länger).
+- PV-Grafik: neue Ansicht „Woche“ mit Tagessummen (EMS-Prognose, Brightsky, gemessen); Brightsky-Tagesschätzungen reichen so weit, wie der Wetterdienst liefert (bis 14 Tage).
+
 ## [0.4.88] – 2026-11-15
 
 ### Geändert

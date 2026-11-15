@@ -23,9 +23,11 @@ import {
 	VIS_PV_HOURLY_STATE_ID,
 	type MeasuredHour,
 	type PvPlanSlot,
+	type VisPvOutlookDay,
 } from "./pv_hourly";
 import { GRID_SUPPLY_STATE_IDS } from "../supply/grid_states";
 import { getForecastOnlyPriceStarts } from "../supply/grid_read";
+import { PRICE_HISTORY_CATEGORY, mergePriceHistory, readPriceHistory, writePriceHistory } from "./price_history";
 import { getEnergyforecastFrozenForecast, getEnergyforecastPrice15MinSlots } from "../../learning/energyforecast/run";
 import { asNum, type StateHost } from "../../ems_light/state_util";
 import { setStateIfChanged } from "../../policy/core/state_write";
@@ -88,6 +90,40 @@ async function readVal(host: StateHost, id: string): Promise<unknown> {
 	}
 }
 
+/** Echte Preise fortschreiben und vergangene Viertelstunden (die der Preisdienst nicht mehr liefert) ergänzen. */
+async function withPriceHistory(
+	host: StateHost,
+	gridSlots: VisPriceGridSlot[],
+	forecastOnly: ReadonlySet<number>,
+	nowMs: number,
+): Promise<VisPriceGridSlot[]> {
+	try {
+		const dir = (host as unknown as { getAbsolutePath?: (c?: string) => string }).getAbsolutePath?.(PRICE_HISTORY_CATEGORY);
+		if (!dir) return gridSlots;
+		const known = new Set<number>();
+		const actual: Array<[number, number]> = [];
+		for (const s of gridSlots) {
+			const ms = typeof s.startIso === "string" ? Date.parse(s.startIso) : NaN;
+			if (!Number.isFinite(ms)) continue;
+			known.add(ms);
+			const ct = typeof s.priceCtPerKwh === "number" ? s.priceCtPerKwh : null;
+			if (ct !== null && !forecastOnly.has(ms)) actual.push([ms, ct]);
+		}
+		const prev = await readPriceHistory(dir);
+		const { history, changed } = mergePriceHistory(prev, nowMs, actual);
+		if (changed) await writePriceHistory(dir, history);
+		const out = [...gridSlots];
+		for (const [k, ct] of Object.entries(history.a)) {
+			const ms = Number(k);
+			if (known.has(ms) || ms >= nowMs) continue;
+			out.push({ startIso: new Date(ms).toISOString(), endIso: new Date(ms + 15 * 60_000).toISOString(), priceCtPerKwh: ct });
+		}
+		return out;
+	} catch {
+		return gridSlots;
+	}
+}
+
 export async function publishVisPriceTimeline(host: StateHost, now = new Date()): Promise<void> {
 	let board = emptyVisPriceTimeline(now);
 	try {
@@ -117,13 +153,16 @@ export async function publishVisPriceTimeline(host: StateHost, now = new Date())
 		const gbMinPriceCt = asNum(gbMin);
 		const gbPriceAllowed = gbAllowed === true ? true : gbAllowed === false ? false : null;
 
+		const gridSlots = mergeForecastSlots(asGridSlots(gridSlotsRaw), now);
+		const forecastOnly = getForecastOnlyPriceStarts();
+		const withHistory = await withPriceHistory(host, gridSlots, forecastOnly, now.getTime());
 		board = buildVisPriceTimeline({
 			now,
 			currentPriceCt,
 			gbMinPriceCt,
 			gbPriceAllowed,
-			gridSlots: mergeForecastSlots(asGridSlots(gridSlotsRaw), now),
-			forecastStartsMs: getForecastOnlyPriceStarts(),
+			gridSlots: withHistory,
+			forecastStartsMs: forecastOnly,
 			frozenForecastCt: getEnergyforecastFrozenForecast(),
 			batteryAlloc: asAlloc(batteryAlloc),
 			wallboxAlloc: asAlloc(wallboxAlloc),
@@ -176,6 +215,25 @@ async function readBrightskyCurve(host: StateHost, timezone: string): Promise<Ma
 		if (v !== null && v > 0) estimates.set(fmtKey(nowMs + d * 24 * 3_600_000), v);
 	}
 	return brightskyHourlyKwh(points, estimates, timezone);
+}
+
+const BRIGHTSKY_OUTLOOK_DAYS = 14;
+
+/** Brightsky-Tagesschätzungen (kWh) ab heute; endet beim ersten fehlenden Tag. */
+async function readBrightskyOutlook(host: StateHost, timezone: string, nowMs: number): Promise<VisPvOutlookDay[]> {
+	const alt = altSourceConfigFromAdapter((host as unknown as { config?: unknown }).config);
+	if (!/daily\.00\./.test(alt.todayStateId)) return [];
+	const fmtKey = (ms: number): string =>
+		new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+	const ids = Array.from({ length: BRIGHTSKY_OUTLOOK_DAYS }, (_, d) => alt.todayStateId.replace(/daily\.00\./, `daily.${String(d).padStart(2, "0")}.`));
+	const vals = await Promise.all(ids.map((id) => readForeign(host, id)));
+	const out: VisPvOutlookDay[] = [];
+	for (let d = 0; d < vals.length; d++) {
+		const v = asNum(vals[d]);
+		if (v === null || v < 0) break;
+		out.push({ dateKey: fmtKey(nowMs + d * 24 * 3_600_000), b: Math.round(v * 100) / 100 });
+	}
+	return out;
 }
 
 let pvHourlyLastMs = 0;
@@ -235,7 +293,13 @@ export async function publishVisPvHourly(host: StateHost, now = new Date(), time
 		} catch {
 			/* Verlauf ist optional */
 		}
-		board = buildVisPvHourly({ now, timezone, slots, measured, forecastByHour: history.f, brightskyByHour: history.b });
+		let outlook: VisPvOutlookDay[] = [];
+		try {
+			outlook = await readBrightskyOutlook(host, timezone, nowMs);
+		} catch {
+			/* Wochenausblick ist optional */
+		}
+		board = buildVisPvHourly({ now, timezone, slots, measured, forecastByHour: history.f, brightskyByHour: history.b, outlook });
 	} catch {
 		board = emptyVisPvHourly(now, timezone);
 	}

@@ -2647,7 +2647,7 @@ function renderPriceBoard(){
 	el.innerHTML='<div class="ems-price-head"><div class="ems-k">Tibber-Preis</div><div class="ems-price-meta">'
 		+esc(headLine||[gateLine,thrLine].filter(Boolean).join(" · "))
 		+"</div></div>"
-		+'<div class="ems-price-controls"><button type="button" class="ems-price-toggle '+(priceWindowMode==='focus'?'on':'')+'" data-ems-action="price-focus">Nächste 12 Stunden</button><button type="button" class="ems-price-toggle '+(priceWindowMode==='all'?'on':'')+'" data-ems-action="price-all">Gesamter verfügbarer Zeitraum</button></div>'
+		+'<div class="ems-price-controls"><button type="button" class="ems-price-toggle '+(priceWindowMode==='focus'?'on':'')+'" data-ems-action="price-focus">Nächste 12 Stunden</button><button type="button" class="ems-price-toggle '+(priceWindowMode==='all'?'on':'')+'" data-ems-action="price-all">Gesamter Zeitraum (mit Rückblick)</button></div>'
 		+'<svg class="ems-price-svg" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="none" role="img" aria-label="Tibber-Preisachse">'
 		+zones+priceBands+hourBg+currentBg+yLab+frozenSvg+curve+thr+gbMarks+extremes+acts+labels+tips+"</svg>"
 		+'<div class="ems-price-legend">'
@@ -2787,6 +2787,47 @@ function pvChartSvg(pvh,mode){
 	return'<svg class="ems-pv-svg" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="none" role="img" aria-label="PV-Prognose und Messung">'
 		+grid+nowBg+dayLines+run("f","#e3b34122")+run("b",null)+run("m","#3fb95033")+nowLine+labels+tips+"</svg>";
 }
+function pvWeekSvg(pvh){
+	var series=(pvh&&pvh.series)||[],outlook=(pvh&&pvh.outlook)||[];
+	var now=pvh.nowMs||Date.now(),d0=pvDayStart(now),DAY=86400000,days=[],i,d,t,sf,sb,sm,o,cnt;
+	function keyOf(ms){var x=new Date(ms);return x.getFullYear()+"-"+("0"+(x.getMonth()+1)).slice(-2)+"-"+("0"+x.getDate()).slice(-2);}
+	var oMap={};
+	for(i=0;i<outlook.length;i++)oMap[outlook[i].dateKey]=outlook[i].b;
+	var first=d0;
+	for(i=0;i<series.length;i++){if(series[i].t<first)first=pvDayStart(series[i].t);}
+	var last=d0+DAY;
+	for(i=0;i<outlook.length;i++){t=d0+i*DAY;if(t>last)last=t;}
+	for(d=first;d<=last;d+=DAY){
+		cnt=0;
+		for(i=0;i<series.length;i++){if(series[i].t>=d&&series[i].t<d+DAY&&series[i].b!==null)cnt++;}
+		sf=d<=d0+DAY?pvDaySum(series,d,"f"):null;
+		sm=pvDaySum(series,d,"m");
+		sb=cnt>=8?pvDaySum(series,d,"b"):null;
+		if(sb===null){o=oMap[keyOf(d)];sb=(o===undefined)?null:o;}
+		if(sf!==null||sb!==null||sm!==null)days.push({t:d,f:sf,b:sb,m:sm});
+	}
+	if(!days.length)return'<div class="ems-pv-detail" style="color:#8b949e;margin:6px 0">Noch keine Tageswerte.</div>';
+	var max=1;
+	for(i=0;i<days.length;i++)max=Math.max(max,days[i].f||0,days[i].b||0,days[i].m||0);
+	var step=max<=10?2:(max<=30?5:10),yMax=Math.ceil(max/step)*step;
+	var W=1000,H=190,padL=44,padR=10,padT=14,padB=25,innerW=W-padL-padR,innerH=H-padT-padB,n=days.length,slot=innerW/n,bw=Math.min(26,slot/3.6);
+	function yOf(v){return padT+innerH-(v/yMax)*innerH;}
+	var out="",v,dn=["So","Mo","Di","Mi","Do","Fr","Sa"],dt,keys=[["f","#e3b341"],["b","#bc8cff"],["m","#3fb950"]],k,x0,val,tt;
+	for(v=0;v<=yMax+1e-9;v+=step)out+='<line x1="'+padL+'" y1="'+yOf(v).toFixed(1)+'" x2="'+(W-padR)+'" y2="'+yOf(v).toFixed(1)+'" stroke="#30363d" stroke-width="'+(v===0?1:0.5)+'" vector-effect="non-scaling-stroke"/><text x="'+(padL-6)+'" y="'+(yOf(v)+3).toFixed(1)+'" fill="#8b949e" font-size="10" text-anchor="end">'+v+' kWh</text>';
+	for(i=0;i<n;i++){
+		dt=new Date(days[i].t);
+		x0=padL+i*slot+slot/2-bw*1.5;
+		if(days[i].t===d0)out+='<rect x="'+(padL+i*slot).toFixed(1)+'" y="'+padT+'" width="'+slot.toFixed(1)+'" height="'+innerH+'" fill="#58a6ff22"/>';
+		tt=dn[dt.getDay()]+" "+dt.getDate()+"."+(dt.getMonth()+1)+".";
+		for(k=0;k<3;k++){
+			val=days[i][keys[k][0]];
+			if(val===null)continue;
+			out+='<rect x="'+(x0+k*bw).toFixed(1)+'" y="'+yOf(val).toFixed(1)+'" width="'+(bw-1).toFixed(1)+'" height="'+(padT+innerH-yOf(val)).toFixed(1)+'" fill="'+keys[k][1]+'" rx="2"><title>'+esc(tt+" · "+["EMS-Prognose","Brightsky","gemessen"][k]+" "+fmtDec(val,1,"kWh"))+'</title></rect>';
+		}
+		out+='<text x="'+(padL+i*slot+slot/2).toFixed(1)+'" y="'+(H-8)+'" fill="'+(days[i].t===d0?"#58a6ff":"#8b949e")+'" font-size="'+(n>10?9:11)+'" text-anchor="middle" font-weight="'+(days[i].t===d0?700:400)+'">'+(days[i].t===d0?"Heute":dn[dt.getDay()]+" "+dt.getDate()+".")+'</text>';
+	}
+	return'<svg class="ems-pv-svg" viewBox="0 0 '+W+" "+H+'" preserveAspectRatio="none" role="img" aria-label="PV-Tagessummen">'+out+'</svg>';
+}
 var PV_COLORS={f:"#e3b341",b:"#bc8cff",m:"#3fb950"};
 function renderLage(){
 	var el=document.getElementById("ems-lage");
@@ -2806,8 +2847,8 @@ function renderLage(){
 	var now=(pvh&&pvh.nowMs)||Date.now(),d0=pvDayStart(now),bsT=pvDaySum(series,d0,"b"),bsM=pvDaySum(series,d0+86400000,"b");
 	var todayTxt='Erwartet: <strong>'+fmtDec(snap.todayKwh,1,'kWh')+'</strong>'+(snap.actualKwh!==null?' · bisher erzeugt '+fmtDec(snap.actualKwh,1,'kWh'):'')+(bsT!==null?' · Brightsky '+fmtDec(bsT,1,'kWh'):'')+(snap.intradayFactor!==null&&Math.abs(snap.intradayFactor-1)>=0.005?'<br>'+esc(snap.intradayStatus||('Rest des Tages × '+String(snap.intradayFactor).replace('.',','))):'')+(snap.profileStatus?'<br>'+esc(snap.profileStatus):'');
 	var tomorrowTxt='Erwartet: <strong>'+fmtDec(snap.tomorrowKwh,1,'kWh')+'</strong>'+(bsM!==null?' · Brightsky '+fmtDec(bsM,1,'kWh'):'');
-	el.innerHTML='<div class="ems-pv-head"><div class="ems-lage-k">PV-Prognose</div><div class="ems-price-controls" style="margin:0"><button type="button" class="ems-price-toggle '+(pvChartMode==="focus"?"on":"")+'" data-ems-action="pv-focus">Heute &amp; morgen</button><button type="button" class="ems-price-toggle '+(pvChartMode==="all"?"on":"")+'" data-ems-action="pv-all">Mit Rückblick</button></div></div>'
-		+pvChartSvg(pvh,pvChartMode)
+	el.innerHTML='<div class="ems-pv-head"><div class="ems-lage-k">PV-Prognose</div><div class="ems-price-controls" style="margin:0"><button type="button" class="ems-price-toggle '+(pvChartMode==="focus"?"on":"")+'" data-ems-action="pv-focus">Heute &amp; morgen</button><button type="button" class="ems-price-toggle '+(pvChartMode==="all"?"on":"")+'" data-ems-action="pv-all">Mit Rückblick</button><button type="button" class="ems-price-toggle '+(pvChartMode==="week"?"on":"")+'" data-ems-action="pv-week">Woche</button></div></div>'
+		+(pvChartMode==="week"?pvWeekSvg(pvh):pvChartSvg(pvh,pvChartMode))
 		+'<div class="ems-price-legend"><span><i class="ems-sw" style="background:#e3b341"></i>EMS-Prognose (angepasst an Ihre Anlage)</span><span><i class="ems-sw" style="background:transparent;border-top:2px dashed #bc8cff;height:0;width:10px;border-radius:0"></i>Brightsky (Wetterdienst)</span><span><i class="ems-sw" style="background:#3fb950"></i>gemessen</span><span><i class="ems-sw" style="background:#58a6ff44;border:1px solid #58a6ff"></i>jetzt</span></div>'
 		+'<div class="ems-pv-grid"><div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">'+todayTxt+'</div></div><div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">'+tomorrowTxt+'</div></div></div>'
 		+details+'<div class="ems-pv-foot">'+esc(line)+'</div>';
@@ -4646,6 +4687,9 @@ function bindUiActions(){
 				}
 				if(t.getAttribute&&t.getAttribute("data-ems-action")==="pv-focus"){
 					ev.preventDefault();pvChartMode="focus";renderLage();return;
+				}
+				if(t.getAttribute&&t.getAttribute("data-ems-action")==="pv-week"){
+					ev.preventDefault();pvChartMode="week";renderLage();return;
 				}
 				if(t.getAttribute&&t.getAttribute("data-ems-action")==="pv-all"){
 					ev.preventDefault();pvChartMode="all";renderLage();return;

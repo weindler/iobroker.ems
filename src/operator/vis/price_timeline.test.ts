@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { CONTRIBUTION_IDS } from "../contribution_ids";
 import {
 	buildVisPriceTimeline,
+	VIS_PRICE_HISTORY_HOURS,
 	VIS_PRICE_LOOKBACK_HOURS,
 	VIS_PRICE_MIN_AHEAD_HOURS,
 	type VisPriceAllocEntry,
@@ -61,7 +62,8 @@ describe("buildVisPriceTimeline (read-only reshape)", () => {
 		const first = Date.parse(board.slots[0].startIso);
 		const last = Date.parse(board.slots[board.slots.length - 1].endIso);
 		assert.ok(NOW.getTime() - first >= (VIS_PRICE_LOOKBACK_HOURS - 0.3) * 3600_000);
-		assert.ok(NOW.getTime() - first <= (VIS_PRICE_LOOKBACK_HOURS + 0.3) * 3600_000);
+		assert.ok(NOW.getTime() - first <= (VIS_PRICE_HISTORY_HOURS + 0.3) * 3600_000);
+		assert.ok(NOW.getTime() - first >= 9.5 * 3600_000, "Rückblick reicht über die letzten 6 h hinaus");
 		assert.ok(last - NOW.getTime() >= VIS_PRICE_MIN_AHEAD_HOURS * 3600_000 - 15 * 60_000);
 		assert.ok(last - NOW.getTime() >= 39 * 3600_000, "alle bekannten Slots, nicht nur 18 h");
 		assert.equal(board.slots.every((s) => s.priceCt === 24.3), true);

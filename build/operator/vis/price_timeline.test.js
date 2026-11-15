@@ -50,7 +50,8 @@ function alloc(contributionId, startIso, allocatedPowerW, extra = {}) {
         const first = Date.parse(board.slots[0].startIso);
         const last = Date.parse(board.slots[board.slots.length - 1].endIso);
         strict_1.default.ok(NOW.getTime() - first >= (price_timeline_1.VIS_PRICE_LOOKBACK_HOURS - 0.3) * 3600_000);
-        strict_1.default.ok(NOW.getTime() - first <= (price_timeline_1.VIS_PRICE_LOOKBACK_HOURS + 0.3) * 3600_000);
+        strict_1.default.ok(NOW.getTime() - first <= (price_timeline_1.VIS_PRICE_HISTORY_HOURS + 0.3) * 3600_000);
+        strict_1.default.ok(NOW.getTime() - first >= 9.5 * 3600_000, "Rückblick reicht über die letzten 6 h hinaus");
         strict_1.default.ok(last - NOW.getTime() >= price_timeline_1.VIS_PRICE_MIN_AHEAD_HOURS * 3600_000 - 15 * 60_000);
         strict_1.default.ok(last - NOW.getTime() >= 39 * 3600_000, "alle bekannten Slots, nicht nur 18 h");
         strict_1.default.equal(board.slots.every((s) => s.priceCt === 24.3), true);

@@ -427,6 +427,7 @@ build/backup/admin_manage.test.js
 build/notify/index.test.js
 build/backup/admin_manage.test.js
 build/operator/vis/pv_hourly.test.js
+build/operator/vis/pv_hourly_history.test.js
 build/backup/admin_manage.test.js
 build/profiles/catalog.test.js
 build/backup/admin_manage.test.js

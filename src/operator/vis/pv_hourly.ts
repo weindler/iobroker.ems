@@ -27,7 +27,18 @@ export type VisPvDay = {
 	measuredKwh: number;
 };
 
-export type VisPvHourly = { generatedAt: string; timezone: string; nowHour: number; days: VisPvDay[] };
+/** Eine Stunde im Zeitverlauf: f = EMS-Prognose, b = Brightsky, m = gemessen (kWh in der Stunde). */
+export type VisPvPoint = { t: number; f: number | null; b: number | null; m: number | null };
+
+export type VisPvHourly = {
+	generatedAt: string;
+	timezone: string;
+	nowHour: number;
+	nowMs: number;
+	days: VisPvDay[];
+	/** Stundenreihe von −3 Tagen bis +3 Tage; nur Stunden mit mindestens einem Wert. */
+	series: VisPvPoint[];
+};
 
 function localParts(ms: number, timeZone: string): { dateKey: string; hour: number } {
 	const parts = new Intl.DateTimeFormat("en-CA", {
@@ -49,6 +60,9 @@ export function buildVisPvHourly(input: {
 	timezone: string;
 	slots: PvPlanSlot[];
 	measured: MeasuredHour[];
+	/** Gespeicherter/aktueller Verlauf (Stundenbeginn ms -> kWh); optional. */
+	forecastByHour?: Record<string, number>;
+	brightskyByHour?: Record<string, number>;
 }): VisPvHourly {
 	const nowMs = input.now.getTime();
 	const today = localParts(nowMs, input.timezone);
@@ -89,9 +103,62 @@ export function buildVisPvHourly(input: {
 		}
 		return { dateKey: key, label, hours, forecastKwh: round3(fSum), measuredKwh: round3(mSum) };
 	});
-	return { generatedAt: input.now.toISOString(), timezone: input.timezone, nowHour: today.hour, days };
+	return {
+		generatedAt: input.now.toISOString(),
+		timezone: input.timezone,
+		nowHour: today.hour,
+		nowMs,
+		days,
+		series: buildSeries(nowMs, input),
+	};
+}
+
+const HOUR_MS = 3_600_000;
+const SERIES_BACK_H = 72;
+const SERIES_FWD_H = 72;
+
+function buildSeries(
+	nowMs: number,
+	input: { slots: PvPlanSlot[]; measured: MeasuredHour[]; forecastByHour?: Record<string, number>; brightskyByHour?: Record<string, number> },
+): VisPvPoint[] {
+	const cur = Math.floor(nowMs / HOUR_MS) * HOUR_MS;
+	const f = new Map<number, number>();
+	for (const [k, v] of Object.entries(input.forecastByHour ?? {})) f.set(Number(k), v);
+	/* aktuelle Planwerte überschreiben den gespeicherten Verlauf für laufende/künftige Stunden */
+	const plan = new Map<number, number>();
+	for (const sl of input.slots) {
+		const start = Date.parse(sl.slot?.startIso ?? "");
+		const end = Date.parse(sl.slot?.endIso ?? "");
+		const w = sl.pvForecastPowerW;
+		if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+		if (typeof w !== "number" || !Number.isFinite(w) || w < 0) continue;
+		const h = Math.floor(start / HOUR_MS) * HOUR_MS;
+		plan.set(h, (plan.get(h) ?? 0) + (w * (end - start)) / HOUR_MS / 1000);
+	}
+	for (const [t, v] of plan) if (t >= cur) f.set(t, v);
+	const m = new Map<number, number>();
+	for (const p of input.measured) {
+		if (!Number.isFinite(p.hourStartMs) || !Number.isFinite(p.avgW) || p.hourStartMs > nowMs) continue;
+		m.set(Math.floor(p.hourStartMs / HOUR_MS) * HOUR_MS, Math.max(0, p.avgW) / 1000);
+	}
+	const b = new Map<number, number>();
+	for (const [k, v] of Object.entries(input.brightskyByHour ?? {})) b.set(Number(k), v);
+	const out: VisPvPoint[] = [];
+	for (let t = cur - SERIES_BACK_H * HOUR_MS; t <= cur + SERIES_FWD_H * HOUR_MS; t += HOUR_MS) {
+		const fv = f.get(t);
+		const bv = b.get(t);
+		const mv = m.get(t);
+		if (fv === undefined && bv === undefined && mv === undefined) continue;
+		out.push({
+			t,
+			f: fv === undefined ? null : round3(fv),
+			b: bv === undefined ? null : round3(bv),
+			m: mv === undefined ? null : round3(mv),
+		});
+	}
+	return out;
 }
 
 export function emptyVisPvHourly(now: Date, timezone = "Europe/Berlin"): VisPvHourly {
-	return { generatedAt: now.toISOString(), timezone, nowHour: localParts(now.getTime(), timezone).hour, days: [] };
+	return { generatedAt: now.toISOString(), timezone, nowHour: localParts(now.getTime(), timezone).hour, nowMs: now.getTime(), days: [], series: [] };
 }

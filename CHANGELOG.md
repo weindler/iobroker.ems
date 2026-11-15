@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.88] – 2026-11-15
+
+### Geändert
+- Betriebsseite: PV-Prognose jetzt wie die Preisgrafik – Linien für EMS-Prognose (an die Anlage angepasst), Brightsky-Stundenprognose und gemessene Erzeugung, Umschalter „Heute & morgen“ / „Mit Rückblick“.
+- Brightsky-Stundenkurve und Messwerte werden gespeichert (Rückblick wächst ab jetzt täglich).
+
 ## [0.4.87] – 2026-11-15
 
 ### Behoben

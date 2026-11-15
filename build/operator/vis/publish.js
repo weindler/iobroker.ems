@@ -9,6 +9,9 @@ exports.publishVisPvHourly = publishVisPvHourly;
 const states_1 = require("../daily_plan/states");
 const persist_1 = require("../../learning/power_rollup/persist");
 const hour_1 = require("../../learning/power_rollup/hour");
+const pv_hourly_history_1 = require("./pv_hourly_history");
+const pv_shape_config_1 = require("../contributions/pv_shape_config");
+const alt_source_1 = require("../../learning/pv_bias/alt_source");
 const pv_hourly_1 = require("./pv_hourly");
 const grid_states_1 = require("../supply/grid_states");
 const grid_read_1 = require("../supply/grid_read");
@@ -104,6 +107,45 @@ async function publishVisPriceTimeline(host, now = new Date()) {
     }
     await (0, state_write_1.setStateIfChanged)(host, price_timeline_1.VIS_PRICE_TIMELINE_STATE_ID, JSON.stringify(board));
 }
+const BRIGHTSKY_DEFAULT_HOURLY_PREFIX = "brightsky.0.hourly";
+const BRIGHTSKY_HOURS_PROBED = 48;
+async function readForeign(host, id) {
+    try {
+        const reader = host.getForeignStateAsync;
+        return (await reader?.call(host, id))?.val ?? null;
+    }
+    catch {
+        return null;
+    }
+}
+/** Brightsky-Stunden (Einstrahlung) und Tagesschätzungen lesen; fehlt etwas, bleibt die Kurve leer. */
+async function readBrightskyCurve(host, timezone) {
+    const config = host.config;
+    const prefix = (0, pv_shape_config_1.pvShapeConfigFromAdapter)(config).brightskyHourlyPrefix.trim() || BRIGHTSKY_DEFAULT_HOURLY_PREFIX;
+    const alt = (0, alt_source_1.altSourceConfigFromAdapter)(config);
+    const idx = Array.from({ length: BRIGHTSKY_HOURS_PROBED }, (_, i) => String(i).padStart(2, "0"));
+    const rows = await Promise.all(idx.map(async (n) => {
+        const [ts, solar] = await Promise.all([readForeign(host, `${prefix}.${n}.timestamp`), readForeign(host, `${prefix}.${n}.solar`)]);
+        const ms = Date.parse(String(ts ?? ""));
+        const sv = (0, state_util_1.asNum)(solar);
+        return Number.isFinite(ms) && sv !== null ? { startMs: ms, solar: sv } : null;
+    }));
+    const points = rows.filter((r) => r !== null);
+    if (!points.length)
+        return new Map();
+    const fmtKey = (ms) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+    const estimates = new Map();
+    const dayIds = [alt.todayStateId, alt.tomorrowStateId, alt.tomorrowStateId.replace(/daily\.01\./, "daily.02.")];
+    const nowMs = Date.now();
+    for (let d = 0; d < dayIds.length; d++) {
+        if (d === 2 && dayIds[2] === dayIds[1])
+            break;
+        const v = (0, state_util_1.asNum)(await readForeign(host, dayIds[d]));
+        if (v !== null && v > 0)
+            estimates.set(fmtKey(nowMs + d * 24 * 3_600_000), v);
+    }
+    return (0, pv_hourly_history_1.brightskyHourlyKwh)(points, estimates, timezone);
+}
 let pvHourlyLastMs = 0;
 const PV_HOURLY_MIN_INTERVAL_MS = 5 * 60_000;
 /** PV-Stundenwerte für die Betriebsseite. Höchstens alle 5 Minuten (der Tagesplan ist groß). */
@@ -128,7 +170,7 @@ async function publishVisPvHourly(host, now = new Date(), timezone = "Europe/Ber
                 const persist = await (0, persist_1.readPowerHourlyPersist)(dir);
                 const source = persist.sources["battery.pv_ac_power_w"];
                 if (source) {
-                    const cutoff = nowMs - 36 * 3_600_000;
+                    const cutoff = nowMs - 75 * 3_600_000;
                     for (const [key, rec] of Object.entries(source.hours)) {
                         const start = (0, hour_1.hourKeyToStartTs)(key);
                         if (start >= cutoff && typeof rec.avgPowerW === "number")
@@ -140,7 +182,34 @@ async function publishVisPvHourly(host, now = new Date(), timezone = "Europe/Ber
         catch {
             /* gemessene Stunden sind optional */
         }
-        board = (0, pv_hourly_1.buildVisPvHourly)({ now, timezone, slots, measured });
+        /* Verlauf (EMS-Prognose + Brightsky) fortschreiben, damit der Rückblick erhalten bleibt */
+        let history = { version: 1, f: {}, b: {} };
+        try {
+            const hdir = host.getAbsolutePath?.(pv_hourly_history_1.PV_HOURLY_HISTORY_CATEGORY);
+            const planByHour = new Map();
+            for (const sl of slots) {
+                const a = Date.parse(sl.slot?.startIso ?? "");
+                const e = Date.parse(sl.slot?.endIso ?? "");
+                const w = sl.pvForecastPowerW;
+                if (!Number.isFinite(a) || !Number.isFinite(e) || e <= a || typeof w !== "number" || !(w >= 0))
+                    continue;
+                const h = (0, pv_hourly_history_1.floorHour)(a);
+                planByHour.set(h, (planByHour.get(h) ?? 0) + (w * (e - a)) / 3_600_000 / 1000);
+            }
+            const bs = await readBrightskyCurve(host, timezone);
+            if (hdir) {
+                const prev = await (0, pv_hourly_history_1.readPvHourlyHistory)(hdir);
+                history = (0, pv_hourly_history_1.mergePvHistory)(prev, nowMs, planByHour, bs);
+                await (0, pv_hourly_history_1.writePvHourlyHistory)(hdir, history);
+            }
+            else {
+                history = (0, pv_hourly_history_1.mergePvHistory)({ version: 1, f: {}, b: {} }, nowMs, planByHour, bs);
+            }
+        }
+        catch {
+            /* Verlauf ist optional */
+        }
+        board = (0, pv_hourly_1.buildVisPvHourly)({ now, timezone, slots, measured, forecastByHour: history.f, brightskyByHour: history.b });
     }
     catch {
         board = (0, pv_hourly_1.emptyVisPvHourly)(now, timezone);

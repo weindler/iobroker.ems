@@ -7,6 +7,17 @@ import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "../daily_plan/
 import { readPowerHourlyPersist } from "../../learning/power_rollup/persist";
 import { hourKeyToStartTs } from "../../learning/power_rollup/hour";
 import {
+	PV_HOURLY_HISTORY_CATEGORY,
+	brightskyHourlyKwh,
+	floorHour,
+	mergePvHistory,
+	readPvHourlyHistory,
+	writePvHourlyHistory,
+	type BrightskyHourPoint,
+} from "./pv_hourly_history";
+import { pvShapeConfigFromAdapter } from "../contributions/pv_shape_config";
+import { altSourceConfigFromAdapter } from "../../learning/pv_bias/alt_source";
+import {
 	buildVisPvHourly,
 	emptyVisPvHourly,
 	VIS_PV_HOURLY_STATE_ID,
@@ -126,6 +137,47 @@ export async function publishVisPriceTimeline(host: StateHost, now = new Date())
 	await setStateIfChanged(host, VIS_PRICE_TIMELINE_STATE_ID, JSON.stringify(board));
 }
 
+const BRIGHTSKY_DEFAULT_HOURLY_PREFIX = "brightsky.0.hourly";
+const BRIGHTSKY_HOURS_PROBED = 48;
+
+async function readForeign(host: StateHost, id: string): Promise<unknown> {
+	try {
+		const reader = (host as unknown as { getForeignStateAsync?: (i: string) => Promise<{ val?: unknown } | null | undefined> }).getForeignStateAsync;
+		return (await reader?.call(host, id))?.val ?? null;
+	} catch {
+		return null;
+	}
+}
+
+/** Brightsky-Stunden (Einstrahlung) und Tagesschätzungen lesen; fehlt etwas, bleibt die Kurve leer. */
+async function readBrightskyCurve(host: StateHost, timezone: string): Promise<Map<number, number>> {
+	const config = (host as unknown as { config?: unknown }).config;
+	const prefix = pvShapeConfigFromAdapter(config).brightskyHourlyPrefix.trim() || BRIGHTSKY_DEFAULT_HOURLY_PREFIX;
+	const alt = altSourceConfigFromAdapter(config);
+	const idx = Array.from({ length: BRIGHTSKY_HOURS_PROBED }, (_, i) => String(i).padStart(2, "0"));
+	const rows = await Promise.all(
+		idx.map(async (n): Promise<BrightskyHourPoint | null> => {
+			const [ts, solar] = await Promise.all([readForeign(host, `${prefix}.${n}.timestamp`), readForeign(host, `${prefix}.${n}.solar`)]);
+			const ms = Date.parse(String(ts ?? ""));
+			const sv = asNum(solar);
+			return Number.isFinite(ms) && sv !== null ? { startMs: ms, solar: sv } : null;
+		}),
+	);
+	const points = rows.filter((r): r is BrightskyHourPoint => r !== null);
+	if (!points.length) return new Map();
+	const fmtKey = (ms: number): string =>
+		new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+	const estimates = new Map<string, number>();
+	const dayIds = [alt.todayStateId, alt.tomorrowStateId, alt.tomorrowStateId.replace(/daily\.01\./, "daily.02.")];
+	const nowMs = Date.now();
+	for (let d = 0; d < dayIds.length; d++) {
+		if (d === 2 && dayIds[2] === dayIds[1]) break;
+		const v = asNum(await readForeign(host, dayIds[d]!));
+		if (v !== null && v > 0) estimates.set(fmtKey(nowMs + d * 24 * 3_600_000), v);
+	}
+	return brightskyHourlyKwh(points, estimates, timezone);
+}
+
 let pvHourlyLastMs = 0;
 const PV_HOURLY_MIN_INTERVAL_MS = 5 * 60_000;
 
@@ -149,7 +201,7 @@ export async function publishVisPvHourly(host: StateHost, now = new Date(), time
 				const persist = await readPowerHourlyPersist(dir);
 				const source = persist.sources["battery.pv_ac_power_w"];
 				if (source) {
-					const cutoff = nowMs - 36 * 3_600_000;
+					const cutoff = nowMs - 75 * 3_600_000;
 					for (const [key, rec] of Object.entries(source.hours)) {
 						const start = hourKeyToStartTs(key);
 						if (start >= cutoff && typeof rec.avgPowerW === "number") measured.push({ hourStartMs: start, avgW: rec.avgPowerW });
@@ -159,7 +211,31 @@ export async function publishVisPvHourly(host: StateHost, now = new Date(), time
 		} catch {
 			/* gemessene Stunden sind optional */
 		}
-		board = buildVisPvHourly({ now, timezone, slots, measured });
+		/* Verlauf (EMS-Prognose + Brightsky) fortschreiben, damit der Rückblick erhalten bleibt */
+		let history = { version: 1 as const, f: {} as Record<string, number>, b: {} as Record<string, number> };
+		try {
+			const hdir = (host as unknown as { getAbsolutePath?: (c?: string) => string }).getAbsolutePath?.(PV_HOURLY_HISTORY_CATEGORY);
+			const planByHour = new Map<number, number>();
+			for (const sl of slots) {
+				const a = Date.parse(sl.slot?.startIso ?? "");
+				const e = Date.parse(sl.slot?.endIso ?? "");
+				const w = sl.pvForecastPowerW;
+				if (!Number.isFinite(a) || !Number.isFinite(e) || e <= a || typeof w !== "number" || !(w >= 0)) continue;
+				const h = floorHour(a);
+				planByHour.set(h, (planByHour.get(h) ?? 0) + (w * (e - a)) / 3_600_000 / 1000);
+			}
+			const bs = await readBrightskyCurve(host, timezone);
+			if (hdir) {
+				const prev = await readPvHourlyHistory(hdir);
+				history = mergePvHistory(prev, nowMs, planByHour, bs);
+				await writePvHourlyHistory(hdir, history);
+			} else {
+				history = mergePvHistory({ version: 1, f: {}, b: {} }, nowMs, planByHour, bs);
+			}
+		} catch {
+			/* Verlauf ist optional */
+		}
+		board = buildVisPvHourly({ now, timezone, slots, measured, forecastByHour: history.f, brightskyByHour: history.b });
 	} catch {
 		board = emptyVisPvHourly(now, timezone);
 	}

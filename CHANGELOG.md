@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.78] – 2026-11-15
+
+### Geändert
+- Backup/Wiederherstellung deckt jetzt alle Einstellungen ab (Benachrichtigungen, Statistik, Energieprognose, Einspeisung, VIS, Winterbetrieb); Zugangsdaten und Tokens bleiben weiterhin ausgeschlossen. Neuer Test prüft, dass jede Admin-Einstellung erfasst oder bewusst ausgenommen ist.
+
+### Sicherheit
+- Hochgeladene Wiederherstellungsdateien werden auf maximal 32 MB begrenzt (vor dem Dekodieren geprüft).
+
 ## [0.4.77] – 2026-11-15
 
 ### Hinzugefügt

@@ -43,6 +43,7 @@ exports.writeRestoreUploadToInbox = writeRestoreUploadToInbox;
 exports.readSupportFileBase64 = readSupportFileBase64;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
+const limits_1 = require("./limits");
 const retention_1 = require("./retention");
 const source_1 = require("../restore/source");
 const export_permissions_1 = require("./export_permissions");
@@ -187,8 +188,15 @@ async function writeRestoreUploadToInbox(host, _fileName, base64OrDataUrl) {
         if (!raw || raw.length < 16) {
             return { ok: false, error: "keine Upload-Daten — Datei wählen und speichern/nochmal versuchen" };
         }
+        /* Größenbegrenzung vor dem Dekodieren: base64 ist ca. 4/3 so lang wie die Daten. */
+        if (raw.length > Math.ceil((limits_1.EXPORT_LIMITS.MAX_BACKUP_ARCHIVE_BYTES * 4) / 3) + 1024) {
+            return { ok: false, error: "Datei zu groß (maximal 32 MB)" };
+        }
         const b64 = raw.includes("base64,") ? raw.split("base64,", 2)[1] : raw;
         const buf = Buffer.from(b64, "base64");
+        if (buf.length > limits_1.EXPORT_LIMITS.MAX_BACKUP_ARCHIVE_BYTES) {
+            return { ok: false, error: "Datei zu groß (maximal 32 MB)" };
+        }
         if (buf.length < 32) {
             return { ok: false, error: "upload empty or invalid" };
         }

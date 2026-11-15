@@ -37,6 +37,12 @@ const ALLOWED_PREFIXES = [
     "tariff_",
     "dt_",
     "ai_",
+    "notify_",
+    "statistics_",
+    "energyforecast_",
+    "feed_in_",
+    "vis_",
+    "winter_operation_",
 ];
 const ALLOWED_EXACT = new Set(["mapping", "wb_vehicle_map", "wb_vehicle_profiles"]);
 /** Slim vehicle mini-map fields (v0.1.227+). */

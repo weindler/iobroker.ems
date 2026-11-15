@@ -105,6 +105,7 @@ build/device_write.test.js
 build/execution_mode.test.js
 build/bootstrap/startup.test.js
 build/backup/export.test.js
+build/backup/config_coverage.test.js
 build/backup/archive_independent.test.js
 build/backup_integration/paths.test.js
 build/backup_integration/migration.test.js

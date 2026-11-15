@@ -1,5 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { EXPORT_LIMITS } from "./limits";
 import { backupDir, supportDir, OWN_EXPORT_FILE_RE } from "./retention";
 import { restoreInboxDir } from "../restore/source";
 import type { PathResolverInput } from "../backup_integration/paths";
@@ -172,8 +173,15 @@ export async function writeRestoreUploadToInbox(
 		if (!raw || raw.length < 16) {
 			return { ok: false, error: "keine Upload-Daten — Datei wählen und speichern/nochmal versuchen" };
 		}
+		/* Größenbegrenzung vor dem Dekodieren: base64 ist ca. 4/3 so lang wie die Daten. */
+		if (raw.length > Math.ceil((EXPORT_LIMITS.MAX_BACKUP_ARCHIVE_BYTES * 4) / 3) + 1024) {
+			return { ok: false, error: "Datei zu groß (maximal 32 MB)" };
+		}
 		const b64 = raw.includes("base64,") ? raw.split("base64,", 2)[1] : raw;
 		const buf = Buffer.from(b64, "base64");
+		if (buf.length > EXPORT_LIMITS.MAX_BACKUP_ARCHIVE_BYTES) {
+			return { ok: false, error: "Datei zu groß (maximal 32 MB)" };
+		}
 		if (buf.length < 32) {
 			return { ok: false, error: "upload empty or invalid" };
 		}

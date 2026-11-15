@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.94] – 2026-11-15
+
+### Geändert
+- VIS Batterie-Seite: Die Zeile „Zeitraum PV-Anteil“ entfällt. Sie blieb bei unklarer Ladequelle leer und bringt dort wenig; die Aufteilung des Verbrauchs nach PV, Netz und Batterie steht in der Statistik.
+
 ## [0.4.93] – 2026-11-15
 
 ### Behoben

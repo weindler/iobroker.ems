@@ -20,7 +20,7 @@ Stand: 2026-11-15, Adapter v0.4.90. Grundlage: statische Prüfung des Repos gege
 | A4 | Admin-Texte: 1129 von 1371 Text-Feldern sind Klartext statt Übersetzungsschlüssel, davon ~420 erkennbar deutsch. Basis muss Englisch sein (`admin/i18n/*`, mind. en + de). | offen — größter Posten |
 | A5 | Keine Standard-Tests (`test/package.js`, `test/integration.js` mit `@iobroker/testing`) und kein `test-and-release`-Workflow. Aktuell nur `ems-check.yml` (eigene Unit-Tests). | offen |
 | A6 | GitHub-Repo heißt `iobroker.ems`, gefordert ist `ioBroker.ems` (Umbenennen, GitHub leitet um). Topics setzen. | offen |
-| A7 | Adaptername entscheiden **vor** dem ersten npm-Publish: `ems` ist generisch und liegt neben `ems-esp` (Bosch-EMS-Bus). Alternative z. B. `ems-light`. Späteres Umbenennen ist aufwendig. | Entscheidung nötig |
+| A7 | Adaptername: entschieden **`ems-light`** (Instanz `ems-light.0`, npm `iobroker.ems-light`). Umsetzung bewusst später, erst muss der Adapter stabil laufen. Vorarbeit (WIP, unfertig, Tests noch nicht grün) liegt auf Branch `feature/rename-ems-light`: zentrale `src/adapter_identity.ts`, Datenordner `ems-light.N`, alte Backups (Manifest-Name `ems`) bleiben wiederherstellbar. Offen: Tests anpassen, Admin/io-package/README-Pfade, Migrationsanleitung (neue Instanz anlegen → Backup einspielen → States/Skripte, die `ems.0.*` lesen, umstellen). | später |
 | A8 | npm-Paket veröffentlichen, danach ioBroker-Organisation als Owner eintragen (Checker nennt den Befehl). | offen |
 
 ## B. Wichtig (Warnungen / Reviewer fragen nach)

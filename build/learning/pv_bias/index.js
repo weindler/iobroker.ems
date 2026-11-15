@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.STARTUP_SKIP_MAX_AGE_MS = void 0;
 exports.ensureLearningStateTree = ensureLearningStateTree;
 exports.startPvBiasLearningRuntime = startPvBiasLearningRuntime;
+exports.isFreshLastRun = isFreshLastRun;
 exports.initPvBiasLearning = initPvBiasLearning;
 exports.stopPvBiasLearning = stopPvBiasLearning;
 exports.__resetLearningRuntimeForTest = __resetLearningRuntimeForTest;
@@ -108,6 +110,27 @@ function runPriceOutlookImmediately(host) {
     priceOutlookRunInFlight = run;
     return run;
 }
+/** Beim Neustart schwere Lernmodule überspringen, wenn ihr Ergebnis noch frisch ist (spart Arbeitsspeicher). */
+exports.STARTUP_SKIP_MAX_AGE_MS = 3 * 3_600_000;
+function isFreshLastRun(value, nowMs, maxAgeMs = exports.STARTUP_SKIP_MAX_AGE_MS) {
+    if (typeof value !== "string" || value === "")
+        return false;
+    const ts = Date.parse(value);
+    if (!Number.isFinite(ts))
+        return false;
+    const age = nowMs - ts;
+    return age >= 0 && age < maxAgeMs;
+}
+async function startupResultIsFresh(host, stateId, trigger) {
+    if (trigger !== "startup")
+        return false;
+    try {
+        return isFreshLastRun((await host.getStateAsync(stateId))?.val, Date.now());
+    }
+    catch {
+        return false;
+    }
+}
 async function runLearningTick(host, trigger = "interval") {
     if (learningTickInFlight)
         return;
@@ -155,11 +178,15 @@ async function runLearningTick(host, trigger = "interval") {
         if (!heaterPaused)
             await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
         mark("thermik");
-        await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
+        if (!(await startupResultIsFresh(host, "learning.battery_runtime.last_run", trigger))) {
+            await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
+        }
         mark("batterie-laufzeit");
         try {
             const timezone = (0, config_2.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
-            await (0, grid_balance_economics_1.runGridBalanceEconomicsLearning)(host, { timezone });
+            if (!(await startupResultIsFresh(host, "learning.grid_balance_economics.last_run", trigger))) {
+                await (0, grid_balance_economics_1.runGridBalanceEconomicsLearning)(host, { timezone });
+            }
         }
         catch (e) {
             host.log.error(`grid_balance_economics: ${e instanceof Error ? e.message : String(e)}`);

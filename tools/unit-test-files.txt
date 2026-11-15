@@ -117,6 +117,7 @@ build/learning/history_query.test.js
 build/learning/pv_bias/math.test.js
 build/learning/pv_bias/freeze.test.js
 build/learning/pv_bias/history.test.js
+build/learning/pv_bias/startup_skip.test.js
 build/learning/pv_bias/snapshot.test.js
 build/learning/pv_bias/alt_source.test.js
 build/learning/pv_horizon/math.test.js

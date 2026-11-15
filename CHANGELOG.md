@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.71] – 2026-11-15
+
+### Geändert
+- Arbeitsspeicher beim Start: Batterie-Lernen und Netzausgleich-Wirtschaftlichkeit rechnen beim Neustart nicht sofort neu, wenn ihr letztes Ergebnis jünger als 3 Stunden ist. Beide lasen dabei Telemetrie- und History-Daten von bis zu 90 Tagen und trieben den Speicher in wenigen Sekunden um rund 300 MB nach oben. Im normalen Lernintervall laufen sie unverändert.
+
 ## [0.4.70] – 2026-11-15
 
 ### Hinzugefügt

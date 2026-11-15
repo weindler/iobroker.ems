@@ -125,6 +125,26 @@ function runPriceOutlookImmediately(host: PriceOutlookHost): Promise<void> {
 	return run;
 }
 
+/** Beim Neustart schwere Lernmodule überspringen, wenn ihr Ergebnis noch frisch ist (spart Arbeitsspeicher). */
+export const STARTUP_SKIP_MAX_AGE_MS = 3 * 3_600_000;
+
+export function isFreshLastRun(value: unknown, nowMs: number, maxAgeMs: number = STARTUP_SKIP_MAX_AGE_MS): boolean {
+	if (typeof value !== "string" || value === "") return false;
+	const ts = Date.parse(value);
+	if (!Number.isFinite(ts)) return false;
+	const age = nowMs - ts;
+	return age >= 0 && age < maxAgeMs;
+}
+
+async function startupResultIsFresh(host: StateHost, stateId: string, trigger: string): Promise<boolean> {
+	if (trigger !== "startup") return false;
+	try {
+		return isFreshLastRun((await host.getStateAsync(stateId))?.val, Date.now());
+	} catch {
+		return false;
+	}
+}
+
 async function runLearningTick(
 	host: PvBiasRunHost & StateHost,
 	trigger: "startup" | "interval" = "interval",
@@ -170,11 +190,15 @@ async function runLearningTick(
 		mark("hauslast");
 		if (!heaterPaused) await runThermalRuntimeLearning(host);
 		mark("thermik");
-		await runBatteryRuntimeLearning(host);
+		if (!(await startupResultIsFresh(host, "learning.battery_runtime.last_run", trigger))) {
+			await runBatteryRuntimeLearning(host);
+		}
 		mark("batterie-laufzeit");
 		try {
 			const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
-			await runGridBalanceEconomicsLearning(host, { timezone });
+			if (!(await startupResultIsFresh(host, "learning.grid_balance_economics.last_run", trigger))) {
+				await runGridBalanceEconomicsLearning(host, { timezone });
+			}
 		} catch (e) {
 			host.log.error(`grid_balance_economics: ${e instanceof Error ? e.message : String(e)}`);
 		}

@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.69] – 2026-11-15
+
+### Hinzugefügt
+- Speichermessung im Startschritt „ems-light runtime" je Teilschritt (Rollups, PV-Lernen, Wetter, Policy, erster Tick, Statistik). Messung in 0.4.68: Dieser Schritt hebt den Gesamtspeicher von 153 auf 626 MB.
+
 ## [0.4.68] – 2026-11-15
 
 ### Hinzugefügt

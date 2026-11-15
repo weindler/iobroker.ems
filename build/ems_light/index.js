@@ -144,7 +144,9 @@ async function startEmsLightPhase1Runtime(adapter) {
     powerRollupHost = energyDailyRollupHost;
     statisticsHost = energyDailyRollupHost;
     await (0, energy_daily_rollup_1.initEnergyDailyRollup)(energyDailyRollupHost);
+    (0, memory_diag_1.markMemoryPhase)("ems-light: energyDailyRollup init");
     await (0, power_rollup_1.initPowerRollup)(powerRollupHost);
+    (0, memory_diag_1.markMemoryPhase)("ems-light: powerRollup init");
     if (learningHost) {
         await (0, pv_bias_1.startPvBiasLearningRuntime)(adapter, learningHost);
     }
@@ -152,7 +154,9 @@ async function startEmsLightPhase1Runtime(adapter) {
         learningHost = await (0, pv_bias_1.ensureLearningStateTree)(adapter);
         await (0, pv_bias_1.startPvBiasLearningRuntime)(adapter, learningHost);
     }
+    (0, memory_diag_1.markMemoryPhase)("ems-light: pv-bias learning");
     await (0, weather_1.initWeatherLearning)(adapter);
+    (0, memory_diag_1.markMemoryPhase)("ems-light: weather learning init");
     const policyHost = (0, data_dir_1.withLearningDataPath)(adapter, adapter);
     let policyInitTimedOut = false;
     const policyInitStartedMs = Date.now();
@@ -177,6 +181,7 @@ async function startEmsLightPhase1Runtime(adapter) {
          */
         adapter.log.info(`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup (completion will be logged)`);
     });
+    (0, memory_diag_1.markMemoryPhase)("ems-light: policy engine");
     const intentHost = buildIntentHost(adapter);
     try {
         await (0, intent_1.initIntentEngine)(intentHost);
@@ -184,6 +189,7 @@ async function startEmsLightPhase1Runtime(adapter) {
     catch (e) {
         adapter.log.error(`User Intent Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
     }
+    (0, memory_diag_1.markMemoryPhase)("ems-light: intent engine");
     policyAdapter = adapter;
     try {
         for (const id of runtime_subscriptions_1.EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS) {
@@ -194,21 +200,26 @@ async function startEmsLightPhase1Runtime(adapter) {
         adapter.log.warn(`EMS-Light state subscribe: ${e}`);
     }
     await (0, tick_2.runEmsLightPhase1Tick)(host);
+    (0, memory_diag_1.markMemoryPhase)("ems-light: erster EMS-Tick");
     if (energyDailyRollupHost) {
         await (0, energy_daily_rollup_1.tickEnergyDailyRollup)(energyDailyRollupHost);
     }
+    (0, memory_diag_1.markMemoryPhase)("ems-light: erster energyDailyRollup tick");
     if (powerRollupHost) {
         await (0, power_rollup_1.tickPowerRollup)(powerRollupHost);
     }
+    (0, memory_diag_1.markMemoryPhase)("ems-light: erster powerRollup tick");
     if (statisticsHost) {
         await (0, statistics_1.tickStatistics)(statisticsHost).catch((e) => {
             adapter.log.warn(`statistics tick: ${e}`);
         });
+        (0, memory_diag_1.markMemoryPhase)("ems-light: statistik");
     }
     if (energyDailyRollupHost) {
         await (0, day_telemetry_1.tickDayTelemetry)(energyDailyRollupHost).catch((e) => {
             adapter.log.warn(`day_telemetry tick: ${e}`);
         });
+        (0, memory_diag_1.markMemoryPhase)("ems-light: tages-telemetrie");
     }
     const sec = tickIntervalSec(adapter.config);
     stopEmsLightTick();

@@ -37,7 +37,7 @@ import { EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS } from "./runtime_subscriptions";
 import { runEmsLightPhase1Tick } from "./tick";
 import type { LiveCacheHost } from "./live_cache";
 
-import { APP_MEMORY_STATE, MEMORY_DIAG_INTERVAL_MS, buildMemoryDiagnostics } from "../app/memory_diag";
+import { markMemoryPhase, APP_MEMORY_STATE, MEMORY_DIAG_INTERVAL_MS, buildMemoryDiagnostics } from "../app/memory_diag";
 const DEFAULT_TICK_SEC = 60;
 let memoryDiagLastMs = 0;
 let memoryRssPeakMb = 0;
@@ -179,14 +179,18 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 	powerRollupHost = energyDailyRollupHost;
 	statisticsHost = energyDailyRollupHost as unknown as StatisticsHost;
 	await initEnergyDailyRollup(energyDailyRollupHost);
+	markMemoryPhase("ems-light: energyDailyRollup init");
 	await initPowerRollup(powerRollupHost);
+	markMemoryPhase("ems-light: powerRollup init");
 	if (learningHost) {
 		await startPvBiasLearningRuntime(adapter, learningHost);
 	} else {
 		learningHost = await ensureLearningStateTree(adapter);
 		await startPvBiasLearningRuntime(adapter, learningHost);
 	}
+	markMemoryPhase("ems-light: pv-bias learning");
 	await initWeatherLearning(adapter);
+	markMemoryPhase("ems-light: weather learning init");
 	const policyHost = withLearningDataPath(adapter, adapter as unknown as LiveCacheHost & PolicyEngineHost);
 	let policyInitTimedOut = false;
 	const policyInitStartedMs = Date.now();
@@ -212,12 +216,14 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 			`Policy Engine init still running after ${POLICY_STARTUP_TIMEOUT_MS}ms; continuing adapter startup (completion will be logged)`,
 		);
 	});
+	markMemoryPhase("ems-light: policy engine");
 	const intentHost = buildIntentHost(adapter);
 	try {
 		await initIntentEngine(intentHost);
 	} catch (e) {
 		adapter.log.error(`User Intent Engine init failed: ${e instanceof Error ? e.stack ?? e.message : e}`);
 	}
+	markMemoryPhase("ems-light: intent engine");
 	policyAdapter = adapter;
 	try {
 		for (const id of EMS_LIGHT_OWN_STATE_SUBSCRIPTIONS) {
@@ -227,21 +233,26 @@ export async function startEmsLightPhase1Runtime(adapter: ioBroker.Adapter): Pro
 		adapter.log.warn(`EMS-Light state subscribe: ${e}`);
 	}
 	await runEmsLightPhase1Tick(host);
+	markMemoryPhase("ems-light: erster EMS-Tick");
 	if (energyDailyRollupHost) {
 		await tickEnergyDailyRollup(energyDailyRollupHost);
 	}
+	markMemoryPhase("ems-light: erster energyDailyRollup tick");
 	if (powerRollupHost) {
 		await tickPowerRollup(powerRollupHost);
 	}
+	markMemoryPhase("ems-light: erster powerRollup tick");
 	if (statisticsHost) {
 		await tickStatistics(statisticsHost).catch((e) => {
 			adapter.log.warn(`statistics tick: ${e}`);
 		});
+		markMemoryPhase("ems-light: statistik");
 	}
 	if (energyDailyRollupHost) {
 		await tickDayTelemetry(energyDailyRollupHost as unknown as DayTelemetryHost).catch((e) => {
 			adapter.log.warn(`day_telemetry tick: ${e}`);
 		});
+		markMemoryPhase("ems-light: tages-telemetrie");
 	}
 
 	const sec = tickIntervalSec(adapter.config);

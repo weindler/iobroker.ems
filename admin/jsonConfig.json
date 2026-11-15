@@ -12406,6 +12406,116 @@
 					"xl": 12,
 					"text": "Ablage Host: …/ems-runtime.&lt;Instanz&gt;/exports/backup/  ·  Danach backup.last_file_name prüfen."
 				},
+				"hBackupManage": {
+					"type": "header",
+					"size": 3,
+					"text": "Vorhandene Backups verwalten",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"manage_backup_file": {
+					"type": "selectSendTo",
+					"label": "Backup (oben = neueste)",
+					"command": "listRestoreFiles",
+					"jsonData": "{}",
+					"manual": false,
+					"noTranslation": true,
+					"doNotSave": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 6,
+					"lg": 6,
+					"xl": 6
+				},
+				"downloadBackupBtn": {
+					"type": "sendTo",
+					"command": "downloadBackup",
+					"jsonData": "{\"file\": \"${data.manage_backup_file}\"}",
+					"label": "Herunterladen",
+					"showProcess": true,
+					"timeout": 60000,
+					"openUrl": true,
+					"variant": "outlined",
+					"color": "primary",
+					"icon": "download",
+					"result": {
+						"ok": "Download gestartet",
+						"error": "Download fehlgeschlagen"
+					},
+					"xs": 12,
+					"sm": 4,
+					"md": 2,
+					"lg": 2,
+					"xl": 2
+				},
+				"deleteBackupBtn": {
+					"type": "sendTo",
+					"command": "deleteBackup",
+					"jsonData": "{\"file\": \"${data.manage_backup_file}\"}",
+					"label": "Löschen",
+					"showProcess": true,
+					"timeout": 60000,
+					"variant": "outlined",
+					"color": "error",
+					"icon": "delete",
+					"confirm": {
+						"condition": "true",
+						"title": "Backup löschen?",
+						"text": "Das gewählte Backup wird endgültig gelöscht.",
+						"ok": "Ja, löschen",
+						"cancel": "Abbrechen",
+						"type": "warning"
+					},
+					"result": {
+						"ok": "Backup gelöscht — Liste mit Tab-Wechsel aktualisieren",
+						"error": "Löschen fehlgeschlagen"
+					},
+					"xs": 12,
+					"sm": 4,
+					"md": 2,
+					"lg": 2,
+					"xl": 2
+				},
+				"deleteOldBackupsBtn": {
+					"type": "sendTo",
+					"command": "deleteOldBackups",
+					"jsonData": "{\"keep\": 3}",
+					"label": "Alle außer den 3 neuesten löschen",
+					"showProcess": true,
+					"timeout": 60000,
+					"variant": "outlined",
+					"color": "error",
+					"icon": "delete",
+					"confirm": {
+						"condition": "true",
+						"title": "Alte Backups löschen?",
+						"text": "Alle Backups außer den 3 neuesten werden endgültig gelöscht.",
+						"ok": "Ja, löschen",
+						"cancel": "Abbrechen",
+						"type": "warning"
+					},
+					"result": {
+						"ok": "Alte Backups gelöscht",
+						"error": "Löschen fehlgeschlagen"
+					},
+					"xs": 12,
+					"sm": 4,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"manageBackupHint": {
+					"type": "staticText",
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"text": "Der Adapter behält automatisch die 10 neuesten Backups. „Herunterladen“ speichert die Datei im Browser — so sichern Sie Backups auch außerhalb des ioBroker-Servers."
+				},
 				"dividerBackupDiag": {
 					"type": "divider",
 					"height": 2,

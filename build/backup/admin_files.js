@@ -41,6 +41,10 @@ exports.syncAdapterRestoreInboxToHost = syncAdapterRestoreInboxToHost;
 exports.listRestoreFileOptions = listRestoreFileOptions;
 exports.writeRestoreUploadToInbox = writeRestoreUploadToInbox;
 exports.readSupportFileBase64 = readSupportFileBase64;
+exports.listBackupFileNames = listBackupFileNames;
+exports.readBackupFileBase64 = readBackupFileBase64;
+exports.deleteBackupFile = deleteBackupFile;
+exports.deleteOldBackups = deleteOldBackups;
 const fs = __importStar(require("node:fs/promises"));
 const path = __importStar(require("node:path"));
 const limits_1 = require("./limits");
@@ -240,4 +244,89 @@ async function readSupportFileBase64(host, fileName) {
     catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
+}
+/** Alle vorhandenen .emsbackup (Host-Backup-Ordner und Inbox), neueste zuerst. */
+async function listBackupFileNames(host) {
+    const seen = new Set();
+    for (const dir of [(0, retention_1.backupDir)(host), (0, source_1.restoreInboxDir)(host)]) {
+        const names = await fs.readdir(dir).catch(() => []);
+        for (const n of names)
+            if (n.endsWith(".emsbackup") && retention_1.OWN_EXPORT_FILE_RE.test(n))
+                seen.add(n);
+    }
+    return [...seen].sort((a, b) => {
+        const ka = parseBackupFileStamp(a)?.sortKey ?? a;
+        const kb = parseBackupFileStamp(b)?.sortKey ?? b;
+        return ka < kb ? 1 : ka > kb ? -1 : 0;
+    });
+}
+/** Backup für den Browser-Download bereitstellen (Adapter-Dateien + base64 bis 6 MB). */
+async function readBackupFileBase64(host, fileName) {
+    try {
+        const name = String(fileName || "").trim();
+        (0, retention_1.assertSafeFileName)(name);
+        if (!name.endsWith(".emsbackup"))
+            return { ok: false, error: "keine Backup-Datei" };
+        let buf = null;
+        for (const dir of [(0, retention_1.backupDir)(host), (0, source_1.restoreInboxDir)(host)]) {
+            buf = await fs.readFile(path.join(dir, name)).catch(() => null);
+            if (buf)
+                break;
+        }
+        if (!buf)
+            return { ok: false, error: "Datei nicht gefunden" };
+        /* Spiegel in den Adapter-Dateien sicherstellen, damit der Download-Link funktioniert. */
+        await mirrorExportIntoAdapterFiles(host, "backup", name, buf).catch(() => undefined);
+        return {
+            ok: true,
+            fileName: name,
+            mimeType: "application/zip",
+            downloadPath: (0, export_permissions_1.adapterFileDownloadPath)(host.namespace, "backup", name),
+            base64: buf.toString("base64"),
+            sizeBytes: buf.length,
+        };
+    }
+    catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+}
+/** Ein Backup löschen: Host-Ordner, Inbox und die Spiegelkopie in den Adapter-Dateien. */
+async function deleteBackupFile(host, fileName) {
+    try {
+        const name = String(fileName || "").trim();
+        (0, retention_1.assertSafeFileName)(name);
+        if (!name.endsWith(".emsbackup"))
+            return { ok: false, error: "keine Backup-Datei" };
+        let found = false;
+        for (const dir of [(0, retention_1.backupDir)(host), (0, source_1.restoreInboxDir)(host)]) {
+            const full = path.join(dir, name);
+            const had = await fs.stat(full).then(() => true).catch(() => false);
+            if (had) {
+                await fs.unlink(full);
+                found = true;
+            }
+        }
+        if (typeof host.delFileAsync === "function") {
+            for (const rel of [`backup/${name}`, `${ADAPTER_RESTORE_INBOX}/${name}`]) {
+                if (await host.delFileAsync(host.namespace, rel).then(() => true).catch(() => false))
+                    found = true;
+            }
+        }
+        return found ? { ok: true, fileName: name } : { ok: false, error: "Datei nicht gefunden" };
+    }
+    catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+}
+/** Alle Backups löschen außer den neuesten `keep`. */
+async function deleteOldBackups(host, keep) {
+    const names = await listBackupFileNames(host);
+    const keepN = Math.max(1, Math.floor(keep));
+    const deleted = [];
+    for (const n of names.slice(keepN)) {
+        const r = await deleteBackupFile(host, n);
+        if (r.ok)
+            deleted.push(n);
+    }
+    return { deleted, kept: names.slice(0, keepN) };
 }

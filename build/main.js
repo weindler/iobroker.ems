@@ -206,6 +206,70 @@ class Ems extends utils.Adapter {
             });
             return;
         }
+        if (obj.command === "downloadBackup" || obj.command === "deleteBackup" || obj.command === "deleteOldBackups") {
+            void (async () => {
+                try {
+                    const admin = await import("./backup/admin_files.js");
+                    const msg = obj.message;
+                    const file = String(msg?.file ?? "").trim();
+                    let payload;
+                    if (obj.command === "downloadBackup") {
+                        const dl = file ? await admin.readBackupFileBase64(this, file) : null;
+                        if (!dl || !dl.ok) {
+                            payload = { result: "error", error: dl && !dl.ok ? dl.error : "Bitte zuerst ein Backup in der Liste wählen" };
+                        }
+                        else {
+                            payload = {
+                                result: "ok",
+                                fileName: dl.fileName,
+                                openUrl: dl.downloadPath,
+                                window: "_blank",
+                                downloadFileName: dl.fileName,
+                                mimeType: dl.mimeType,
+                                sizeBytes: dl.sizeBytes,
+                                hint: `Download gestartet: ${dl.fileName}`,
+                            };
+                            if (dl.sizeBytes <= 6_000_000)
+                                payload.base64 = dl.base64;
+                        }
+                    }
+                    else if (obj.command === "deleteBackup") {
+                        if (!file) {
+                            payload = { result: "error", error: "Bitte zuerst ein Backup in der Liste wählen" };
+                        }
+                        else {
+                            const r = await admin.deleteBackupFile(this, file);
+                            payload = r.ok
+                                ? { result: "ok", hint: `Gelöscht: ${r.fileName}` }
+                                : { result: "error", error: r.error };
+                            if (r.ok)
+                                this.log.info(`backup: ${r.fileName} auf Wunsch gelöscht`);
+                        }
+                    }
+                    else {
+                        const keep = Number(msg?.keep);
+                        const r = await admin.deleteOldBackups(this, Number.isFinite(keep) && keep >= 1 ? keep : 3);
+                        payload = {
+                            result: "ok",
+                            hint: r.deleted.length
+                                ? `${r.deleted.length} alte Backup(s) gelöscht, ${r.kept.length} behalten`
+                                : "Nichts zu löschen",
+                        };
+                        if (r.deleted.length)
+                            this.log.info(`backup: ${r.deleted.length} alte Backups gelöscht`);
+                    }
+                    if (obj.callback)
+                        this.sendTo(obj.from, obj.command, payload, obj.callback);
+                }
+                catch (e) {
+                    const error = e instanceof Error ? e.message : String(e);
+                    this.log.error(`${obj.command}: ${error}`);
+                    if (obj.callback)
+                        this.sendTo(obj.from, obj.command, { result: "error", error }, obj.callback);
+                }
+            })();
+            return;
+        }
         if (obj.command === "startDiagnosticMode") {
             void (async () => {
                 try {

@@ -53,6 +53,7 @@ const UI_ONLY = new Set([
     "live",
     "off",
     "restore_selected_file",
+    "manage_backup_file",
 ]);
 const NON_DATA_TYPES = new Set(["panel", "header", "staticText", "sendTo", "divider", "tabs", "accordion", "alive", "infoBox"]);
 function collectConfigKeys(node, out) {

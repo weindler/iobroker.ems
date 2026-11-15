@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { EXPORT_LIMITS } from "./limits";
-import { backupDir, supportDir, OWN_EXPORT_FILE_RE } from "./retention";
+import { assertSafeFileName, backupDir, supportDir, OWN_EXPORT_FILE_RE } from "./retention";
 import { restoreInboxDir } from "../restore/source";
 import type { PathResolverInput } from "../backup_integration/paths";
 import { EXPORT_FILE_MODE, adapterFileDownloadPath, ensureDirReadable, chmodExportPath } from "./export_permissions";
@@ -14,6 +14,7 @@ export type AdapterFilesHost = PathResolverInput & {
 		adapterName: string,
 		dirName: string,
 	) => Promise<Array<{ file: string; isDir: boolean; stats?: { size?: number } }>>;
+	delFileAsync?: (adapterName: string, fileName: string) => Promise<void>;
 	setObjectNotExistsAsync?: (id: string, obj: ioBroker.Object) => Promise<unknown>;
 	log?: { info?: (m: string) => void; warn?: (m: string) => void; debug?: (m: string) => void };
 };
@@ -230,4 +231,95 @@ export async function readSupportFileBase64(
 	} catch (e) {
 		return { ok: false, error: e instanceof Error ? e.message : String(e) };
 	}
+}
+
+/** Alle vorhandenen .emsbackup (Host-Backup-Ordner und Inbox), neueste zuerst. */
+export async function listBackupFileNames(host: PathResolverInput): Promise<string[]> {
+	const seen = new Set<string>();
+	for (const dir of [backupDir(host), restoreInboxDir(host)]) {
+		const names = await fs.readdir(dir).catch(() => [] as string[]);
+		for (const n of names) if (n.endsWith(".emsbackup") && OWN_EXPORT_FILE_RE.test(n)) seen.add(n);
+	}
+	return [...seen].sort((a, b) => {
+		const ka = parseBackupFileStamp(a)?.sortKey ?? a;
+		const kb = parseBackupFileStamp(b)?.sortKey ?? b;
+		return ka < kb ? 1 : ka > kb ? -1 : 0;
+	});
+}
+
+/** Backup für den Browser-Download bereitstellen (Adapter-Dateien + base64 bis 6 MB). */
+export async function readBackupFileBase64(
+	host: AdapterFilesHost,
+	fileName: string,
+): Promise<
+	| { ok: true; fileName: string; mimeType: string; downloadPath: string; base64: string; sizeBytes: number }
+	| { ok: false; error: string }
+> {
+	try {
+		const name = String(fileName || "").trim();
+		assertSafeFileName(name);
+		if (!name.endsWith(".emsbackup")) return { ok: false, error: "keine Backup-Datei" };
+		let buf: Buffer | null = null;
+		for (const dir of [backupDir(host), restoreInboxDir(host)]) {
+			buf = await fs.readFile(path.join(dir, name)).catch(() => null);
+			if (buf) break;
+		}
+		if (!buf) return { ok: false, error: "Datei nicht gefunden" };
+		/* Spiegel in den Adapter-Dateien sicherstellen, damit der Download-Link funktioniert. */
+		await mirrorExportIntoAdapterFiles(host, "backup", name, buf).catch(() => undefined);
+		return {
+			ok: true,
+			fileName: name,
+			mimeType: "application/zip",
+			downloadPath: adapterFileDownloadPath(host.namespace, "backup", name),
+			base64: buf.toString("base64"),
+			sizeBytes: buf.length,
+		};
+	} catch (e) {
+		return { ok: false, error: e instanceof Error ? e.message : String(e) };
+	}
+}
+
+/** Ein Backup löschen: Host-Ordner, Inbox und die Spiegelkopie in den Adapter-Dateien. */
+export async function deleteBackupFile(
+	host: AdapterFilesHost,
+	fileName: string,
+): Promise<{ ok: true; fileName: string } | { ok: false; error: string }> {
+	try {
+		const name = String(fileName || "").trim();
+		assertSafeFileName(name);
+		if (!name.endsWith(".emsbackup")) return { ok: false, error: "keine Backup-Datei" };
+		let found = false;
+		for (const dir of [backupDir(host), restoreInboxDir(host)]) {
+			const full = path.join(dir, name);
+			const had = await fs.stat(full).then(() => true).catch(() => false);
+			if (had) {
+				await fs.unlink(full);
+				found = true;
+			}
+		}
+		if (typeof host.delFileAsync === "function") {
+			for (const rel of [`backup/${name}`, `${ADAPTER_RESTORE_INBOX}/${name}`]) {
+				if (await host.delFileAsync(host.namespace, rel).then(() => true).catch(() => false)) found = true;
+			}
+		}
+		return found ? { ok: true, fileName: name } : { ok: false, error: "Datei nicht gefunden" };
+	} catch (e) {
+		return { ok: false, error: e instanceof Error ? e.message : String(e) };
+	}
+}
+
+/** Alle Backups löschen außer den neuesten `keep`. */
+export async function deleteOldBackups(
+	host: AdapterFilesHost,
+	keep: number,
+): Promise<{ deleted: string[]; kept: string[] }> {
+	const names = await listBackupFileNames(host);
+	const keepN = Math.max(1, Math.floor(keep));
+	const deleted: string[] = [];
+	for (const n of names.slice(keepN)) {
+		const r = await deleteBackupFile(host, n);
+		if (r.ok) deleted.push(n);
+	}
+	return { deleted, kept: names.slice(0, keepN) };
 }

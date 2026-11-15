@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.83] – 2026-11-15
+
+### Hinzugefügt
+- Admin → Backup: neuer Bereich „Vorhandene Backups verwalten“. Ein Backup aus der Liste wählen und **herunterladen** (Browser-Download, kein Konsolenzugang nötig), **löschen** oder **alle außer den 3 neuesten löschen** (jeweils mit Rückfrage). Gelöscht wird auch die Kopie in den Adapter-Dateien. Es werden nur eigene `.emsbackup`-Dateien akzeptiert.
+
 ## [0.4.82] – 2026-11-15
 
 ### Geändert

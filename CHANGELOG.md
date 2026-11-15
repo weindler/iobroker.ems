@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.92] – 2026-11-15
+
+### Behoben
+- Batterie: Die Hardware-Grenzen (`addons.battery.limits.hardware_*`) werden jetzt als Objekte angelegt. Vorher schrieb 0.4.91 die Werte ohne Objekt und erzeugte im Log Warnungen „has no existing object“.
+
 ## [0.4.91] – 2026-11-15
 
 ### Behoben

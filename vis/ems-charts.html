@@ -3432,7 +3432,7 @@ function evScenarioCard(){
 	return questionCard('Ladevergleich heute',actualBest?'GRID REWARDS WAR SINNVOLL':'ALTERNATIVE WAR GÜNSTIGER',[
 		scenarioLine('Tatsächlich inkl. Rewards',s.actual,s.best),scenarioLine('Nur PV-Überschuss',s.pvOnly,s.best),scenarioLine('PV + Sonnen-Batterie',s.pvBattery,s.best),scenarioLine('Normaler Tibber-Strom',s.tibber,s.best),['Rewards berücksichtigt',s.reward===null?'noch nicht abgerechnet':fmtEur(s.reward)],['Einspeisewert',fmtDec(s.feed,1,'ct/kWh')],
 		['Batterie-Wirkungsgrad',fmtDec(s.eta*100,0,'%')],['Batterieverschleiß',s.wear>0?fmtDec(s.wear,1,'ct/kWh'):'nicht bewertet']
-	], 'PV wird mit entgangener Einspeisevergütung bewertet; Batterie mit gelerntem Wirkungsgrad (Fallback 92 %). Unvollständige Messwerte bleiben offen.','#d2a8ff');
+	], 'PV wird mit entgangener Einspeisevergütung bewertet; Batterie mit dem Wirkungsgrad aus den Messdaten (solange nichts gelernt ist: 92 %). Unvollständige Messwerte bleiben offen.','#d2a8ff');
 }
 function evRecoveryCard(){
 	var out=operatorOutlook(),days=out&&Array.isArray(out.days)?out.days:[],day=days[0]||{},available=0;
@@ -3582,7 +3582,7 @@ function renderBatteryPage(){
 		["Preis jetzt",fmtDec(g("addons.battery.grid_balance.current_price_ct_kwh"),1,"ct/kWh")],
 		["Freigabe ab",fmtDec(g("addons.battery.grid_balance.price_min_ct_kwh"),1,"ct/kWh")],
 		["Heute ausgeglichen",fmtDec(energyToday.gridBalanceDischargeKwh,2,"kWh")],
-		["Gelernter Wirkungsgrad",eta===null?"Noch kein belastbarer Lernwert":fmtDec(eta*100,0,"%")],
+		["Wirkungsgrad der Batterie",eta===null?"92 % (Standardwert, noch nichts gelernt)":fmtDec(eta*100,0,"%")+" (gelernt)"],
 		["Wirtschaftliche Bewertung",isOn(g("learning.grid_balance_economics.usable"))?"aus Messdaten verfügbar":"noch nicht belastbar"]
 	],gb.reason||"Der Netzausgleich reagiert nur auf echten Netzbezug. Beim Netzladen der Batterie und beim tatsächlichen Schnellladen des Autos bleibt er gesperrt.","#3fb950");
 	paintEl(el,"battery-page",html);
@@ -3799,8 +3799,8 @@ function renderGridPage(){
 		["Zusätzlicher Batterieeinsatz",fmtDec(g("learning.grid_balance_economics.beta"),3,"")],
 		["Datenqualität",fmtConfidence(g("learning.grid_balance_economics.confidence"))],
 		["Vergleichsmessungen",txt(g("learning.grid_balance_economics.pair_count"),"—")],
-		["Wirkungsgrad nach PV-Ladung",fmtDec(g("learning.grid_balance_economics.eta_pv_path"),3,"")],
-		["Wirkungsgrad nach Netzladung",fmtDec(g("learning.grid_balance_economics.eta_grid_path"),3,"")],
+		["Wirkungsgrad nach PV-Ladung",g("learning.grid_balance_economics.eta_pv_usable")===true?fmtDec(g("learning.grid_balance_economics.eta_pv_path")*100,0,"%"):"noch nicht gelernt (Standard 92 %)"],
+		["Wirkungsgrad nach Netzladung",g("learning.grid_balance_economics.eta_grid_usable")===true?fmtDec(g("learning.grid_balance_economics.eta_grid_path")*100,0,"%"):"noch nicht gelernt (Standard 92 %)"],
 		["Heute abgegeben",fmtDec(energyToday.gridBalanceDischargeKwh,2,"kWh")],
 		["Zeitraum",fmtDec(energyPeriod.gridBalanceDischargeKwh,1,"kWh")]
 	],txt(g("learning.grid_balance_economics.reason_de"),""),"#3fb950");

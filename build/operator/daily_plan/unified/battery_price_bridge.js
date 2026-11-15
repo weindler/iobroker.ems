@@ -23,7 +23,7 @@ function planBatteryPriceBridge(input) {
         if (input.minSocPct == null || input.maxSocPct == null)
             missing.push("Ladegrenzen");
         if (etaC == null || etaC <= 0 || etaC > 1 || etaD == null || etaD <= 0 || etaD > 1)
-            missing.push("Wirkungsgrad (wird noch gelernt)");
+            missing.push("Wirkungsgrad");
         if (input.wearCtPerKwh == null || input.wearCtPerKwh < 0)
             missing.push("Verschleißkosten");
         if (input.nightKwh == null)

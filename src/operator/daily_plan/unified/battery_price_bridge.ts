@@ -55,7 +55,7 @@ export function planBatteryPriceBridge(input: PriceBridgeInput): PriceBridgeDeci
 		if (cap == null || cap <= 0) missing.push("Batteriegröße");
 		if (input.socPct == null) missing.push("Ladestand");
 		if (input.minSocPct == null || input.maxSocPct == null) missing.push("Ladegrenzen");
-		if (etaC == null || etaC <= 0 || etaC > 1 || etaD == null || etaD <= 0 || etaD > 1) missing.push("Wirkungsgrad (wird noch gelernt)");
+		if (etaC == null || etaC <= 0 || etaC > 1 || etaD == null || etaD <= 0 || etaD > 1) missing.push("Wirkungsgrad");
 		if (input.wearCtPerKwh == null || input.wearCtPerKwh < 0) missing.push("Verschleißkosten");
 		if (input.nightKwh == null) missing.push("gelernter Nachtverbrauch");
 		if (input.pvConfidencePct == null) missing.push("Sicherheit der PV-Prognose");

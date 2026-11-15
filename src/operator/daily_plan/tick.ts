@@ -626,8 +626,13 @@ export async function runDailyPlanTick(
 	const configuredChargeEta = batteryWinterPlanConfigFromAdapter(host.config).chargeEfficiencyPct / 100;
 	const measuredDischargeEta = etaGridUsable && etaGridLearned != null && etaGridLearned > 0 && etaGridLearned <= 1
 		? etaGridLearned / configuredChargeEta : null;
+	/*
+	 * Ohne gelernten Wert mit dem Standard-Gesamtwirkungsgrad (92 %) rechnen, sonst bleibt die
+	 * Batterie-Preisplanung dauerhaft abgeschaltet. Gelernte Werte haben weiterhin Vorrang.
+	 */
 	const usableDischargeEta = measuredDischargeEta != null && measuredDischargeEta > 0 && measuredDischargeEta <= 1
-		? measuredDischargeEta : null;
+		? measuredDischargeEta
+		: Math.min(1, ETA_PATH_FALLBACK / configuredChargeEta);
 	const batteryWearCtPerKwh = statisticsConfigFromAdapter(host.config).batteryWearCostCtPerKwh;
 	const feedInForReplace = normalizeFeedInCtPerKwh(
 		asNum((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val),

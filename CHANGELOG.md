@@ -8,6 +8,14 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.75] – 2026-11-15
+
+### Behoben
+- Batterie-Preisplanung blieb dauerhaft abgeschaltet („es fehlt: Wirkungsgrad"): Der Entladewirkungsgrad kam nur aus dem Lernen, das ohne ausreichend eindeutige Lade-/Entladeabläufe nie fertig wird. Ohne gelernten Wert gilt jetzt der Standard-Gesamtwirkungsgrad von 92 %; gelernte Werte haben weiterhin Vorrang.
+
+### Geändert
+- VIS: Statt „Noch kein belastbarer Lernwert" steht „92 % (Standardwert, noch nichts gelernt)"; Wirkungsgrade nach PV-/Netzladung erscheinen in Prozent.
+
 ## [0.4.74] – 2026-11-15
 
 ### Geändert

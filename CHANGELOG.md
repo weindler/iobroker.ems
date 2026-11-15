@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.95] – 2026-11-15
+
+### Geändert
+- VIS Statistik: Karte „Smart Meter“ kompakter. Netzbezug und Einspeisung stehen nebeneinander (auf schmalen Anzeigen untereinander), die Zählerstände heißen jetzt „Zähler erste/letzte Ablesung“, damit sie nicht mit Tagesmengen verwechselt werden.
+
 ## [0.4.94] – 2026-11-15
 
 ### Geändert

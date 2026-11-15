@@ -4254,13 +4254,14 @@ function nonMonetizedRows(energy){
 }
 function smartMeterCard(energy,scopeLabel,comparison){
 	if(comparison){
-		var rows=[],html='<div class="ems-card"><div class="ems-card-h"><b>Smart Meter · '+esc(scopeLabel)+'</b></div>';
+		var html='<div class="ems-card"><div class="ems-card-h"><b>Smart Meter · '+esc(scopeLabel)+'</b><span style="color:#8b949e;font-size:10px">Verbrauchsmenge im Zeitraum, nicht der Zählerstand</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px 12px">';
 		["import","export"].forEach(function(key){var v=comparison[key]||{},last=comparison.last&&comparison.last[key],first=comparison.first&&comparison.first[key],color=key==="import"?"#f85149":"#3fb950";
-			html+='<div style="color:'+color+';margin:8px 0"><b>'+esc(key==="import"?"Netzbezug":"Einspeisung")+' '+esc(fmtKwhStats(v.current))+'</b><br>'+esc('Vergleichszeitraum '+fmtKwhStats(v.previous)+' · Änderung '+(v.deltaKwh==null?'nicht berechenbar':(v.deltaKwh>0?'+':'')+fmtKwhStats(v.deltaKwh)+(v.deltaPct==null?'':' ('+(v.deltaPct>0?'+':'')+v.deltaPct.toFixed(1).replace('.',',')+' %)')))+'</div>';
-			if(first)rows.push([key==="import"?"Bezug · erster Zählerstand":"Einspeisung · erster Zählerstand",fmtKwhStats(first.firstKwh)+" · "+fmtDateTimeOrDash(first.firstAtIso)]);
-			if(last)rows.push([key==="import"?"Bezug · zuletzt gespeichert":"Einspeisung · zuletzt gespeichert",fmtKwhStats(last.lastKwh)+" · "+fmtDateTimeOrDash(last.atIso)+(last.resetDetected?" · Zählerreset erkannt":"")]);
+			var delta=v.deltaKwh==null?"Änderung nicht berechenbar":"Änderung "+(v.deltaKwh>0?"+":"")+fmtKwhStats(v.deltaKwh)+(v.deltaPct==null?"":" ("+(v.deltaPct>0?"+":"")+v.deltaPct.toFixed(1).replace(".",",")+" %)");
+			html+='<div style="border-left:3px solid '+color+';padding:0 0 0 8px"><div style="color:#8b949e;font-size:10px">'+esc(key==="import"?"Netzbezug":"Einspeisung")+'</div><div style="color:'+color+';font-size:18px;font-weight:700;line-height:1.2">'+esc(fmtKwhStats(v.current))+'</div><div style="font-size:10px;color:#8b949e">'+esc("Vorzeitraum "+fmtKwhStats(v.previous)+" · "+delta)+'</div><div style="font-size:10px;color:#8b949e;margin-top:2px">'
+				+(first?esc("Zähler erste Ablesung: "+fmtKwhStats(first.firstKwh)+" ("+fmtDateTimeOrDash(first.firstAtIso)+")")+'<br>':'')
+				+(last?esc("Zähler letzte Ablesung: "+fmtKwhStats(last.lastKwh)+" ("+fmtDateTimeOrDash(last.atIso)+")"+(last.resetDetected?" · Zählerreset erkannt":"")):'')+'</div></div>';
 		});
-		html+='<div class="ems-rows">'+rows.map(function(r){return '<div class="l">'+esc(r[0])+'</div><div class="r">'+esc(r[1])+'</div>';}).join('')+'</div><div class="ems-note">'+esc(comparison.noteDe+' Vergleichszeitraum: '+comparison.previousFrom+' bis '+comparison.previousTo)+ '</div></div>';return html;
+		html+='</div><div class="ems-note">'+esc(comparison.noteDe+' Vorzeitraum: '+comparison.previousFrom+(comparison.previousFrom===comparison.previousTo?"":" bis "+comparison.previousTo))+'</div></div>';return html;
 	}
 	var live=num(g("statistics.meter.live_power_w")),flow=live===null?"Jetzt: Netzleistung unbekannt":(live>10?"Jetzt: Bezug "+Math.round(live)+" W":(live<-10?"Jetzt: Einspeisung "+Math.round(Math.abs(live))+" W":"nahezu ausgeglichen"));
 	var color=live===null?"#8b949e":(live>10?"#f0883e":(live<-10?"#3fb950":"#8b949e"));

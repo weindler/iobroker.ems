@@ -3,6 +3,8 @@ import { listDayTelemetryDateKeys, readDayTelemetryDay } from "../day_telemetry/
 import { addDaysToDateKey, localDateKeyInTimezone } from "../../operator/time";
 import { learnAlphaBeta, filterWindowsByLookback, type MatchWindow } from "./alpha_beta";
 import { LOOKBACK_DAYS } from "./constants";
+import { etaFromBalance, type BalanceDay } from "./eta_balance";
+import { batteryConfigFromAdapter } from "../../addons/battery/config";
 import { learnEtaPaths, sessionsFromChargeSlots, type ChargeDischargeSession } from "./eta_path";
 import { GRID_BALANCE_ECONOMICS_STATE_IDS } from "./ensure_states";
 import { coldStartPersist, gridBalanceEconomicsDirFromHost, writeGridBalanceEconomicsPersist } from "./persist";
@@ -58,9 +60,28 @@ export async function runGridBalanceEconomicsLearning(
 
 	const windows: MatchWindow[] = [];
 	const sessions: ChargeDischargeSession[] = [];
+	const balanceDays: BalanceDay[] = [];
 	for (const key of keys) {
 		const day = await readDayTelemetryDay(telemetryDir, key);
 		if (!day) continue;
+		if (key < todayKey) {
+			const sum = (a: Array<number | null>): number | null => {
+				let t = 0;
+				let n = 0;
+				for (const v of a) if (typeof v === "number" && Number.isFinite(v)) { t += v; n += 1; }
+				return n ? t : null;
+			};
+			const soc = day.buckets.batterySocEndPct ?? [];
+			const socVals = soc.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+			balanceDays.push({
+				dateKey: key,
+				chargedKwh: sum(day.buckets.batteryChargedKwh),
+				dischargedKwh: sum(day.buckets.batteryDischargedKwh),
+				socFirstPct: socVals.length ? socVals[0]! : null,
+				socLastPct: socVals.length ? socVals[socVals.length - 1]! : null,
+				socCoverage: soc.length ? socVals.length / soc.length : 0,
+			});
+		}
 		windows.push(...collectMatchWindows(day));
 		sessions.push(
 			...sessionsFromChargeSlots({
@@ -72,7 +93,22 @@ export async function runGridBalanceEconomicsLearning(
 	}
 
 	const alphaBeta = learnAlphaBeta(filterWindowsByLookback(windows, now.getTime()));
-	const eta = learnEtaPaths(sessions);
+	let eta = learnEtaPaths(sessions);
+	if (!eta.etaPvUsable || !eta.etaGridUsable) {
+		const bal = etaFromBalance(balanceDays, batteryConfigFromAdapter(host.config).capacityManualKwh);
+		if (bal.eta !== null) {
+			eta = {
+				...eta,
+				etaPvPath: eta.etaPvUsable ? eta.etaPvPath : bal.eta,
+				etaGridPath: eta.etaGridUsable ? eta.etaGridPath : bal.eta,
+				etaPvUsable: true,
+				etaGridUsable: true,
+				reasonDe: bal.reasonDe,
+			};
+		} else {
+			eta = { ...eta, reasonDe: `${eta.reasonDe} ${bal.reasonDe}` };
+		}
+	}
 	const persist = {
 		module: "grid_balance_economics" as const,
 		schemaVersion: 1 as const,

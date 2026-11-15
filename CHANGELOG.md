@@ -8,7 +8,10 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.87] – 2026-11-15
+
 ### Behoben
+- Batterie-Wirkungsgrad wurde nie gelernt: Die bisherige Methode verglich Laden und Entladen innerhalb eines Kalendertags. Abends und nachts wird aber nach Mitternacht entladen, daher kamen unplausible Werte heraus und alles wurde verworfen. Neu: Wirkungsgrad aus der Gesamtbilanz mehrerer lückenloser Tage (entladen ÷ (geladen − Zunahme des Speicherinhalts laut Ladestand)). Greift, solange die Pfad-Methode keinen belastbaren Wert liefert; der Grund steht in `learning.grid_balance_economics.eta_reason_de`.
 - Admin → Backup: ungültige Schaltflächenfarbe (`error`) in der Backup-Verwaltung ersetzt; der Admin hatte die Konfiguration beanstandet. „Vorhandene Backups anzeigen“ gibt die Dateiliste direkt als Meldung aus.
 
 ## [0.4.86] – 2026-11-15

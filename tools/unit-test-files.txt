@@ -495,6 +495,7 @@ build/backup/admin_manage.test.js
 build/learning/grid_balance_economics/alpha_beta.test.js
 build/backup/admin_manage.test.js
 build/learning/grid_balance_economics/eta_path.test.js
+build/learning/grid_balance_economics/eta_balance.test.js
 build/backup/admin_manage.test.js
 build/learning/day_telemetry/freeze_immutability.test.js
 build/backup/admin_manage.test.js

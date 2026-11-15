@@ -6,6 +6,8 @@ const persist_1 = require("../day_telemetry/persist");
 const time_1 = require("../../operator/time");
 const alpha_beta_1 = require("./alpha_beta");
 const constants_2 = require("./constants");
+const eta_balance_1 = require("./eta_balance");
+const config_1 = require("../../addons/battery/config");
 const eta_path_1 = require("./eta_path");
 const ensure_states_1 = require("./ensure_states");
 const persist_2 = require("./persist");
@@ -42,10 +44,33 @@ async function runGridBalanceEconomicsLearning(host, opts = {}) {
     }
     const windows = [];
     const sessions = [];
+    const balanceDays = [];
     for (const key of keys) {
         const day = await (0, persist_1.readDayTelemetryDay)(telemetryDir, key);
         if (!day)
             continue;
+        if (key < todayKey) {
+            const sum = (a) => {
+                let t = 0;
+                let n = 0;
+                for (const v of a)
+                    if (typeof v === "number" && Number.isFinite(v)) {
+                        t += v;
+                        n += 1;
+                    }
+                return n ? t : null;
+            };
+            const soc = day.buckets.batterySocEndPct ?? [];
+            const socVals = soc.filter((v) => typeof v === "number" && Number.isFinite(v));
+            balanceDays.push({
+                dateKey: key,
+                chargedKwh: sum(day.buckets.batteryChargedKwh),
+                dischargedKwh: sum(day.buckets.batteryDischargedKwh),
+                socFirstPct: socVals.length ? socVals[0] : null,
+                socLastPct: socVals.length ? socVals[socVals.length - 1] : null,
+                socCoverage: soc.length ? socVals.length / soc.length : 0,
+            });
+        }
         windows.push(...(0, windows_from_day_1.collectMatchWindows)(day));
         sessions.push(...(0, eta_path_1.sessionsFromChargeSlots)({
             chargedKwh: day.buckets.batteryChargedKwh,
@@ -54,7 +79,23 @@ async function runGridBalanceEconomicsLearning(host, opts = {}) {
         }));
     }
     const alphaBeta = (0, alpha_beta_1.learnAlphaBeta)((0, alpha_beta_1.filterWindowsByLookback)(windows, now.getTime()));
-    const eta = (0, eta_path_1.learnEtaPaths)(sessions);
+    let eta = (0, eta_path_1.learnEtaPaths)(sessions);
+    if (!eta.etaPvUsable || !eta.etaGridUsable) {
+        const bal = (0, eta_balance_1.etaFromBalance)(balanceDays, (0, config_1.batteryConfigFromAdapter)(host.config).capacityManualKwh);
+        if (bal.eta !== null) {
+            eta = {
+                ...eta,
+                etaPvPath: eta.etaPvUsable ? eta.etaPvPath : bal.eta,
+                etaGridPath: eta.etaGridUsable ? eta.etaGridPath : bal.eta,
+                etaPvUsable: true,
+                etaGridUsable: true,
+                reasonDe: bal.reasonDe,
+            };
+        }
+        else {
+            eta = { ...eta, reasonDe: `${eta.reasonDe} ${bal.reasonDe}` };
+        }
+    }
     const persist = {
         module: "grid_balance_economics",
         schemaVersion: 1,

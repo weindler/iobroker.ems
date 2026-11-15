@@ -210,6 +210,7 @@ build/app/core_snapshot.test.js
 build/app/memory_diag.test.js
 build/notify/rules.test.js
 build/notify/index.test.js
+build/operator/vis/pv_hourly.test.js
 build/profiles/catalog.test.js
 build/operator/daily_plan/unified/passive_battery_energy.test.js
 build/operator/daily_plan/invalidate_addon_off.test.js

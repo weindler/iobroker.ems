@@ -3,7 +3,16 @@
  * Display only — never changes Thermal/Battery/EV/Climate/Planner decisions.
  */
 
-import { ALLOCATION_ADDON_STATE_IDS } from "../daily_plan/states";
+import { ALLOCATION_ADDON_STATE_IDS, DAILY_PLAN_STATE_IDS } from "../daily_plan/states";
+import { readPowerHourlyPersist } from "../../learning/power_rollup/persist";
+import { hourKeyToStartTs } from "../../learning/power_rollup/hour";
+import {
+	buildVisPvHourly,
+	emptyVisPvHourly,
+	VIS_PV_HOURLY_STATE_ID,
+	type MeasuredHour,
+	type PvPlanSlot,
+} from "./pv_hourly";
 import { GRID_SUPPLY_STATE_IDS } from "../supply/grid_states";
 import { getForecastOnlyPriceStarts } from "../supply/grid_read";
 import { getEnergyforecastFrozenForecast, getEnergyforecastPrice15MinSlots } from "../../learning/energyforecast/run";
@@ -115,4 +124,44 @@ export async function publishVisPriceTimeline(host: StateHost, now = new Date())
 	}
 
 	await setStateIfChanged(host, VIS_PRICE_TIMELINE_STATE_ID, JSON.stringify(board));
+}
+
+let pvHourlyLastMs = 0;
+const PV_HOURLY_MIN_INTERVAL_MS = 5 * 60_000;
+
+/** PV-Stundenwerte für die Betriebsseite. Höchstens alle 5 Minuten (der Tagesplan ist groß). */
+export async function publishVisPvHourly(host: StateHost, now = new Date(), timezone = "Europe/Berlin"): Promise<void> {
+	const nowMs = now.getTime();
+	if (nowMs - pvHourlyLastMs < PV_HOURLY_MIN_INTERVAL_MS) return;
+	pvHourlyLastMs = nowMs;
+	let board = emptyVisPvHourly(now, timezone);
+	try {
+		const rawPlan = await readVal(host, DAILY_PLAN_STATE_IDS.planJson);
+		let slots: PvPlanSlot[] = [];
+		if (typeof rawPlan === "string" && rawPlan.trim()) {
+			const parsed = JSON.parse(rawPlan) as { slots?: unknown };
+			if (Array.isArray(parsed.slots)) slots = parsed.slots as PvPlanSlot[];
+		}
+		const measured: MeasuredHour[] = [];
+		try {
+			const dir = (host as unknown as { getAbsolutePath?: (c?: string) => string }).getAbsolutePath?.("learning/power_rollup");
+			if (dir) {
+				const persist = await readPowerHourlyPersist(dir);
+				const source = persist.sources["battery.pv_ac_power_w"];
+				if (source) {
+					const cutoff = nowMs - 36 * 3_600_000;
+					for (const [key, rec] of Object.entries(source.hours)) {
+						const start = hourKeyToStartTs(key);
+						if (start >= cutoff && typeof rec.avgPowerW === "number") measured.push({ hourStartMs: start, avgW: rec.avgPowerW });
+					}
+				}
+			}
+		} catch {
+			/* gemessene Stunden sind optional */
+		}
+		board = buildVisPvHourly({ now, timezone, slots, measured });
+	} catch {
+		board = emptyVisPvHourly(now, timezone);
+	}
+	await setStateIfChanged(host, VIS_PV_HOURLY_STATE_ID, JSON.stringify(board));
 }

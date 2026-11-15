@@ -24,7 +24,7 @@ body{font-family:system-ui,sans-serif;background:#161b22;color:#e6edf3;padding:4
 .ems-lage{display:flex;align-items:baseline;gap:8px;background:#21262d;border:1px solid #30363d;border-radius:6px;padding:3px 8px;margin-bottom:4px;flex:0 0 auto;min-width:0}
 .ems-lage-k{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.04em;flex:0 0 auto}
 .ems-lage-v{font-size:10px;color:#c9d1d9;line-height:1.25;flex:1 1 auto;min-width:0}
-.ems-pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1}.ems-pv-day{background:#0d1117;border-radius:6px;padding:6px 8px}.ems-pv-day b{display:block;color:#58a6ff;margin-bottom:2px}.ems-pv-detail{color:#c9d1d9;font-size:10px;line-height:1.4}.ems-pv-foot{color:#8b949e;font-size:9px}
+.ems-pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1}.ems-pv-day{background:#0d1117;border-radius:6px;padding:6px 8px}.ems-pv-day b{display:block;color:#58a6ff;margin-bottom:2px}.ems-pv-detail{color:#c9d1d9;font-size:10px;line-height:1.4}.ems-pv-foot{color:#8b949e;font-size:9px}.ems-pv-legend{color:#8b949e;font-size:9px;margin:2px 0 4px}.ems-pv-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px;vertical-align:middle}@media(max-width:560px){.ems-pv-grid{grid-template-columns:1fr}}
 .ems-assess{background:#21262d;border:1px solid #30363d;border-radius:6px;padding:6px 8px;margin-bottom:4px;flex:0 0 auto;min-width:0}
 .ems-assess-h{font-size:8px;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
 .ems-assess-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
@@ -2720,10 +2720,46 @@ function renderLage(){
 	var biasTxt=bias===null?'Korrektur noch in Lernphase':('Anpassung an Ihre Anlage '+(bias>0?'+':'')+bias.toFixed(1).replace('.',',')+' % · Sicherheit '+(snap.confidencePct===null?'—':Math.round(snap.confidencePct)+' %'));
 	var todayDelta=snap.biasTodayPct===null?'':('<br>Abweichung heute bisher '+(snap.biasTodayPct>0?'+':'')+snap.biasTodayPct.toFixed(1).replace('.',',')+' % · nicht für die Korrektur verwendet');
 	var details='<details class="ems-q-note"'+(detailsOpen?' open':'')+'><summary>Berechnungsdetails</summary>Modell-Bias '+fmtDec(snap.modelBiasPct,1,'%')+' · 14-Tage-Trend '+fmtDec(snap.bias14dPct,1,'%')+' · Langzeitbasis '+fmtDec(snap.bias90dPct,1,'%')+'<br>Gültige Tage '+(snap.sampleDays90d===null?'—':Math.round(snap.sampleDays90d))+' · Abdeckung '+fmtDec(snap.coveragePct,0,'%')+' · Stabilität '+fmtDec(snap.stabilityPct,0,'%')+todayDelta+'</details>';
+	var pvh=parseObj(g("operator.vis.pv_hourly_json")),pvDays=(pvh&&pvh.days)||[],pvScale=pvHourlyScale(pvDays);
+	var rawLine='<br>Wetterdienst-Rohwert heute (ganzer Tag) '+fmtDec(snap.rawTodayKwh,1,'kWh')+', morgen '+fmtDec(snap.rawTomorrowKwh,1,'kWh')+'<br>'+esc(biasTxt);
+	details=details.replace('<summary>Berechnungsdetails</summary>','<summary>Berechnungsdetails</summary>'+rawLine+'<br>');
+	var todayTxt='Erwartet: <strong>'+fmtDec(snap.todayKwh,1,'kWh')+'</strong>'+(snap.actualKwh!==null?' · bisher erzeugt '+fmtDec(snap.actualKwh,1,'kWh'):'')+(snap.intradayFactor!==null&&Math.abs(snap.intradayFactor-1)>=0.005?'<br>'+esc(snap.intradayStatus||('Rest des Tages × '+String(snap.intradayFactor).replace('.',','))):'')+(snap.profileStatus?'<br>'+esc(snap.profileStatus):'');
+	var tomorrowTxt='Erwartet: <strong>'+fmtDec(snap.tomorrowKwh,1,'kWh')+'</strong>';
 	el.innerHTML='<div class="ems-lage-k">PV-Prognose</div><div class="ems-pv-grid">'
-		+'<div class="ems-pv-day"><b>Heute</b><div class="ems-pv-detail">Wetterdienst-Rohwert (ganzer Tag) '+fmtDec(snap.rawTodayKwh,1,'kWh')+' → erwartet '+fmtDec(snap.todayKwh,1,'kWh')+(snap.actualKwh!==null?' (bisher '+fmtDec(snap.actualKwh,1,'kWh')+')':'')+'<br>'+esc(biasTxt)+(snap.intradayFactor!==null&&Math.abs(snap.intradayFactor-1)>=0.005?'<br>'+esc(snap.intradayStatus||('Rest des Tages × '+String(snap.intradayFactor).replace('.',','))):'')+(snap.profileStatus?'<br>'+esc(snap.profileStatus):'')+'</div></div>'
-		+'<div class="ems-pv-day"><b>Morgen</b><div class="ems-pv-detail">Wetterdienst-Rohwert '+fmtDec(snap.rawTomorrowKwh,1,'kWh')+' → erwartet '+fmtDec(snap.tomorrowKwh,1,'kWh')+'<br>'+esc(biasTxt)+'</div></div>'
-		+'</div>'+details+'<div class="ems-pv-foot">'+esc(line)+'</div>';
+		+'<div class="ems-pv-day"><b>Heute</b>'+pvHourlySvg(pvDays[0],pvScale,pvh&&pvh.nowHour,true)+'<div class="ems-pv-detail">'+todayTxt+'</div></div>'
+		+'<div class="ems-pv-day"><b>Morgen</b>'+pvHourlySvg(pvDays[1],pvScale,null,false)+'<div class="ems-pv-detail">'+tomorrowTxt+'</div></div>'
+		+'</div><div class="ems-pv-legend"><i style="background:#e3b341"></i>erwartet &nbsp;<i style="background:#3fb950"></i>gemessen</div>'+details+'<div class="ems-pv-foot">'+esc(line)+'</div>';
+}
+
+/** Gemeinsame Skala für heute und morgen, damit die Balken vergleichbar sind. */
+function pvHourlyScale(days){
+	var max=0.5,i,j,h;
+	for(i=0;i<days.length;i++){
+		h=(days[i]&&days[i].hours)||[];
+		for(j=0;j<h.length;j++){max=Math.max(max,h[j].f||0,h[j].m||0);}
+	}
+	return max;
+}
+function pvHourlySvg(day,scale,nowHour,isToday){
+	var W=300,H=84,padL=4,padR=4,padT=6,padB=14,hours=(day&&day.hours)||[];
+	if(!hours.length)return'<div class="ems-pv-detail" style="color:#8b949e;margin:6px 0">Noch keine Stundenwerte.</div>';
+	var first=Math.min(8,hours[0].h),last=Math.max(16,hours[hours.length-1].h),n=last-first+1,slot=(W-padL-padR)/n,bw=Math.max(3,slot-2),i,x,y,hh,svg='',byH={};
+	for(i=0;i<hours.length;i++)byH[hours[i].h]=hours[i];
+	svg+='<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="#30363d" stroke-width="1"/>';
+	for(i=0;i<n;i++){
+		var hr=first+i,r=byH[hr];
+		x=padL+i*slot+(slot-bw)/2;
+		if(r){
+			if(r.f!==null&&r.f>0){hh=(H-padT-padB)*r.f/scale;y=H-padB-hh;svg+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+hh.toFixed(1)+'" fill="#e3b341" opacity="0.9"><title>'+hr+' Uhr: erwartet '+fmtDec(r.f,2,'kWh')+'</title></rect>';}
+			if(r.m!==null&&r.m>0){hh=(H-padT-padB)*r.m/scale;y=H-padB-hh;svg+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+hh.toFixed(1)+'" fill="#3fb950" opacity="0.9"><title>'+hr+' Uhr: gemessen '+fmtDec(r.m,2,'kWh')+'</title></rect>';}
+		}
+		if(hr%2===0)svg+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-3)+'" fill="#8b949e" font-size="8" text-anchor="middle">'+hr+'</text>';
+	}
+	if(isToday&&nowHour!==null&&nowHour!==undefined&&nowHour>=first&&nowHour<=last){
+		x=padL+(nowHour-first)*slot+slot/2;
+		svg+='<line x1="'+x.toFixed(1)+'" y1="'+padT+'" x2="'+x.toFixed(1)+'" y2="'+(H-padB)+'" stroke="#58a6ff" stroke-width="1" stroke-dasharray="2 2"/>';
+	}
+	return'<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="display:block;margin:4px 0" role="img" aria-label="PV je Stunde">'+svg+'</svg>';
 }
 
 function renderLiveStrip(){

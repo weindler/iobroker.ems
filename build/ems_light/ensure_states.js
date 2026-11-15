@@ -87,6 +87,7 @@ async function ensureEmsLightStates(host, adapterVersion) {
         boolState("operator.vis.show_diagnostics", "VIS Diagnose / Begründungen anzeigen", false),
         // Read-only compact Tibber/Plan board for the operations dashboard (no planner math).
         strState("operator.vis.price_timeline_json", "VIS Preis-/Aktionsachse (JSON)", "{}"),
+        strState("operator.vis.pv_hourly_json", "VIS PV je Stunde heute/morgen (JSON)", "{}"),
         // Roadmap Block 3.3: Live-Diagnose (Live-Cache + aktueller Daily-Plan-Slot) — ersetzt
         // die VIS-Anzeige von `planner.surplus_w`/`planner.deficit_w` (auslaufender Realtime-Planner).
         numState("operator.diagnostics.surplus_w", "Operator Live-PV-Überschuss", "W"),

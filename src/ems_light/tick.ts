@@ -142,6 +142,12 @@ export async function runEmsLightPhase1Tick(host: LiveCacheHost & PlannerHost): 
 	} catch (e) {
 		hints.push(`vis_price_timeline: ${String(e)}`);
 	}
+	try {
+		const { publishVisPvHourly } = await import("../operator/vis/publish.js");
+		await publishVisPvHourly(host);
+	} catch (e) {
+		hints.push(`vis_pv_hourly: ${String(e)}`);
+	}
 
 	const health = deriveHealth(liveResult, !hints.some((h) => h.includes("global.execution_mode nicht")));
 	const summaryParts = [

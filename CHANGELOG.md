@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.77] – 2026-11-15
+
+### Hinzugefügt
+- Betriebsseite: PV-Prognose mit Grafik. Stundenbalken für heute und morgen (gelb = erwartet, grün = gemessen, Linie = jetzt), darunter ein kurzer Text. Rohwert und Anpassung stehen jetzt in den aufklappbaren Berechnungsdetails.
+- Neuer State `operator.vis.pv_hourly_json` (Stundenwerte aus dem Tagesplan und den gemessenen Stundenwerten, höchstens alle 5 Minuten aktualisiert).
+
 ## [0.4.76] – 2026-11-15
 
 ### Hinzugefügt

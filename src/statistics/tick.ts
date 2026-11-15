@@ -1,5 +1,11 @@
 import { asBool, asNum } from "../ems_light/state_util";
 import { statisticsConfigFromAdapter, type StatisticsAdminConfig } from "./config";
+import {
+	fetchCompareTariff,
+	isAutoValueFresh,
+	parseCompareTariffAuto,
+	shouldRefetch,
+} from "./compare_tariff_auto";
 import { openStatisticsArchive, commitStatisticsArchive } from "./archive";
 import { observeDay, meterComparison } from "./observations";
 import { STATISTICS_ENERGY_FIELDS, statisticsEnergyState } from "./ensure_states";
@@ -461,8 +467,28 @@ export function tickStatistics(host: StatisticsHost, now: Date = new Date()): Pr
 	statisticsQueue = next.catch(() => undefined);
 	return next;
 }
+/** Optional: Vergleichstarif wöchentlich aktualisieren; bei Fehler/veraltet gilt der manuelle Wert. */
+async function applyCompareTariffAuto(host: StatisticsHost, cfg: StatisticsAdminConfig, now: Date): Promise<void> {
+	if (!cfg.compareTariffAuto) return;
+	const id = STATISTICS_STATES.compareTariffAutoJson;
+	try {
+		let auto = parseCompareTariffAuto((await host.getStateAsync(id))?.val);
+		if (shouldRefetch(auto, now.getTime())) {
+			auto = await fetchCompareTariff(auto, cfg.compareTariffMonthlyBaseEur ?? 0, now.getTime());
+			await setIfChanged(host, id, JSON.stringify(auto));
+			if (auto.errorDe) host.log?.warn?.(`Vergleichstarif automatisch: ${auto.errorDe}`);
+		}
+		if (isAutoValueFresh(auto, now.getTime()) && auto.workCtPerKwh !== null) {
+			cfg.compareTariffCtPerKwh = auto.workCtPerKwh;
+		}
+	} catch (e) {
+		host.log?.debug?.(`Vergleichstarif automatisch: ${e instanceof Error ? e.message : String(e)}`);
+	}
+}
+
 async function tickStatisticsSerialized(host: StatisticsHost, now: Date): Promise<void> {
 	const cfg = statisticsConfigFromAdapter(host.config);
+	await applyCompareTariffAuto(host, cfg, now);
 	const dateKey = localDateKey(now);
 	const persist = await loadPersist(host);
 	rolloverRuntimeIfNeeded(persist, dateKey);

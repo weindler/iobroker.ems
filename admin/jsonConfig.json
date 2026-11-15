@@ -10573,6 +10573,17 @@
 					"lg": 12,
 					"xl": 12
 				},
+				"statistics_compare_tariff_auto": {
+					"type": "checkbox",
+					"label": "Vergleichstarif einmal pro Woche automatisch aktualisieren",
+					"help": "Liest den Neukunden-Durchschnittspreis von der öffentlichen Verivox-Seite (4.000 kWh/Jahr, ohne Ihren Grundpreis). Der Wert unten bleibt als Ersatz, falls der Abruf fehlschlägt. Rückwirkend gilt immer der aktuelle Preis.",
+					"default": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"statistics_compare_tariff_ct_per_kwh": {
 					"type": "number",
 					"label": "Vergleichstarif (Festpreis)",

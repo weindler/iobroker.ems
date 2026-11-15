@@ -7,6 +7,7 @@ exports.isStatisticsRelatedState = isStatisticsRelatedState;
 exports.handleStatisticsStateChange = handleStatisticsStateChange;
 const state_util_1 = require("../ems_light/state_util");
 const config_1 = require("./config");
+const compare_tariff_auto_1 = require("./compare_tariff_auto");
 const archive_1 = require("./archive");
 const observations_1 = require("./observations");
 const ensure_states_1 = require("./ensure_states");
@@ -365,8 +366,30 @@ function tickStatistics(host, now = new Date()) {
     statisticsQueue = next.catch(() => undefined);
     return next;
 }
+/** Optional: Vergleichstarif wöchentlich aktualisieren; bei Fehler/veraltet gilt der manuelle Wert. */
+async function applyCompareTariffAuto(host, cfg, now) {
+    if (!cfg.compareTariffAuto)
+        return;
+    const id = ensure_states_2.STATISTICS_STATES.compareTariffAutoJson;
+    try {
+        let auto = (0, compare_tariff_auto_1.parseCompareTariffAuto)((await host.getStateAsync(id))?.val);
+        if ((0, compare_tariff_auto_1.shouldRefetch)(auto, now.getTime())) {
+            auto = await (0, compare_tariff_auto_1.fetchCompareTariff)(auto, cfg.compareTariffMonthlyBaseEur ?? 0, now.getTime());
+            await setIfChanged(host, id, JSON.stringify(auto));
+            if (auto.errorDe)
+                host.log?.warn?.(`Vergleichstarif automatisch: ${auto.errorDe}`);
+        }
+        if ((0, compare_tariff_auto_1.isAutoValueFresh)(auto, now.getTime()) && auto.workCtPerKwh !== null) {
+            cfg.compareTariffCtPerKwh = auto.workCtPerKwh;
+        }
+    }
+    catch (e) {
+        host.log?.debug?.(`Vergleichstarif automatisch: ${e instanceof Error ? e.message : String(e)}`);
+    }
+}
 async function tickStatisticsSerialized(host, now) {
     const cfg = (0, config_1.statisticsConfigFromAdapter)(host.config);
+    await applyCompareTariffAuto(host, cfg, now);
     const dateKey = (0, compute_1.localDateKey)(now);
     const persist = await loadPersist(host);
     rolloverRuntimeIfNeeded(persist, dateKey);

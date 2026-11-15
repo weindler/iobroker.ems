@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.81] – 2026-11-15
+
+### Hinzugefügt
+- Admin → Statistik: Haken „Vergleichstarif einmal pro Woche automatisch aktualisieren“. Der Adapter liest dann den Neukunden-Durchschnittspreis von der öffentlichen Verivox-Seite, rechnet Ihren Grundpreis heraus und nutzt das als Arbeitspreis des Vergleichstarifs. Schlägt der Abruf fehl oder ist der Wert älter als 21 Tage, gilt der manuell eingetragene Preis. Standardmäßig aus.
+
 ## [0.4.80] – 2026-11-15
 
 ### Geändert

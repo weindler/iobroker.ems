@@ -20,3 +20,13 @@ describe("memory_diag", () => {
 		assert.match(d.hintDe, /Fragmentierung/);
 	});
 });
+
+import { getMemorySeries, recordMemorySample } from "./memory_diag";
+describe("memory_diag series", () => {
+	it("zeichnet Verlauf auf und begrenzt ihn", () => {
+		for (let i = 0; i < 200; i++) recordMemorySample({ rss: 300 * MB, heapUsed: 100 * MB, heapTotal: 120 * MB, external: 0, arrayBuffers: 0 }, i * 60);
+		const s = getMemorySeries();
+		assert.equal(s.length, 180);
+		assert.deepEqual(s[s.length - 1], [199, 300, 100]);
+	});
+});

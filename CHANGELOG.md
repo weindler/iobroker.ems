@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.76] – 2026-11-15
+
+### Hinzugefügt
+- `app.memory_json` enthält einen Minutenverlauf (`series`: Minuten seit Start, RSS, Heap; letzte 3 Stunden), um Speichersprünge im Dauerbetrieb zeitlich zuzuordnen.
+
 ## [0.4.75] – 2026-11-15
 
 ### Behoben

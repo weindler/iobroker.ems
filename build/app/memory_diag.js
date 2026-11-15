@@ -7,6 +7,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MEMORY_DIAG_INTERVAL_MS = exports.APP_MEMORY_STATE = void 0;
 exports.markMemoryPhase = markMemoryPhase;
 exports.getMemoryPhases = getMemoryPhases;
+exports.recordMemorySample = recordMemorySample;
+exports.getMemorySeries = getMemorySeries;
 exports.buildMemoryDiagnostics = buildMemoryDiagnostics;
 exports.APP_MEMORY_STATE = "app.memory_json";
 exports.MEMORY_DIAG_INTERVAL_MS = 5 * 60_000;
@@ -20,6 +22,17 @@ function markMemoryPhase(step, usage = process.memoryUsage(), uptimeSec = proces
 }
 function getMemoryPhases() {
     return phases.slice();
+}
+/** Minütlicher Verlauf [Minuten seit Start, RSS MB, Heap MB] — zeigt, wann Sprünge entstehen. */
+const series = [];
+const MAX_SERIES = 180;
+function recordMemorySample(usage = process.memoryUsage(), uptimeSec = process.uptime()) {
+    series.push([Math.round((uptimeSec / 60) * 10) / 10, Math.round(usage.rss / MB), Math.round(usage.heapUsed / MB)]);
+    if (series.length > MAX_SERIES)
+        series.shift();
+}
+function getMemorySeries() {
+    return series.slice();
 }
 const MB = 1024 * 1024;
 const mb = (n) => Math.round((n / MB) * 10) / 10;
@@ -45,5 +58,6 @@ function buildMemoryDiagnostics(usage, nowMs, uptimeSec, previousPeakMb) {
         rssPeakMb: Math.max(previousPeakMb, rssMb),
         hintDe,
         startupPhases: getMemoryPhases(),
+        series: getMemorySeries(),
     };
 }

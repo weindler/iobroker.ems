@@ -24,3 +24,13 @@ const MB = 1024 * 1024;
         strict_1.default.match(d.hintDe, /Fragmentierung/);
     });
 });
+const memory_diag_2 = require("./memory_diag");
+(0, node_test_1.describe)("memory_diag series", () => {
+    (0, node_test_1.it)("zeichnet Verlauf auf und begrenzt ihn", () => {
+        for (let i = 0; i < 200; i++)
+            (0, memory_diag_2.recordMemorySample)({ rss: 300 * MB, heapUsed: 100 * MB, heapTotal: 120 * MB, external: 0, arrayBuffers: 0 }, i * 60);
+        const s = (0, memory_diag_2.getMemorySeries)();
+        strict_1.default.equal(s.length, 180);
+        strict_1.default.deepEqual(s[s.length - 1], [199, 300, 100]);
+    });
+});

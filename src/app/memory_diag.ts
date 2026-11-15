@@ -21,6 +21,19 @@ export function getMemoryPhases(): MemoryPhase[] {
 	return phases.slice();
 }
 
+/** Minütlicher Verlauf [Minuten seit Start, RSS MB, Heap MB] — zeigt, wann Sprünge entstehen. */
+const series: Array<[number, number, number]> = [];
+const MAX_SERIES = 180;
+
+export function recordMemorySample(usage: Usage = process.memoryUsage(), uptimeSec: number = process.uptime()): void {
+	series.push([Math.round((uptimeSec / 60) * 10) / 10, Math.round(usage.rss / MB), Math.round(usage.heapUsed / MB)]);
+	if (series.length > MAX_SERIES) series.shift();
+}
+
+export function getMemorySeries(): Array<[number, number, number]> {
+	return series.slice();
+}
+
 export type MemoryDiagnostics = {
 	updatedAt: string;
 	uptimeMin: number;
@@ -34,6 +47,8 @@ export type MemoryDiagnostics = {
 	rssPeakMb: number;
 	hintDe: string;
 	startupPhases: MemoryPhase[];
+	/** [Minuten seit Start, RSS MB, Heap MB], eine Zeile pro Minute (letzte 3 Stunden). */
+	series: Array<[number, number, number]>;
 };
 
 type Usage = { rss: number; heapUsed: number; heapTotal: number; external: number; arrayBuffers: number };
@@ -61,5 +76,6 @@ export function buildMemoryDiagnostics(usage: Usage, nowMs: number, uptimeSec: n
 		rssPeakMb: Math.max(previousPeakMb, rssMb),
 		hintDe,
 		startupPhases: getMemoryPhases(),
+		series: getMemorySeries(),
 	};
 }

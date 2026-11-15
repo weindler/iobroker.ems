@@ -234,6 +234,7 @@ async function startEmsLightPhase1Runtime(adapter) {
         void (0, notify_1.tickNotify)(adapter).catch((e) => {
             adapter.log.warn(`Push-Nachrichten: ${e instanceof Error ? e.message : String(e)}`);
         });
+        (0, memory_diag_1.recordMemorySample)();
         const nowMs = Date.now();
         if (nowMs - memoryDiagLastMs >= memory_diag_1.MEMORY_DIAG_INTERVAL_MS) {
             memoryDiagLastMs = nowMs;

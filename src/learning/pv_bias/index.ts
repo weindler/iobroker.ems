@@ -136,10 +136,29 @@ export function isFreshLastRun(value: unknown, nowMs: number, maxAgeMs: number =
 	return age >= 0 && age < maxAgeMs;
 }
 
+/**
+ * Batterie-Laufzeit lädt je Lauf 91 Tage Rohdaten (rund 660 MB Heap-Spitze, gemessen am 16.11.). Das Ergebnis
+ * (Nachtbedarf, Reserve) ändert sich nur langsam; deshalb im Intervall nur alle 6 h (5,5 h Schwelle gegen Zeitdrift).
+ */
+export const BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS = 5.5 * 3_600_000;
+
 async function startupResultIsFresh(host: StateHost, stateId: string, trigger: string): Promise<boolean> {
 	if (trigger !== "startup") return false;
 	try {
 		return isFreshLastRun((await host.getStateAsync(stateId))?.val, Date.now());
+	} catch {
+		return false;
+	}
+}
+
+async function batteryRuntimeResultIsFresh(host: StateHost, trigger: string): Promise<boolean> {
+	if (trigger === "startup") return startupResultIsFresh(host, "learning.battery_runtime.last_run", trigger);
+	try {
+		return isFreshLastRun(
+			(await host.getStateAsync("learning.battery_runtime.last_run"))?.val,
+			Date.now(),
+			BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS,
+		);
 	} catch {
 		return false;
 	}
@@ -192,7 +211,7 @@ async function runLearningTick(
 		mark("hauslast");
 		if (!heaterPaused) await runThermalRuntimeLearning(host);
 		mark("thermik");
-		if (!(await startupResultIsFresh(host, "learning.battery_runtime.last_run", trigger))) {
+		if (!(await batteryRuntimeResultIsFresh(host, trigger))) {
 			await runBatteryRuntimeLearning(host);
 		}
 		mark("batterie-laufzeit");

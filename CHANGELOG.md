@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.98] – 2026-11-16
+
+### Geändert
+- Speicher: Das Batterie-Laufzeit-Lernen lief stündlich und lud jedes Mal 91 Tage Rohdaten (gemessen: Heap-Spitze +660 MB, RSS bis 1,1 GB, 6 s). Es läuft im Intervall jetzt nur noch alle 6 Stunden. Das Ergebnis (Nachtbedarf, Reserve) ändert sich nur langsam, ein neuer Tag fließt spätestens 6 Stunden nach Mitternacht ein. Beim Start gilt weiter die 3-Stunden-Regel.
+
 ## [0.4.97] – 2026-11-16
 
 ### Hinzugefügt

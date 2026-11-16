@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.STARTUP_SKIP_MAX_AGE_MS = void 0;
+exports.BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS = exports.STARTUP_SKIP_MAX_AGE_MS = void 0;
 exports.ensureLearningStateTree = ensureLearningStateTree;
 exports.startPvBiasLearningRuntime = startPvBiasLearningRuntime;
 exports.isFreshLastRun = isFreshLastRun;
@@ -121,11 +121,26 @@ function isFreshLastRun(value, nowMs, maxAgeMs = exports.STARTUP_SKIP_MAX_AGE_MS
     const age = nowMs - ts;
     return age >= 0 && age < maxAgeMs;
 }
+/**
+ * Batterie-Laufzeit lädt je Lauf 91 Tage Rohdaten (rund 660 MB Heap-Spitze, gemessen am 16.11.). Das Ergebnis
+ * (Nachtbedarf, Reserve) ändert sich nur langsam; deshalb im Intervall nur alle 6 h (5,5 h Schwelle gegen Zeitdrift).
+ */
+exports.BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS = 5.5 * 3_600_000;
 async function startupResultIsFresh(host, stateId, trigger) {
     if (trigger !== "startup")
         return false;
     try {
         return isFreshLastRun((await host.getStateAsync(stateId))?.val, Date.now());
+    }
+    catch {
+        return false;
+    }
+}
+async function batteryRuntimeResultIsFresh(host, trigger) {
+    if (trigger === "startup")
+        return startupResultIsFresh(host, "learning.battery_runtime.last_run", trigger);
+    try {
+        return isFreshLastRun((await host.getStateAsync("learning.battery_runtime.last_run"))?.val, Date.now(), exports.BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS);
     }
     catch {
         return false;
@@ -180,7 +195,7 @@ async function runLearningTick(host, trigger = "interval") {
         if (!heaterPaused)
             await (0, thermal_runtime_1.runThermalRuntimeLearning)(host);
         mark("thermik");
-        if (!(await startupResultIsFresh(host, "learning.battery_runtime.last_run", trigger))) {
+        if (!(await batteryRuntimeResultIsFresh(host, trigger))) {
             await (0, battery_runtime_1.runBatteryRuntimeLearning)(host);
         }
         mark("batterie-laufzeit");

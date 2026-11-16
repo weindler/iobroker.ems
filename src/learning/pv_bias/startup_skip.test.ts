@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isFreshLastRun } from "./index";
+import { isFreshLastRun, BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS } from "./index";
 
 describe("isFreshLastRun", () => {
 	const now = Date.parse("2026-11-15T08:00:00Z");
@@ -15,5 +15,16 @@ describe("isFreshLastRun", () => {
 		assert.equal(isFreshLastRun("kaputt", now), false);
 		assert.equal(isFreshLastRun(null, now), false);
 		assert.equal(isFreshLastRun("2026-11-15T09:00:00Z", now), false);
+	});
+});
+
+describe("Batterie-Laufzeit im Intervall", () => {
+	const now = Date.parse("2026-11-16T22:52:00Z");
+	it("läuft stündlich nicht, aber etwa alle 6 Stunden", () => {
+		const maxAge = BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS;
+		assert.equal(isFreshLastRun("2026-11-16T21:52:00Z", now, maxAge), true, "nach 1 h noch frisch");
+		assert.equal(isFreshLastRun("2026-11-16T17:52:00Z", now, maxAge), true, "nach 5 h noch frisch");
+		assert.equal(isFreshLastRun("2026-11-16T16:52:00Z", now, maxAge), false, "nach 6 h wieder fällig");
+		assert.equal(isFreshLastRun("2026-11-16T16:52:01Z", now, maxAge), false, "6 h minus Zeitdrift wird nicht übersprungen");
 	});
 });

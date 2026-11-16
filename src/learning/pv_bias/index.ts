@@ -1,5 +1,5 @@
 import { ensurePvBiasStates } from "./ensure_states";
-import { markMemoryPhase } from "../../app/memory_diag";
+import { markMemoryPhase, tickProfileStart, tickProfileMark, tickProfileEnd } from "../../app/memory_diag";
 import { runPvBiasLearning, type PvBiasRunHost } from "./run";
 import { pvBiasConfigFromAdapter } from "./config";
 import { ensurePriceLearningStates, runPriceLearning } from "../price_learning";
@@ -153,7 +153,9 @@ async function runLearningTick(
 	learningTickInFlight = true;
 	const mark = (name: string): void => {
 		if (trigger === "startup") markMemoryPhase(`lernlauf: ${name}`);
+		tickProfileMark(name);
 	};
+	tickProfileStart(trigger);
 	try {
 		const seasonalPause = isWinterOperationActive();
 		const heaterPaused = seasonalPause || (await host.getStateAsync("addons.immersion_heater.mode"))?.val === "off";
@@ -228,6 +230,7 @@ async function runLearningTick(
 		} catch (e) {
 			host.log.error(`daily_evaluator batch: ${e instanceof Error ? e.message : String(e)}`);
 		}
+		mark("tageswertung");
 		/*
 		 * PHASE 3 — Shared-Power/Climate Learning. Liest nur day_telemetry (ClimateRunSegments),
 		 * schreibt ausschließlich in seine eigene Persistenz/States — keine Fremd-Writes, kein
@@ -264,6 +267,7 @@ async function runLearningTick(
 		} catch (e) {
 			host.log.error(`shadow_engine batch: ${e instanceof Error ? e.message : String(e)}`);
 		}
+		mark("schatten-engine");
 		/*
 		 * PHASE 7 — Wirtschaftlichkeit. Bucht abgeschlossene Tage einmalig (Tarifvorteil aus
 		 * Statistik, EMS-Vorteil/KI-Mehrwert aus der Shadow-Engine oben), aktualisiert die
@@ -274,7 +278,9 @@ async function runLearningTick(
 		} catch (e) {
 			host.log.error(`economics tick: ${e instanceof Error ? e.message : String(e)}`);
 		}
+		mark("wirtschaft");
 	} finally {
+		tickProfileEnd();
 		learningTickInFlight = false;
 	}
 }

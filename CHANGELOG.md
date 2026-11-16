@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.97] – 2026-11-16
+
+### Hinzugefügt
+- Speicher-Diagnose: `app.memory_json` enthält jetzt `learningTick` mit dem letzten stündlichen Lernlauf Schritt für Schritt (Dauer, Speicher, Spitzenwert RSS/Heap je Modul). Damit lässt sich zeigen, welches Lernmodul die Speicherspitze von rund 1,1 GB zur vollen Stunde verursacht. Reine Messung, keine Verhaltensänderung.
+
 ## [0.4.96] – 2026-11-15
 
 ### Geändert

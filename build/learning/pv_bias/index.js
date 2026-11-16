@@ -138,7 +138,9 @@ async function runLearningTick(host, trigger = "interval") {
     const mark = (name) => {
         if (trigger === "startup")
             (0, memory_diag_1.markMemoryPhase)(`lernlauf: ${name}`);
+        (0, memory_diag_1.tickProfileMark)(name);
     };
+    (0, memory_diag_1.tickProfileStart)(trigger);
     try {
         const seasonalPause = (0, season_control_1.isWinterOperationActive)();
         const heaterPaused = seasonalPause || (await host.getStateAsync("addons.immersion_heater.mode"))?.val === "off";
@@ -219,6 +221,7 @@ async function runLearningTick(host, trigger = "interval") {
         catch (e) {
             host.log.error(`daily_evaluator batch: ${e instanceof Error ? e.message : String(e)}`);
         }
+        mark("tageswertung");
         /*
          * PHASE 3 — Shared-Power/Climate Learning. Liest nur day_telemetry (ClimateRunSegments),
          * schreibt ausschließlich in seine eigene Persistenz/States — keine Fremd-Writes, kein
@@ -258,6 +261,7 @@ async function runLearningTick(host, trigger = "interval") {
         catch (e) {
             host.log.error(`shadow_engine batch: ${e instanceof Error ? e.message : String(e)}`);
         }
+        mark("schatten-engine");
         /*
          * PHASE 7 — Wirtschaftlichkeit. Bucht abgeschlossene Tage einmalig (Tarifvorteil aus
          * Statistik, EMS-Vorteil/KI-Mehrwert aus der Shadow-Engine oben), aktualisiert die
@@ -269,8 +273,10 @@ async function runLearningTick(host, trigger = "interval") {
         catch (e) {
             host.log.error(`economics tick: ${e instanceof Error ? e.message : String(e)}`);
         }
+        mark("wirtschaft");
     }
     finally {
+        (0, memory_diag_1.tickProfileEnd)();
         learningTickInFlight = false;
     }
 }

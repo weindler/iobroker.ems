@@ -9,6 +9,10 @@ exports.markMemoryPhase = markMemoryPhase;
 exports.getMemoryPhases = getMemoryPhases;
 exports.recordMemorySample = recordMemorySample;
 exports.getMemorySeries = getMemorySeries;
+exports.tickProfileStart = tickProfileStart;
+exports.tickProfileMark = tickProfileMark;
+exports.tickProfileEnd = tickProfileEnd;
+exports.getLearningTickProfile = getLearningTickProfile;
 exports.buildMemoryDiagnostics = buildMemoryDiagnostics;
 exports.APP_MEMORY_STATE = "app.memory_json";
 exports.MEMORY_DIAG_INTERVAL_MS = 5 * 60_000;
@@ -33,6 +37,71 @@ function recordMemorySample(usage = process.memoryUsage(), uptimeSec = process.u
 }
 function getMemorySeries() {
     return series.slice();
+}
+const TICK_SAMPLE_MS = 100;
+let tickTimer = null;
+let tickSteps = [];
+let tickStartedMs = 0;
+let tickLastMs = 0;
+let tickPeakRss = 0;
+let tickPeakHeap = 0;
+let tickTrigger = "";
+let lastTickProfile = null;
+function tickSample() {
+    const u = process.memoryUsage();
+    if (u.rss > tickPeakRss)
+        tickPeakRss = u.rss;
+    if (u.heapUsed > tickPeakHeap)
+        tickPeakHeap = u.heapUsed;
+}
+function tickProfileStart(trigger, nowMs = Date.now()) {
+    if (tickTimer)
+        clearInterval(tickTimer);
+    tickSteps = [];
+    tickStartedMs = nowMs;
+    tickLastMs = nowMs;
+    tickPeakRss = 0;
+    tickPeakHeap = 0;
+    tickTrigger = trigger;
+    tickSample();
+    tickTimer = setInterval(tickSample, TICK_SAMPLE_MS);
+    tickTimer.unref?.();
+}
+function tickProfileMark(step, nowMs = Date.now()) {
+    if (!tickTimer)
+        return;
+    tickSample();
+    const u = process.memoryUsage();
+    if (tickSteps.length < 60) {
+        tickSteps.push({
+            step,
+            ms: nowMs - tickLastMs,
+            rssMb: mb(u.rss),
+            heapMb: mb(u.heapUsed),
+            peakRssMb: mb(tickPeakRss),
+            peakHeapMb: mb(tickPeakHeap),
+        });
+    }
+    tickLastMs = nowMs;
+    tickPeakRss = u.rss;
+    tickPeakHeap = u.heapUsed;
+}
+function tickProfileEnd(nowMs = Date.now()) {
+    if (!tickTimer)
+        return;
+    tickSample();
+    clearInterval(tickTimer);
+    tickTimer = null;
+    lastTickProfile = {
+        startedAt: new Date(tickStartedMs).toISOString(),
+        trigger: tickTrigger,
+        totalMs: nowMs - tickStartedMs,
+        peakRssMb: Math.max(0, ...tickSteps.map((x) => x.peakRssMb)),
+        steps: tickSteps,
+    };
+}
+function getLearningTickProfile() {
+    return lastTickProfile;
 }
 const MB = 1024 * 1024;
 const mb = (n) => Math.round((n / MB) * 10) / 10;
@@ -59,5 +128,6 @@ function buildMemoryDiagnostics(usage, nowMs, uptimeSec, previousPeakMb) {
         hintDe,
         startupPhases: getMemoryPhases(),
         series: getMemorySeries(),
+        learningTick: getLearningTickProfile(),
     };
 }

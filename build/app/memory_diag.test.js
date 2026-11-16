@@ -34,3 +34,17 @@ const memory_diag_2 = require("./memory_diag");
         strict_1.default.deepEqual(s[s.length - 1], [199, 300, 100]);
     });
 });
+(0, node_test_1.describe)("Lernlauf-Messung", () => {
+    (0, node_test_1.it)("hält Schritte mit Dauer und Speicherspitze fest und liefert sie in der Diagnose", () => {
+        (0, memory_diag_1.tickProfileStart)("interval", 1_000);
+        (0, memory_diag_1.tickProfileMark)("pv-bias", 1_250);
+        (0, memory_diag_1.tickProfileMark)("hauslast", 2_000);
+        (0, memory_diag_1.tickProfileEnd)(2_500);
+        const profile = (0, memory_diag_1.getLearningTickProfile)();
+        strict_1.default.ok(profile);
+        strict_1.default.equal(profile.trigger, "interval");
+        strict_1.default.equal(profile.totalMs, 1_500);
+        strict_1.default.deepEqual(profile.steps.map((x) => [x.step, x.ms]), [["pv-bias", 250], ["hauslast", 750]]);
+        strict_1.default.ok(profile.steps.every((x) => x.peakRssMb >= x.rssMb - 1 && x.rssMb > 0));
+    });
+});

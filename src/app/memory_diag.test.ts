@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildMemoryDiagnostics } from "./memory_diag";
+import { buildMemoryDiagnostics, tickProfileStart, tickProfileMark, tickProfileEnd, getLearningTickProfile } from "./memory_diag";
 
 const MB = 1024 * 1024;
 describe("memory_diag", () => {
@@ -28,5 +28,20 @@ describe("memory_diag series", () => {
 		const s = getMemorySeries();
 		assert.equal(s.length, 180);
 		assert.deepEqual(s[s.length - 1], [199, 300, 100]);
+	});
+});
+
+describe("Lernlauf-Messung", () => {
+	it("hält Schritte mit Dauer und Speicherspitze fest und liefert sie in der Diagnose", () => {
+		tickProfileStart("interval", 1_000);
+		tickProfileMark("pv-bias", 1_250);
+		tickProfileMark("hauslast", 2_000);
+		tickProfileEnd(2_500);
+		const profile = getLearningTickProfile();
+		assert.ok(profile);
+		assert.equal(profile.trigger, "interval");
+		assert.equal(profile.totalMs, 1_500);
+		assert.deepEqual(profile.steps.map((x) => [x.step, x.ms]), [["pv-bias", 250], ["hauslast", 750]]);
+		assert.ok(profile.steps.every((x) => x.peakRssMb >= x.rssMb - 1 && x.rssMb > 0));
 	});
 });

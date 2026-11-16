@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runBatteryRuntimeLearning = runBatteryRuntimeLearning;
+const memory_diag_1 = require("../../app/memory_diag");
 const config_1 = require("./config");
 const history_1 = require("./history");
 const mapping_1 = require("./mapping");
@@ -101,12 +102,15 @@ async function runBatteryRuntimeLearning(host) {
             (0, history_1.readLiveCapacityKwh)(host, sources.capacityStateId),
             (0, history_1.readLiveSoc)(host, sources.socStateId),
         ]);
+        (0, memory_diag_1.tickProfileMark)("bat: soc-history");
         const socRaw = secondsSinceFull === null
             ? await (0, history_1.fetchSocHistoryRaw)(host, sources.socStateId, cfg.lookbackDays)
             : [];
+        (0, memory_diag_1.tickProfileMark)("bat: soc-raw");
         const powerHist = sources.powerStateId
             ? await (0, history_1.fetchPowerHistory)(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
             : { points: [], lastValidTs: null, meta: null };
+        (0, memory_diag_1.tickProfileMark)("bat: leistung");
         /*
          * Netzausgleich-Attribution: zuerst EMS-Day-Telemetry, History nur Legacy-Fallback
          * mit begrenzter Probe (kein 90×2-Leer-Sturm).
@@ -120,6 +124,7 @@ async function runBatteryRuntimeLearning(host) {
         else {
             host.log.debug?.(`Battery-Runtime-Learning: Netzausgleich aus Day-Telemetry (${fromTelemetry.observedDayCount} Tage, ${fromTelemetry.points.length} Punkte) — keine History-Abfrage.`);
         }
+        (0, memory_diag_1.tickProfileMark)("bat: netzausgleich");
         const [pvDirect, housePowerPoints] = await Promise.all([
             sources.pvAcPowerStateId
                 ? (0, history_1.fetchSitePowerSeries)(host, sources.pvAcPowerStateId, cfg.lookbackDays)
@@ -128,6 +133,7 @@ async function runBatteryRuntimeLearning(host) {
                 ? (0, history_1.fetchSitePowerSeries)(host, sources.consumptionStateId, cfg.lookbackDays)
                 : Promise.resolve([]),
         ]);
+        (0, memory_diag_1.tickProfileMark)("bat: pv+haus");
         let pvPowerPoints = pvDirect;
         let pvOrigin = pvDirect.length >= history_1.MIN_NIGHT_BRIDGE_SITE_POINTS
             ? "pv_ac"
@@ -148,6 +154,7 @@ async function runBatteryRuntimeLearning(host) {
         const astroDaily = (0, config_1.nightAstroConfigReady)(cfg)
             ? (0, history_1.mergeDailyAstroTimes)(await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightStartStateId, cfg.lookbackDays), await (0, history_1.fetchAstroTimeHistory)(host, cfg.nightEndStateId, cfg.lookbackDays))
             : null;
+        (0, memory_diag_1.tickProfileMark)("bat: astro");
         const sampleDays = (0, history_1.distinctSocSampleDays)(socHist.points);
         const batteryConfig = (0, config_3.batteryConfigFromAdapter)(host.config);
         const gridBalanceMaxAdditionalPowerW = Math.max(batteryConfig.gridBalance.offsetHighSocW, batteryConfig.gridBalance.offsetLowSocW);
@@ -169,6 +176,7 @@ async function runBatteryRuntimeLearning(host) {
             sampleDays,
             astroDaily,
         }), powerHist.meta);
+        (0, memory_diag_1.tickProfileMark)("bat: rechnen");
         if (host.getAbsolutePath) {
             await (0, persist_1.writeBatteryRuntimePersist)(host.getAbsolutePath("learning/battery_runtime"), result, lastRun);
         }

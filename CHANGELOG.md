@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.99] – 2026-11-16
+
+### Hinzugefügt
+- Speicher-Diagnose: Das Batterie-Laufzeit-Lernen meldet in `app.memory_json` (`learningTick`) jetzt je Abfrage (SOC, Leistung, Netzausgleich, PV/Haus, Rechnen) Dauer und Speicher. Reine Messung als Grundlage, die 660 MB Spitze des Moduls gezielt zu senken.
+
 ## [0.4.98] – 2026-11-16
 
 ### Geändert

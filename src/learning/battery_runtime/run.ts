@@ -1,3 +1,4 @@
+import { tickProfileMark } from "../../app/memory_diag";
 import {
 	batteryRuntimeConfigFromAdapter,
 	nightAstroConfigReady,
@@ -203,13 +204,16 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			readLiveCapacityKwh(host, sources.capacityStateId),
 			readLiveSoc(host, sources.socStateId),
 		]);
+		tickProfileMark("bat: soc-history");
 		const socRaw =
 			secondsSinceFull === null
 				? await fetchSocHistoryRaw(host, sources.socStateId, cfg.lookbackDays)
 				: [];
+		tickProfileMark("bat: soc-raw");
 		const powerHist = sources.powerStateId
 			? await fetchPowerHistory(host, sources.powerStateId, cfg.lookbackDays, cfg.powerInvert)
 			: { points: [], lastValidTs: null, meta: null };
+		tickProfileMark("bat: leistung");
 		/*
 		 * Netzausgleich-Attribution: zuerst EMS-Day-Telemetry, History nur Legacy-Fallback
 		 * mit begrenzter Probe (kein 90×2-Leer-Sturm).
@@ -233,6 +237,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 				`Battery-Runtime-Learning: Netzausgleich aus Day-Telemetry (${fromTelemetry.observedDayCount} Tage, ${fromTelemetry.points.length} Punkte) — keine History-Abfrage.`,
 			);
 		}
+		tickProfileMark("bat: netzausgleich");
 		const [pvDirect, housePowerPoints] = await Promise.all([
 			sources.pvAcPowerStateId
 				? fetchSitePowerSeries(host, sources.pvAcPowerStateId, cfg.lookbackDays)
@@ -241,6 +246,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 				? fetchSitePowerSeries(host, sources.consumptionStateId, cfg.lookbackDays)
 				: Promise.resolve([] as { ts: number; powerW: number }[]),
 		]);
+		tickProfileMark("bat: pv+haus");
 		let pvPowerPoints = pvDirect;
 		let pvOrigin =
 			pvDirect.length >= MIN_NIGHT_BRIDGE_SITE_POINTS
@@ -272,6 +278,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 				)
 			: null;
 
+		tickProfileMark("bat: astro");
 		const sampleDays = distinctSocSampleDays(socHist.points);
 		const batteryConfig = batteryConfigFromAdapter(host.config);
 		const gridBalanceMaxAdditionalPowerW = Math.max(
@@ -300,6 +307,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			powerHist.meta,
 		);
 
+		tickProfileMark("bat: rechnen");
 		if (host.getAbsolutePath) {
 			await writeBatteryRuntimePersist(
 				host.getAbsolutePath("learning/battery_runtime"),

@@ -224,6 +224,7 @@ export async function runBatteryRuntimeLearning(host: BatteryRuntimeRunHost): Pr
 			cfg.lookbackDays,
 			now,
 			timezone,
+			host.getAbsolutePath ? `${host.getAbsolutePath("learning/battery_runtime")}/grid_balance_days_v1.json` : undefined,
 		);
 		let gridBalancePowerPoints = fromTelemetry.points;
 		if (fromTelemetry.observedDayCount === 0) {

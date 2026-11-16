@@ -210,4 +210,34 @@ class FakeTelHost {
         strict_1.default.ok(Math.abs(result.avgKwh - 3.3) < 0.06, `got ${result.avgKwh}`);
         strict_1.default.ok(Math.abs((result.nightSamples[0]?.gridBalanceKwh ?? 0) - 0.3) < 0.03);
     });
+    (0, node_test_1.it)("legt abgeschlossene Tage in einer Cache-Datei ab und liest sie danach nicht mehr aus den Tagesdateien", async () => {
+        const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gb-cache-"));
+        try {
+            const baseDir = path.join(dir, "day_telemetry");
+            const cacheFile = path.join(dir, "bat", "grid_balance_days_v1.json");
+            const keys = ["2026-11-01", "2026-11-02", "2026-11-15"];
+            for (const key of keys) {
+                const layout = (0, slots_1.buildDaySlotLayout)(key, "Europe/Berlin");
+                const day = (0, types_1.emptyDayRecord)(key, "Europe/Berlin", layout.startMs, layout.endMs, layout.slotCount);
+                day.gridBalanceEnergyKind = "additional_offset";
+                day.buckets.gridBalanceDischargeKwh[0] = 0.5;
+                day.buckets.gridBalanceDischargeKwh[1] = 0;
+                await (0, persist_1.writeDayTelemetryDay)(baseDir, day);
+            }
+            const now = new Date("2026-11-16T12:00:00Z");
+            const first = await (0, grid_balance_from_telemetry_1.loadGridBalancePowerFromDayTelemetry)(baseDir, 30, now, "Europe/Berlin", cacheFile);
+            strict_1.default.equal(first.observedDayCount, 3);
+            const cache = JSON.parse(await fs.readFile(cacheFile, "utf8"));
+            strict_1.default.deepEqual(Object.keys(cache.days).sort(), ["2026-11-01", "2026-11-02"], "nur abgeschlossene Tage (älter als 2 Tage)");
+            // Tagesdatei unlesbar machen: Ergebnis muss unverändert aus dem Cache kommen.
+            await fs.writeFile(path.join(baseDir, "2026-11-01.json"), "kaputt", "utf8");
+            const second = await (0, grid_balance_from_telemetry_1.loadGridBalancePowerFromDayTelemetry)(baseDir, 30, now, "Europe/Berlin", cacheFile);
+            strict_1.default.equal(second.observedDayCount, first.observedDayCount);
+            strict_1.default.equal(second.points.length, first.points.length);
+            strict_1.default.ok(Math.abs(second.points[0].powerW - first.points[0].powerW) < 0.01);
+        }
+        finally {
+            await fs.rm(dir, { recursive: true, force: true });
+        }
+    });
 });

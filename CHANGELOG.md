@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.100] – 2026-11-16
+
+### Geändert
+- Speicher: Das Batterie-Laufzeit-Lernen parste für den Netzausgleich jedes Mal alle 91 Tagesdateien der Telemetrie vollständig (gemessen +235 MB Heap, 1,9 s), obwohl nur etwa 96 Werte pro Tag gebraucht werden. Die fertigen Netzausgleich-Punkte abgeschlossener Tage (älter als 2 Tage) liegen jetzt in `learning/battery_runtime/grid_balance_days_v1.json`; nur die jüngsten Tage werden neu gelesen. Ergebnis unverändert, mit Test.
+
 ## [0.4.99] – 2026-11-16
 
 ### Hinzugefügt

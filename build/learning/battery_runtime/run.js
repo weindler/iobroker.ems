@@ -116,7 +116,7 @@ async function runBatteryRuntimeLearning(host) {
          * mit begrenzter Probe (kein 90×2-Leer-Sturm).
          */
         const timezone = (0, config_4.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
-        const fromTelemetry = await (0, grid_balance_from_telemetry_1.loadGridBalancePowerFromDayTelemetry)((0, grid_balance_from_telemetry_1.dayTelemetryDirFromHost)(host.getAbsolutePath), cfg.lookbackDays, now, timezone);
+        const fromTelemetry = await (0, grid_balance_from_telemetry_1.loadGridBalancePowerFromDayTelemetry)((0, grid_balance_from_telemetry_1.dayTelemetryDirFromHost)(host.getAbsolutePath), cfg.lookbackDays, now, timezone, host.getAbsolutePath ? `${host.getAbsolutePath("learning/battery_runtime")}/grid_balance_days_v1.json` : undefined);
         let gridBalancePowerPoints = fromTelemetry.points;
         if (fromTelemetry.observedDayCount === 0) {
             gridBalancePowerPoints = await (0, history_1.fetchGridBalanceDischargePowerHistory)(host, ensure_states_1.BAT.gridBalance.effectivePowerW, cfg.lookbackDays);

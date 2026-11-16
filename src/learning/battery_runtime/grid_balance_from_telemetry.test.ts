@@ -187,4 +187,34 @@ describe("grid balance from day telemetry", () => {
 		assert.ok(Math.abs(result.avgKwh! - 3.3) < 0.06, `got ${result.avgKwh}`);
 		assert.ok(Math.abs((result.nightSamples[0]?.gridBalanceKwh ?? 0) - 0.3) < 0.03);
 	});
+
+	it("legt abgeschlossene Tage in einer Cache-Datei ab und liest sie danach nicht mehr aus den Tagesdateien", async () => {
+		const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gb-cache-"));
+		try {
+			const baseDir = path.join(dir, "day_telemetry");
+			const cacheFile = path.join(dir, "bat", "grid_balance_days_v1.json");
+			const keys = ["2026-11-01", "2026-11-02", "2026-11-15"];
+			for (const key of keys) {
+				const layout = buildDaySlotLayout(key, "Europe/Berlin");
+				const day = emptyDayRecord(key, "Europe/Berlin", layout.startMs, layout.endMs, layout.slotCount);
+				day.gridBalanceEnergyKind = "additional_offset";
+				day.buckets.gridBalanceDischargeKwh[0] = 0.5;
+				day.buckets.gridBalanceDischargeKwh[1] = 0;
+				await writeDayTelemetryDay(baseDir, day);
+			}
+			const now = new Date("2026-11-16T12:00:00Z");
+			const first = await loadGridBalancePowerFromDayTelemetry(baseDir, 30, now, "Europe/Berlin", cacheFile);
+			assert.equal(first.observedDayCount, 3);
+			const cache = JSON.parse(await fs.readFile(cacheFile, "utf8")) as { days: Record<string, unknown[]> };
+			assert.deepEqual(Object.keys(cache.days).sort(), ["2026-11-01", "2026-11-02"], "nur abgeschlossene Tage (älter als 2 Tage)");
+			// Tagesdatei unlesbar machen: Ergebnis muss unverändert aus dem Cache kommen.
+			await fs.writeFile(path.join(baseDir, "2026-11-01.json"), "kaputt", "utf8");
+			const second = await loadGridBalancePowerFromDayTelemetry(baseDir, 30, now, "Europe/Berlin", cacheFile);
+			assert.equal(second.observedDayCount, first.observedDayCount);
+			assert.equal(second.points.length, first.points.length);
+			assert.ok(Math.abs(second.points[0]!.powerW - first.points[0]!.powerW) < 0.01);
+		} finally {
+			await fs.rm(dir, { recursive: true, force: true });
+		}
+	});
 });

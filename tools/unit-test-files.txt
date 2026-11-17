@@ -689,3 +689,4 @@ build/backup/admin_manage.test.js
 build/operator/contributions/pv_shape_hourly_read.test.js
 build/backup/admin_manage.test.js
 build/operator/vis/price_history.test.js
+build/learning/grid_balance_economics/run_cache.test.js

@@ -1,3 +1,6 @@
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import { atomicWriteFile } from "../../persistence/atomic_write";
 import { DAY_TELEMETRY_CATEGORY } from "../day_telemetry/constants";
 import { listDayTelemetryDateKeys, readDayTelemetryDay } from "../day_telemetry/persist";
 import { addDaysToDateKey, localDateKeyInTimezone } from "../../operator/time";
@@ -28,6 +31,55 @@ async function publish(
 	} catch {
 		/* best-effort */
 	}
+}
+
+/** Je Tag fertig abgeleitete Werte (klein). Abgeschlossene Tage werden gecacht, damit nicht jede Stunde bis zu 45 Tagesdateien komplett geparst werden (Speicherspitze). */
+type DayDerived = { windows: MatchWindow[]; sessions: ChargeDischargeSession[]; balance: BalanceDay | null };
+type DaysCache = { version: 1; days: Record<string, DayDerived> };
+const DAYS_CACHE_FILE = "days_cache_v1.json";
+/** Tage ab dieser Tiefe (in Tagen vor heute) gelten als abgeschlossen. */
+const CACHE_SETTLED_DAYS = 2;
+
+async function readDaysCache(file: string): Promise<DaysCache> {
+	const empty: DaysCache = { version: 1, days: {} };
+	try {
+		const parsed = JSON.parse(await fs.readFile(file, "utf8")) as DaysCache;
+		if (parsed?.version === 1 && parsed.days && typeof parsed.days === "object") return parsed;
+	} catch {
+		/* kein oder defekter Cache: neu aufbauen */
+	}
+	return empty;
+}
+
+function deriveDay(day: NonNullable<Awaited<ReturnType<typeof readDayTelemetryDay>>>, key: string, includeBalance: boolean): DayDerived {
+	let balance: BalanceDay | null = null;
+	if (includeBalance) {
+		const sum = (a: Array<number | null>): number | null => {
+			let t = 0;
+			let n = 0;
+			for (const v of a) if (typeof v === "number" && Number.isFinite(v)) { t += v; n += 1; }
+			return n ? t : null;
+		};
+		const soc = day.buckets.batterySocEndPct ?? [];
+		const socVals = soc.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+		balance = {
+			dateKey: key,
+			chargedKwh: sum(day.buckets.batteryChargedKwh),
+			dischargedKwh: sum(day.buckets.batteryDischargedKwh),
+			socFirstPct: socVals.length ? socVals[0]! : null,
+			socLastPct: socVals.length ? socVals[socVals.length - 1]! : null,
+			socCoverage: soc.length ? socVals.length / soc.length : 0,
+		};
+	}
+	return {
+		windows: collectMatchWindows(day),
+		sessions: sessionsFromChargeSlots({
+			chargedKwh: day.buckets.batteryChargedKwh,
+			dischargedKwh: day.buckets.batteryDischargedKwh,
+			source: (day.buckets.batteryChargeSource ?? []) as Array<ChargeSource | null>,
+		}),
+		balance,
+	};
 }
 
 export async function runGridBalanceEconomicsLearning(
@@ -61,35 +113,39 @@ export async function runGridBalanceEconomicsLearning(
 	const windows: MatchWindow[] = [];
 	const sessions: ChargeDischargeSession[] = [];
 	const balanceDays: BalanceDay[] = [];
+	const cacheFile = path.join(dir, DAYS_CACHE_FILE);
+	const cache = await readDaysCache(cacheFile);
+	const settledKey = addDaysToDateKey(todayKey, -CACHE_SETTLED_DAYS);
+	let cacheDirty = false;
 	for (const key of keys) {
-		const day = await readDayTelemetryDay(telemetryDir, key);
-		if (!day) continue;
-		if (key < todayKey) {
-			const sum = (a: Array<number | null>): number | null => {
-				let t = 0;
-				let n = 0;
-				for (const v of a) if (typeof v === "number" && Number.isFinite(v)) { t += v; n += 1; }
-				return n ? t : null;
-			};
-			const soc = day.buckets.batterySocEndPct ?? [];
-			const socVals = soc.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-			balanceDays.push({
-				dateKey: key,
-				chargedKwh: sum(day.buckets.batteryChargedKwh),
-				dischargedKwh: sum(day.buckets.batteryDischargedKwh),
-				socFirstPct: socVals.length ? socVals[0]! : null,
-				socLastPct: socVals.length ? socVals[socVals.length - 1]! : null,
-				socCoverage: soc.length ? socVals.length / soc.length : 0,
-			});
+		const settled = key <= settledKey;
+		let derived: DayDerived | undefined = settled ? cache.days[key] : undefined;
+		if (!derived) {
+			const day = await readDayTelemetryDay(telemetryDir, key);
+			if (!day) continue;
+			derived = deriveDay(day, key, key < todayKey);
+			if (settled) {
+				cache.days[key] = derived;
+				cacheDirty = true;
+			}
 		}
-		windows.push(...collectMatchWindows(day));
-		sessions.push(
-			...sessionsFromChargeSlots({
-				chargedKwh: day.buckets.batteryChargedKwh,
-				dischargedKwh: day.buckets.batteryDischargedKwh,
-				source: (day.buckets.batteryChargeSource ?? []) as Array<ChargeSource | null>,
-			}),
-		);
+		if (derived.balance) balanceDays.push(derived.balance);
+		windows.push(...derived.windows);
+		sessions.push(...derived.sessions);
+	}
+	for (const k of Object.keys(cache.days)) {
+		if (k < oldestKey) {
+			delete cache.days[k];
+			cacheDirty = true;
+		}
+	}
+	if (cacheDirty) {
+		try {
+			await fs.mkdir(dir, { recursive: true });
+			await atomicWriteFile(cacheFile, JSON.stringify(cache));
+		} catch (e) {
+			host.log?.debug?.(`grid_balance_economics: Cache nicht geschrieben (${e instanceof Error ? e.message : String(e)})`);
+		}
 	}
 
 	const alphaBeta = learnAlphaBeta(filterWindowsByLookback(windows, now.getTime()));

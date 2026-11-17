@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.107] – 2026-11-17
+
+### Geändert
+- Speicher: Der Lernschritt „Netzausgleich-Wirtschaft“ parste bei jedem Lauf bis zu 45 Tagesdateien komplett (rund 185 MB Heap-Spitze, beim Start RSS 183 → 358 MB). Jetzt werden je abgeschlossenem Tag (älter als 2 Tage) nur die abgeleiteten Werte in `learning/grid_balance_economics/days_cache_v1.json` gehalten; gelesen werden nur noch die letzten Tage. Der erste Lauf nach der Installation füllt den Cache und hat noch die alte Spitze.
+
 ## [0.4.106] – 2026-11-17
 
 ### Geändert

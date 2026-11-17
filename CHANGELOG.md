@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.111] – 2026-11-17
+
+### Geändert
+- Batterie-Preisbrücke nutzt für noch nicht veröffentlichte Viertelstunden die (verzerrungskorrigierte) Energyforecast-Preisprognose, um die spätere Entladung zu bewerten. So fließt eine teure Phase am übernächsten Tag in die Ladeentscheidung ein (bisher endete der Blick mit dem letzten veröffentlichten Tibber-Preis). Netzladung wird weiterhin nur in veröffentlichten Slots geplant, und der Plan wird bei jedem Preis-Update neu gerechnet.
+
 ## [0.4.110] – 2026-11-17
 
 ### Geändert

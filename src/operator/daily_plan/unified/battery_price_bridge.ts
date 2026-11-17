@@ -7,6 +7,8 @@ export type PriceBridgeSlot = {
 	committedKwh: number;
 	importCt: number | null;
 	gridAllowed: boolean;
+	/** true = nur Prognosepreis (noch nicht veröffentlicht): bewertet Entladung, erlaubt aber keine Netzladung. */
+	forecast?: boolean;
 };
 
 export type PriceBridgeInput = {
@@ -39,6 +41,12 @@ export type PriceBridgeDecision = {
 	holdEndIso: string | null;
 	reasonDe: string;
 };
+
+function plan0Published(slots: PriceBridgeSlot[], end: number): number {
+	let n = 0;
+	for (let i = 0; i < end; i++) if (!slots[i]!.forecast) n++;
+	return n;
+}
 
 function unavailable(reasonDe: string): PriceBridgeDecision {
 	return { usable: false, targetSocPct: null, gridEnergyKwh: 0, chargeStartIso: null,
@@ -74,7 +82,8 @@ export function planBatteryPriceBridge(input: PriceBridgeInput): PriceBridgeDeci
 	// Tibber veröffentlicht kürzer als der PV-Ausblick: unbekannte spätere Preise werden nie geschätzt.
 	const pricedEnd = slots.findIndex(s => s.importCt == null || !Number.isFinite(s.importCt));
 	const publishedEnd = pricedEnd < 0 ? slots.length : pricedEnd;
-	if (publishedEnd < 4) return unavailable("Veröffentlichte Preise reichen nicht für eine Netzladeentscheidung.");
+	const publishedCount = plan0Published(slots, publishedEnd);
+	if (publishedCount < 4) return unavailable("Veröffentlichte Preise reichen nicht für eine Netzladeentscheidung.");
 	const plan = slots.slice(0, publishedEnd);
 	if (plan.some(s => s.pvKwh == null || s.houseKwh == null || !Number.isFinite(s.pvKwh) || !Number.isFinite(s.houseKwh)))
 		return unavailable("PV- oder Hausprognose im Planungsfenster unvollständig.");
@@ -117,7 +126,7 @@ export function planBatteryPriceBridge(input: PriceBridgeInput): PriceBridgeDeci
 			if (out > outMax[i]! + eps) return null;
 		}
 		const gridPart = Math.max(0, inKwh - pvFree[i]!);
-		if (gridPart > eps && !s.gridAllowed) return null;
+		if (gridPart > eps && (!s.gridAllowed || s.forecast)) return null;
 		const net = demand[i]! + inKwh - out;
 		const cost = (net > 0 ? net * s.importCt! : net * exportCt) + wearCt * out + marginCt * gridPart;
 		return { cost, flow: { dS, input: inKwh, out, gridPart } };

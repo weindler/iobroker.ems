@@ -134,4 +134,28 @@ describe("Batterie-Preisbrücke am Nebeltag", () => {
 			assert.ok(Date.parse(result.holdEndIso!) > Date.parse(result.holdStartIso));
 		}
 	});
+	it("Prognosepreise bewerten die spätere Entladung, erlauben aber keine Netzladung", () => {
+		const base = fixture();
+		const build = (forecast: boolean) => {
+			const input = { ...base };
+			input.slots = base.slots.map((s, i) => {
+				const h = 5 + i / 4, hourOfDay = h % 24, day = Math.floor(h / 24);
+				const cheap = day === 1 && hourOfDay >= 3 && hourOfDay < 5;
+				const lateExpensive = day === 2 && hourOfDay >= 6 && hourOfDay < 10;
+				const published = day < 2;
+				return { ...s, pvKwh: 0.02, houseKwh: 0.09,
+					importCt: cheap ? 20 : lateExpensive ? 70 : 40,
+					forecast: forecast && !published ? true : undefined,
+					...(published || forecast ? {} : { importCt: null }) };
+			});
+			return planBatteryPriceBridge(input);
+		};
+		const withForecast = build(true);
+		const withoutForecast = build(false);
+		assert.equal(withForecast.usable, true);
+		assert.ok(withForecast.gridEnergyKwh > withoutForecast.gridEnergyKwh,
+			"die prognostizierte teure Phase erhöht die geplante Netzladung");
+		assert.ok(Date.parse(withForecast.chargeEndIso!) < Date.parse("2026-11-11T00:00:00Z"),
+			"geladen wird nur in veröffentlichten Slots");
+	});
 });

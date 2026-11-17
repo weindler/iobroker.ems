@@ -18,6 +18,7 @@ exports.hardPvConsumersFromInput = hardPvConsumersFromInput;
 exports.scoreCandidate = scoreCandidate;
 exports.runScoreBasedAllocation = runScoreBasedAllocation;
 const mode_policy_1 = require("../../../planner/mode_policy");
+const run_1 = require("../../../learning/energyforecast/run");
 const battery_price_bridge_1 = require("./battery_price_bridge");
 const battery_reserve_floor_1 = require("./battery_reserve_floor");
 const next_reliable_pv_1 = require("./next_reliable_pv");
@@ -2260,13 +2261,23 @@ function runScoreBasedAllocation(input, slots, opts) {
     }
     applyExternalEvReservations(input, slots, reasonCodes);
     const hardBound = hardPvBoundForPlanning(input, slots);
+    // Prognosepreise (Energyforecast) für noch nicht veröffentlichte Viertelstunden: nur zur Bewertung der Entladung.
+    const forecastPriceByStart = new Map();
+    for (const f of (0, run_1.getEnergyforecastPrice15MinSlots)(Date.parse(input.time.nowIso))) {
+        if (f.origin === "forecast")
+            forecastPriceByStart.set(f.slotStartMs, f.priceCtPerKwh);
+    }
     const bridge = bat.gridChargeAllowed && bat.allowedModes.includes("charge") &&
         bat.uncertainty.status === "valid" && input.pv.uncertainty.status === "valid" &&
         input.houseLoad.uncertainty.status === "valid" && !(input.wallbox && wallboxImmediate(input.wallbox))
         ? (0, battery_price_bridge_1.planBatteryPriceBridge)({
-            slots: slots.map((s, i) => ({ startIso: s.startIso, endIso: s.endIso,
-                pvKwh: s.pvKwh, houseKwh: s.houseKwh, committedKwh: hardBound[i] ?? 0,
-                importCt: s.importCt, gridAllowed: s.gridAllowed && !s.evGridReserved })),
+            slots: slots.map((s, i) => {
+                const fc = s.importCt == null ? forecastPriceByStart.get(s.startMs) : undefined;
+                return { startIso: s.startIso, endIso: s.endIso,
+                    pvKwh: s.pvKwh, houseKwh: s.houseKwh, committedKwh: hardBound[i] ?? 0,
+                    importCt: s.importCt ?? fc ?? null, forecast: fc !== undefined,
+                    gridAllowed: s.gridAllowed && !s.evGridReserved };
+            }),
             nowMs: Date.parse(input.time.nowIso), socPct: bat.socPct,
             capacityKwh: bat.usableCapacityKwh, maxChargePowerW: bat.maxChargePowerW, minSocPct: bat.minSocPct,
             maxSocPct: bat.maxSocPct, nightKwh: bat.nightReserveKwh,

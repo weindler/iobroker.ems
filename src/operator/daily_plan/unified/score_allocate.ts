@@ -3,6 +3,7 @@
  */
 
 import { plannerModePolicyFromGlobalMode } from "../../../planner/mode_policy";
+import { getEnergyforecastPrice15MinSlots } from "../../../learning/energyforecast/run";
 import { planBatteryPriceBridge, type PriceBridgeDecision } from "./battery_price_bridge";
 import type { PlannerModePolicy } from "../../../planner/mode_policy";
 import {
@@ -2616,13 +2617,22 @@ export function runScoreBasedAllocation(
 	}
 	applyExternalEvReservations(input, slots, reasonCodes);
 	const hardBound = hardPvBoundForPlanning(input, slots);
+	// Prognosepreise (Energyforecast) für noch nicht veröffentlichte Viertelstunden: nur zur Bewertung der Entladung.
+	const forecastPriceByStart = new Map<number, number>();
+	for (const f of getEnergyforecastPrice15MinSlots(Date.parse(input.time.nowIso))) {
+		if (f.origin === "forecast") forecastPriceByStart.set(f.slotStartMs, f.priceCtPerKwh);
+	}
 	const bridge = bat.gridChargeAllowed && bat.allowedModes.includes("charge") &&
 		bat.uncertainty.status === "valid" && input.pv.uncertainty.status === "valid" &&
 		input.houseLoad.uncertainty.status === "valid" && !(input.wallbox && wallboxImmediate(input.wallbox))
 		? planBatteryPriceBridge({
-			slots: slots.map((s, i) => ({ startIso: s.startIso, endIso: s.endIso,
-				pvKwh: s.pvKwh, houseKwh: s.houseKwh, committedKwh: hardBound[i] ?? 0,
-				importCt: s.importCt, gridAllowed: s.gridAllowed && !s.evGridReserved })),
+			slots: slots.map((s, i) => {
+				const fc = s.importCt == null ? forecastPriceByStart.get(s.startMs) : undefined;
+				return { startIso: s.startIso, endIso: s.endIso,
+					pvKwh: s.pvKwh, houseKwh: s.houseKwh, committedKwh: hardBound[i] ?? 0,
+					importCt: s.importCt ?? fc ?? null, forecast: fc !== undefined,
+					gridAllowed: s.gridAllowed && !s.evGridReserved };
+			}),
 			nowMs: Date.parse(input.time.nowIso), socPct: bat.socPct,
 			capacityKwh: bat.usableCapacityKwh, maxChargePowerW: bat.maxChargePowerW, minSocPct: bat.minSocPct,
 			maxSocPct: bat.maxSocPct, nightKwh: bat.nightReserveKwh,

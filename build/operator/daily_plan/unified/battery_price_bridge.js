@@ -1,6 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.planBatteryPriceBridge = planBatteryPriceBridge;
+function plan0Published(slots, end) {
+    let n = 0;
+    for (let i = 0; i < end; i++)
+        if (!slots[i].forecast)
+            n++;
+    return n;
+}
 function unavailable(reasonDe) {
     return { usable: false, targetSocPct: null, gridEnergyKwh: 0, chargeStartIso: null,
         chargeEndIso: null, peakStartIso: null, holdStartIso: null, holdEndIso: null, reasonDe };
@@ -43,7 +50,8 @@ function planBatteryPriceBridge(input) {
     // Tibber veröffentlicht kürzer als der PV-Ausblick: unbekannte spätere Preise werden nie geschätzt.
     const pricedEnd = slots.findIndex(s => s.importCt == null || !Number.isFinite(s.importCt));
     const publishedEnd = pricedEnd < 0 ? slots.length : pricedEnd;
-    if (publishedEnd < 4)
+    const publishedCount = plan0Published(slots, publishedEnd);
+    if (publishedCount < 4)
         return unavailable("Veröffentlichte Preise reichen nicht für eine Netzladeentscheidung.");
     const plan = slots.slice(0, publishedEnd);
     if (plan.some(s => s.pvKwh == null || s.houseKwh == null || !Number.isFinite(s.pvKwh) || !Number.isFinite(s.houseKwh)))
@@ -87,7 +95,7 @@ function planBatteryPriceBridge(input) {
                 return null;
         }
         const gridPart = Math.max(0, inKwh - pvFree[i]);
-        if (gridPart > eps && !s.gridAllowed)
+        if (gridPart > eps && (!s.gridAllowed || s.forecast))
             return null;
         const net = demand[i] + inKwh - out;
         const cost = (net > 0 ? net * s.importCt : net * exportCt) + wearCt * out + marginCt * gridPart;

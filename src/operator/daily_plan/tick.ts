@@ -633,7 +633,10 @@ export async function runDailyPlanTick(
 	const usableDischargeEta = measuredDischargeEta != null && measuredDischargeEta > 0 && measuredDischargeEta <= 1
 		? measuredDischargeEta
 		: Math.min(1, ETA_PATH_FALLBACK / configuredChargeEta);
-	const batteryWearCtPerKwh = statisticsConfigFromAdapter(host.config).batteryWearCostCtPerKwh;
+	// Admin-Feld ist optional ("leer = Verschleiß nicht bewerten"): leer darf die Netzlade-Planung nicht sperren.
+	const configuredWearCt = statisticsConfigFromAdapter(host.config).batteryWearCostCtPerKwh;
+	const batteryWearCtPerKwh =
+		typeof configuredWearCt === "number" && Number.isFinite(configuredWearCt) && configuredWearCt > 0 ? configuredWearCt : 0;
 	const feedInForReplace = normalizeFeedInCtPerKwh(
 		asNum((await host.getStateAsync("economics.config.feed_in_ct_per_kwh"))?.val),
 	);

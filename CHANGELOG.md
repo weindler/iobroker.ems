@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.103] – 2026-11-17
+
+### Behoben
+- Batterie-Netzladeplanung: Das Admin-Feld „Pauschaler Batterieverschleiß“ ist laut Hilfetext optional (leer = Verschleiß nicht bewerten), die Preisplanung behandelte „leer“ aber als „fehlt“ und meldete „Noch nicht berechenbar, es fehlt: Verschleißkosten“. Dadurch wurde nie eine Netzladung geplant. Leer zählt jetzt als 0 ct je kWh.
+
 ## [0.4.102] – 2026-11-17
 
 ### Behoben

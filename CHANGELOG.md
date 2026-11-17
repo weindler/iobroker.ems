@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.102] – 2026-11-17
+
+### Behoben
+- PV „bisher erzeugt“ am frühen Morgen: Der Tageszähler des Wechselrichters springt erst beim Aufwachen auf 0 und zeigte bis dahin den Vortagswert (z. B. 8,8 kWh um 06:53). Der Adapter übernahm ihn als „heute“ und rechnete damit die Tagesprognose („Erwartet 9,2 kWh“). Ein Zählerstand von einem früheren Kalendertag zählt jetzt als 0 kWh und wird nicht mehr in den Tageswert übernommen.
+
 ## [0.4.101] – 2026-11-17
 
 ### Geändert

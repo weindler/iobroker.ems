@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchRollupDayKwh = void 0;
+exports.isStaleDailyCounter = isStaleDailyCounter;
 exports.initEnergyDailyRollup = initEnergyDailyRollup;
 exports.tickEnergyDailyRollup = tickEnergyDailyRollup;
 exports.handleEnergyDailyRollupStateChange = handleEnergyDailyRollupStateChange;
@@ -56,12 +57,24 @@ function initBufferFromPersist(source, persist, nowMs) {
         sampleCount: rec.sampleCount,
     };
 }
-async function readLiveRawKwh(host, stateId) {
+/**
+ * Tageszähler vieler Wechselrichter springen erst morgens beim Aufwachen auf 0.
+ * Ist der letzte Wert von einem früheren Kalendertag, gehört er nicht zu "heute".
+ */
+function isStaleDailyCounter(stateTs, nowMs) {
+    if (typeof stateTs !== "number" || !Number.isFinite(stateTs))
+        return false;
+    return (0, day_1.localDateKey)(new Date(stateTs)) < (0, day_1.localDateKey)(new Date(nowMs));
+}
+async function readLiveRawSample(host, stateId) {
     try {
         const st = host.getForeignStateAsync
             ? await host.getForeignStateAsync(stateId)
             : await host.getStateAsync(stateId);
-        return (0, state_util_1.asNum)(st?.val);
+        const val = (0, state_util_1.asNum)(st?.val);
+        if (val === null)
+            return null;
+        return { val, ts: typeof st?.ts === "number" ? st.ts : null };
     }
     catch {
         return null;
@@ -191,9 +204,15 @@ async function initEnergyDailyRollup(host) {
     await refreshSubscriptions(host, sources);
     const nowMs = Date.now();
     for (const source of sources) {
-        const rawKwh = await readLiveRawKwh(host, source.stateId);
-        if (rawKwh !== null) {
-            await processSample(host, source, nowMs, rawKwh);
+        const sample = await readLiveRawSample(host, source.stateId);
+        if (sample !== null) {
+            if (isStaleDailyCounter(sample.ts, nowMs)) {
+                // Zähler noch vom Vortag (Wechselrichter schläft): heute zählt 0, Vortagswert nicht übernehmen.
+                await publishPvActualToday(host, source.sourceKey, 0);
+            }
+            else {
+                await processSample(host, source, nowMs, sample.val);
+            }
         }
     }
     host.log.debug?.(`Energy-Daily-Rollup ready (${sources.length} source(s))`);
@@ -215,9 +234,15 @@ async function tickEnergyDailyRollup(host) {
             persistDirty = true;
             runtime.buffer = (0, buffer_1.emptyDayBuffer)(currentDateKey);
         }
-        const rawKwh = await readLiveRawKwh(host, source.stateId);
-        if (rawKwh !== null) {
-            await processSample(host, source, nowMs, rawKwh);
+        const sample = await readLiveRawSample(host, source.stateId);
+        if (sample !== null) {
+            if (isStaleDailyCounter(sample.ts, nowMs)) {
+                // Zähler noch vom Vortag (Wechselrichter schläft): heute zählt 0, Vortagswert nicht übernehmen.
+                await publishPvActualToday(host, source.sourceKey, 0);
+            }
+            else {
+                await processSample(host, source, nowMs, sample.val);
+            }
         }
     }
     if (persistDirty && persistCache) {

@@ -7,6 +7,7 @@ const strict_1 = __importDefault(require("node:assert/strict"));
 const node_test_1 = require("node:test");
 const buffer_1 = require("./buffer");
 const day_1 = require("./day");
+const index_1 = require("./index");
 const persist_1 = require("./persist");
 (0, node_test_1.describe)("energy daily rollup", () => {
     (0, node_test_1.it)("keeps latest sample per calendar day", () => {
@@ -34,5 +35,13 @@ const persist_1 = require("./persist");
         });
         strict_1.default.equal(merged.kwh, 12.4);
         strict_1.default.equal(merged.sampleCount, 6);
+    });
+});
+(0, node_test_1.describe)("Tageszähler vom Vortag", () => {
+    (0, node_test_1.it)("Wert von gestern gilt nicht als heute", () => {
+        const now = new Date(2026, 10, 17, 6, 53).getTime();
+        strict_1.default.equal((0, index_1.isStaleDailyCounter)(new Date(2026, 10, 16, 16, 40).getTime(), now), true);
+        strict_1.default.equal((0, index_1.isStaleDailyCounter)(new Date(2026, 10, 17, 0, 5).getTime(), now), false);
+        strict_1.default.equal((0, index_1.isStaleDailyCounter)(null, now), false);
     });
 });

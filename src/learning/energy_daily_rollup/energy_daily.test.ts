@@ -6,6 +6,7 @@ import {
 	ingestDailyKwhSample,
 } from "./buffer";
 import { localDateKey } from "./day";
+import { isStaleDailyCounter } from "./index";
 import { mergeDayRecord } from "./persist";
 
 describe("energy daily rollup", () => {
@@ -39,5 +40,14 @@ describe("energy daily rollup", () => {
 		);
 		assert.equal(merged.kwh, 12.4);
 		assert.equal(merged.sampleCount, 6);
+	});
+});
+
+describe("Tageszähler vom Vortag", () => {
+	it("Wert von gestern gilt nicht als heute", () => {
+		const now = new Date(2026, 10, 17, 6, 53).getTime();
+		assert.equal(isStaleDailyCounter(new Date(2026, 10, 16, 16, 40).getTime(), now), true);
+		assert.equal(isStaleDailyCounter(new Date(2026, 10, 17, 0, 5).getTime(), now), false);
+		assert.equal(isStaleDailyCounter(null, now), false);
 	});
 });

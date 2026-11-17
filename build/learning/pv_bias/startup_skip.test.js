@@ -31,3 +31,11 @@ const index_1 = require("./index");
         strict_1.default.equal((0, index_1.isFreshLastRun)("2026-11-16T16:52:01Z", now, maxAge), false, "6 h minus Zeitdrift wird nicht übersprungen");
     });
 });
+(0, node_test_1.describe)("Netzausgleich-Wirtschaft im Intervall", () => {
+    const now = Date.parse("2026-11-17T03:19:00Z");
+    (0, node_test_1.it)("läuft nicht stündlich, aber nach rund 6 Stunden wieder", () => {
+        const maxAge = index_1.GRID_BALANCE_ECONOMICS_INTERVAL_MIN_AGE_MS;
+        strict_1.default.equal((0, index_1.isFreshLastRun)("2026-11-17T02:19:00Z", now, maxAge), true);
+        strict_1.default.equal((0, index_1.isFreshLastRun)("2026-11-16T21:19:00Z", now, maxAge), false);
+    });
+});

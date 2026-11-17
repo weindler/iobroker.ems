@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS = exports.STARTUP_SKIP_MAX_AGE_MS = void 0;
+exports.GRID_BALANCE_ECONOMICS_INTERVAL_MIN_AGE_MS = exports.BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS = exports.STARTUP_SKIP_MAX_AGE_MS = void 0;
 exports.ensureLearningStateTree = ensureLearningStateTree;
 exports.startPvBiasLearningRuntime = startPvBiasLearningRuntime;
 exports.isFreshLastRun = isFreshLastRun;
@@ -136,16 +136,21 @@ async function startupResultIsFresh(host, stateId, trigger) {
         return false;
     }
 }
-async function batteryRuntimeResultIsFresh(host, trigger) {
+async function intervalResultIsFresh(host, stateId, trigger, minAgeMs) {
     if (trigger === "startup")
-        return startupResultIsFresh(host, "learning.battery_runtime.last_run", trigger);
+        return startupResultIsFresh(host, stateId, trigger);
     try {
-        return isFreshLastRun((await host.getStateAsync("learning.battery_runtime.last_run"))?.val, Date.now(), exports.BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS);
+        return isFreshLastRun((await host.getStateAsync(stateId))?.val, Date.now(), minAgeMs);
     }
     catch {
         return false;
     }
 }
+async function batteryRuntimeResultIsFresh(host, trigger) {
+    return intervalResultIsFresh(host, "learning.battery_runtime.last_run", trigger, exports.BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS);
+}
+/** Netzausgleich-Wirtschaft liest bis zu 45 Tagesdateien; Ergebnis ändert sich langsam → nicht stündlich. */
+exports.GRID_BALANCE_ECONOMICS_INTERVAL_MIN_AGE_MS = 5.5 * 3_600_000;
 async function runLearningTick(host, trigger = "interval") {
     if (learningTickInFlight)
         return;
@@ -201,7 +206,7 @@ async function runLearningTick(host, trigger = "interval") {
         mark("batterie-laufzeit");
         try {
             const timezone = (0, config_2.intentAdminConfigFromAdapter)(host.config).timezone || "Europe/Berlin";
-            if (!(await startupResultIsFresh(host, "learning.grid_balance_economics.last_run", trigger))) {
+            if (!(await intervalResultIsFresh(host, "learning.grid_balance_economics.last_run", trigger, exports.GRID_BALANCE_ECONOMICS_INTERVAL_MIN_AGE_MS))) {
                 await (0, grid_balance_economics_1.runGridBalanceEconomicsLearning)(host, { timezone });
             }
         }

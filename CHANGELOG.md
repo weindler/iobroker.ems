@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.101] – 2026-11-17
+
+### Geändert
+- Speicher: Der Lernschritt „Netzausgleich-Wirtschaft“ liest bis zu 45 Tagesdateien und kostete jede Stunde rund 150 MB Spitze. Er läuft im Intervall jetzt nur noch etwa alle 6 Stunden (beim Start weiterhin nur, wenn das letzte Ergebnis älter als 3 Stunden ist).
+
 ## [0.4.100] – 2026-11-16
 
 ### Geändert

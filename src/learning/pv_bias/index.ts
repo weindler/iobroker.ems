@@ -151,18 +151,26 @@ async function startupResultIsFresh(host: StateHost, stateId: string, trigger: s
 	}
 }
 
-async function batteryRuntimeResultIsFresh(host: StateHost, trigger: string): Promise<boolean> {
-	if (trigger === "startup") return startupResultIsFresh(host, "learning.battery_runtime.last_run", trigger);
+async function intervalResultIsFresh(
+	host: StateHost,
+	stateId: string,
+	trigger: string,
+	minAgeMs: number,
+): Promise<boolean> {
+	if (trigger === "startup") return startupResultIsFresh(host, stateId, trigger);
 	try {
-		return isFreshLastRun(
-			(await host.getStateAsync("learning.battery_runtime.last_run"))?.val,
-			Date.now(),
-			BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS,
-		);
+		return isFreshLastRun((await host.getStateAsync(stateId))?.val, Date.now(), minAgeMs);
 	} catch {
 		return false;
 	}
 }
+
+async function batteryRuntimeResultIsFresh(host: StateHost, trigger: string): Promise<boolean> {
+	return intervalResultIsFresh(host, "learning.battery_runtime.last_run", trigger, BATTERY_RUNTIME_INTERVAL_MIN_AGE_MS);
+}
+
+/** Netzausgleich-Wirtschaft liest bis zu 45 Tagesdateien; Ergebnis ändert sich langsam → nicht stündlich. */
+export const GRID_BALANCE_ECONOMICS_INTERVAL_MIN_AGE_MS = 5.5 * 3_600_000;
 
 async function runLearningTick(
 	host: PvBiasRunHost & StateHost,
@@ -217,7 +225,14 @@ async function runLearningTick(
 		mark("batterie-laufzeit");
 		try {
 			const timezone = intentAdminConfigFromAdapter(host.config).timezone || "Europe/Berlin";
-			if (!(await startupResultIsFresh(host, "learning.grid_balance_economics.last_run", trigger))) {
+			if (
+				!(await intervalResultIsFresh(
+					host,
+					"learning.grid_balance_economics.last_run",
+					trigger,
+					GRID_BALANCE_ECONOMICS_INTERVAL_MIN_AGE_MS,
+				))
+			) {
 				await runGridBalanceEconomicsLearning(host, { timezone });
 			}
 		} catch (e) {

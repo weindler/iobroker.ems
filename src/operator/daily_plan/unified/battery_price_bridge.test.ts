@@ -91,7 +91,7 @@ describe("Batterie-Preisbrücke am Nebeltag", () => {
 		const afterCheap = { ...input, nowMs: Date.parse("2026-11-09T13:00:00Z") };
 		const revised = planBatteryPriceBridge(afterCheap);
 		assert.notEqual(revised.chargeStartIso, "2026-11-09T12:00:00.000Z");
-		assert.equal(planBatteryPriceBridge({ ...input, maxChargePowerW: 100 }).usable, false);
+		assert.equal(planBatteryPriceBridge({ ...input, maxChargePowerW: 100 }).gridEnergyKwh, 0, "zu schwaches Laden: keine Ladesequenz");
 	});
 	it("bleibt für 92, 96 und 100 Viertelstunden an lokalen Zeitwechseln eindeutig", () => {
 		for (const [startIso, count] of [
@@ -111,23 +111,27 @@ describe("Batterie-Preisbrücke am Nebeltag", () => {
 			assert.ok(result.chargeEndIso == null || Date.parse(result.chargeEndIso) <= Date.parse(input.slots.at(-1)!.endIso));
 		}
 	});
-	it("eine einzelne Preisspitze erst nach 24 Stunden sperrt die Entladung nicht schon jetzt", () => {
+	it("schaut über 24 Stunden hinaus: günstige Nacht heute, teure Spitze erst übermorgen", () => {
 		const input = fixture();
-		// Spitze erst am Folgetag: außerhalb des 24-Stunden-Zyklus
-		input.slots = input.slots.map((s, i) => ({ ...s,
-			importCt: i >= 96 + 52 && i < 96 + 60 ? 120 : (i >= 52 && i < 60 ? 50 : s.importCt) }));
+		// Preise: Nacht (Tag 1, 03-05 Uhr UTC) sehr günstig, Spitze erst am Tag 2 Abend; sonst mittel.
+		input.slots = input.slots.map((s, i) => {
+			const h = (5 + i / 4);
+			const hourOfDay = h % 24, day = Math.floor(h / 24);
+			const cheap = day === 1 && hourOfDay >= 3 && hourOfDay < 5;
+			const peak = day === 2 && hourOfDay >= 17 && hourOfDay < 19;
+			return { ...s, pvKwh: 0.02, houseKwh: 0.09, importCt: cheap ? 20 : peak ? 90 : 45 };
+		});
 		const result = planBatteryPriceBridge(input);
-		if (result.holdEndIso) {
-			assert.ok(Date.parse(result.holdEndIso) <= input.nowMs + 24 * 3_600_000, "Halten endet innerhalb des Zyklus");
-		}
+		assert.equal(result.usable, true);
+		assert.ok(result.gridEnergyKwh > 1, "lädt in der günstigen Nacht für die teure Spitze danach");
+		assert.ok(Date.parse(result.chargeStartIso!) > input.nowMs);
 	});
-	it("mit geplanter Netzladung beginnt das Halten erst nach dem Laden", () => {
+	it("hält die Batterie nicht dauerhaft: Halten endet vor der nächsten Nutzung und beginnt nach dem Laden", () => {
 		const result = planBatteryPriceBridge(fixture());
 		assert.equal(result.usable, true);
-		assert.ok(result.gridEnergyKwh > 0);
-		if (result.holdStartIso) {
-			assert.equal(result.holdStartIso, result.chargeEndIso);
-			assert.ok(Date.parse(result.holdStartIso) <= Date.parse(result.holdEndIso!));
+		if (result.holdStartIso && result.chargeEndIso) {
+			assert.ok(Date.parse(result.holdStartIso) >= Date.parse(result.chargeEndIso) - 1);
+			assert.ok(Date.parse(result.holdEndIso!) > Date.parse(result.holdStartIso));
 		}
 	});
 });

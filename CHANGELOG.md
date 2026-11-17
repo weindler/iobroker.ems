@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.108] – 2026-11-17
+
+### Geändert
+- Batterie-Preisbrücke komplett neu: Statt einer einzigen „teuersten Viertelstunde“ (0.4.105/0.4.106 mit 24-h-Grenze) optimiert sie jetzt über **alle veröffentlichten Preise** (bis zu zwei Tage). Für jede Viertelstunde wird zwischen Laden, Halten und Entladen gewählt, mit Ladeverlusten, Verschleiß (leer = 0), Einspeisevergütung (8 ct) und einer Sicherheitsmarge. Die Batterie versorgt nur den Hausverbrauch, nicht Auto oder andere geplante Verbraucher (die Auto-Ladung hat Vorrang und wird als feste Last geplant). Netzladung nur bei erlaubten Fenstern und mindestens 0,2 kWh, Plan nur bei mindestens 3 ct Vorteil gegenüber reiner Eigenverbrauchsregelung.
+- Halten wird aus dem Plan abgeleitet (Entladung aussetzen, wenn die gespeicherte Energie später mehr wert ist); es beginnt nach dem Laden und endet, wenn der Plan die Energie nutzt. Keine feste 24-Stunden-Grenze mehr, aber auch keine 2-Tage-Sperre durch eine einzelne Preisspitze.
+
 ## [0.4.107] – 2026-11-17
 
 ### Geändert

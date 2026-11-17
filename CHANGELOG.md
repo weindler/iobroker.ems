@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.106] – 2026-11-17
+
+### Geändert
+- Batterie-Preisbrücke: Sie nahm die teuerste Viertelstunde im ganzen Planungsfenster als „Hochpreisphase“ und den Gesamtbedarf bis zur PV-Erholung als Ziel. Folge: 100 % Ziel-SOC (8 kWh Netzladung) und eine Haltezeit bis zu dieser Spitze, im Beispiel fast zwei Tage. Jetzt zählt nur der nächste Preiszyklus (24 Stunden oder bis zur PV-Erholung, falls früher); danach wird mit neuen Preisen neu geplant.
+- Das Halten beginnt bei geplanter Netzladung erst nach dem Laden (bisher sofort), damit der Speicher bis dahin normal Haus-Strom liefert. Ohne Netzladung bleibt es bei „ab sofort bis zur Hochpreisphase“.
+
 ## [0.4.105] – 2026-11-17
 
 ### Behoben

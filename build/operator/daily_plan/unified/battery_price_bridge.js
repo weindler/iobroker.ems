@@ -1,10 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.PRICE_BRIDGE_CYCLE_MS = void 0;
 exports.planBatteryPriceBridge = planBatteryPriceBridge;
 function unavailable(reasonDe) {
     return { usable: false, targetSocPct: null, gridEnergyKwh: 0, chargeStartIso: null,
         chargeEndIso: null, peakStartIso: null, holdStartIso: null, holdEndIso: null, reasonDe };
 }
+/** Planungszyklus der Preisbrücke: nächste 24 Stunden (oder bis zur PV-Erholung, falls früher). */
+exports.PRICE_BRIDGE_CYCLE_MS = 24 * 3_600_000;
 function planBatteryPriceBridge(input) {
     if (input.mode === "off")
         return unavailable("Batterieoptimierung ausgeschaltet.");
@@ -55,7 +58,11 @@ function planBatteryPriceBridge(input) {
             break;
         }
     }
-    const beforeRecovery = slots.slice(0, recovery);
+    // Nur der nächste Preiszyklus zählt: Eine einzige Spitze Tage später darf weder das Ziel auf 100 %
+    // treiben noch die Entladung zwei Tage sperren. Danach plant die Brücke mit neuen Preisen neu.
+    const cycleEndMs = input.nowMs + exports.PRICE_BRIDGE_CYCLE_MS;
+    const cycleEnd = slots.findIndex(s => Date.parse(s.startIso) >= cycleEndMs);
+    const beforeRecovery = slots.slice(0, Math.min(recovery, cycleEnd < 0 ? slots.length : cycleEnd));
     const withDemand = beforeRecovery.slice(0, publishedEnd).filter(s => s.houseKwh > s.pvKwh * confidence);
     if (!withDemand.length)
         return unavailable("Kein Netzbedarf vor der nächsten verlässlichen PV-Erholung.");
@@ -100,7 +107,8 @@ function planBatteryPriceBridge(input) {
         chargeStartIso: cheap.startIso,
         chargeEndIso: slots[chargeEndIndex].endIso,
         peakStartIso: peak.startIso,
-        holdStartIso: holdUseful ? slots[0].startIso : null,
+        // Mit geplanter Netzladung wird erst nach dem Laden gehalten; sonst ab sofort.
+        holdStartIso: holdUseful ? (gridEnergyKwh > 0 ? slots[chargeEndIndex].endIso : slots[0].startIso) : null,
         holdEndIso: holdUseful ? peak.startIso : null,
         reasonDe: `Bis zur Hochpreisphase werden ${gridEnergyKwh.toFixed(2)} kWh Netzladung für ${Math.round(targetStored / cap * 100)} % Ziel-SOC benötigt; sicherer PV-Überschuss vorher ${storedPvBeforePeak.toFixed(2)} kWh.`,
     };

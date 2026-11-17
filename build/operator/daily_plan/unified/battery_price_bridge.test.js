@@ -114,4 +114,23 @@ function fixture() {
             strict_1.default.ok(result.chargeEndIso == null || Date.parse(result.chargeEndIso) <= Date.parse(input.slots.at(-1).endIso));
         }
     });
+    (0, node_test_1.it)("eine einzelne Preisspitze erst nach 24 Stunden sperrt die Entladung nicht schon jetzt", () => {
+        const input = fixture();
+        // Spitze erst am Folgetag: außerhalb des 24-Stunden-Zyklus
+        input.slots = input.slots.map((s, i) => ({ ...s,
+            importCt: i >= 96 + 52 && i < 96 + 60 ? 120 : (i >= 52 && i < 60 ? 50 : s.importCt) }));
+        const result = (0, battery_price_bridge_1.planBatteryPriceBridge)(input);
+        if (result.holdEndIso) {
+            strict_1.default.ok(Date.parse(result.holdEndIso) <= input.nowMs + 24 * 3_600_000, "Halten endet innerhalb des Zyklus");
+        }
+    });
+    (0, node_test_1.it)("mit geplanter Netzladung beginnt das Halten erst nach dem Laden", () => {
+        const result = (0, battery_price_bridge_1.planBatteryPriceBridge)(fixture());
+        strict_1.default.equal(result.usable, true);
+        strict_1.default.ok(result.gridEnergyKwh > 0);
+        if (result.holdStartIso) {
+            strict_1.default.equal(result.holdStartIso, result.chargeEndIso);
+            strict_1.default.ok(Date.parse(result.holdStartIso) <= Date.parse(result.holdEndIso));
+        }
+    });
 });

@@ -207,6 +207,6 @@ export function planBatteryPriceBridge(input: PriceBridgeInput): PriceBridgeDeci
 		peakStartIso: useFrom >= 0 ? plan[useFrom]!.startIso : (hasHold ? plan[holdTo]!.endIso : plan[nSlots - 1]!.endIso),
 		holdStartIso: hasHold ? plan[holdFrom]!.startIso : null,
 		holdEndIso: hasHold ? plan[holdTo]!.endIso : null,
-		reasonDe: `Optimierung über ${nSlots} bekannte Viertelstunden (Verluste ${Math.round((1 - etaC * etaD) * 100)} %, Verschleiß ${wearCt} ct/kWh, Sicherheitsmarge ${marginCt.toFixed(1)} ct/kWh): ${hasCharge ? `${gridKwh.toFixed(2)} kWh Netzladung bis ${Math.round(targetStored / cap * 100)} % Ziel-SOC` : "keine Netzladung"}${hasHold ? ", Entladung vor der teuren Phase aussetzen" : ""}; Vorteil gegenüber Eigenverbrauch rund ${Math.round(benefitCt)} ct.`,
+		reasonDe: `Optimierung über ${nSlots} bekannte Viertelstunden (Haus ${houseNet.reduce((a, b) => a + Math.max(0, b), 0).toFixed(1)} kWh Netto-Bedarf nach PV, PV ${plan.reduce((a, s) => a + s.pvKwh! * confidence, 0).toFixed(1)} kWh gewichtet, Preis ${minPrice.toFixed(0)}–${Math.max(...plan.map(s => s.importCt!)).toFixed(0)} ct, Verluste ${Math.round((1 - etaC * etaD) * 100)} %, Verschleiß ${wearCt} ct/kWh, Sicherheitsmarge ${marginCt.toFixed(1)} ct/kWh): ${hasCharge ? `${gridKwh.toFixed(2)} kWh Netzladung bis ${Math.round(targetStored / cap * 100)} % Ziel-SOC` : "keine Netzladung"}${hasHold ? ", Entladung vor der teuren Phase aussetzen" : ""}; Vorteil gegenüber Eigenverbrauch rund ${Math.round(benefitCt)} ct.`,
 	};
 }

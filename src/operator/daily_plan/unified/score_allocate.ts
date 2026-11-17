@@ -2631,11 +2631,13 @@ export function runScoreBasedAllocation(
 			wearCtPerKwh: bat.wearCtPerKwh ?? null, priceSource: input.prices.source ?? null,
 			mode: input.globalMode,
 		}) : null;
-	if (bridge?.usable && bridge.gridEnergyKwh > EPS && bridge.targetSocPct != null && bridge.peakStartIso &&
+	if (bridge?.usable && bridge.gridEnergyKwh > EPS && bridge.targetSocPct != null && bridge.chargeEndIso &&
 		bat.socPct != null && bat.usableCapacityKwh != null) {
+		// Frist = Ende des Ladefensters (nicht Beginn der Entladung): sonst erfüllt späterer PV-Überschuss
+		// das Ziel rechnerisch und die geplante Netzladung in der günstigen Phase entfällt.
 		bat = { ...bat, endSocTargetPct: bridge.targetSocPct,
-			requiredChargeEnergyKwh: Math.max(0, (bridge.targetSocPct - bat.socPct) * bat.usableCapacityKwh / 100 / Math.max(bat.chargeEfficiency ?? 1, 0.1)),
-			chargeDeadlineIso: bridge.peakStartIso };
+			requiredChargeEnergyKwh: bridge.gridEnergyKwh * Math.max(bat.chargeEfficiency ?? 1, 0.1),
+			chargeDeadlineIso: bridge.chargeEndIso };
 		input = { ...input, battery: bat };
 		targetKwh = capacity * bridge.targetSocPct / 100;
 		reasonCodes.push("battery_price_bridge");

@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.109] – 2026-11-17
+
+### Behoben
+- Geplante Netzladung der Batterie fehlte im Tagesplan: Die Frist war auf den Beginn der Entladung gesetzt, dadurch erfüllte der spätere PV-Überschuss das Ladeziel rechnerisch und die Ladung in der günstigen Nachtphase entfiel. Frist ist jetzt das Ende des Ladefensters, die Menge entspricht der berechneten Netzladung.
+- Strategietext der Preisbrücke zeigt Netto-Bedarf, gewichtete PV und Preisspanne, damit die Rechnung nachvollziehbar ist.
+
 ## [0.4.108] – 2026-11-17
 
 ### Geändert

@@ -27,6 +27,8 @@ export type PowerSourcePersist = {
 	powerInvert: boolean;
 	powerUnit: "W" | "kW";
 	backfillDone: boolean;
+	/** true: Stundenwerte ohne die alte kW-Heuristik für Werte < 100 (PV/Wallbox) gebildet. */
+	smallValueScalingFixed?: boolean;
 	hours: Record<string, PowerHourlyRecord>;
 };
 

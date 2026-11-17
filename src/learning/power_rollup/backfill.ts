@@ -10,6 +10,7 @@ import {
 	HISTORY_ROWS_PER_DAY,
 } from "../history_query";
 import { asNum } from "../../ems_light/state_util";
+import { smallValuesMayBeKw } from "./buffer";
 import { localHourKey } from "./hour";
 import {
 	mergeHourRecord,
@@ -134,7 +135,7 @@ async function backfillUnidirectionalAvg(
 		let watts = raw;
 		if (source.powerUnit === "kW") {
 			watts = raw * 1000;
-		} else if (Math.abs(raw) > 0 && Math.abs(raw) < 100) {
+		} else if (smallValuesMayBeKw(source.role) && Math.abs(raw) > 0 && Math.abs(raw) < 100) {
 			watts = raw * 1000;
 		}
 		if (!Number.isFinite(watts) || watts < 0 || watts > 50_000) {
@@ -164,7 +165,7 @@ async function backfillUnidirectionalAvg(
 			let watts = raw;
 			if (source.powerUnit === "kW") {
 				watts = raw * 1000;
-			} else if (Math.abs(raw) > 0 && Math.abs(raw) < 100) {
+			} else if (smallValuesMayBeKw(source.role) && Math.abs(raw) > 0 && Math.abs(raw) < 100) {
 				watts = raw * 1000;
 			}
 			if (!Number.isFinite(watts) || watts < 0 || watts > 50_000) {
@@ -210,8 +211,17 @@ export async function backfillDensePowerSource(
 	const lookbackDays = source.lookbackDays;
 
 	let persist = await readPowerHourlyPersist(baseDir);
-	const existing = persist.sources[source.sourceKey];
-	if (existing?.backfillDone && Object.keys(existing.hours).length >= MIN_BACKFILL_HOURS) {
+	let existing = persist.sources[source.sourceKey];
+	/*
+	 * Einmalige Reparatur: PV/Wallbox-Stundenwerte wurden bis 0.4.104 mit der kW-Heuristik
+	 * (Rohwert < 100 → ×1000) gebildet; Dämmerungswerte wie 2,4 W wurden zu 2400 W. Alte Stunden
+	 * werden verworfen und aus der History neu berechnet.
+	 */
+	const needsScalingRepair = !smallValuesMayBeKw(source.role) && existing && !existing.smallValueScalingFixed;
+	if (needsScalingRepair) {
+		existing = { ...existing!, hours: {}, backfillDone: false };
+	}
+	if (!needsScalingRepair && existing?.backfillDone && Object.keys(existing.hours).length >= MIN_BACKFILL_HOURS) {
 		return false;
 	}
 
@@ -233,6 +243,7 @@ export async function backfillDensePowerSource(
 			powerInvert: source.powerInvert,
 			powerUnit: source.powerUnit,
 			backfillDone: true,
+			smallValueScalingFixed: true,
 			hours: mergedHours,
 		});
 		await writePowerHourlyPersist(baseDir, persist);
@@ -254,6 +265,7 @@ export async function backfillDensePowerSource(
 		powerInvert: source.powerInvert,
 		powerUnit: source.powerUnit,
 		backfillDone: true,
+		smallValueScalingFixed: true,
 		hours: mergedHours,
 	});
 	await writePowerHourlyPersist(baseDir, persist);

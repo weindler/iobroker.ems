@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.smallValuesMayBeKw = smallValuesMayBeKw;
 exports.emptyHourBuffer = emptyHourBuffer;
 exports.ingestBidirectionalSample = ingestBidirectionalSample;
 exports.ingestUnidirectionalAvgSample = ingestUnidirectionalAvgSample;
@@ -8,7 +9,15 @@ exports.bufferToHourRecord = bufferToHourRecord;
 const history_1 = require("../battery_runtime/history");
 const constants_1 = require("../house_load/constants");
 const hour_1 = require("./hour");
-function normalizeConsumptionW(raw, unit) {
+/**
+ * Kleine Rohwerte (< 100) gelten bei Quellen ohne verlässliche Einheit als kW (z. B. 3,5 statt 3500).
+ * Das gilt nicht für PV und Wallbox: Dort sind Werte unter 100 W echt (Dämmerung, Standby) und
+ * würden sonst mit 1000 multipliziert (2,4 W → 2400 W).
+ */
+function smallValuesMayBeKw(role) {
+    return role !== "pv_ac_power_w" && role !== "charge_power_w";
+}
+function normalizeConsumptionW(raw, unit, smallAsKw = true) {
     if (!Number.isFinite(raw)) {
         return null;
     }
@@ -16,7 +25,7 @@ function normalizeConsumptionW(raw, unit) {
     if (unit === "kW") {
         watts = raw * 1000;
     }
-    else if (Math.abs(raw) > 0 && Math.abs(raw) < 100) {
+    else if (smallAsKw && Math.abs(raw) > 0 && Math.abs(raw) < 100) {
         watts = raw * 1000;
     }
     if (watts < constants_1.PLAUSIBLE_W_MIN || watts > constants_1.PLAUSIBLE_W_MAX) {
@@ -65,13 +74,13 @@ function ingestBidirectionalSample(buffer, ts, rawW, powerInvert) {
     }
     return updated;
 }
-function ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit) {
+function ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit, smallAsKw = true) {
     const hourKey = (0, hour_1.localHourKey)(ts);
     let next = buffer;
     if (buffer.hourKey !== hourKey) {
         next = emptyHourBuffer(hourKey, "unidirectional_avg");
     }
-    const w = normalizeConsumptionW(rawW, powerUnit);
+    const w = normalizeConsumptionW(rawW, powerUnit, smallAsKw);
     if (w === null) {
         return next;
     }
@@ -82,9 +91,9 @@ function ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit) {
         lastSampleTs: ts,
     };
 }
-function ingestRollupSample(buffer, ts, rawW, rollupMode, powerInvert, powerUnit) {
+function ingestRollupSample(buffer, ts, rawW, rollupMode, powerInvert, powerUnit, smallAsKw = true) {
     if (rollupMode === "unidirectional_avg") {
-        return ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit);
+        return ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit, smallAsKw);
     }
     return ingestBidirectionalSample(buffer, ts, rawW, powerInvert);
 }

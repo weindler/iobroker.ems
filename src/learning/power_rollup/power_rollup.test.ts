@@ -5,10 +5,29 @@ import {
 	emptyHourBuffer,
 	ingestBidirectionalSample,
 	ingestUnidirectionalAvgSample,
+	smallValuesMayBeKw,
 } from "./buffer";
 import { localHourKey } from "./hour";
 import { rollupSourceToHouseLoadSamples, rollupSourceToPowerPoints, rollupSourceToUnidirectionalPowerPoints } from "./rollup_points";
 import type { PowerSourcePersist } from "./types";
+
+describe("kleine Rohwerte (PV in der Dämmerung)", () => {
+	it("PV-Wert 2,4 W bleibt 2,4 W und wird nicht zu 2400 W", () => {
+		const base = Date.parse("2026-11-17T07:00:00");
+		let buf = emptyHourBuffer(localHourKey(base), "unidirectional_avg");
+		buf = ingestUnidirectionalAvgSample(buf, base + 60_000, 2.4, "W", smallValuesMayBeKw("pv_ac_power_w"));
+		buf = ingestUnidirectionalAvgSample(buf, base + 120_000, 6, "W", smallValuesMayBeKw("pv_ac_power_w"));
+		const rec = bufferToHourRecord(buf);
+		assert.ok(rec);
+		assert.equal(rec.avgPowerW, 4);
+	});
+	it("Hauslast mit Wert < 100 gilt weiter als kW (Quellen ohne verlässliche Einheit)", () => {
+		const base = Date.parse("2026-11-17T07:00:00");
+		let buf = emptyHourBuffer(localHourKey(base), "unidirectional_avg");
+		buf = ingestUnidirectionalAvgSample(buf, base + 60_000, 3.5, "W", smallValuesMayBeKw("consumption_w"));
+		assert.equal(bufferToHourRecord(buf)?.avgPowerW, 3500);
+	});
+});
 
 describe("power rollup", () => {
 	it("tracks max charge and discharge per hour (battery)", () => {

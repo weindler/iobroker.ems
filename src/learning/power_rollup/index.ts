@@ -4,6 +4,7 @@ import {
 	bufferToHourRecord,
 	emptyHourBuffer,
 	ingestRollupSample,
+	smallValuesMayBeKw,
 } from "./buffer";
 import { localHourKey } from "./hour";
 import {
@@ -186,6 +187,7 @@ async function processSample(
 		source.rollupMode,
 		source.powerInvert,
 		source.powerUnit,
+		smallValuesMayBeKw(source.role),
 	);
 }
 

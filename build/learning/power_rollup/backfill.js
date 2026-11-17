@@ -6,6 +6,7 @@ const history_1 = require("../battery_runtime/history");
 const constants_1 = require("../house_load/constants");
 const history_query_1 = require("../history_query");
 const state_util_1 = require("../../ems_light/state_util");
+const buffer_1 = require("./buffer");
 const hour_1 = require("./hour");
 const persist_1 = require("./persist");
 const MIN_BACKFILL_HOURS = 24;
@@ -84,7 +85,7 @@ async function backfillUnidirectionalAvg(host, source, lookbackDays) {
         if (source.powerUnit === "kW") {
             watts = raw * 1000;
         }
-        else if (Math.abs(raw) > 0 && Math.abs(raw) < 100) {
+        else if ((0, buffer_1.smallValuesMayBeKw)(source.role) && Math.abs(raw) > 0 && Math.abs(raw) < 100) {
             watts = raw * 1000;
         }
         if (!Number.isFinite(watts) || watts < 0 || watts > 50_000) {
@@ -108,7 +109,7 @@ async function backfillUnidirectionalAvg(host, source, lookbackDays) {
             if (source.powerUnit === "kW") {
                 watts = raw * 1000;
             }
-            else if (Math.abs(raw) > 0 && Math.abs(raw) < 100) {
+            else if ((0, buffer_1.smallValuesMayBeKw)(source.role) && Math.abs(raw) > 0 && Math.abs(raw) < 100) {
                 watts = raw * 1000;
             }
             if (!Number.isFinite(watts) || watts < 0 || watts > 50_000) {
@@ -142,8 +143,17 @@ async function backfillDensePowerSource(host, source) {
     }
     const lookbackDays = source.lookbackDays;
     let persist = await (0, persist_1.readPowerHourlyPersist)(baseDir);
-    const existing = persist.sources[source.sourceKey];
-    if (existing?.backfillDone && Object.keys(existing.hours).length >= MIN_BACKFILL_HOURS) {
+    let existing = persist.sources[source.sourceKey];
+    /*
+     * Einmalige Reparatur: PV/Wallbox-Stundenwerte wurden bis 0.4.104 mit der kW-Heuristik
+     * (Rohwert < 100 → ×1000) gebildet; Dämmerungswerte wie 2,4 W wurden zu 2400 W. Alte Stunden
+     * werden verworfen und aus der History neu berechnet.
+     */
+    const needsScalingRepair = !(0, buffer_1.smallValuesMayBeKw)(source.role) && existing && !existing.smallValueScalingFixed;
+    if (needsScalingRepair) {
+        existing = { ...existing, hours: {}, backfillDone: false };
+    }
+    if (!needsScalingRepair && existing?.backfillDone && Object.keys(existing.hours).length >= MIN_BACKFILL_HOURS) {
         return false;
     }
     host.log.debug?.(`Power-Rollup backfill: ${source.sourceKey} (${lookbackDays}d, ${source.stateId})…`);
@@ -161,6 +171,7 @@ async function backfillDensePowerSource(host, source) {
             powerInvert: source.powerInvert,
             powerUnit: source.powerUnit,
             backfillDone: true,
+            smallValueScalingFixed: true,
             hours: mergedHours,
         });
         await (0, persist_1.writePowerHourlyPersist)(baseDir, persist);
@@ -179,6 +190,7 @@ async function backfillDensePowerSource(host, source) {
         powerInvert: source.powerInvert,
         powerUnit: source.powerUnit,
         backfillDone: true,
+        smallValueScalingFixed: true,
         hours: mergedHours,
     });
     await (0, persist_1.writePowerHourlyPersist)(baseDir, persist);

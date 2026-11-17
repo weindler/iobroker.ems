@@ -3,14 +3,23 @@ import { PLAUSIBLE_W_MAX, PLAUSIBLE_W_MIN } from "../house_load/constants";
 import { localHourKey } from "./hour";
 import type { HourBuffer, PowerHourlyRecord, PowerRollupMode } from "./types";
 
-function normalizeConsumptionW(raw: number, unit: "W" | "kW"): number | null {
+/**
+ * Kleine Rohwerte (< 100) gelten bei Quellen ohne verlässliche Einheit als kW (z. B. 3,5 statt 3500).
+ * Das gilt nicht für PV und Wallbox: Dort sind Werte unter 100 W echt (Dämmerung, Standby) und
+ * würden sonst mit 1000 multipliziert (2,4 W → 2400 W).
+ */
+export function smallValuesMayBeKw(role: string): boolean {
+	return role !== "pv_ac_power_w" && role !== "charge_power_w";
+}
+
+function normalizeConsumptionW(raw: number, unit: "W" | "kW", smallAsKw = true): number | null {
 	if (!Number.isFinite(raw)) {
 		return null;
 	}
 	let watts = raw;
 	if (unit === "kW") {
 		watts = raw * 1000;
-	} else if (Math.abs(raw) > 0 && Math.abs(raw) < 100) {
+	} else if (smallAsKw && Math.abs(raw) > 0 && Math.abs(raw) < 100) {
 		watts = raw * 1000;
 	}
 	if (watts < PLAUSIBLE_W_MIN || watts > PLAUSIBLE_W_MAX) {
@@ -75,6 +84,7 @@ export function ingestUnidirectionalAvgSample(
 	ts: number,
 	rawW: number,
 	powerUnit: "W" | "kW",
+	smallAsKw = true,
 ): HourBuffer {
 	const hourKey = localHourKey(ts);
 	let next = buffer;
@@ -82,7 +92,7 @@ export function ingestUnidirectionalAvgSample(
 		next = emptyHourBuffer(hourKey, "unidirectional_avg");
 	}
 
-	const w = normalizeConsumptionW(rawW, powerUnit);
+	const w = normalizeConsumptionW(rawW, powerUnit, smallAsKw);
 	if (w === null) {
 		return next;
 	}
@@ -102,9 +112,10 @@ export function ingestRollupSample(
 	rollupMode: PowerRollupMode,
 	powerInvert: boolean,
 	powerUnit: "W" | "kW",
+	smallAsKw = true,
 ): HourBuffer {
 	if (rollupMode === "unidirectional_avg") {
-		return ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit);
+		return ingestUnidirectionalAvgSample(buffer, ts, rawW, powerUnit, smallAsKw);
 	}
 	return ingestBidirectionalSample(buffer, ts, rawW, powerInvert);
 }

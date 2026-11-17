@@ -8,6 +8,12 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.105] – 2026-11-17
+
+### Behoben
+- PV-Stundenwerte (Kurve „gemessen“): Beim Bilden der Stundenmittel wurden Rohwerte unter 100 automatisch als kW gedeutet und mit 1000 multipliziert. Fronius-Werte in der Dämmerung (z. B. 2,4 W) wurden so zu 2400 W; im Diagramm erschien um 8 Uhr eine Spitze von 2,4 kW, obwohl der Wechselrichter erst ab etwa 9 Uhr lieferte. Die Heuristik gilt jetzt nur noch für Hauslast/Verbrauch, nicht mehr für PV-Leistung und Wallbox-Ladeleistung.
+- Einmalige Reparatur: Die bisher gespeicherten PV-/Wallbox-Stundenwerte werden beim nächsten Start verworfen und aus der History neu berechnet (`learning/power_rollup`, Merker `smallValueScalingFixed`). Dadurch ändern sich PV-Profil und Anzeige „gemessen“ rückwirkend; bis die History gelesen ist, kann das PV-Profil kurz „keine Stundenwerte“ melden.
+
 ## [0.4.104] – 2026-11-17
 
 ### Behoben

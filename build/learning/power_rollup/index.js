@@ -134,7 +134,7 @@ async function processSample(host, source, ts, rawW) {
         persistDirty = true;
         runtime.buffer = (0, buffer_1.emptyHourBuffer)(newHourKey, source.rollupMode);
     }
-    runtime.buffer = (0, buffer_1.ingestRollupSample)(runtime.buffer, ts, rawW, source.rollupMode, source.powerInvert, source.powerUnit);
+    runtime.buffer = (0, buffer_1.ingestRollupSample)(runtime.buffer, ts, rawW, source.rollupMode, source.powerInvert, source.powerUnit, (0, buffer_1.smallValuesMayBeKw)(source.role));
 }
 async function refreshSubscriptions(host, sources) {
     const needed = new Set(sources.map((s) => s.stateId));

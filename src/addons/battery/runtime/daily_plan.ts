@@ -518,6 +518,22 @@ export function resolveBatteryDailyPlanFromData(input: ResolveBatteryDailyPlanIn
 
 	const dailyPlanStatus: BatteryDailyPlanStatus = chargePowerCapped ? "allocation_capped" : "daily_plan_valid";
 	const passivePv = energySource === "pv_surplus" && entry.pvPowerW > 0 && entry.gridPowerW === 0;
+	if (passivePv) {
+		/*
+		 * Reiner PV-Überschuss lädt die Batterie von selbst (Eigenverbrauch). Eine aktive Ladesequenz
+		 * würde bei jedem Planwackler zwischen "charge" und "hold" kippen und Sollwerte schreiben, die
+		 * die Eigenverbrauchsregelung ohnehin liefert. Daher keine aktive Ladefreigabe.
+		 */
+		return {
+			...authoritativeBase(),
+			decisionSource: "daily_plan_passive_pv",
+			dailyPlanStatus,
+			allocatedChargePowerW: entry.allocatedPowerW,
+			pvPowerW: entry.pvPowerW,
+			energySource,
+			allocationReasonDe: "Daily Plan: Laden aus PV-Überschuss übernimmt die Eigenverbrauchsregelung — keine aktive Ladesequenz.",
+		};
+	}
 
 	return {
 		useDailyPlan: true,

@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.104] – 2026-11-17
+
+### Behoben
+- Batterie: Reiner PV-Überschuss im Tagesplan (z. B. 317 W) startete eine aktive Ladesequenz „charge“. Bei jeder Planneuberechnung kippte die Absicht dadurch zwischen „charge“ und „hold“ (Preisbrücke), im Log alle 2–3 Minuten „intent_revoked“ / „safe restore“. Die Ladung aus PV-Überschuss übernimmt die Eigenverbrauchsregelung der Batterie von selbst; eine aktive Ladesequenz entsteht nur noch bei Netzladung (oder gemischter Quelle mit Netzanteil).
+
 ## [0.4.103] – 2026-11-17
 
 ### Behoben

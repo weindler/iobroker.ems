@@ -187,4 +187,20 @@ describe("battery daily plan priority signals", () => {
 		assert.equal(r.useDailyPlan, false);
 		assert.equal(r.legacyFallbackActive, true);
 	});
+
+	it("reiner PV-Überschuss startet keine aktive Ladesequenz", () => {
+		const r = resolve([
+			allocationEntry(317, "allocated", { energySource: "pv_surplus", gridPowerW: 0, pvPowerW: 317 }),
+		]);
+		assert.equal(r.chargingAllowed, false);
+		assert.equal(r.decisionSource, "daily_plan_passive_pv");
+		const intent = deviceIntentFromDailyPlan(r, NOW.getTime());
+		assert.equal(intent.action, "self_consumption");
+	});
+
+	it("Netzladung bleibt eine aktive Ladesequenz", () => {
+		const r = resolve([allocationEntry(4200)]);
+		assert.equal(r.chargingAllowed, true);
+		assert.equal(deviceIntentFromDailyPlan(r, NOW.getTime()).action, "grid_charge");
+	});
 });

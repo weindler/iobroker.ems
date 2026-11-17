@@ -156,4 +156,18 @@ function resolve(entries, over = {}) {
         strict_1.default.equal(r.useDailyPlan, false);
         strict_1.default.equal(r.legacyFallbackActive, true);
     });
+    (0, node_test_1.it)("reiner PV-Überschuss startet keine aktive Ladesequenz", () => {
+        const r = resolve([
+            allocationEntry(317, "allocated", { energySource: "pv_surplus", gridPowerW: 0, pvPowerW: 317 }),
+        ]);
+        strict_1.default.equal(r.chargingAllowed, false);
+        strict_1.default.equal(r.decisionSource, "daily_plan_passive_pv");
+        const intent = (0, daily_plan_js_1.deviceIntentFromDailyPlan)(r, NOW.getTime());
+        strict_1.default.equal(intent.action, "self_consumption");
+    });
+    (0, node_test_1.it)("Netzladung bleibt eine aktive Ladesequenz", () => {
+        const r = resolve([allocationEntry(4200)]);
+        strict_1.default.equal(r.chargingAllowed, true);
+        strict_1.default.equal((0, daily_plan_js_1.deviceIntentFromDailyPlan)(r, NOW.getTime()).action, "grid_charge");
+    });
 });

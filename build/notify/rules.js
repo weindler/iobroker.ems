@@ -100,7 +100,9 @@ function evaluateNotifications(snap, cfg, memoryIn, nowMs) {
             messages.push({
                 kind: "battery_low",
                 title: "EMS · Batterie fast leer",
-                message: `Die Batterie ist bei ${Math.round(snap.batterySocPct)} % (Grenze ${Math.round(limit)} %). Der Haus-Strom kommt jetzt aus dem Netz.`,
+                message: snap.batteryMinSocPct != null && snap.batterySocPct > snap.batteryMinSocPct + 1
+                    ? `Die Batterie ist bei ${Math.round(snap.batterySocPct)} % (Warnschwelle ${Math.round(limit)} %). Sie entlädt noch bis ${Math.round(snap.batteryMinSocPct)} %, danach kommt der Haus-Strom aus dem Netz.`
+                    : `Die Batterie ist bei ${Math.round(snap.batterySocPct)} % (Grenze ${Math.round(limit)} %). Der Haus-Strom kommt jetzt aus dem Netz.`,
                 priority: 0,
             });
             memory.batteryLowArmed = false;

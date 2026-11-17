@@ -57,6 +57,14 @@ const at = (hhmmUtc) => Date.parse(`2026-11-15T${hhmmUtc}:00Z`);
         const r = (0, rules_1.evaluateNotifications)(snap, { ...cfg, enabled: false }, (0, rules_1.emptyMemory)(), at("07:00"));
         strict_1.default.equal(r.messages.length, 0);
     });
+    (0, node_test_1.it)("Batterie niedrig: Text nennt die echte Entladegrenze, wenn sie unter der Warnschwelle liegt", () => {
+        const m = (0, rules_1.evaluateNotifications)({ ...snap, batterySocPct: 20, batteryMinSocPct: 10 }, cfg, (0, rules_1.emptyMemory)(), at("12:00"))
+            .messages.find((x) => x.kind === "battery_low");
+        strict_1.default.ok(m && m.message.includes("entlädt noch bis 10 %") && !m.message.includes("jetzt aus dem Netz"));
+        const m2 = (0, rules_1.evaluateNotifications)({ ...snap, batterySocPct: 10, batteryMinSocPct: 10 }, cfg, (0, rules_1.emptyMemory)(), at("12:00"))
+            .messages.find((x) => x.kind === "battery_low");
+        strict_1.default.ok(m2 && m2.message.includes("jetzt aus dem Netz"));
+    });
     (0, node_test_1.it)("Batterie niedrig: einmal melden, nicht in Ruhezeit, wieder scharf nach Erholung", () => {
         const low = { ...snap, batterySocPct: 18 };
         const quiet = (0, rules_1.evaluateNotifications)(low, cfg, (0, rules_1.emptyMemory)(), at("22:30"));

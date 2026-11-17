@@ -8,6 +8,11 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/). Versionierun
 
 ## [Unreleased]
 
+## [0.4.110] – 2026-11-17
+
+### Geändert
+- Meldung „Batterie fast leer“: Liegt die Entladegrenze der Batterie unter der Warnschwelle, nennt der Text jetzt die echte Grenze („entlädt noch bis 10 %, danach kommt der Haus-Strom aus dem Netz“) statt zu behaupten, der Strom komme schon jetzt aus dem Netz.
+
 ## [0.4.109] – 2026-11-17
 
 ### Behoben

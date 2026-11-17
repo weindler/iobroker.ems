@@ -62,10 +62,11 @@ const asNum = (v: unknown): number | null => (typeof v === "number" && Number.is
 const asBool = (v: unknown): boolean | null => (typeof v === "boolean" ? v : v === 1 ? true : v === 0 ? false : null);
 
 export async function readNotifySnapshot(host: NotifyHost): Promise<NotifySnapshot> {
-	const [pvToday, pvTomorrow, soc, price, plan, conn, chg, carSoc, lim, fault, faultReason, health] = await Promise.all([
+	const [pvToday, pvTomorrow, soc, minSoc, price, plan, conn, chg, carSoc, lim, fault, faultReason, health] = await Promise.all([
 		readVal(host, "learning.pv_bias.expected_today_kwh"),
 		readVal(host, "learning.pv_bias.corrected_tomorrow_kwh"),
 		readVal(host, "live.battery.soc_pct"),
+		readVal(host, "addons.battery.limits.hardware_min_soc_pct"),
 		readVal(host, "live.price.now_ct_per_kwh"),
 		readVal(host, "operator.plan.battery_strategy_de"),
 		readVal(host, "addons.wallbox.status.evcc.connected"),
@@ -80,6 +81,7 @@ export async function readNotifySnapshot(host: NotifyHost): Promise<NotifySnapsh
 		pvTodayKwh: asNum(pvToday),
 		pvTomorrowKwh: asNum(pvTomorrow),
 		batterySocPct: asNum(soc),
+		batteryMinSocPct: asNum(minSoc),
 		priceNowCt: asNum(price),
 		batteryPlanDe: typeof plan === "string" ? plan : "",
 		carConnected: asBool(conn),
